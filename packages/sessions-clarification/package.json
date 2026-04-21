@@ -1,0 +1,16 @@
+{
+  "name": "@workflow/sessions-clarification",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Session record lifecycle, narrative-first capture, extraction updates, clarification targets, follow-up persistence, boundary/unknown markers, session readiness signals.",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": { ".": { "types": "./dist/index.d.ts", "import": "./dist/index.js" } },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "dependencies": { "@workflow/contracts": "workspace:*" },
+  "devDependencies": { "typescript": "^5.4.5" }
+}

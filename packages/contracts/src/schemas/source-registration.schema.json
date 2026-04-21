@@ -1,0 +1,69 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://workflow.local/schemas/source-registration.json",
+  "title": "SourceRegistration",
+  "description": "Case-linked source intake record (spec §11.1, §11.3, §11.9, §11.10).",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "sourceId",
+    "caseId",
+    "uploaderId",
+    "uploadedAt",
+    "intakeType",
+    "timingTag",
+    "authority",
+    "processingStatus"
+  ],
+  "properties": {
+    "sourceId": { "type": "string", "minLength": 1 },
+    "caseId": { "type": "string", "minLength": 1 },
+    "uploaderId": { "type": "string", "minLength": 1 },
+    "uploadedAt": { "type": "string", "format": "date-time" },
+    "displayName": { "type": "string" },
+    "intakeType": {
+      "description": "Preliminary intake typing (§11.7). Replaced by functional classification later; do not treat as final.",
+      "type": "string",
+      "enum": [
+        "uploaded_document",
+        "uploaded_form",
+        "uploaded_template",
+        "uploaded_contract_sample",
+        "uploaded_quotation_sample",
+        "uploaded_role_document",
+        "uploaded_workflow_reference",
+        "uploaded_contextual_source"
+      ]
+    },
+    "timingTag": {
+      "description": "When/why the source entered the case (§11.3).",
+      "type": "string",
+      "enum": [
+        "uploaded_at_case_setup",
+        "uploaded_after_round_1",
+        "uploaded_before_reanalysis",
+        "uploaded_before_round_2",
+        "uploaded_during_gap_closure",
+        "uploaded_for_finalization_support"
+      ]
+    },
+    "authority": {
+      "description": "Distinguishes company-truth sources from non-authoritative domain-support material (§11.10).",
+      "type": "string",
+      "enum": ["company_truth", "informational_domain_support"]
+    },
+    "processingStatus": {
+      "description": "Intake processing status (§11.9).",
+      "type": "string",
+      "enum": [
+        "registered_not_processed",
+        "extraction_in_progress",
+        "extracted_pending_classification",
+        "classified_ready_for_use",
+        "limited_value_visible",
+        "requires_admin_review"
+      ]
+    },
+    "notes": { "type": "string" }
+  }
+}

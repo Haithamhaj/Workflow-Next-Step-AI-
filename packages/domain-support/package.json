@@ -1,0 +1,16 @@
+{
+  "name": "@workflow/domain-support",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Domain knowledge support: informational sources, terminology, comparative context (non-authoritative).",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": { ".": { "types": "./dist/index.d.ts", "import": "./dist/index.js" } },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "dependencies": { "@workflow/contracts": "workspace:*" },
+  "devDependencies": { "typescript": "^5.4.5" }
+}

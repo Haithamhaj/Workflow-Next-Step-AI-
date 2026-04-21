@@ -1,0 +1,49 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://workflow.local/schemas/case-configuration.json",
+  "title": "CaseConfiguration",
+  "description": "Minimum creation inputs for a case (spec §8.1) plus optional near-core inputs (§8.2). Single-department scope in v1 (§8.4).",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["caseId", "domain", "mainDepartment", "useCaseLabel", "companyProfileRef", "createdAt"],
+  "properties": {
+    "caseId": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Stable unique identifier for the case."
+    },
+    "domain": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Selected domain from the supported domain list (§8.1)."
+    },
+    "mainDepartment": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Selected main department from the supported list. One main department per case in v1 (§8.4)."
+    },
+    "subDepartment": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Optional sub-department / functional unit (§8.2)."
+    },
+    "useCaseLabel": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Selected or custom use-case label (§8.1)."
+    },
+    "companyProfileRef": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Reference identifier for the company profile / company-context source registered in the case inventory."
+    },
+    "operatorNotes": {
+      "type": "string",
+      "description": "Free-form operator notes (§8.2)."
+    },
+    "createdAt": {
+      "type": "string",
+      "format": "date-time"
+    }
+  }
+}

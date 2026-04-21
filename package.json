@@ -1,0 +1,17 @@
+{
+  "name": "workflow-analysis-engine",
+  "private": true,
+  "version": "0.0.0",
+  "description": "Workflow Analysis Document Engine — monorepo root (Pass 1 skeleton).",
+  "packageManager": "pnpm@9.12.0",
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "scripts": {
+    "dev": "pnpm --filter @workflow/admin-web dev",
+    "build": "pnpm -r build",
+    "build:contracts": "pnpm --filter @workflow/contracts build",
+    "typecheck": "pnpm -r typecheck",
+    "clean": "pnpm -r exec rm -rf dist .next .turbo"
+  }
+}
