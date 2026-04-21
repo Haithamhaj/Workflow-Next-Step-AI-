@@ -1,7 +1,9 @@
-# Current State — Pass 2A partial implementation (NOT accepted as full Pass 2)
+# Current State
 
-**Acceptance status:** Pass 2A code is in place and typechecks cleanly.
-Full Pass 2 acceptance is withheld. See DECISIONS_LOG.md for the entry.
+**Pass 2A partial implementation completed, not yet accepted as full Pass 2.**
+
+Pass 2A code is in place and typechecks cleanly. Full Pass 2 acceptance is
+withheld because two proof gaps remain open. See DECISIONS_LOG.md for the entry.
 
 ---
 
