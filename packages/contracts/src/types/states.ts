@@ -82,13 +82,16 @@ export const ReleaseState = {
 export type ReleaseState = (typeof ReleaseState)[keyof typeof ReleaseState];
 
 // ---------------------------------------------------------------------------
-// PASS 2 PLACEHOLDER — RolloutState is not enumerated in spec §28.7.
-// Spec describes pillars only (hierarchy, reference, targeting, admin approval).
-// Do not guess values. Awaiting author input before this type can be filled.
+// FORMALLY DEFERRED (Pass 2B, operator decision 2026-04-21).
+// RolloutState is not enumerated in spec §28.7. Spec describes rollout
+// readiness through four pillars: hierarchy_status, reference_status,
+// targeting_status, admin_rollout_approval_status. The operator confirmed
+// that enumerating discrete state values is intentionally deferred.
+// Rollout readiness continues to be evaluated via the four pillars, not
+// via a state enum. Recorded in DECISIONS_LOG.md.
 // ---------------------------------------------------------------------------
 type _Pass1Placeholder<Tag extends string> = string & {
   readonly __pass1Placeholder__: Tag;
 };
 
-// TODO(spec author): enumerate RolloutState values in §28.7 and replace this.
 export type RolloutState = _Pass1Placeholder<"RolloutState">;

@@ -1,56 +1,45 @@
-# Pass 2B — resolve RolloutState decision and complete missing closure/proof
+# Pass 3 — Source Intake + Context Handling + Source UI
 
 ## Goal
-Close the two gaps that prevented Pass 2 from being accepted.
-Do not widen product scope.
+Implement source registration, context handling, and the admin source UI surface.
 
 ---
 
 ## Scope
 
-### a) Resolve RolloutState after operator decision
-Operator must choose before implementation begins:
+### Build
+- `sources-context` package body — source registration logic, source typing/timing tags, company context handling, domain-support registration boundary
+- Source registration API routes in `admin-web` (`/api/sources` GET + POST)
+- Source admin UI pages (`/sources` list, `/sources/new` form, `/sources/[id]` detail)
+- Context/domain-support distinction visibility
 
-**Option A — Enumerate values**
-Operator provides the enumerated string values for `RolloutState` (spec §28.7).
-Replace the branded placeholder in `contracts/src/types/states.ts` with a real
-union, add the matching `const` object, and add `validateRolloutState` to the
-contracts public surface.
+### Validate
+- `pnpm typecheck` — 0 errors
+- Source inventory updates persist correctly
+- Timing tags applied and stored
+- Classification storage works
+- `/sources` page renders registered sources
+- `/sources/new` form submits and creates a source
 
-**Option B — Explicitly defer**
-Operator confirms that `RolloutState` values are intentionally unspecified.
-Update the placeholder comment to record that decision. Move the item from
-OPEN_QUESTIONS to DECISIONS_LOG as a formal deferral. No type change needed.
-
-**Do not proceed until the operator states their choice.**
-
-### b) Update contracts/core-state only as needed
-If Option A is chosen: update `contracts` exports and add `validateRolloutState`.
-If Option B is chosen: no contracts changes required.
-No changes to core-state, persistence, core-case, or any other domain package.
-
-### c) Complete the remaining closure/proof cleanly
-Proof item #7 requires a validation error visible in the UI when `/cases/new`
-is submitted with a missing required field. Provide one of:
-- A screenshot of the rendered error message in the browser
-- A `curl` response showing the API 400, paired with a read of the client
-  component code confirming the error state is wired to the DOM (citing the
-  exact JSX node)
-
-No code changes are required unless the form error display is found to be broken.
-
-### d) Do not widen product scope
-No new routes, forms, API endpoints, domain logic, or package bodies.
-No Pass 3 work.
+### Do not widen scope
+- No session logic (Pass 5)
+- No prompt registry (Pass 4)
+- No synthesis or evaluation (Pass 6-7)
+- No authentication
 
 ---
 
-## Required proof before Pass 2B is considered complete
+## Dependencies on prior passes
+- Pass 1 (contracts scaffold, types, schemas) — complete
+- Pass 2 (state families, core-state, persistence, core-case, case UI) — complete
+- Pass 2B (RolloutState deferral, proof closure) — complete
+
+## Required proof before Pass 3 is considered complete
 
 1. `pnpm typecheck` — 0 errors
-2. `RolloutState` placeholder disposed of: replaced with real union (Option A) or formally logged as deferred (Option B)
-3. `isValidTransition("created","closed")` returns `false` (carry forward from Pass 2A)
-4. `POST /api/cases` valid body → 201 + persisted case (carry forward)
-5. `GET /api/cases` → returns that case (carry forward)
-6. `/cases` page renders the created case (carry forward)
-7. `/cases/new` with a missing required field → validation error text visible in the rendered UI (screenshot or DOM evidence)
+2. `POST /api/sources` valid body -> 201 + persisted source
+3. `GET /api/sources` -> returns that source
+4. `/sources` page renders the registered source
+5. `/sources/new` with missing required field -> validation error visible in rendered UI
+6. Source typing/timing tags stored and retrievable
+7. Context vs domain-support classification visible in source detail
