@@ -18,6 +18,7 @@
     { "path": "../../packages/core-state" },
     { "path": "../../packages/persistence" },
     { "path": "../../packages/core-case" },
-    { "path": "../../packages/sources-context" }
+    { "path": "../../packages/sources-context" },
+    { "path": "../../packages/prompts" }
   ]
 }

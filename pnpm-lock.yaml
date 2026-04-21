@@ -22,6 +22,9 @@ importers:
       '@workflow/persistence':
         specifier: workspace:*
         version: link:../../packages/persistence
+      '@workflow/prompts':
+        specifier: workspace:*
+        version: link:../../packages/prompts
       '@workflow/sources-context':
         specifier: workspace:*
         version: link:../../packages/sources-context
@@ -132,6 +135,9 @@ importers:
       '@workflow/contracts':
         specifier: workspace:*
         version: link:../contracts
+      '@workflow/persistence':
+        specifier: workspace:*
+        version: link:../persistence
     devDependencies:
       typescript:
         specifier: ^5.4.5

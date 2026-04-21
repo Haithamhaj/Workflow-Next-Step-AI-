@@ -1,4 +1,9 @@
-import type { CaseConfiguration, CaseState, SourceRegistration } from "@workflow/contracts";
+import type {
+  CaseConfiguration,
+  CaseState,
+  SourceRegistration,
+  PromptRegistration,
+} from "@workflow/contracts";
 
 export const PERSISTENCE_PACKAGE = "@workflow/persistence" as const;
 
@@ -22,6 +27,10 @@ export interface Source extends SourceRegistration {
   registeredAt: string;
 }
 
+export interface PromptRecord extends PromptRegistration {
+  registeredAt: string;
+}
+
 // ---------------------------------------------------------------------------
 // Repository interfaces — backend-agnostic
 // ---------------------------------------------------------------------------
@@ -37,6 +46,13 @@ export interface SourceRepository {
   findById(sourceId: string): Source | null;
   findByCaseId(caseId: string): Source[];
   findAll(): Source[];
+}
+
+export interface PromptRepository {
+  save(p: PromptRecord): void;
+  findById(promptId: string): PromptRecord | null;
+  findByRole(role: string): PromptRecord[];
+  findAll(): PromptRecord[];
 }
 
 // ---------------------------------------------------------------------------
@@ -55,6 +71,26 @@ class InMemoryCaseRepository implements CaseRepository {
   }
 
   findAll(): Case[] {
+    return Array.from(this.store.values());
+  }
+}
+
+class InMemoryPromptRepository implements PromptRepository {
+  private readonly store = new Map<string, PromptRecord>();
+
+  save(p: PromptRecord): void {
+    this.store.set(p.promptId, { ...p });
+  }
+
+  findById(promptId: string): PromptRecord | null {
+    return this.store.get(promptId) ?? null;
+  }
+
+  findByRole(role: string): PromptRecord[] {
+    return Array.from(this.store.values()).filter((p) => p.role === role);
+  }
+
+  findAll(): PromptRecord[] {
     return Array.from(this.store.values());
   }
 }
@@ -86,12 +122,14 @@ class InMemorySourceRepository implements SourceRepository {
 export interface InMemoryStore {
   cases: CaseRepository;
   sources: SourceRepository;
+  prompts: PromptRepository;
 }
 
 export function createInMemoryStore(): InMemoryStore {
   return {
     cases: new InMemoryCaseRepository(),
     sources: new InMemorySourceRepository(),
+    prompts: new InMemoryPromptRepository(),
   };
 }
 

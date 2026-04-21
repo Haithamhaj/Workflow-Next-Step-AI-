@@ -1,0 +1,87 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://workflow.local/schemas/prompt-registration.json",
+  "title": "PromptRegistration",
+  "description": "Prompt registry record (spec §29.9, §30.6, §30.16). Tracks identity, version, and classification of every registered prompt unit.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "promptId",
+    "promptName",
+    "promptType",
+    "role",
+    "linkedModule",
+    "promptPurpose",
+    "promptVersion",
+    "status"
+  ],
+  "properties": {
+    "promptId": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Unique identifier for this prompt unit (§29.9.1 prompt_id)."
+    },
+    "promptName": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Human-readable name for this prompt unit (§29.9.1 prompt_name)."
+    },
+    "promptType": {
+      "type": "string",
+      "description": "Functional category of this prompt unit (§30.16).",
+      "enum": [
+        "extraction",
+        "classification",
+        "synthesis",
+        "package_section_drafting",
+        "clarification_generation"
+      ]
+    },
+    "role": {
+      "type": "string",
+      "description": "LLM message-format role this prompt occupies (NEXT_PASS.md examples: isSystemPrompt / isUserPrompt). See OQ-001 in OPEN_QUESTIONS.md.",
+      "enum": ["system", "user"]
+    },
+    "linkedModule": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Build module this prompt unit belongs to (§29.9.1 linked_module, §30.7)."
+    },
+    "linkedDecisionBlock": {
+      "type": "string",
+      "description": "Optional decision block within the module (§29.9.1 linked_decision_block_if_any)."
+    },
+    "promptPurpose": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Plain-English description of what this prompt unit does (§29.9.1 prompt_purpose, §30.7 purpose)."
+    },
+    "inputContractRef": {
+      "type": "string",
+      "description": "Reference to the input contract or schema for this prompt (§29.9.1 input_contract_reference)."
+    },
+    "outputContractRef": {
+      "type": "string",
+      "description": "Reference to the output contract or schema for this prompt (§29.9.1 output_contract_reference)."
+    },
+    "sourceSectionLinks": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Spec section references that justify this prompt (§29.9.1 source_section_links, §30.7 linked reference sections)."
+    },
+    "promptVersion": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Version identifier for this prompt (§29.9.1 prompt_version). A new version must not silently replace an existing active behavior (§30.14)."
+    },
+    "status": {
+      "type": "string",
+      "description": "Active/inactive lifecycle status (§29.9.1 active_or_inactive_status).",
+      "enum": ["active", "inactive"]
+    },
+    "notes": {
+      "type": "string",
+      "description": "Optional operator notes."
+    }
+  }
+}

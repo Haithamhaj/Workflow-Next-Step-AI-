@@ -5,7 +5,8 @@
       "name": "admin-web",
       "runtimeExecutable": "pnpm",
       "runtimeArgs": ["--filter", "@workflow/admin-web", "dev"],
-      "port": 3000
+      "port": 3000,
+      "autoPort": true
     }
   ]
 }

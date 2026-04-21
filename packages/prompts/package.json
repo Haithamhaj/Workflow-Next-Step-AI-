@@ -11,6 +11,9 @@
     "build": "tsc -p tsconfig.json",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
-  "dependencies": { "@workflow/contracts": "workspace:*" },
+  "dependencies": {
+    "@workflow/contracts": "workspace:*",
+    "@workflow/persistence": "workspace:*"
+  },
   "devDependencies": { "typescript": "^5.4.5" }
 }
