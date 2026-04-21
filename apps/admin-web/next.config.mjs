@@ -6,6 +6,7 @@ const nextConfig = {
     "@workflow/core-state",
     "@workflow/persistence",
     "@workflow/core-case",
+    "@workflow/sources-context",
   ],
 };
 

@@ -15,6 +15,7 @@
     "@workflow/core-case": "workspace:*",
     "@workflow/core-state": "workspace:*",
     "@workflow/persistence": "workspace:*",
+    "@workflow/sources-context": "workspace:*",
     "next": "14.2.5",
     "react": "18.3.1",
     "react-dom": "18.3.1"

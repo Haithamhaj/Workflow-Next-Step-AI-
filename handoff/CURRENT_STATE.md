@@ -1,6 +1,6 @@
 # Current State
 
-**Pass 2 (including Pass 2A + Pass 2B) accepted. All proof items satisfied.**
+**Pass 3 (Source Intake + Context Handling + Source UI) accepted. All proof items satisfied.**
 
 ---
 
@@ -28,7 +28,7 @@
   - `ReviewState` (5 values, sec 28.13) — filled Pass 2A
   - `ReleaseState` (4 values, sec 28.15) — filled Pass 2A
   - `RolloutState` — **formally deferred** (operator decision, 2026-04-21). Branded placeholder retained with deferral comment. sec 28.7 describes pillars, not enumerated values.
-- `src/index.ts` — exports `validateSessionState`, `validatePackageState`, `validateReviewState`, `validateReleaseState`
+- `src/index.ts` — exports `validateSessionState`, `validatePackageState`, `validateReviewState`, `validateReleaseState`, `validateSourceRegistration`
 
 ---
 
@@ -38,10 +38,12 @@
 
 ---
 
-### `packages/persistence` (implemented Pass 2A)
+### `packages/persistence` (patched Pass 3)
 - `Case` entity type, `Source` entity type
 - `CaseRepository` and `SourceRepository` interfaces (backend-agnostic)
-- `InMemoryCaseRepository` and `InMemorySourceRepository`
+  - `SourceRepository` gains `findById(sourceId): Source | null` (local patch, Pass 3)
+- `InMemoryCaseRepository` — array-based
+- `InMemorySourceRepository` — **Map-based** (keyed by `sourceId`, O(1) lookup, patched Pass 3)
 - `createInMemoryStore()` factory
 
 ---
@@ -52,36 +54,50 @@
 
 ---
 
-### `apps/admin-web` (extended Pass 2A)
-- `lib/store.ts` — singleton `InMemoryStore` via `globalThis.__workflowStore__`
-- `app/api/cases/route.ts` — `GET /api/cases` + `POST /api/cases` (validates, 201 or 400)
-- `app/cases/page.tsx` — server component; renders case list
-- `app/cases/new/page.tsx` — client component; form with validation error display (error block renders visibly in DOM when API returns 400)
-- `app/globals.css` — added `.btn-primary` styles
-- `next.config.mjs` — `transpilePackages` extended
+### `packages/sources-context` (implemented Pass 3)
+- `registerSource(payload, repo)` — validates via `validateSourceRegistration`, duplicate-checks via `findById`, saves, returns `Source` with `registeredAt` stamped
+- `getSource(sourceId, repo)` — lookup by ID
+- `listSources(repo)` — returns all sources
+- `listSourcesByCaseId(caseId, repo)` — filtered list
+- `isCompanyTruth(source)` / `isDomainSupport(source)` — authority predicates
+- Re-exports: `SourceRegistration`, `SourceIntakeType`, `SourceTimingTag`, `SourceAuthority`, `SourceProcessingStatus` from `@workflow/contracts`
+- Dependencies: `@workflow/contracts`, `@workflow/persistence`
 
 ---
 
-### 9 skeleton packages (unchanged from Pass 1)
-`sources-context`, `sessions-clarification`, `synthesis-evaluation`, `packages-output`,
+### `apps/admin-web` (extended through Pass 3)
+- `lib/store.ts` — singleton `InMemoryStore` via `globalThis.__workflowStore__`
+- `app/api/cases/route.ts` — `GET /api/cases` + `POST /api/cases`
+- `app/api/sources/route.ts` — `GET /api/sources` + `POST /api/sources` (validates, 201/400/409) *(new Pass 3)*
+- `app/api/sources/[id]/route.ts` — `GET /api/sources/:id` (404 on miss) *(new Pass 3)*
+- `app/cases/page.tsx` — case list server component
+- `app/cases/new/page.tsx` — case form client component
+- `app/sources/page.tsx` — source list server component; authority-colored badges *(new Pass 3)*
+- `app/sources/new/page.tsx` — source form client component; validation error block *(new Pass 3)*
+- `app/sources/[id]/page.tsx` — source detail server component; Authority Classification panel with green (company_truth) / yellow (informational_domain_support) visual distinction per §11.10 *(new Pass 3)*
+- `app/globals.css` — `.btn-primary` styles
+- `next.config.mjs` — `transpilePackages` includes `@workflow/sources-context`
+
+---
+
+### 8 skeleton packages (unchanged from Pass 1)
+`sessions-clarification`, `synthesis-evaluation`, `packages-output`,
 `review-issues`, `prompts`, `domain-support`, `integrations`, `shared-utils`
 
 ---
 
-## What is proven (Pass 2 accepted)
+## What is proven (Pass 3 accepted)
 
 | Check | Result |
 |---|---|
 | `pnpm typecheck` | 0 errors across all 14 packages |
-| `isValidTransition("created","closed")` | `false` (illegal) |
-| `isValidTransition("created","context_in_progress")` | `true` (legal) |
-| `POST /api/cases` valid body | HTTP 201, `"state":"created"` in body |
-| `GET /api/cases` | Returns persisted case list |
-| `POST /api/cases` missing fields | HTTP 400 + `{"errors":[...]}` |
-| `curl http://localhost:3000/cases` | HTML contains case data |
-| `curl http://localhost:3000/cases/new` | HTTP 200, form renders |
-| RolloutState disposition | Formally deferred per operator decision; branded placeholder retained |
-| `/cases/new` validation error in UI | DOM evidence: styled error block renders validation error text from API 400 response |
+| `POST /api/sources` valid body | HTTP 201, full `Source` object in body |
+| `GET /api/sources` | Returns persisted source list |
+| `/sources` page renders | HTML contains source rows with authority badges |
+| `POST /api/sources` missing fields | HTTP 400 + `{"error":"Invalid SourceRegistration: must have required property 'uploaderId'; ..."}` |
+| Source typing/timing stored | `intakeType` + `timingTag` present in GET response and detail page |
+| `/sources/:id` detail page | Authority Classification panel: `background:#0e2a0e; border:2px solid #3a7a3a` for `company_truth`; badge `✓ company_truth`; explanatory §11.10 text rendered |
+| Prior Pass 2 proof items | All still satisfied |
 
 ---
 
@@ -90,17 +106,16 @@
 | Item | Location | Deferred to |
 |---|---|---|
 | `RolloutState` values | `contracts/src/types/states.ts` | Indefinite — operator chose formal deferral |
-| Source intake UI or API | `apps/admin-web/app/sources/` | Pass 3 |
-| `sources-context` body | `packages/sources-context/src/index.ts` | Pass 3 |
-| 8 remaining admin routes (non-cases) | `apps/admin-web/app/*/page.tsx` | Pass 3+ |
-| 9 non-implemented package bodies | `packages/*/src/index.ts` | Pass 3-7 |
+| Prompt registry/workspace | `packages/prompts/src/index.ts` | Pass 4 |
+| Session logic | `packages/sessions-clarification/` | Pass 5 |
+| 7 non-implemented package bodies | `packages/*/src/index.ts` | Pass 4-7 |
 
 ---
 
 ## What has NOT been built
 
-- Source intake API or UI
-- Session logic, prompts, LLM transport
+- Prompt registry or prompt workspace UI
+- Session logic, LLM transport
 - Synthesis, evaluation, package generation
 - Review issues, release decisions
 - Real database (all storage resets on server restart)

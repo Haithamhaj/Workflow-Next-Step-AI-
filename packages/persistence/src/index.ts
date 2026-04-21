@@ -34,6 +34,7 @@ export interface CaseRepository {
 
 export interface SourceRepository {
   save(s: Source): void;
+  findById(sourceId: string): Source | null;
   findByCaseId(caseId: string): Source[];
   findAll(): Source[];
 }
@@ -59,18 +60,22 @@ class InMemoryCaseRepository implements CaseRepository {
 }
 
 class InMemorySourceRepository implements SourceRepository {
-  private readonly store: Source[] = [];
+  private readonly store = new Map<string, Source>();
 
   save(s: Source): void {
-    this.store.push({ ...s });
+    this.store.set(s.sourceId, { ...s });
+  }
+
+  findById(sourceId: string): Source | null {
+    return this.store.get(sourceId) ?? null;
   }
 
   findByCaseId(caseId: string): Source[] {
-    return this.store.filter((s) => s.caseId === caseId);
+    return Array.from(this.store.values()).filter((s) => s.caseId === caseId);
   }
 
   findAll(): Source[] {
-    return [...this.store];
+    return Array.from(this.store.values());
   }
 }
 

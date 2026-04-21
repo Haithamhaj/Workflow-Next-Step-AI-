@@ -17,6 +17,7 @@
     { "path": "../../packages/contracts" },
     { "path": "../../packages/core-state" },
     { "path": "../../packages/persistence" },
-    { "path": "../../packages/core-case" }
+    { "path": "../../packages/core-case" },
+    { "path": "../../packages/sources-context" }
   ]
 }
