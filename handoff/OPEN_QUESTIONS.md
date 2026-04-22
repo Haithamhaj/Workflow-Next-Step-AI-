@@ -69,6 +69,6 @@ If the answer specifies a literal trigger, add the auto-activation check to `cre
 
 ---
 
-## Pass 7 review
+## Pass 7 review — resolved (accepted on `main` 2026-04-22)
 
-No new Pass 7 governance blocker was opened during implementation. The review-issue pass stayed within literal §25 / §28 behavior plus the implementation extensions recorded in `DECISIONS_LOG.md`.
+No new Pass 7 governance blocker was opened during implementation or acceptance. The review-issue pass stayed within literal §25 / §28 behavior plus the implementation extensions recorded in `DECISIONS_LOG.md`. OQ-001 through OQ-005 predate Pass 7 and remain open against their original scope.

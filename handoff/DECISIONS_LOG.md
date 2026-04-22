@@ -77,9 +77,9 @@ Status: LOCKED | FORMALIZED | IMPL-EXTENSION
 
 ---
 
-## Pass 7 — Review / Issue Discussion (branch `codex/pass-7-review-issue-discussion`, pending merge)
+## Pass 7 — Review / Issue Discussion (accepted on `main`, 2026-04-22, merge of `a8f3523`)
 
-> Status: these decisions are recorded against the Pass 7 work on branch `codex/pass-7-review-issue-discussion`. They become baseline-active only after the branch is merged into `main`. Until merge, they are branch-scoped.
+> Status: these decisions are baseline-active. Pass 7 was merged into `main` on 2026-04-22 via the linear merge of `codex/pass-7-review-issue-discussion` (`a8f3523`).
 
 - **Pass 7 stayed in the existing `packages/review-issues` package boundary** — repository shape, ownership map, existing skeleton package, and local-patch-first discipline all favored filling the existing package instead of introducing a new sibling package. This preserves the accepted package map without widening scope — IMPL-EXTENSION
 - **`ReviewIssueRecord` is the persisted Pass 7 unit** — it contains the literal §25.4 issue brief, scoped discussion thread, linked evidence view model, exact controlled final action set, and an optional release seam object. No separate review wrapper record was introduced in this pass — IMPL-EXTENSION

@@ -2,13 +2,13 @@
 
 ## Official pass sequence
 - **Pass 6:** Synthesis + Evaluation + Initial Package — accepted on `main`
-- **Pass 7:** Review / Issue Discussion — implemented on branch, pending merge
-- **Pass 8:** Final Package + Release — next pass after Pass 7 merges
+- **Pass 7:** Review / Issue Discussion — accepted on `main` (2026-04-22)
+- **Pass 8:** Final Package + Release — **active next pass**
 
 ---
 
 ## Goal
-Build the Final Package layer that consumes the accepted Pass 6 artifacts plus the Pass 7 review-issue artifacts, while keeping final-package logic separate from release approval logic. This pass begins only after Pass 7 is merged to `main`.
+Build the Final Package layer that consumes the accepted Pass 6 artifacts plus the accepted Pass 7 review-issue artifacts, while keeping final-package logic separate from release approval logic.
 
 ---
 

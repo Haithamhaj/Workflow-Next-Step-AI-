@@ -1,6 +1,6 @@
 # Current State
 
-**Accepted baseline on `main`: Pass 6 (Synthesis + Evaluation + Initial Package), current `origin/main` commit `fb1168f`. Pass 7 is implemented on branch `codex/pass-7-review-issue-discussion` and is ready for review, not accepted.**
+**Accepted baseline on `main`: Pass 7 (Review / Issue Discussion), accepted on 2026-04-22 via merge of `codex/pass-7-review-issue-discussion` (`a8f3523`) into `main`. See `git log -1 origin/main` for the current `origin/main` commit after the post-merge handoff sweep.**
 
 ---
 
@@ -13,7 +13,7 @@
 - `tsconfig.base.json`: strict, `noUncheckedIndexedAccess`, `resolveJsonModule`, Bundler resolution
 - Scripts: `dev`, `build`, `build:contracts`, `typecheck`, `clean`
 
-### `packages/contracts` (complete through Pass 7 on branch)
+### `packages/contracts` (complete through Pass 7, accepted on main)
 - Prior Pass 6 schemas/types unchanged
 - New Pass 7 schema: `src/schemas/review-issue-record.schema.json`
   - Required: `issueId`, `caseId`, `initialPackageId`, `evaluationId`, `reviewState`, `issueBrief`, `discussionThread`, `linkedEvidence`, `actionHistory`
@@ -31,7 +31,7 @@
   - `ReviewIssueRecord`
 - `src/index.ts` exports `validateReviewIssueRecord`
 
-### `packages/core-state` (extended through Pass 7 on branch)
+### `packages/core-state` (extended through Pass 7, accepted on main)
 - Prior Pass 2A `CaseStateTransitions` unchanged
 - New `ReviewStateTransitions` per §28.14:
   - `no_review_needed -> review_required`
@@ -40,7 +40,7 @@
   - `action_taken -> review_resolved`
 - New `isValidReviewTransition(from, to)`
 
-### `packages/persistence` (extended through Pass 7 on branch)
+### `packages/persistence` (extended through Pass 7, accepted on main)
 - Prior Pass 6 entities/repositories unchanged
 - New `StoredReviewIssueRecord` extends `ReviewIssueRecord` with `createdAt`, `updatedAt`
 - New `ReviewIssueRepository`:
@@ -52,7 +52,7 @@
 - New `InMemoryReviewIssueRepository`
 - `createInMemoryStore()` now includes `reviewIssues`
 
-### `packages/review-issues` (implemented Pass 7 on branch)
+### `packages/review-issues` (implemented Pass 7, accepted on main)
 - Re-exports Pass 7 seam contracts from `@workflow/contracts`
 - Re-exports `StoredReviewIssueRecord` / `ReviewIssueRepository` from persistence
 - `createReviewIssue(payload, repo)` — validates via `validateReviewIssueRecord`, rejects duplicate IDs, stamps `createdAt` / `updatedAt`
@@ -65,7 +65,7 @@
 ### `packages/synthesis-evaluation`, `packages/packages-output`, `packages/core-case`, `packages/sources-context`, `packages/prompts`, `packages/sessions-clarification`
 - Pass 6 and earlier behavior unchanged
 
-### `apps/admin-web` (extended through Pass 7 on branch)
+### `apps/admin-web` (extended through Pass 7, accepted on main)
 - Prior Pass 6 surfaces unchanged
 - `app/api/issues/route.ts`
   - `GET /api/issues`
@@ -103,7 +103,7 @@
 
 ---
 
-## What is proven (Pass 7 — branch `codex/pass-7-review-issue-discussion`)
+## What is proven (Pass 7 — accepted on `main` 2026-04-22, merge of `a8f3523`)
 
 | Check | Result |
 |---|---|
