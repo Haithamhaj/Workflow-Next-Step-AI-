@@ -37,4 +37,32 @@ If the answer permits back-transitions, update `SessionStateTransitions` in `pac
 
 ---
 
+## OQ-004 — §19.7–§19.8 enrichment trigger (surfaced Pass 6, 2026-04-22)
+
+**Section affected:** `packages/synthesis-evaluation` — synthesis construction path.
+
+**Question:** §19.7 states: *"When peer-level synthesis leaves a materially important difference unresolved, the system should seek enrichment or closure from higher relevant levels such as supervisor, manager, or another relevant owner."* §19.8 states the system should treat outside-department differences initially as a dependency/handoff/external interface rather than expanding into multi-department reconstruction. Neither section specifies: (a) whether enrichment seeking is triggered automatically at synthesis-record creation or is operator-driven; (b) what data structure or provenance fields would record that enrichment was sought or received.
+
+**Current resolution for Pass 6:** No enrichment trigger logic is implemented. `createSynthesis` records the §19.11 minimum output only. Any enrichment is operator-driven via form re-submission. No trigger rules invented.
+
+**Operator action required:** Confirm whether enrichment per §19.7–§19.8 is automatic (system-triggered on synthesis creation when unresolved differences exist) or operator-driven. If automatic, specify the trigger condition and the provenance fields required on `SynthesisRecord`. Without this, any implementation of enrichment triggering is invented governance.
+
+If the answer introduces automatic triggering, update `synthesis-evaluation` construction logic and extend `synthesis-record.schema.json` with provenance fields.
+
+---
+
+## OQ-005 — §21.4 system auto-activation trigger (surfaced Pass 6, 2026-04-22)
+
+**Section affected:** `packages/packages-output` — `createInitialPackage` assembly logic.
+
+**Question:** §21.4 specifies two conditions under which the Document/Reference Implication section should appear: *(a) the user or operator requested it* — implemented as the optional `outward.documentReferenceImplication` field; *(b) "the system explicitly activates it because the case already supports an early documentation implication path"* — the spec does not define what conditions constitute an "early documentation implication path."
+
+**Current resolution for Pass 6:** Only condition (a) is implemented. `outward.documentReferenceImplication` is an optional operator-supplied field. Condition (b) auto-activation is deferred because the triggering rule is not literally specified.
+
+**Operator action required:** Confirm what constitutes an "early documentation implication path" for condition (b) — specifically, what evaluation outcome value(s), synthesis fields, or other signals should cause the system to auto-activate the section. Without this literal rule, any auto-activation implementation is invented governance.
+
+If the answer specifies a literal trigger, add the auto-activation check to `createInitialPackage` in `packages/packages-output`.
+
+---
+
 *Prior resolved items: RolloutState deferral — recorded in DECISIONS_LOG.md.*

@@ -6,6 +6,12 @@ import type {
   SessionCreation,
   SessionState,
   ClarificationQuestion,
+  SynthesisRecord,
+  EvaluationRecord,
+  EvaluationConditions,
+  EvaluationOutcome,
+  ConditionInterpretations,
+  InitialPackageRecord,
 } from "@workflow/contracts";
 
 export const PERSISTENCE_PACKAGE = "@workflow/persistence" as const;
@@ -45,6 +51,44 @@ export interface SessionRecord extends SessionCreation {
   clarificationQuestions: ClarificationQuestion[];
 }
 
+/** Persistent synthesis record (§19.11 payload + createdAt). */
+export interface StoredSynthesisRecord extends SynthesisRecord {
+  createdAt: string;
+}
+
+/** Persistent evaluation record (§20 payload + createdAt + conditionInterpretations). */
+export interface StoredEvaluationRecord extends EvaluationRecord {
+  createdAt: string;
+  conditionInterpretations: ConditionInterpretations;
+}
+
+/**
+ * Snapshot of the LLM-generated interpretation that the admin reviewed.
+ * Stored at preview time; referenced by evaluationSnapshotId on final submit.
+ * The basis fields allow the server to verify the submitted evaluation
+ * matches exactly what the admin saw.
+ */
+export interface InterpretationSnapshot {
+  snapshotId: string;
+  conditionInterpretations: ConditionInterpretations;
+  basis: {
+    conditions: EvaluationConditions;
+    outcome: EvaluationOutcome;
+    synthesisContext?: string;
+  };
+  createdAt: string;
+}
+
+export interface InterpretationSnapshotRepository {
+  save(snapshot: InterpretationSnapshot): void;
+  findById(snapshotId: string): InterpretationSnapshot | null;
+}
+
+/** Persistent initial-package record (§21 payload + createdAt). */
+export interface StoredInitialPackageRecord extends InitialPackageRecord {
+  createdAt: string;
+}
+
 // ---------------------------------------------------------------------------
 // Repository interfaces — backend-agnostic
 // ---------------------------------------------------------------------------
@@ -74,6 +118,29 @@ export interface SessionRepository {
   findById(sessionId: string): SessionRecord | null;
   findByCaseId(caseId: string): SessionRecord[];
   findAll(): SessionRecord[];
+}
+
+export interface SynthesisRepository {
+  save(s: StoredSynthesisRecord): void;
+  findById(synthesisId: string): StoredSynthesisRecord | null;
+  findByCaseId(caseId: string): StoredSynthesisRecord[];
+  findAll(): StoredSynthesisRecord[];
+}
+
+export interface EvaluationRepository {
+  save(e: StoredEvaluationRecord): void;
+  findById(evaluationId: string): StoredEvaluationRecord | null;
+  findByCaseId(caseId: string): StoredEvaluationRecord[];
+  findBySynthesisId(synthesisId: string): StoredEvaluationRecord[];
+  findAll(): StoredEvaluationRecord[];
+}
+
+export interface InitialPackageRepository {
+  save(p: StoredInitialPackageRecord): void;
+  findById(initialPackageId: string): StoredInitialPackageRecord | null;
+  findByCaseId(caseId: string): StoredInitialPackageRecord[];
+  findByEvaluationId(evaluationId: string): StoredInitialPackageRecord[];
+  findAll(): StoredInitialPackageRecord[];
 }
 
 // ---------------------------------------------------------------------------
@@ -159,6 +226,112 @@ class InMemorySessionRepository implements SessionRepository {
   }
 }
 
+class InMemorySynthesisRepository implements SynthesisRepository {
+  private readonly store = new Map<string, StoredSynthesisRecord>();
+
+  save(s: StoredSynthesisRecord): void {
+    this.store.set(s.synthesisId, {
+      ...s,
+      differenceBlocks: s.differenceBlocks.map((b) => ({ ...b })),
+      majorUnresolvedItems: [...s.majorUnresolvedItems],
+      closureCandidates: [...s.closureCandidates],
+      escalationCandidates: [...s.escalationCandidates],
+    });
+  }
+
+  findById(synthesisId: string): StoredSynthesisRecord | null {
+    return this.store.get(synthesisId) ?? null;
+  }
+
+  findByCaseId(caseId: string): StoredSynthesisRecord[] {
+    return Array.from(this.store.values()).filter((s) => s.caseId === caseId);
+  }
+
+  findAll(): StoredSynthesisRecord[] {
+    return Array.from(this.store.values());
+  }
+}
+
+class InMemoryEvaluationRepository implements EvaluationRepository {
+  private readonly store = new Map<string, StoredEvaluationRecord>();
+
+  save(e: StoredEvaluationRecord): void {
+    this.store.set(e.evaluationId, {
+      ...e,
+      axes: { ...e.axes },
+      conditions: { ...e.conditions },
+    });
+  }
+
+  findById(evaluationId: string): StoredEvaluationRecord | null {
+    return this.store.get(evaluationId) ?? null;
+  }
+
+  findByCaseId(caseId: string): StoredEvaluationRecord[] {
+    return Array.from(this.store.values()).filter((e) => e.caseId === caseId);
+  }
+
+  findBySynthesisId(synthesisId: string): StoredEvaluationRecord[] {
+    return Array.from(this.store.values()).filter(
+      (e) => e.synthesisId === synthesisId,
+    );
+  }
+
+  findAll(): StoredEvaluationRecord[] {
+    return Array.from(this.store.values());
+  }
+}
+
+class InMemoryInitialPackageRepository implements InitialPackageRepository {
+  private readonly store = new Map<string, StoredInitialPackageRecord>();
+
+  save(p: StoredInitialPackageRecord): void {
+    this.store.set(p.initialPackageId, {
+      ...p,
+      outward: { ...p.outward },
+      admin: {
+        ...p.admin,
+        sevenConditionChecklist: { ...p.admin.sevenConditionChecklist },
+        internalReviewPrompts: p.admin.internalReviewPrompts
+          ? [...p.admin.internalReviewPrompts]
+          : undefined,
+      },
+    });
+  }
+
+  findById(initialPackageId: string): StoredInitialPackageRecord | null {
+    return this.store.get(initialPackageId) ?? null;
+  }
+
+  findByCaseId(caseId: string): StoredInitialPackageRecord[] {
+    return Array.from(this.store.values()).filter((p) => p.caseId === caseId);
+  }
+
+  findByEvaluationId(evaluationId: string): StoredInitialPackageRecord[] {
+    return Array.from(this.store.values()).filter(
+      (p) => p.evaluationId === evaluationId,
+    );
+  }
+
+  findAll(): StoredInitialPackageRecord[] {
+    return Array.from(this.store.values());
+  }
+}
+
+class InMemoryInterpretationSnapshotRepository
+  implements InterpretationSnapshotRepository
+{
+  private readonly store = new Map<string, InterpretationSnapshot>();
+
+  save(snapshot: InterpretationSnapshot): void {
+    this.store.set(snapshot.snapshotId, { ...snapshot });
+  }
+
+  findById(snapshotId: string): InterpretationSnapshot | null {
+    return this.store.get(snapshotId) ?? null;
+  }
+}
+
 // ---------------------------------------------------------------------------
 // Factory
 // ---------------------------------------------------------------------------
@@ -168,6 +341,10 @@ export interface InMemoryStore {
   sources: SourceRepository;
   prompts: PromptRepository;
   sessions: SessionRepository;
+  synthesis: SynthesisRepository;
+  evaluations: EvaluationRepository;
+  initialPackages: InitialPackageRepository;
+  snapshots: InterpretationSnapshotRepository;
 }
 
 export function createInMemoryStore(): InMemoryStore {
@@ -176,8 +353,12 @@ export function createInMemoryStore(): InMemoryStore {
     sources: new InMemorySourceRepository(),
     prompts: new InMemoryPromptRepository(),
     sessions: new InMemorySessionRepository(),
+    synthesis: new InMemorySynthesisRepository(),
+    evaluations: new InMemoryEvaluationRepository(),
+    initialPackages: new InMemoryInitialPackageRepository(),
+    snapshots: new InMemoryInterpretationSnapshotRepository(),
   };
 }
 
-// Re-export CaseConfiguration for use by core-case without double-importing contracts
-export type { CaseConfiguration };
+// Re-export for use by domain packages without double-importing contracts
+export type { CaseConfiguration, ConditionInterpretations };

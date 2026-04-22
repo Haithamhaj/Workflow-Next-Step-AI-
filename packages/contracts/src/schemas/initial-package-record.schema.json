@@ -1,0 +1,135 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://workflow.local/schemas/initial-package-record.json",
+  "title": "InitialPackageRecord",
+  "description": "Initial Package per spec §21. The outward layer (§21.3 mandatory sections + §21.4 conditional document/reference implication) is strictly separated from the admin-only judgment layer (§21.11). §21.8 forbids the seven-condition checklist from appearing in the outward portion — it lives only in the admin layer.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "initialPackageId",
+    "caseId",
+    "evaluationId",
+    "status",
+    "outward",
+    "admin"
+  ],
+  "properties": {
+    "initialPackageId": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Unique identifier for this initial package record."
+    },
+    "caseId": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Case this initial package belongs to."
+    },
+    "evaluationId": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Evaluation record that produced this initial package."
+    },
+    "status": {
+      "type": "string",
+      "description": "§21.5 initial-package status values.",
+      "enum": [
+        "not_requested",
+        "not_applicable_yet",
+        "review_recommended",
+        "rebuild_recommended",
+        "conditional_early_draft_possible"
+      ]
+    },
+    "outward": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Outward Initial Package layer (§21.3 mandatory sections + §21.4 conditional Document/Reference Implication). Per §21.8 the seven-condition checklist must NOT appear here.",
+      "required": [
+        "initialSynthesizedWorkflow",
+        "workflowRationale",
+        "workflowValueUsefulnessExplanation",
+        "initialGapAnalysis",
+        "initialRecommendations"
+      ],
+      "properties": {
+        "initialSynthesizedWorkflow": {
+          "type": "string",
+          "minLength": 1,
+          "description": "§21.3 — Initial Synthesized Workflow."
+        },
+        "workflowRationale": {
+          "type": "string",
+          "minLength": 1,
+          "description": "§21.3 — Workflow Rationale."
+        },
+        "workflowValueUsefulnessExplanation": {
+          "type": "string",
+          "minLength": 1,
+          "description": "§21.3 — Workflow Value/Usefulness Explanation."
+        },
+        "initialGapAnalysis": {
+          "type": "string",
+          "minLength": 1,
+          "description": "§21.3 — Initial Gap Analysis."
+        },
+        "initialRecommendations": {
+          "type": "string",
+          "minLength": 1,
+          "description": "§21.3 — Initial Recommendations."
+        },
+        "documentReferenceImplication": {
+          "type": "string",
+          "description": "§21.4 — conditional Document/Reference Implication section. Included only when the operator determines the condition is met."
+        }
+      }
+    },
+    "admin": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Admin-only judgment layer (§21.11). Contains the seven-condition checklist, readiness reasoning, and internal review prompts. Must not appear in outward output (§21.8).",
+      "required": [
+        "sevenConditionChecklist",
+        "readinessReasoning"
+      ],
+      "properties": {
+        "sevenConditionChecklist": {
+          "type": "object",
+          "additionalProperties": false,
+          "description": "§20.3 seven workflow-completeness conditions as viewed by the admin. Per §21.8 this must never appear in the outward package.",
+          "required": [
+            "sequenceContinuity",
+            "aToBToCClarity",
+            "coreStepConditions",
+            "decisionRuleOrThreshold",
+            "handoffResponsibility",
+            "controlOrApproval",
+            "boundary"
+          ],
+          "properties": {
+            "sequenceContinuity": { "type": "boolean" },
+            "aToBToCClarity": { "type": "boolean" },
+            "coreStepConditions": { "type": "boolean" },
+            "decisionRuleOrThreshold": { "type": "boolean" },
+            "handoffResponsibility": { "type": "boolean" },
+            "controlOrApproval": { "type": "boolean" },
+            "boundary": { "type": "boolean" }
+          }
+        },
+        "readinessReasoning": {
+          "type": "string",
+          "minLength": 1,
+          "description": "§21.11 — readiness reasoning held in the admin layer."
+        },
+        "confidenceEvidenceNotes": {
+          "type": "string",
+          "description": "§21.11 — confidence and evidence notes."
+        },
+        "internalReviewPrompts": {
+          "type": "array",
+          "description": "§21.11 — internal review prompts held for admin-side use.",
+          "items": { "type": "string", "minLength": 1 }
+        }
+      }
+    }
+  }
+}

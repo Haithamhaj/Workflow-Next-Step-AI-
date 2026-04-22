@@ -2318,6 +2318,57 @@ If the workflow is still incomplete or weak in core structure, recommendations s
 This section establishes that evaluation in version one is not an abstract scoring ritual.
 It is a practical judgment layer whose main purpose is to decide whether the system has reconstructed the workflow well enough to produce truthful, useful documentation and later support stronger formalization or automation.
 
+### 20.19 Workflow Validity and Automation-Supportiveness Are Separate Judgments
+
+The system may document a workflow as valid — that is, truthfully reconstructed, structurally followable, and package-ready — even when the workflow is not yet fully automation-supportive.
+
+These are two distinct levels of maturity:
+
+* **Workflow validity** — the workflow has been reconstructed clearly enough to be truthfully documented, followed operationally, and packaged for review. This is the primary truth test for documentation output.
+* **Automation-supportiveness** — the workflow is structured cleanly enough that a later technical implementation such as automation, RPA, or AI process execution could reliably follow it. This is a derived consequence of workflow maturity, not a prerequisite for documentation output.
+
+A workflow that satisfies the essential documentation standard may still contain structural ambiguities that would need resolution before automation could reliably follow it. That does not make the workflow invalid for documentation output.
+
+**Non-automatable does not mean workflow-incomplete.**
+
+The system produces a valid workflow reality document when the workflow is truthfully reconstructed and documentably complete. Whether that workflow is also ready for automation is a higher-maturity question that the system supports but does not require as a condition for first-package output.
+
+### 20.20 Condition Satisfaction Level vs. Blocking Failure
+
+The seven completeness conditions (§20.3) operate on two distinct levels of failure:
+
+* **Not yet fully satisfied** — the condition has a visible weakness or gap but does not materially block the workflow's core path, documentation output, or essential operational understanding at the intended package level. Non-blocking condition weaknesses are compatible with `ready_for_initial_package` (§20.11) and `finalizable_with_review` (§20.13).
+* **Materially broken** — the condition failure blocks essential workflow completion in a way that prevents dependable documentation or operational use. Only a materially broken condition must govern the outcome toward `needs_more_clarification` (§20.12).
+
+The governing test for outcome constraint is whether a condition failure **materially breaks essential workflow completion**, not whether the condition is less than perfectly satisfied.
+
+This distinction is required by the literal wording of §20.11 (remaining issues must not prevent a useful analytical package), §20.13 (no remaining issue must break essential workflow completion), and §20.15 (the case may progress even if non-central refinement opportunities remain).
+
+A mechanical gate that treats any unsatisfied condition boolean as a blocking failure conflicts with these sections and over-constrains the outcome toward `needs_more_clarification` in cases where the workflow is documentably complete at a non-perfect level.
+
+### 20.21 Evaluation Is AI-Interpreted, Admin-Routed, and Rule-Guarded
+
+Pass 6 and later evaluation must operate on three distinct levels and must not be reduced to a binary boolean gate.
+
+* **AI-interpreted** — the system interprets each completeness condition issue, explains its specific impact on the workflow, distinguishes whether that impact affects workflow documentability or only automation-readiness, and proposes concrete action options for the admin to consider. Interpretation is the system's job; decision is the admin's job.
+* **Admin-routed** — the admin or operator is the decision authority for meaningful corrective direction. The system presents its interpretation and proposes options; the admin selects the path forward. Outcome selection is not reduced to a deterministic rule because §20.11–20.14 use judgment language ("sufficiently complete," "no remaining issue breaks essential workflow completion") that requires human interpretation and cannot be collapsed into a mechanical pass/fail.
+* **Rule-guarded** — deterministic enforcement rules remain valid but only as narrow hard-stop guards for clearly invalid progression states. A hard-stop guard protects against structurally impossible outcomes — for example, a workflow where sequence continuity is materially broken being marked `ready_for_final_package`. It does not gate every non-perfect condition weakness. The narrower the guard, the more it reflects a genuine structural impossibility rather than a judgment call that belongs to the admin.
+
+This three-level model prevents two known failure modes:
+
+* **Too soft** — no governance at all; any outcome is accepted regardless of structural state.
+* **Too mechanical** — binary boolean logic blocks progress on any unsatisfied condition, including non-blocking weaknesses that do not affect documentability and should surface as improvement notes rather than workflow failures.
+
+### 20.22 Automation-Related Output Wording
+
+When evaluation surfaces automation-related limitations, the system must use three structurally separate output types:
+
+* **Workflow Reality Output** — what the workflow actually is, how it operates, and where it currently stands. This is valid and complete at the workflow-clarity level even when automation-readiness has not yet been achieved. Its validity is not conditional on automation feasibility.
+* **Automation-Supportiveness Assessment** — a derived assessment of which workflow elements are already strong enough to support automation and which would require further formalization or clarification before being reliably automatable. This is a downstream observation, not a primary validity gate.
+* **Improvement Targets Before Automation** — specific steps, decision rules, or handoff points that would benefit from clarification if automation is a later goal. These are presented as improvement opportunities and operator-facing recommendations, not as workflow failures.
+
+A limitation identified in the Automation-Supportiveness Assessment or in Improvement Targets Before Automation must not automatically collapse the Workflow Reality Output validity determination. Admin-facing automation limitation notes may coexist with a valid workflow output. Non-blocking automation difficulty surfaces as a recommendation, not as a workflow failure.
+
 ## 21. Initial Workflow Package Logic
 
 ### 21.1 Governing Role of the Initial Package

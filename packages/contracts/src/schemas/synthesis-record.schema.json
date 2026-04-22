@@ -1,0 +1,109 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://workflow.local/schemas/synthesis-record.json",
+  "title": "SynthesisRecord",
+  "description": "Synthesis output per spec §19. Hybrid synthesis: common path plus preserved material difference blocks (§19.1, §19.3). Preserves the §19.11 minimum output structure.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "synthesisId",
+    "caseId",
+    "commonPath",
+    "differenceBlocks",
+    "majorUnresolvedItems",
+    "closureCandidates",
+    "escalationCandidates",
+    "confidenceEvidenceNotes"
+  ],
+  "properties": {
+    "synthesisId": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Unique identifier for this synthesis record."
+    },
+    "caseId": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Case the synthesis belongs to."
+    },
+    "sessionId": {
+      "type": "string",
+      "description": "Optional session from which the synthesis was derived."
+    },
+    "commonPath": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Current synthesized common path (§19.2, §19.11 first bullet). Captures the strongest shared workflow path at same-level synthesis."
+    },
+    "differenceBlocks": {
+      "type": "array",
+      "description": "Preserved material difference blocks per §19.3. Temporary structured synthesis objects — not yet final contradictions.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "where",
+          "what",
+          "participantsPerSide",
+          "whyMatters",
+          "laterClosurePath"
+        ],
+        "properties": {
+          "where": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Where the difference appears in the workflow (§19.3)."
+          },
+          "what": {
+            "type": "string",
+            "minLength": 1,
+            "description": "What the difference is (§19.3)."
+          },
+          "participantsPerSide": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Which participants support each side (§19.3)."
+          },
+          "whyMatters": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Why the difference matters (§19.3, §19.4 material-impact criteria)."
+          },
+          "laterClosurePath": {
+            "type": "string",
+            "minLength": 1,
+            "description": "What later closure path may resolve it (§19.3, §19.7 enrichment)."
+          }
+        }
+      }
+    },
+    "majorUnresolvedItems": {
+      "type": "array",
+      "description": "Major unresolved items (§19.11 third bullet).",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "closureCandidates": {
+      "type": "array",
+      "description": "Closure candidates (§19.11 fourth bullet).",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "escalationCandidates": {
+      "type": "array",
+      "description": "Escalation candidates when relevant (§19.11 fifth bullet, §19.7 supervisor/manager enrichment).",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "confidenceEvidenceNotes": {
+      "type": "string",
+      "description": "Confidence and evidence notes where important (§19.11 sixth bullet)."
+    }
+  }
+}

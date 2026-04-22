@@ -1265,6 +1265,8 @@ At minimum, a gap should be treated as critical if it materially breaks one or m
 
 A workflow should not be treated as sufficiently complete if it cannot be understood clearly enough to be operationally useful and later automation-supportive.
 
+This does not require that the workflow already be fully automation-ready. A workflow may be valid for documentation output — truthfully reconstructed and operationally followable — even when it contains structural ambiguities that would need resolution before automation could reliably execute it. The documentation output is valid at the workflow-clarity level even when automation-readiness is not yet achieved. Non-automatable does not mean workflow-incomplete. Automation-readiness is a later consequence of workflow clarity, not the sole measure of workflow value. The product's primary output is truthful workflow documentation, which is valuable independent of whether automation is immediately feasible.
+
 This means the standard is not merely “interesting documentation quality.”  
 The standard is whether the workflow is structurally strong enough to be used as a real operational representation that could later enable automation-readiness, cleaner process execution, better data generation, and more grounded AI usage.
 

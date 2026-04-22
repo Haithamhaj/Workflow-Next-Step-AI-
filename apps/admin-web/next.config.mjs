@@ -9,6 +9,9 @@ const nextConfig = {
     "@workflow/sources-context",
     "@workflow/prompts",
     "@workflow/sessions-clarification",
+    "@workflow/synthesis-evaluation",
+    "@workflow/packages-output",
+    "@workflow/integrations",
   ],
 };
 
