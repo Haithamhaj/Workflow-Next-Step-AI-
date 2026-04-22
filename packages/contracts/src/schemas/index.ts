@@ -5,6 +5,7 @@ import sessionCreationSchema from "./session-creation.schema.json" with { type: 
 import synthesisRecordSchema from "./synthesis-record.schema.json" with { type: "json" };
 import evaluationRecordSchema from "./evaluation-record.schema.json" with { type: "json" };
 import initialPackageRecordSchema from "./initial-package-record.schema.json" with { type: "json" };
+import reviewIssueRecordSchema from "./review-issue-record.schema.json" with { type: "json" };
 
 export {
   caseConfigurationSchema,
@@ -14,4 +15,5 @@ export {
   synthesisRecordSchema,
   evaluationRecordSchema,
   initialPackageRecordSchema,
+  reviewIssueRecordSchema,
 };

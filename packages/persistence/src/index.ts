@@ -12,6 +12,7 @@ import type {
   EvaluationOutcome,
   ConditionInterpretations,
   InitialPackageRecord,
+  ReviewIssueRecord,
 } from "@workflow/contracts";
 
 export const PERSISTENCE_PACKAGE = "@workflow/persistence" as const;
@@ -89,6 +90,12 @@ export interface StoredInitialPackageRecord extends InitialPackageRecord {
   createdAt: string;
 }
 
+/** Persistent review-issue record (Pass 7 payload + timestamps). */
+export interface StoredReviewIssueRecord extends ReviewIssueRecord {
+  createdAt: string;
+  updatedAt: string;
+}
+
 // ---------------------------------------------------------------------------
 // Repository interfaces — backend-agnostic
 // ---------------------------------------------------------------------------
@@ -141,6 +148,14 @@ export interface InitialPackageRepository {
   findByCaseId(caseId: string): StoredInitialPackageRecord[];
   findByEvaluationId(evaluationId: string): StoredInitialPackageRecord[];
   findAll(): StoredInitialPackageRecord[];
+}
+
+export interface ReviewIssueRepository {
+  save(issue: StoredReviewIssueRecord): void;
+  findById(issueId: string): StoredReviewIssueRecord | null;
+  findByCaseId(caseId: string): StoredReviewIssueRecord[];
+  findByInitialPackageId(initialPackageId: string): StoredReviewIssueRecord[];
+  findAll(): StoredReviewIssueRecord[];
 }
 
 // ---------------------------------------------------------------------------
@@ -332,6 +347,44 @@ class InMemoryInterpretationSnapshotRepository
   }
 }
 
+class InMemoryReviewIssueRepository implements ReviewIssueRepository {
+  private readonly store = new Map<string, StoredReviewIssueRecord>();
+
+  save(issue: StoredReviewIssueRecord): void {
+    this.store.set(issue.issueId, {
+      ...issue,
+      issueBrief: { ...issue.issueBrief },
+      discussionThread: {
+        ...issue.discussionThread,
+        entries: issue.discussionThread.entries.map((entry) => ({ ...entry })),
+      },
+      linkedEvidence: issue.linkedEvidence.map((entry) => ({ ...entry })),
+      actionHistory: issue.actionHistory.map((action) => ({ ...action })),
+      releaseApprovalRecord: issue.releaseApprovalRecord
+        ? { ...issue.releaseApprovalRecord }
+        : undefined,
+    });
+  }
+
+  findById(issueId: string): StoredReviewIssueRecord | null {
+    return this.store.get(issueId) ?? null;
+  }
+
+  findByCaseId(caseId: string): StoredReviewIssueRecord[] {
+    return Array.from(this.store.values()).filter((issue) => issue.caseId === caseId);
+  }
+
+  findByInitialPackageId(initialPackageId: string): StoredReviewIssueRecord[] {
+    return Array.from(this.store.values()).filter(
+      (issue) => issue.initialPackageId === initialPackageId,
+    );
+  }
+
+  findAll(): StoredReviewIssueRecord[] {
+    return Array.from(this.store.values());
+  }
+}
+
 // ---------------------------------------------------------------------------
 // Factory
 // ---------------------------------------------------------------------------
@@ -345,6 +398,7 @@ export interface InMemoryStore {
   evaluations: EvaluationRepository;
   initialPackages: InitialPackageRepository;
   snapshots: InterpretationSnapshotRepository;
+  reviewIssues: ReviewIssueRepository;
 }
 
 export function createInMemoryStore(): InMemoryStore {
@@ -357,6 +411,7 @@ export function createInMemoryStore(): InMemoryStore {
     evaluations: new InMemoryEvaluationRepository(),
     initialPackages: new InMemoryInitialPackageRepository(),
     snapshots: new InMemoryInterpretationSnapshotRepository(),
+    reviewIssues: new InMemoryReviewIssueRepository(),
   };
 }
 

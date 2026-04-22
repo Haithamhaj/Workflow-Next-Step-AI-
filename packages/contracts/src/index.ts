@@ -9,6 +9,7 @@ export {
   synthesisRecordSchema,
   evaluationRecordSchema,
   initialPackageRecordSchema,
+  reviewIssueRecordSchema,
 } from "./schemas/index.js";
 
 import { makeValidator } from "./validate.js";
@@ -20,6 +21,7 @@ import {
   synthesisRecordSchema,
   evaluationRecordSchema,
   initialPackageRecordSchema,
+  reviewIssueRecordSchema,
 } from "./schemas/index.js";
 import type { CaseConfiguration } from "./types/case-configuration.js";
 import type { SourceRegistration } from "./types/source-registration.js";
@@ -28,6 +30,7 @@ import type { SessionCreation } from "./types/session-creation.js";
 import type { SynthesisRecord } from "./types/synthesis-record.js";
 import type { EvaluationRecord } from "./types/evaluation-record.js";
 import type { InitialPackageRecord } from "./types/initial-package-record.js";
+import type { ReviewIssueRecord } from "./types/review-issues.js";
 import {
   SessionState,
   PackageState,
@@ -55,6 +58,9 @@ export const validateEvaluationRecord =
 
 export const validateInitialPackageRecord =
   makeValidator<InitialPackageRecord>(initialPackageRecordSchema);
+
+export const validateReviewIssueRecord =
+  makeValidator<ReviewIssueRecord>(reviewIssueRecordSchema);
 
 export const validateSessionState = makeValidator<SessionState>({
   type: "string",

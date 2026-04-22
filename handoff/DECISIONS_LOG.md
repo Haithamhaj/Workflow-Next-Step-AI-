@@ -77,6 +77,19 @@ Status: LOCKED | FORMALIZED | IMPL-EXTENSION
 
 ---
 
+## Pass 7 — Review / Issue Discussion (branch `codex/pass-7-review-issue-discussion`, pending merge)
+
+> Status: these decisions are recorded against the Pass 7 work on branch `codex/pass-7-review-issue-discussion`. They become baseline-active only after the branch is merged into `main`. Until merge, they are branch-scoped.
+
+- **Pass 7 stayed in the existing `packages/review-issues` package boundary** — repository shape, ownership map, existing skeleton package, and local-patch-first discipline all favored filling the existing package instead of introducing a new sibling package. This preserves the accepted package map without widening scope — IMPL-EXTENSION
+- **`ReviewIssueRecord` is the persisted Pass 7 unit** — it contains the literal §25.4 issue brief, scoped discussion thread, linked evidence view model, exact controlled final action set, and an optional release seam object. No separate review wrapper record was introduced in this pass — IMPL-EXTENSION
+- **Final admin actions persist the exact §25.10 action and always update `reviewState` to `action_taken`** — this preserves the mandatory state update from §25.12 while keeping the literal §28.14 flow intact (`... -> issue_discussion_active -> action_taken -> review_resolved`) and avoids inventing which actions auto-resolve the review — LOCKED
+- **Review resolution stays explicit and separate from final action application** — `action_taken -> review_resolved` happens through the explicit review-state transition path, not through inferred action semantics — LOCKED
+- **Issue severity / effect level remains free text** — §25.4 requires the field but does not enumerate allowed values. The contract captures the literal field without inventing a severity enum — LOCKED
+- **Linked evidence is modeled as a narrow traceability object** — `label` + `relevance` are required; additional traceability fields (`sourceReference`, `sourceSectionLink`, `decisionBlockLink`, `promptLink`, `sessionId`, `sourceId`) are optional and map directly to the traceability guidance in §25.6–§25.7 and §29.2.3 — IMPL-EXTENSION
+
+---
+
 ## dependency rules
 
 - **Skeleton packages depend on `@workflow/contracts` via `workspace:*`** — all domain types flow from contracts; packages must not define competing types — LOCKED

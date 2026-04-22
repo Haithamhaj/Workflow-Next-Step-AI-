@@ -23,5 +23,6 @@
     { "path": "../../packages/sessions-clarification" },
     { "path": "../../packages/synthesis-evaluation" },
     { "path": "../../packages/packages-output" }
+    ,{ "path": "../../packages/review-issues" }
   ]
 }

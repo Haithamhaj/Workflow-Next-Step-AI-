@@ -1,0 +1,229 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://workflow.local/schemas/review-issue-record.json",
+  "title": "ReviewIssueRecord",
+  "description": "Pass 7 review issue record. Captures the §25.4 issue brief, scoped admin-only discussion thread (§25.5–§25.9), linked evidence visibility, controlled final actions (§25.10), and resulting review-state updates (§25.12).",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "issueId",
+    "caseId",
+    "initialPackageId",
+    "evaluationId",
+    "reviewState",
+    "issueBrief",
+    "discussionThread",
+    "linkedEvidence",
+    "actionHistory"
+  ],
+  "properties": {
+    "issueId": {
+      "type": "string",
+      "minLength": 1
+    },
+    "caseId": {
+      "type": "string",
+      "minLength": 1
+    },
+    "initialPackageId": {
+      "type": "string",
+      "minLength": 1
+    },
+    "evaluationId": {
+      "type": "string",
+      "minLength": 1
+    },
+    "synthesisId": {
+      "type": "string",
+      "minLength": 1
+    },
+    "reviewState": {
+      "type": "string",
+      "enum": [
+        "no_review_needed",
+        "review_required",
+        "issue_discussion_active",
+        "action_taken",
+        "review_resolved"
+      ]
+    },
+    "issueBrief": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "issueTitle",
+        "whatHappened",
+        "whyItWasTriggered",
+        "likelySourceDiagnosis",
+        "whyItMatters",
+        "whatItAffects",
+        "severityEffectLevel",
+        "systemRecommendation",
+        "correctiveDirection"
+      ],
+      "properties": {
+        "issueTitle": { "type": "string", "minLength": 1 },
+        "whatHappened": { "type": "string", "minLength": 1 },
+        "whyItWasTriggered": { "type": "string", "minLength": 1 },
+        "likelySourceDiagnosis": { "type": "string", "minLength": 1 },
+        "whyItMatters": { "type": "string", "minLength": 1 },
+        "whatItAffects": { "type": "string", "minLength": 1 },
+        "severityEffectLevel": { "type": "string", "minLength": 1 },
+        "systemRecommendation": { "type": "string", "minLength": 1 },
+        "correctiveDirection": { "type": "string", "minLength": 1 }
+      }
+    },
+    "discussionThread": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "scopeBoundary",
+        "entries"
+      ],
+      "properties": {
+        "scopeBoundary": {
+          "type": "string",
+          "minLength": 1,
+          "description": "§25.6 scoped discussion boundary for the issue thread."
+        },
+        "entries": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "entryId",
+              "authorType",
+              "message",
+              "createdAt"
+            ],
+            "properties": {
+              "entryId": { "type": "string", "minLength": 1 },
+              "authorType": {
+                "type": "string",
+                "enum": [
+                  "admin",
+                  "system"
+                ]
+              },
+              "message": { "type": "string", "minLength": 1 },
+              "createdAt": {
+                "type": "string",
+                "format": "date-time"
+              }
+            }
+          }
+        },
+        "closureSummary": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "linkedEvidence": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "label",
+          "relevance"
+        ],
+        "properties": {
+          "label": { "type": "string", "minLength": 1 },
+          "relevance": { "type": "string", "minLength": 1 },
+          "sourceReference": { "type": "string", "minLength": 1 },
+          "sourceSectionLink": { "type": "string", "minLength": 1 },
+          "decisionBlockLink": { "type": "string", "minLength": 1 },
+          "promptLink": { "type": "string", "minLength": 1 },
+          "sessionId": { "type": "string", "minLength": 1 },
+          "sourceId": { "type": "string", "minLength": 1 }
+        }
+      }
+    },
+    "actionHistory": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "actionId",
+          "actionType",
+          "actor",
+          "createdAt",
+          "priorReviewState",
+          "resultingReviewState"
+        ],
+        "properties": {
+          "actionId": { "type": "string", "minLength": 1 },
+          "actionType": {
+            "type": "string",
+            "enum": [
+              "approve",
+              "override",
+              "request_follow_up",
+              "escalate",
+              "keep_visible_as_review_item",
+              "unblock",
+              "keep_blocked",
+              "regenerate_affected_output"
+            ]
+          },
+          "actor": { "type": "string", "minLength": 1 },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "priorReviewState": {
+            "type": "string",
+            "enum": [
+              "no_review_needed",
+              "review_required",
+              "issue_discussion_active",
+              "action_taken",
+              "review_resolved"
+            ]
+          },
+          "resultingReviewState": {
+            "type": "string",
+            "enum": [
+              "no_review_needed",
+              "review_required",
+              "issue_discussion_active",
+              "action_taken",
+              "review_resolved"
+            ]
+          },
+          "note": { "type": "string", "minLength": 1 }
+        }
+      }
+    },
+    "releaseApprovalRecord": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "releaseState"
+      ],
+      "properties": {
+        "releaseState": {
+          "type": "string",
+          "enum": [
+            "not_releasable",
+            "pending_admin_approval",
+            "approved_for_release",
+            "released"
+          ]
+        },
+        "note": { "type": "string", "minLength": 1 },
+        "approvedAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "releasedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      }
+    }
+  }
+}

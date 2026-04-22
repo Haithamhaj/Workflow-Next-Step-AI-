@@ -1,4 +1,4 @@
-import { CaseState } from "@workflow/contracts";
+import { CaseState, ReviewState } from "@workflow/contracts";
 
 export const CORE_STATE_PACKAGE = "@workflow/core-state" as const;
 
@@ -58,4 +58,29 @@ export const CaseStateTransitions: Readonly<
 
 export function isValidTransition(from: CaseState, to: CaseState): boolean {
   return (CaseStateTransitions[from] as readonly CaseState[]).includes(to);
+}
+
+// §28.14 — allowed next states for each ReviewState value.
+export const ReviewStateTransitions: Readonly<
+  Record<ReviewState, readonly ReviewState[]>
+> = {
+  [ReviewState.NoReviewNeeded]: [ReviewState.ReviewRequired],
+  [ReviewState.ReviewRequired]: [
+    ReviewState.IssueDiscussionActive,
+    ReviewState.ActionTaken,
+    ReviewState.ReviewResolved,
+  ],
+  [ReviewState.IssueDiscussionActive]: [
+    ReviewState.ActionTaken,
+    ReviewState.ReviewResolved,
+  ],
+  [ReviewState.ActionTaken]: [ReviewState.ReviewResolved],
+  [ReviewState.ReviewResolved]: [],
+};
+
+export function isValidReviewTransition(
+  from: ReviewState,
+  to: ReviewState,
+): boolean {
+  return (ReviewStateTransitions[from] as readonly ReviewState[]).includes(to);
 }
