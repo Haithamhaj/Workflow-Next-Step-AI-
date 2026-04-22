@@ -1,10 +1,6 @@
 # Current State
 
-**Pass 5 (Session Lifecycle + Clarification UI) implemented on review branch `pass-5-sessions`; awaiting merge to `main` for acceptance.**
-
-Baseline (`origin/main`) remains at Pass 4. All proof items in the table below were satisfied branch-locally against commit `0163607`. Pass 5 becomes the accepted baseline only after merge to `main`.
-
-> Note on commit `0163607`: the subject line reads "Pass 5 accepted: ...". That wording predates this correction and is inaccurate — the commit is not force-pushed to preserve traceability, so the message remains as written on the branch. The authoritative status is this document.
+**Pass 5 (Session Lifecycle + Clarification UI) accepted. Merged to `main` at `d4db2b3` (PR #1). `origin/main` is now the Pass 5 baseline.**
 
 ---
 
@@ -115,7 +111,7 @@ Baseline (`origin/main`) remains at Pass 4. All proof items in the table below w
 
 ---
 
-## What is proven (Pass 5 — branch-local, not yet merged to `main`)
+## What is proven (Pass 5 — accepted on `main` at `d4db2b3`)
 
 | Check | Result |
 |---|---|
