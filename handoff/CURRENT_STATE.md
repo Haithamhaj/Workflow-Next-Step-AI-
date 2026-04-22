@@ -27,12 +27,13 @@
   - Required: `synthesisId`, `caseId`, `commonPath`, `differenceBlocks`, `majorUnresolvedItems`, `closureCandidates`, `escalationCandidates`, `confidenceEvidenceNotes`
   - Optional: `sessionId`
   - `differenceBlocks[]` — each block has the **five literal §19.3 fields**: `where`, `what`, `participantsPerSide`, `whyMatters`, `laterClosurePath` (no invented fields)
-- `src/schemas/evaluation-record.schema.json` — Draft-07 *(new Pass 6)*
-  - Required: `evaluationId`, `caseId`, `synthesisId`, `axes`, `conditions`, `outcome`, `readinessReasoning`
-  - Optional: `confidenceEvidenceNotes`
+- `src/schemas/evaluation-record.schema.json` — Draft-07 *(new Pass 6, extended in patch)*
+  - Required: `evaluationId`, `caseId`, `synthesisId`, `axes`, `conditions`, `outcome`, `readinessReasoning`, `interpretationSnapshotId`
+  - Optional: `confidenceEvidenceNotes`, `adminBlockingConfirmations` (partial Record), `adminNote`
   - `axes`: the five §20.4 axes, each one of the four §20.5 states (`strong|partial|weak|blocking`)
   - `conditions`: the seven §20.3 conditions as booleans
   - `outcome`: one of the four §20.11–20.14 outcomes, **operator-supplied** per §20.10 (not derived)
+- `src/types/evaluation-record.ts` extended with: `ConditionWorkflowEffect` (`none|non_blocking|blocking`), `ConditionAutomationEffect` (`none|limiting|blocking_for_automation`), `ConditionInterpretation`, `ConditionInterpretations` types *(new Pass 6 patch)*
 - `src/schemas/initial-package-record.schema.json` — Draft-07 *(new Pass 6)*
   - Required: `initialPackageId`, `caseId`, `evaluationId`, `status`, `outward`, `admin`
   - `outward` — §21.3 five mandatory sections + §21.4 optional `documentReferenceImplication`; **no seven-condition checklist field exists on outward (§21.8 structural enforcement)**
@@ -51,16 +52,19 @@
 
 ---
 
-### `packages/persistence` (extended through Pass 6)
+### `packages/persistence` (extended through Pass 6 + patch)
 - Prior entity types: `Case`, `Source`, `PromptRecord`, `SessionRecord`
 - `StoredSynthesisRecord` extends `SynthesisRecord` with `createdAt` *(new Pass 6)*
-- `StoredEvaluationRecord` extends `EvaluationRecord` with `createdAt` *(new Pass 6)*
+- `StoredEvaluationRecord` extends `EvaluationRecord` with `createdAt` + `conditionInterpretations: ConditionInterpretations` *(new Pass 6, extended in patch)*
 - `StoredInitialPackageRecord` extends `InitialPackageRecord` with `createdAt` *(new Pass 6)*
 - `SynthesisRepository` interface: `save`, `findById`, `findByCaseId`, `findAll` *(new Pass 6)*
 - `EvaluationRepository` interface: `save`, `findById`, `findByCaseId`, `findBySynthesisId`, `findAll` *(new Pass 6)*
 - `InitialPackageRepository` interface: `save`, `findById`, `findByCaseId`, `findByEvaluationId`, `findAll` *(new Pass 6)*
+- `InterpretationSnapshot` interface: `snapshotId`, `conditionInterpretations`, `basis` (conditions + outcome + optional synthesisContext), `createdAt` *(new Pass 6 patch)*
+- `InterpretationSnapshotRepository` interface: `save(snapshot)`, `findById(id)` *(new Pass 6 patch)*
 - `InMemorySynthesisRepository`, `InMemoryEvaluationRepository`, `InMemoryInitialPackageRepository` — Map-based *(new Pass 6)*
-- `createInMemoryStore()` factory — now includes `synthesis`, `evaluations`, `initialPackages` *(extended Pass 6)*
+- `InMemoryInterpretationSnapshotRepository` — Map-based *(new Pass 6 patch)*
+- `createInMemoryStore()` factory — now includes `synthesis`, `evaluations`, `initialPackages`, `snapshots` *(extended Pass 6 + patch)*
 
 ---
 
@@ -69,14 +73,22 @@ All unchanged.
 
 ---
 
-### `packages/synthesis-evaluation` (implemented Pass 6)
-- Re-exports `SynthesisRecord`, `SynthesisDifferenceBlock`, `EvaluationRecord`, `EvaluationAxes`, `EvaluationConditions`, `EvaluationAxisState`, `EvaluationOutcome` from contracts; `StoredSynthesisRecord`, `StoredEvaluationRecord`, `SynthesisRepository`, `EvaluationRepository` from persistence
+### `packages/synthesis-evaluation` (implemented Pass 6, patched Pass 6 patch at 71d5d80)
+- Re-exports `SynthesisRecord`, `SynthesisDifferenceBlock`, `EvaluationRecord`, `EvaluationAxes`, `EvaluationConditions`, `EvaluationAxisState`, `EvaluationOutcome`, `ConditionInterpretations`, `ConditionInterpretation` from contracts; `StoredSynthesisRecord`, `StoredEvaluationRecord`, `SynthesisRepository`, `EvaluationRepository`, `InterpretationSnapshotRepository` from persistence
 - `createSynthesis(payload, repo)` — validates via `validateSynthesisRecord`, rejects duplicates by `synthesisId`, stamps `createdAt`, returns `SynthesisOutcome`
 - `getSynthesis`, `listSynthesis`, `listSynthesisByCaseId`
-- `createEvaluation(payload, repo)` — validates via `validateEvaluationRecord`, rejects duplicates by `evaluationId`, stamps `createdAt`, returns `EvaluationOutcomeResult`. **Outcome is taken from the payload unchanged (§20.10 operator-supplied)**; no derivation from axes/conditions
+- `createEvaluation(payload, repo, snapshotRepo)` — 8-step §20.21–§20.22 AI-interpreted/admin-routed/rule-guarded model:
+  1. Ajv schema validation
+  2. Snapshot lookup by `interpretationSnapshotId`
+  3. Basis integrity — submitted conditions + outcome must match `snapshot.basis`
+  4. Admin must confirm/reject each LLM-labelled blocking condition via `adminBlockingConfirmations[key]`
+  5. `adminNote` required when any blocking label is rejected
+  6. Narrow hard-stop: admin-confirmed blocking + incompatible outcome → 400
+  7. Duplicate check by `evaluationId`
+  8. Persist with `conditionInterpretations` copied from snapshot
 - `getEvaluation`, `listEvaluations`, `listEvaluationsByCaseId`, `listEvaluationsBySynthesisId`
 - Dependencies: `@workflow/contracts`, `@workflow/persistence`
-- Architecture constraint observed: does NOT import from `core-state`, `core-case`, or `sessions-clarification`
+- Architecture constraint observed: does NOT import from `core-state`, `core-case`, `sessions-clarification`, or `integrations`
 
 ---
 
@@ -93,10 +105,16 @@ All unchanged.
 - Prior routes and pages (cases, sources, prompts, sessions) unchanged
 - `app/api/synthesis/route.ts` — `GET /api/synthesis` + `POST /api/synthesis` (201/400/409) *(new Pass 6)*
 - `app/api/synthesis/[id]/route.ts` — `GET /api/synthesis/:id` (404 on miss) *(new Pass 6)*
-- `app/api/evaluations/route.ts` + `app/api/evaluations/[id]/route.ts` *(new Pass 6)*
+- `app/api/evaluations/route.ts` — `POST` now passes `store.snapshots` as 3rd arg to `createEvaluation` *(new Pass 6, extended in patch)*
+- `app/api/evaluations/interpret/route.ts` — `POST /api/evaluations/interpret`: calls `generateEvaluationInterpretation`, generates UUID snapshotId, saves `InterpretationSnapshot`, returns `{ snapshotId, conditionInterpretations }` 201 *(new Pass 6 patch)*
+- `app/api/evaluations/[id]/route.ts` *(new Pass 6)*
 - `app/api/initial-packages/route.ts` + `app/api/initial-packages/[id]/route.ts` *(new Pass 6)*
 - `app/synthesis/page.tsx`, `app/synthesis/new/page.tsx`, `app/synthesis/[id]/page.tsx` — list/create/detail with §19.11 required-field rendering on detail *(new Pass 6)*
-- `app/evaluations/page.tsx`, `app/evaluations/new/page.tsx`, `app/evaluations/[id]/page.tsx` — detail renders `outcome-panel`, `outcome-badge`, `axis-table`, `seven-condition-admin` *(new Pass 6)*
+- `app/evaluations/page.tsx`, `app/evaluations/[id]/page.tsx` — list and detail (unchanged from Pass 6)
+- `app/evaluations/new/page.tsx` — two-phase form *(patched Pass 6)*:
+  - Phase 1 ("fill"): all §20 fields → "Analyze Conditions →" button → POST `/api/evaluations/interpret`
+  - Phase 2 ("review"): interpretation cards with `workflowEffect`/`automationEffect` badges; blocking-confirmation radio buttons; `adminNote` textarea; "← Back" + "Create Evaluation"
+  - Final payload includes `interpretationSnapshotId`, `adminBlockingConfirmations` (if any), `adminNote` (if provided)
 - `app/initial-packages/page.tsx`, `app/initial-packages/new/page.tsx`, `app/initial-packages/[id]/page.tsx` — detail renders `package-status-panel`, `package-status-badge`, `initial-package-outward` (outward §21.3/§21.4 allow-list, no checklist), `initial-package-admin` (§21.11 with `admin-seven-condition-checklist`) *(new Pass 6)*
 - All `/new` forms render `data-testid="validation-errors"` on API 400
 - `components/Nav.tsx` — top nav extended with Synthesis, Evaluations, Initial Packages *(extended Pass 6)*
@@ -104,8 +122,15 @@ All unchanged.
 
 ---
 
+### `packages/integrations` (extended Pass 6 patch)
+- `src/evaluation-interpretation.ts` — `generateEvaluationInterpretation(conditions, outcome, synthesisContext?)` → `Promise<ConditionInterpretations>`
+  - Uses `claude-opus-4-7` with `tool_use` (tool: `record_condition_interpretations`)
+  - Only processes `false` conditions; returns `{}` if none are false or on any LLM error (graceful degradation)
+  - System prompt encodes §20.19–§20.22 governance: distinguishes workflow-blocking vs automation-limiting effects
+- Added `@anthropic-ai/sdk` as dependency
+
 ### Remaining skeleton packages (unchanged)
-`review-issues`, `domain-support`, `integrations`, `shared-utils`
+`review-issues`, `domain-support`, `shared-utils`
 
 ---
 
@@ -133,6 +158,9 @@ All unchanged.
 | `/synthesis/synth-001` | Renders §19.11 output: `commonPath`, each difference block's five §19.3 fields, `majorUnresolvedItems`, `closureCandidates`, `escalationCandidates`, `confidenceEvidenceNotes` |
 | `/evaluations/eval-001` | Renders `outcome-panel` + `outcome-badge`, `axis-table` (five axes × state), `seven-condition-admin` (dashed-border §21.11-style admin-only section with all seven conditions ✓/✗) |
 | `/initial-packages/pkg-001` | Renders `package-status-panel` + `package-status-badge`; `initial-package-outward` contains §21.3 five sections + optional §21.4; `initial-package-admin` contains `admin-seven-condition-checklist` with ✓/✗ + readiness reasoning; **§21.8 structural separation DOM-verified**: outward slice contains no checklist testid, no "Sequence continuity" label text, no ✓/✗ markers — only the explanatory "checklist absent per §21.8" header |
+| Pass 6 patch — `pnpm typecheck` | 0 errors across all 14 workspace projects |
+| `POST /api/evaluations/interpret` (all-true conditions) | HTTP 201, `{ snapshotId, conditionInterpretations: {} }` |
+| `POST /api/evaluations` with mismatched conditions (basis integrity) | HTTP 400, `"Snapshot integrity failure: the submitted conditions do not match..."` |
 | Prior Pass 5 proof items | All still satisfied |
 
 ---
