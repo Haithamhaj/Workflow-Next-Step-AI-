@@ -2346,6 +2346,29 @@ This distinction is required by the literal wording of §20.11 (remaining issues
 
 A mechanical gate that treats any unsatisfied condition boolean as a blocking failure conflicts with these sections and over-constrains the outcome toward `needs_more_clarification` in cases where the workflow is documentably complete at a non-perfect level.
 
+### 20.21 Evaluation Is AI-Interpreted, Admin-Routed, and Rule-Guarded
+
+Pass 6 and later evaluation must operate on three distinct levels and must not be reduced to a binary boolean gate.
+
+* **AI-interpreted** — the system interprets each completeness condition issue, explains its specific impact on the workflow, distinguishes whether that impact affects workflow documentability or only automation-readiness, and proposes concrete action options for the admin to consider. Interpretation is the system's job; decision is the admin's job.
+* **Admin-routed** — the admin or operator is the decision authority for meaningful corrective direction. The system presents its interpretation and proposes options; the admin selects the path forward. Outcome selection is not reduced to a deterministic rule because §20.11–20.14 use judgment language ("sufficiently complete," "no remaining issue breaks essential workflow completion") that requires human interpretation and cannot be collapsed into a mechanical pass/fail.
+* **Rule-guarded** — deterministic enforcement rules remain valid but only as narrow hard-stop guards for clearly invalid progression states. A hard-stop guard protects against structurally impossible outcomes — for example, a workflow where sequence continuity is materially broken being marked `ready_for_final_package`. It does not gate every non-perfect condition weakness. The narrower the guard, the more it reflects a genuine structural impossibility rather than a judgment call that belongs to the admin.
+
+This three-level model prevents two known failure modes:
+
+* **Too soft** — no governance at all; any outcome is accepted regardless of structural state.
+* **Too mechanical** — binary boolean logic blocks progress on any unsatisfied condition, including non-blocking weaknesses that do not affect documentability and should surface as improvement notes rather than workflow failures.
+
+### 20.22 Automation-Related Output Wording
+
+When evaluation surfaces automation-related limitations, the system must use three structurally separate output types:
+
+* **Workflow Reality Output** — what the workflow actually is, how it operates, and where it currently stands. This is valid and complete at the workflow-clarity level even when automation-readiness has not yet been achieved. Its validity is not conditional on automation feasibility.
+* **Automation-Supportiveness Assessment** — a derived assessment of which workflow elements are already strong enough to support automation and which would require further formalization or clarification before being reliably automatable. This is a downstream observation, not a primary validity gate.
+* **Improvement Targets Before Automation** — specific steps, decision rules, or handoff points that would benefit from clarification if automation is a later goal. These are presented as improvement opportunities and operator-facing recommendations, not as workflow failures.
+
+A limitation identified in the Automation-Supportiveness Assessment or in Improvement Targets Before Automation must not automatically collapse the Workflow Reality Output validity determination. Admin-facing automation limitation notes may coexist with a valid workflow output. Non-blocking automation difficulty surfaces as a recommendation, not as a workflow failure.
+
 ## 21. Initial Workflow Package Logic
 
 ### 21.1 Governing Role of the Initial Package

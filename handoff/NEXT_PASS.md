@@ -73,6 +73,7 @@ All work is on a new review branch branched from `main` **after Pass 6 is merged
 - Pass 4 (prompts + prompt UI) — accepted on `main`
 - Pass 5 (sessions-clarification + session UI) — accepted on `main`
 - Pass 6 (synthesis + evaluation + initial package) — **pending merge to `main`** from `pass-6-synthesis-evaluation`
+  - **Acceptance gate:** Before Pass 6 merges, the `createEvaluation` mechanical gate (`any false → needs_more_clarification`) must be patched per the IMPL-EXTENSION recorded in DECISIONS_LOG.md. The patched implementation must preserve the AI-interpreted/admin-routed/rule-guarded model (§20.21–§20.22): workflow validity and automation-supportiveness must not be collapsed into one judgment; non-blocking automation difficulties must surface as recommendations, not workflow failures; rule guards must remain narrow hard-stops for structurally impossible outcomes only.
 
 Pass 7 implementation begins **after Pass 6 merges**.
 
