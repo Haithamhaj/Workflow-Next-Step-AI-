@@ -117,6 +117,8 @@ Pass 8 introduced no new blocking governance questions.
 
 Output formalization for client-facing wording, document naming, section-label normalization, and enterprise-safe final deliverable presentation has been adopted as a non-governing enhancement direction. This does not alter mechanics, state logic, package eligibility, review/release gates, or governance contracts. Prompt reinforcement (rewriting or rebuilding prompt-chain logic) is deferred and belongs to a separate later prompt-rebuild/analysis-improvement track.
 
+Pass 9 is now formally defined in handoff authority as the main client-facing delivery surface of the product. It remains a presentation-layer pass built on accepted Pass 8 package logic and does not introduce new mechanics.
+
 ## What has NOT been built
 
 - Real database persistence

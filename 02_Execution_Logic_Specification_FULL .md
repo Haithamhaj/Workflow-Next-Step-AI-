@@ -3007,6 +3007,34 @@ Pass 8 implementation may consume output wording, document naming, section-label
 
 Prompt reinforcement (rewriting or rebuilding prompt-chain logic) belongs to a separate later prompt-rebuild/analysis-improvement track and is outside Pass 8 scope.
 
+### Pass 9 Client-Facing Delivery Surface Clarification (non-governing)
+
+Pass 9 is the product's main client-facing delivery surface. It is the final enterprise-facing surface the client sees for the case outcome.
+
+Pass 9 should use a **Context-First Product Shell** across the full client-facing surface. This means:
+
+* a fixed product shell stays primary
+* a client context strip appears directly under the shell
+* the main page header is use-case/package-centered
+* the first content row is package overview rather than a generic client card
+
+This pattern applies across the full client-facing Pass 9 surface, including:
+
+* main package surface
+* preview views
+* document download surface
+* visual workflow views
+* current-state vs target-state comparison views
+* status / release visibility views
+
+This is a presentation/delivery-layer clarification over existing accepted package logic only. It does not alter:
+
+* release mechanics
+* package eligibility logic
+* review mechanics
+* analysis logic
+* prompt-chain logic
+
 ## 25. Review, Approval, and Issue-Handling Logic
 
 ### 25.1 Governing Review Philosophy for v1

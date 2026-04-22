@@ -285,10 +285,14 @@ The admin web app should expose all agreed operational features from day one, in
 - final action controls
 
 ### 8.6 Package preview
+- main client-facing delivery surface
 - initial package preview
 - final package preview
+- document download surface
+- visual workflow views
 - as-is vs target-state comparison
 - release/readiness status visibility
+- package, review, and release visibility in client-safe presentation form
 
 ### 8.7 Admin configuration
 - domain selection and management
@@ -538,19 +542,26 @@ Validate:
 - current-state vs target-state structural separation
 - release-state transition enforcement
 
-### Pass 9 — Integrations and Optional Local Helpers
+### Pass 9 — Package Preview + Release Decision Surface
 Build:
-- Anthropic adapter
-- Ollama adapter
-- optional local helper adapters as needed
+- the main client-facing delivery surface system on top of accepted Pass 8 package logic
+- unified package preview and linked delivery views
+- document download surface
+- visual workflow views
+- current-state vs target-state comparison views
+- status / release visibility views
+- Context-First Product Shell across the full client-facing Pass 9 surface
 
 Expose in UI:
-- provider status/config visibility where useful
+- fixed product shell with client context strip directly under it
+- use-case/package-centered page header
+- package-overview-first content row
+- full client-facing delivery surface coverage rather than one landing page only
 
 Validate:
-- adapter wiring
-- boundary safety
-- no governance leakage into integrations
+- client-facing package preview readability and linkage across the full surface
+- release/readiness visibility using existing accepted mechanics only
+- no governance leakage into presentation work
 
 ## 15. Done Criteria for Initial Build
 
@@ -591,6 +602,25 @@ It must NOT be applied to:
 - governance contracts in `packages/contracts`
 
 Prompt reinforcement belongs to a separate later prompt-rebuild/analysis-improvement track — not to output formalization work and not to Pass 8.
+
+### Pass 9 Client-Facing Boundary
+
+Pass 9 is the main client-facing delivery surface of the product. It is a presentation-layer pass built on accepted Pass 8 package logic, not a mechanics pass.
+
+Safe areas for Pass 9 work include:
+- `apps/admin-web` client-facing shell work
+- client context strip
+- package preview surfaces
+- document download surfaces
+- visual workflow surfaces
+- current-state vs target-state comparison surfaces
+- status / release visibility surfaces
+
+Not-safe areas for Pass 9 work include:
+- release mechanics
+- package eligibility logic
+- new state logic
+- new review mechanics
 
 ## 17. Interface Risk Notes
 

@@ -10,34 +10,57 @@
 
 ## Context
 
-Pass 8 built the Final Package record, three API routes, and the admin-web surfaces for creation, detail, and release-state progression. The release panel in admin-web provides linear one-step transitions per §28.16.
+Pass 8 built the accepted Final Package record, release-state wiring, and the admin-web surfaces for final package creation, detail, and release-state progression. Pass 9 builds on that accepted package logic only.
 
-The admin-web already has a `/packages` nav entry (label: "Package preview") pointing at `/packages`. This route does not yet exist. Pass 9 should implement it, along with any remaining release-decision surface that was not covered by Pass 8.
+Pass 9 is not just an internal package page. It is the main client-facing surface of the product and the final enterprise-facing delivery surface the client sees for the case outcome.
+
+The admin-web already has a `/packages` nav entry (label: "Package preview") pointing at `/packages`. This route does not yet exist. Pass 9 should implement the full client-facing delivery surface system behind that area and its linked views, without altering Pass 8 mechanics.
 
 ---
 
 ## Goal
 
-Build the Package Preview surface and any release-decision controls that are defined in the spec but not yet implemented, without duplicating or replacing the Pass 8 final-package surfaces.
+Build the unified client-facing delivery surface system for package preview and release decision visibility on top of accepted Pass 8 package logic, without duplicating or replacing Pass 8 final-package surfaces and without introducing new mechanics.
 
 ---
 
 ## Scope
 
-Determine from the spec documents what the `/packages` (Package preview) surface is supposed to show. Likely candidates:
+Pass 9 is a delivery/presentation pass over existing package outputs and existing release/review/package state data. It defines the product's main client-facing delivery surface system.
 
-- A unified view of initial packages + final packages for a given case, showing package-type, state, release state, and admin-approval status side-by-side
-- Cross-package navigation and linkage (initial → final, final → evaluation back-links)
-- Any release-readiness checklist view defined in the spec (e.g., release eligibility conditions that must be satisfied before `approved_for_release`)
+The surface scope includes:
 
-Before coding, identify the literal spec section(s) that define the Package Preview surface. If the spec does not literally define it, record the question in `handoff/OPEN_QUESTIONS.md` and surface it to the operator before coding.
+- main package surface
+- preview views
+- document download surface
+- visual workflow views
+- current-state vs target-state comparison views
+- status / release visibility views
+
+The surface should behave as a unified client-facing system, not as one narrow landing page only.
+
+The UX shell pattern for Pass 9 is a **Context-First Product Shell**:
+
+1. fixed product shell stays primary
+2. client context strip appears directly under the shell
+3. main page header is use-case/package-centered
+4. first content row is package overview, not a generic client card
+
+This pattern applies across the full client-facing Pass 9 surface.
+
+Pass 9 may present existing package, review, and release visibility more clearly, but it must not introduce:
+
+- new release mechanics
+- new package eligibility logic
+- new review mechanics
+- new analysis logic
+- new prompt-chain logic
 
 ---
 
 ## Stop conditions
 
-- If the Package Preview spec section is not literal, stop and surface OQ-new
-- If release eligibility conditions (beyond linear transition gating) are defined in the spec but not implemented, surface as a new open question
+- If implementation would require inventing new release mechanics, new package eligibility logic, new review mechanics, new analysis logic, or new prompt-chain logic, stop and surface the specific blocker
 - No broad rewrites of Pass 8 surfaces
 - No prompt reinforcement, no management inquiry, no mechanics drift
 
