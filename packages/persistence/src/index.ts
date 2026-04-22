@@ -3,6 +3,9 @@ import type {
   CaseState,
   SourceRegistration,
   PromptRegistration,
+  SessionCreation,
+  SessionState,
+  ClarificationQuestion,
 } from "@workflow/contracts";
 
 export const PERSISTENCE_PACKAGE = "@workflow/persistence" as const;
@@ -31,6 +34,17 @@ export interface PromptRecord extends PromptRegistration {
   registeredAt: string;
 }
 
+/**
+ * Persistent session record. Extends the SessionCreation payload with
+ * server-assigned fields: createdAt, currentState (tracked per §28.9),
+ * and clarificationQuestions (§17.8 structure).
+ */
+export interface SessionRecord extends SessionCreation {
+  createdAt: string;
+  currentState: SessionState;
+  clarificationQuestions: ClarificationQuestion[];
+}
+
 // ---------------------------------------------------------------------------
 // Repository interfaces — backend-agnostic
 // ---------------------------------------------------------------------------
@@ -53,6 +67,13 @@ export interface PromptRepository {
   findById(promptId: string): PromptRecord | null;
   findByRole(role: string): PromptRecord[];
   findAll(): PromptRecord[];
+}
+
+export interface SessionRepository {
+  save(s: SessionRecord): void;
+  findById(sessionId: string): SessionRecord | null;
+  findByCaseId(caseId: string): SessionRecord[];
+  findAll(): SessionRecord[];
 }
 
 // ---------------------------------------------------------------------------
@@ -115,6 +136,29 @@ class InMemorySourceRepository implements SourceRepository {
   }
 }
 
+class InMemorySessionRepository implements SessionRepository {
+  private readonly store = new Map<string, SessionRecord>();
+
+  save(s: SessionRecord): void {
+    this.store.set(s.sessionId, {
+      ...s,
+      clarificationQuestions: [...s.clarificationQuestions],
+    });
+  }
+
+  findById(sessionId: string): SessionRecord | null {
+    return this.store.get(sessionId) ?? null;
+  }
+
+  findByCaseId(caseId: string): SessionRecord[] {
+    return Array.from(this.store.values()).filter((s) => s.caseId === caseId);
+  }
+
+  findAll(): SessionRecord[] {
+    return Array.from(this.store.values());
+  }
+}
+
 // ---------------------------------------------------------------------------
 // Factory
 // ---------------------------------------------------------------------------
@@ -123,6 +167,7 @@ export interface InMemoryStore {
   cases: CaseRepository;
   sources: SourceRepository;
   prompts: PromptRepository;
+  sessions: SessionRepository;
 }
 
 export function createInMemoryStore(): InMemoryStore {
@@ -130,6 +175,7 @@ export function createInMemoryStore(): InMemoryStore {
     cases: new InMemoryCaseRepository(),
     sources: new InMemorySourceRepository(),
     prompts: new InMemoryPromptRepository(),
+    sessions: new InMemorySessionRepository(),
   };
 }
 

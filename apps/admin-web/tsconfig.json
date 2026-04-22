@@ -19,6 +19,7 @@
     { "path": "../../packages/persistence" },
     { "path": "../../packages/core-case" },
     { "path": "../../packages/sources-context" },
-    { "path": "../../packages/prompts" }
+    { "path": "../../packages/prompts" },
+    { "path": "../../packages/sessions-clarification" }
   ]
 }

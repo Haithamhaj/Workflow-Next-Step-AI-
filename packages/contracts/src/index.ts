@@ -5,6 +5,7 @@ export {
   caseConfigurationSchema,
   sourceRegistrationSchema,
   promptRegistrationSchema,
+  sessionCreationSchema,
 } from "./schemas/index.js";
 
 import { makeValidator } from "./validate.js";
@@ -12,10 +13,12 @@ import {
   caseConfigurationSchema,
   sourceRegistrationSchema,
   promptRegistrationSchema,
+  sessionCreationSchema,
 } from "./schemas/index.js";
 import type { CaseConfiguration } from "./types/case-configuration.js";
 import type { SourceRegistration } from "./types/source-registration.js";
 import type { PromptRegistration } from "./types/prompt-registration.js";
+import type { SessionCreation } from "./types/session-creation.js";
 import {
   SessionState,
   PackageState,
@@ -31,6 +34,9 @@ export const validateSourceRegistration =
 
 export const validatePromptRegistration =
   makeValidator<PromptRegistration>(promptRegistrationSchema);
+
+export const validateSessionCreation =
+  makeValidator<SessionCreation>(sessionCreationSchema);
 
 export const validateSessionState = makeValidator<SessionState>({
   type: "string",

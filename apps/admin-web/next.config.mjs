@@ -8,6 +8,7 @@ const nextConfig = {
     "@workflow/core-case",
     "@workflow/sources-context",
     "@workflow/prompts",
+    "@workflow/sessions-clarification",
   ],
 };
 

@@ -1,0 +1,41 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://workflow.local/schemas/session-creation.json",
+  "title": "SessionCreation",
+  "description": "Session creation payload (spec §28.9 Session States, §17.8 Clarification Question Structure). Tracks the participant session lifecycle within a case.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["sessionId", "caseId"],
+  "properties": {
+    "sessionId": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Unique identifier for this participant session."
+    },
+    "caseId": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Identifier of the case this session belongs to (§28.9)."
+    },
+    "participantLabel": {
+      "type": "string",
+      "description": "Optional operator-facing label for this session's participant."
+    },
+    "initialState": {
+      "type": "string",
+      "description": "Initial SessionState (§28.9). Defaults to 'not_started'. §28.10 forbids treating 'input_received' as equivalent to 'session_ready_for_synthesis'.",
+      "enum": [
+        "not_started",
+        "input_received",
+        "extraction_in_progress",
+        "follow_up_needed",
+        "session_partial",
+        "session_ready_for_synthesis"
+      ]
+    },
+    "notes": {
+      "type": "string",
+      "description": "Optional operator notes."
+    }
+  }
+}

@@ -42,6 +42,19 @@ Status: LOCKED | FORMALIZED | IMPL-EXTENSION
 
 ---
 
+## Pass 5 — Session lifecycle + clarification UI (branch `pass-5-sessions`, pending merge)
+
+> Status: these decisions are recorded against the Pass 5 work on branch `pass-5-sessions`. They become baseline-active only after the branch is merged into `main`. Until merge, they are proposal-scoped.
+
+- **`SessionCreation` schema owns session intake contract; `SessionRecord` (persistence) extends it with `createdAt`, `currentState`, `clarificationQuestions`** — keeps contracts the single source of truth for payload shape; persistence owns the stored-form shape, not the intake shape — LOCKED
+- **`ClarificationQuestion` requires `question`, `explanation`, and `example` (all non-empty strings) per §17.8** — literal reading of the spec; missing any of the three is rejected by `addClarificationQuestion` — LOCKED
+- **`SessionStateTransitions` encodes §28.10 forward-only; right-hand states (`follow_up_needed`, `session_partial`, `session_ready_for_synthesis`) have empty transition arrays** — safest literal reading; back-transitions from the clarification loop are not invented. Open question OQ-003 surfaces this for operator confirmation — IMPL-EXTENSION (may loosen if OQ-003 resolves)
+- **`initialState` on `SessionCreation` is optional; `createSession` defaults to `not_started` when omitted** — §28.10 entry point is explicit; default avoids forcing clients to restate the entry value — LOCKED
+- **`transitionSession` consults `isValidSessionTransition` before persisting** — enforces §28.10 at the package boundary; API routes and UI do not re-check — LOCKED
+- **`packages/sessions-clarification` does not import from `packages/core-state` or `packages/core-case`** — CLAUDE.md architecture rule; session logic is separate from case logic — LOCKED
+
+---
+
 ## dependency rules
 
 - **Skeleton packages depend on `@workflow/contracts` via `workspace:*`** — all domain types flow from contracts; packages must not define competing types — LOCKED
