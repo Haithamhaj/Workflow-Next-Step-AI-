@@ -40,6 +40,20 @@ Build the Final Package layer that consumes the accepted Pass 6 artifacts plus t
 
 ---
 
+## Output formalization boundary for Pass 8
+
+Pass 8 may adopt client-facing output wording and naming refinements. This is limited to:
+- section labels and targeted document naming on final package output
+- package preview wording and enterprise-safe output presentation
+- surface-level changes in `packages/packages-output` and `apps/admin-web` output surfaces
+
+The following are outside Pass 8 scope and must not be touched under formalization:
+- package mechanics, package-entry conditions, or eligibility rules
+- release logic or release-state transitions
+- review-state logic or blocking thresholds
+- governance contracts in `packages/contracts`
+- prompt reinforcement — belongs to a separate later prompt-rebuild/analysis-improvement track
+
 ## Do not widen scope
 - No management inquiry implementation unless an authority file explicitly pulls it forward
 - No broad refactor of Pass 7 review-issue flows

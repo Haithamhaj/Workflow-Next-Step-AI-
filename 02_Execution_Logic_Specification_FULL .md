@@ -2996,6 +2996,17 @@ This separation is necessary to preserve truthfulness, improvement value, and fi
 This section establishes that the Final Package is the place where the system may move beyond current-state workflow reconstruction alone into stronger final documentation and improved target-state workflow output when justified.
 However, it must still remain truthful, practical, human-governed, and workflow-centered.
 
+### Implementation Formalization Note (non-governing)
+
+Pass 8 implementation may consume output wording, document naming, section-label normalization, and enterprise-safe presentation language for client-facing surfaces in the Final Package layer. This is an implementation formalization enhancement only — not a new locked-source governing rule. It does not alter:
+
+* package-entry conditions or eligibility rules
+* review or release gates or blocking thresholds
+* current-state vs target-state separation logic
+* governance contracts or state transition semantics
+
+Prompt reinforcement (rewriting or rebuilding prompt-chain logic) belongs to a separate later prompt-rebuild/analysis-improvement track and is outside Pass 8 scope.
+
 ## 25. Review, Approval, and Issue-Handling Logic
 
 ### 25.1 Governing Review Philosophy for v1

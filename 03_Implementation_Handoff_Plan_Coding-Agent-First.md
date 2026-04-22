@@ -518,22 +518,25 @@ Validate:
 - action result persistence
 - linked evidence views
 
-### Pass 8 — Management Inquiry + Final Package
+### Pass 8 — Final Package + Release
 Build:
-- management inquiry handling in case/output/review coordination
-- final package generation
-- target-state logic
-- as-is vs target comparison
+- `FinalPackageRecord` type + validator in contracts (literal §29.8 fields)
+- final package assembly helpers in `packages/packages-output`
+- current-state vs target-state separation per §24.13
+- residual-gaps visibility
+- release-state transition wiring in `packages/core-state` using existing `ReleaseState`
+- final package repository + in-memory implementation in `packages/persistence`
 
 Expose in UI:
-- management inquiry view
-- final package preview
-- comparison view
+- final package list / detail / creation surface
+- release approval controls
+- clear separation between final package content, release approval state, and residual items
 
 Validate:
-- final package conditions
-- target-state separation
-- comparison output
+- final package contract fields (all literal from §29.8)
+- release approval gate (§25.16 explicit admin approval required)
+- current-state vs target-state structural separation
+- release-state transition enforcement
 
 ### Pass 9 — Integrations and Optional Local Helpers
 Build:
@@ -573,6 +576,21 @@ Coding agents must not:
 - move persistence decisions into shared-utils
 - create large “god services” that absorb multiple package responsibilities
 - over-polish UI early at the expense of feature completeness and inspection value
+
+### Output Formalization Boundary
+
+Output formalization (client-facing wording, document naming, section-label normalization, enterprise-safe presentation) is a non-governing enhancement layer. It is safe to apply to:
+- `packages/packages-output` — output assembly and wording
+- `apps/admin-web` output surfaces — package preview rendering
+
+It must NOT be applied to:
+- `packages/core-state` — state transition logic
+- `packages/core-case` — case lifecycle rules
+- review-state or release-state logic
+- package-entry conditions or eligibility rules
+- governance contracts in `packages/contracts`
+
+Prompt reinforcement belongs to a separate later prompt-rebuild/analysis-improvement track — not to output formalization work and not to Pass 8.
 
 ## 17. Interface Risk Notes
 

@@ -170,6 +170,19 @@ A UI layer may later support the outputs through clearer reading aids, such as:
 
 These are support layers, not the product core.
 
+### **Output Formalization Enhancement Note (non-governing)**
+
+Output formalization and presentation enhancement may improve client-facing package wording, document naming, section labels, and final deliverable presentation.
+
+This is a non-governing enhancement layer. It does not alter:
+
+* workflow truth or reconstruction logic
+* package eligibility rules or entry conditions
+* review or release gates
+* current-state vs target-state separation
+
+Prompt reinforcement (rewriting or rebuilding prompt-chain logic) belongs to a separate later prompt-rebuild track, not to output formalization work.
+
 ---
 
 ## **7\. Pilot and Domain Strategy**

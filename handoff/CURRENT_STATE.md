@@ -151,6 +151,10 @@ Pass 7 introduced no new blocking governance questions.
 
 ---
 
+## Output formalization direction (adopted 2026-04-22, pre-Pass 8)
+
+Output formalization for client-facing wording, document naming, section-label normalization, and enterprise-safe final deliverable presentation has been adopted as a non-governing enhancement direction. This does not alter mechanics, state logic, package eligibility, review/release gates, or governance contracts. Prompt reinforcement (rewriting or rebuilding prompt-chain logic) is deferred and is not part of accepted Pass 8 mechanics — it belongs to a separate later prompt-rebuild/analysis-improvement track.
+
 ## What has NOT been built
 
 - Final Package assembly / UI

@@ -90,6 +90,12 @@ Status: LOCKED | FORMALIZED | IMPL-EXTENSION
 
 ---
 
+## Output Formalization (adopted 2026-04-22, pre-Pass 8)
+
+- **Output formalization adopted as non-governing enhancement; prompt reinforcement deferred** — enterprise-facing wording refinement, targeted document naming, section-label normalization, and final deliverable presentation are documentation-first improvements that do not require mechanics changes. Adopted as a non-governing enhancement layer. Pass 8 may consume output wording/naming/presentation improvements on client-facing surfaces (`packages/packages-output`, `apps/admin-web` output surfaces). Prompt reinforcement (rewriting or rebuilding prompt-chain logic) belongs to a separate later prompt-rebuild/analysis-improvement track and is outside Pass 8 scope. This decision does not alter state logic, package-entry conditions, review/release gates, blocking thresholds, or governance contracts — FORMALIZED
+
+---
+
 ## dependency rules
 
 - **Skeleton packages depend on `@workflow/contracts` via `workspace:*`** — all domain types flow from contracts; packages must not define competing types — LOCKED
