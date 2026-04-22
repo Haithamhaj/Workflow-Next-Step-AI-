@@ -55,6 +55,22 @@ Status: LOCKED | FORMALIZED | IMPL-EXTENSION
 
 ---
 
+## Pass 6 — Synthesis + Evaluation + Initial Package (branch `pass-6-synthesis-evaluation`, pending merge)
+
+> Status: these decisions are recorded against the Pass 6 work on branch `pass-6-synthesis-evaluation`. They become baseline-active only after the branch is merged into `main`. Until merge, they are proposal-scoped.
+
+- **Synthesis difference-block has exactly the five literal §19.3 fields (`where`, `what`, `participantsPerSide`, `whyMatters`, `laterClosurePath`)** — literal reading of the spec; no additional fields invented. Future enrichment (§19.6–§19.9 peer-level) is deferred behind OQ-004 — LOCKED
+- **`SynthesisRecord` requires `confidenceEvidenceNotes` (not optional) and keeps `sessionId` optional** — §19.11 minimum output treats confidence/evidence notes as required; session linkage is often absent at the synthesis stage — LOCKED
+- **Evaluation `outcome` is operator-supplied per §20.10, not algorithmically derived from axes + conditions** — §20.10 describes a hybrid outcome philosophy, not a deterministic rule. Chose option (a) from the Pass 6 stop-condition gate: require the operator to supply the outcome explicitly. `createEvaluation` persists the outcome unchanged. Any future derivation must be explicitly specified in a locked reference document before implementation — LOCKED
+- **Initial Package structural outward/admin separation (§21.8 + §21.11)** — the schema uses two top-level objects: `outward` (§21.3 five mandatory + §21.4 optional `documentReferenceImplication`) and `admin` (§21.11 `sevenConditionChecklist`, `readinessReasoning`, optional `confidenceEvidenceNotes`, optional `internalReviewPrompts`). The seven-condition checklist has no field on `outward`; it is structurally impossible to leak into outward output. The admin-web detail page also renders them in separate DOM sections (`initial-package-outward` vs `initial-package-admin`) — LOCKED
+- **Initial Package `status` is operator-supplied from the §21.5 five-value enum** — `not_requested|not_applicable_yet|review_recommended|rebuild_recommended|conditional_early_draft_possible`. Not derived from evaluation outcome (that would be invented governance). The form requires explicit operator selection — LOCKED
+- **`packages/synthesis-evaluation` does not import from `core-state`, `core-case`, or `sessions-clarification`** — CLAUDE.md architecture rule; synthesis/evaluation logic operates on contracts types only. Likewise `packages/packages-output` does not import prompt or state-transition code. Enforced at implementation time, not just at review — LOCKED
+- **Contracts owns `SynthesisRecord`, `EvaluationRecord`, and `InitialPackageRecord` types and schemas** — all three are cross-package entities. Domain packages re-export from contracts; none redefine or shadow — LOCKED
+- **Persistence adds `StoredSynthesisRecord`, `StoredEvaluationRecord`, `StoredInitialPackageRecord` — each extends the contracts type with `createdAt`** — same pattern used by `StoredCaseRecord`, `StoredSourceRecord`, `StoredPromptRecord`, `StoredSessionRecord`. `createInMemoryStore()` extended to include the three new repos alongside the prior five — LOCKED
+- **All three new API routes validate via `validateSynthesisRecord` / `validateEvaluationRecord` / `validateInitialPackageRecord`** — Ajv-derived 400 messages surface directly to the UI's `validation-errors` panel. No hand-written type guards — LOCKED
+
+---
+
 ## dependency rules
 
 - **Skeleton packages depend on `@workflow/contracts` via `workspace:*`** — all domain types flow from contracts; packages must not define competing types — LOCKED

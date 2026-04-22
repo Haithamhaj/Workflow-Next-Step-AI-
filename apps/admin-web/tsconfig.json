@@ -20,6 +20,8 @@
     { "path": "../../packages/core-case" },
     { "path": "../../packages/sources-context" },
     { "path": "../../packages/prompts" },
-    { "path": "../../packages/sessions-clarification" }
+    { "path": "../../packages/sessions-clarification" },
+    { "path": "../../packages/synthesis-evaluation" },
+    { "path": "../../packages/packages-output" }
   ]
 }

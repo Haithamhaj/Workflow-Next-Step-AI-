@@ -37,4 +37,30 @@ If the answer permits back-transitions, update `SessionStateTransitions` in `pac
 
 ---
 
+## OQ-004 — Peer-level synthesis enrichment trigger ordering (§19.6–§19.9) (surfaced Pass 6, 2026-04-22)
+
+**Section affected:** `packages/synthesis-evaluation` — synthesis construction path; potentially additional fields on `SynthesisRecord` in `packages/contracts`.
+
+**Question:** Spec §19.6–§19.9 describes a hierarchy of enrichment sources (peer-level synthesis, reference material, prior cases) that may augment a synthesis before it is finalized. The spec describes the *purpose* of each enrichment source but does not specify the exact *trigger ordering* in code — i.e. when (if ever) enrichment runs automatically vs. on operator request, and in what order sources are consulted.
+
+**Current resolution for Pass 6:** Synthesis implementation records the §19.11 minimum output (common path, difference blocks with the five literal §19.3 fields, major unresolved items, closure candidates, escalation candidates, confidence/evidence notes, optional session linkage). No automatic enrichment is performed. Enrichment is effectively deferred to operator action (the operator can re-submit a richer synthesis record). No invented trigger rules.
+
+**Operator action required:** Confirm whether Pass 7+ should introduce an automatic enrichment phase (and if so, literal trigger ordering), or whether enrichment remains operator-driven at the form level. If automated, specify which §19.6–§19.9 source runs first and under what condition.
+
+If the answer introduces automated enrichment, update `synthesis-evaluation` construction logic and potentially extend `synthesis-record.schema.json` with enrichment-provenance fields.
+
+---
+
+## OQ-005 — §21.4 conditional section triggers (surfaced Pass 6, 2026-04-22)
+
+**Section affected:** `packages/contracts` — `initial-package-record.schema.json` (`outward.documentReferenceImplication`); `packages/packages-output` — `createInitialPackage` assembly logic.
+
+**Question:** Spec §21.4 describes a conditional outward section ("document / reference implication") that is included when certain conditions are met, but the conditions for inclusion/exclusion are not literally enumerated in the spec. Similarly, §21.4 may imply additional conditional sections beyond document/reference implication that were not made explicit.
+
+**Current resolution for Pass 6:** `outward.documentReferenceImplication` is modeled as a single optional field. The operator decides whether to populate it (the `/initial-packages/new` form shows it as optional). No automatic trigger logic. Any additional §21.4 sections the spec may imply have not been added because their names and shapes are not literal.
+
+**Operator action required:** Confirm (a) whether §21.4 inclusion should be operator-driven (current Pass 6 behavior) or derived from evaluation / synthesis signals via a literal rule, and (b) whether §21.4 implies additional conditional section fields beyond `documentReferenceImplication`. If either changes the shape, extend `initial-package-record.schema.json` and the assembly logic.
+
+---
+
 *Prior resolved items: RolloutState deferral — recorded in DECISIONS_LOG.md.*

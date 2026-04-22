@@ -19,6 +19,9 @@ importers:
       '@workflow/core-state':
         specifier: workspace:*
         version: link:../../packages/core-state
+      '@workflow/packages-output':
+        specifier: workspace:*
+        version: link:../../packages/packages-output
       '@workflow/persistence':
         specifier: workspace:*
         version: link:../../packages/persistence
@@ -31,6 +34,9 @@ importers:
       '@workflow/sources-context':
         specifier: workspace:*
         version: link:../../packages/sources-context
+      '@workflow/synthesis-evaluation':
+        specifier: workspace:*
+        version: link:../../packages/synthesis-evaluation
       next:
         specifier: 14.2.5
         version: 14.2.5(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
@@ -118,6 +124,9 @@ importers:
       '@workflow/contracts':
         specifier: workspace:*
         version: link:../contracts
+      '@workflow/persistence':
+        specifier: workspace:*
+        version: link:../persistence
     devDependencies:
       typescript:
         specifier: ^5.4.5
@@ -193,6 +202,9 @@ importers:
       '@workflow/contracts':
         specifier: workspace:*
         version: link:../contracts
+      '@workflow/persistence':
+        specifier: workspace:*
+        version: link:../persistence
     devDependencies:
       typescript:
         specifier: ^5.4.5

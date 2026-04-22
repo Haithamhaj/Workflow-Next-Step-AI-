@@ -6,6 +6,9 @@ export {
   sourceRegistrationSchema,
   promptRegistrationSchema,
   sessionCreationSchema,
+  synthesisRecordSchema,
+  evaluationRecordSchema,
+  initialPackageRecordSchema,
 } from "./schemas/index.js";
 
 import { makeValidator } from "./validate.js";
@@ -14,11 +17,17 @@ import {
   sourceRegistrationSchema,
   promptRegistrationSchema,
   sessionCreationSchema,
+  synthesisRecordSchema,
+  evaluationRecordSchema,
+  initialPackageRecordSchema,
 } from "./schemas/index.js";
 import type { CaseConfiguration } from "./types/case-configuration.js";
 import type { SourceRegistration } from "./types/source-registration.js";
 import type { PromptRegistration } from "./types/prompt-registration.js";
 import type { SessionCreation } from "./types/session-creation.js";
+import type { SynthesisRecord } from "./types/synthesis-record.js";
+import type { EvaluationRecord } from "./types/evaluation-record.js";
+import type { InitialPackageRecord } from "./types/initial-package-record.js";
 import {
   SessionState,
   PackageState,
@@ -37,6 +46,15 @@ export const validatePromptRegistration =
 
 export const validateSessionCreation =
   makeValidator<SessionCreation>(sessionCreationSchema);
+
+export const validateSynthesisRecord =
+  makeValidator<SynthesisRecord>(synthesisRecordSchema);
+
+export const validateEvaluationRecord =
+  makeValidator<EvaluationRecord>(evaluationRecordSchema);
+
+export const validateInitialPackageRecord =
+  makeValidator<InitialPackageRecord>(initialPackageRecordSchema);
 
 export const validateSessionState = makeValidator<SessionState>({
   type: "string",

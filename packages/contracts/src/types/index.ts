@@ -3,3 +3,6 @@ export * from "./source-registration.js";
 export * from "./states.js";
 export * from "./prompt-registration.js";
 export * from "./session-creation.js";
+export * from "./synthesis-record.js";
+export * from "./evaluation-record.js";
+export * from "./initial-package-record.js";
