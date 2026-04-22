@@ -13,6 +13,7 @@ import type {
   ConditionInterpretations,
   InitialPackageRecord,
   ReviewIssueRecord,
+  FinalPackageRecord,
 } from "@workflow/contracts";
 
 export const PERSISTENCE_PACKAGE = "@workflow/persistence" as const;
@@ -96,6 +97,12 @@ export interface StoredReviewIssueRecord extends ReviewIssueRecord {
   updatedAt: string;
 }
 
+/** Persistent final-package record (Pass 8 payload + timestamps). */
+export interface StoredFinalPackageRecord extends FinalPackageRecord {
+  createdAt: string;
+  updatedAt: string;
+}
+
 // ---------------------------------------------------------------------------
 // Repository interfaces — backend-agnostic
 // ---------------------------------------------------------------------------
@@ -156,6 +163,13 @@ export interface ReviewIssueRepository {
   findByCaseId(caseId: string): StoredReviewIssueRecord[];
   findByInitialPackageId(initialPackageId: string): StoredReviewIssueRecord[];
   findAll(): StoredReviewIssueRecord[];
+}
+
+export interface FinalPackageRepository {
+  save(p: StoredFinalPackageRecord): void;
+  findById(packageId: string): StoredFinalPackageRecord | null;
+  findByCaseId(caseId: string): StoredFinalPackageRecord[];
+  findAll(): StoredFinalPackageRecord[];
 }
 
 // ---------------------------------------------------------------------------
@@ -333,6 +347,34 @@ class InMemoryInitialPackageRepository implements InitialPackageRepository {
   }
 }
 
+class InMemoryFinalPackageRepository implements FinalPackageRepository {
+  private readonly store = new Map<string, StoredFinalPackageRecord>();
+
+  save(p: StoredFinalPackageRecord): void {
+    this.store.set(p.packageId, {
+      ...p,
+      gapLayer: {
+        ...p.gapLayer,
+        closedItems: [...p.gapLayer.closedItems],
+        nonBlockingRemainingItems: [...p.gapLayer.nonBlockingRemainingItems],
+        laterReviewItems: [...p.gapLayer.laterReviewItems],
+      },
+    });
+  }
+
+  findById(packageId: string): StoredFinalPackageRecord | null {
+    return this.store.get(packageId) ?? null;
+  }
+
+  findByCaseId(caseId: string): StoredFinalPackageRecord[] {
+    return Array.from(this.store.values()).filter((p) => p.caseId === caseId);
+  }
+
+  findAll(): StoredFinalPackageRecord[] {
+    return Array.from(this.store.values());
+  }
+}
+
 class InMemoryInterpretationSnapshotRepository
   implements InterpretationSnapshotRepository
 {
@@ -399,6 +441,7 @@ export interface InMemoryStore {
   initialPackages: InitialPackageRepository;
   snapshots: InterpretationSnapshotRepository;
   reviewIssues: ReviewIssueRepository;
+  finalPackages: FinalPackageRepository;
 }
 
 export function createInMemoryStore(): InMemoryStore {
@@ -412,8 +455,9 @@ export function createInMemoryStore(): InMemoryStore {
     initialPackages: new InMemoryInitialPackageRepository(),
     snapshots: new InMemoryInterpretationSnapshotRepository(),
     reviewIssues: new InMemoryReviewIssueRepository(),
+    finalPackages: new InMemoryFinalPackageRepository(),
   };
 }
 
 // Re-export for use by domain packages without double-importing contracts
-export type { CaseConfiguration, ConditionInterpretations };
+export type { CaseConfiguration, ConditionInterpretations, FinalPackageRecord };

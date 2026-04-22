@@ -6,6 +6,7 @@ import synthesisRecordSchema from "./synthesis-record.schema.json" with { type: 
 import evaluationRecordSchema from "./evaluation-record.schema.json" with { type: "json" };
 import initialPackageRecordSchema from "./initial-package-record.schema.json" with { type: "json" };
 import reviewIssueRecordSchema from "./review-issue-record.schema.json" with { type: "json" };
+import finalPackageRecordSchema from "./final-package-record.schema.json" with { type: "json" };
 
 export {
   caseConfigurationSchema,
@@ -16,4 +17,5 @@ export {
   evaluationRecordSchema,
   initialPackageRecordSchema,
   reviewIssueRecordSchema,
+  finalPackageRecordSchema,
 };

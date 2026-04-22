@@ -1,4 +1,4 @@
-import { CaseState, ReviewState } from "@workflow/contracts";
+import { CaseState, ReviewState, ReleaseState } from "@workflow/contracts";
 
 export const CORE_STATE_PACKAGE = "@workflow/core-state" as const;
 
@@ -83,4 +83,23 @@ export function isValidReviewTransition(
   to: ReviewState,
 ): boolean {
   return (ReviewStateTransitions[from] as readonly ReviewState[]).includes(to);
+}
+
+// §28.16 — allowed next states for each ReleaseState value.
+// Must not skip pending_admin_approval (§28.16 literal).
+// Package existence is not equivalent to release approval (§28.16).
+export const ReleaseStateTransitions: Readonly<
+  Record<ReleaseState, readonly ReleaseState[]>
+> = {
+  [ReleaseState.NotReleasable]: [ReleaseState.PendingAdminApproval],
+  [ReleaseState.PendingAdminApproval]: [ReleaseState.ApprovedForRelease],
+  [ReleaseState.ApprovedForRelease]: [ReleaseState.Released],
+  [ReleaseState.Released]: [],
+};
+
+export function isValidReleaseTransition(
+  from: ReleaseState,
+  to: ReleaseState,
+): boolean {
+  return (ReleaseStateTransitions[from] as readonly ReleaseState[]).includes(to);
 }

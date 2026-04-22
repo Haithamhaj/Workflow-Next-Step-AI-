@@ -27,6 +27,8 @@ import type {
 
 export const PACKAGES_OUTPUT_PACKAGE = "@workflow/packages-output" as const;
 
+export * from "./final-package.js";
+
 // ---------------------------------------------------------------------------
 // Re-exports — consumers should not need to double-import contracts
 // ---------------------------------------------------------------------------

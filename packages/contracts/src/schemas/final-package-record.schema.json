@@ -1,0 +1,98 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://workflow.local/schemas/final-package-record.json",
+  "title": "FinalPackageRecord",
+  "description": "Pass 8 final package record. Literal §29.8 fields: §29.8.1 required top-level metadata, §29.8.2 content sections, §29.8.3 current-state/target-state structural separation, §29.8.4 output direction traceability, §29.8.5 gap layer. Creation is operator-initiated only — no mechanical promotion predicate.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "packageId",
+    "caseId",
+    "packageType",
+    "packageState",
+    "packageReleaseState",
+    "packageGeneratedAt",
+    "finalizationBasis",
+    "adminApprovalStatus",
+    "finalWorkflowReality",
+    "finalSourceOrReferenceOutput",
+    "finalGapAnalysis",
+    "improvementTargetsOrFinalRecommendations",
+    "uiOverviewLayer",
+    "outputDirection",
+    "gapLayer"
+  ],
+  "properties": {
+    "packageId": { "type": "string", "minLength": 1 },
+    "caseId": { "type": "string", "minLength": 1 },
+    "packageType": {
+      "type": "string",
+      "enum": ["final_workflow_and_reference_package"]
+    },
+    "packageState": {
+      "type": "string",
+      "enum": [
+        "not_started",
+        "initial_package_in_progress",
+        "initial_package_ready",
+        "final_package_blocked",
+        "final_package_in_progress",
+        "final_package_ready"
+      ]
+    },
+    "packageReleaseState": {
+      "type": "string",
+      "enum": [
+        "not_releasable",
+        "pending_admin_approval",
+        "approved_for_release",
+        "released"
+      ]
+    },
+    "packageGeneratedAt": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "finalizationBasis": { "type": "string", "minLength": 1 },
+    "adminApprovalStatus": {
+      "type": "string",
+      "enum": ["not_approved", "approved"]
+    },
+    "finalWorkflowReality": { "type": "string", "minLength": 1 },
+    "finalSourceOrReferenceOutput": { "type": "string", "minLength": 1 },
+    "finalGapAnalysis": { "type": "string", "minLength": 1 },
+    "improvementTargetsOrFinalRecommendations": { "type": "string", "minLength": 1 },
+    "uiOverviewLayer": { "type": "string", "minLength": 1 },
+    "improvedOrTargetStateWorkflow": { "type": "string", "minLength": 1 },
+    "outputDirection": {
+      "type": "string",
+      "enum": [
+        "updated_source_aligned_with_reality",
+        "rebuilt_source_draft",
+        "reviewed_source_replacement_candidate",
+        "recommendation_only_when_draft_not_eligible"
+      ]
+    },
+    "gapLayer": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["closedItems", "nonBlockingRemainingItems", "laterReviewItems"],
+      "properties": {
+        "closedItems": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 }
+        },
+        "nonBlockingRemainingItems": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 }
+        },
+        "laterReviewItems": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 }
+        }
+      }
+    },
+    "initialPackageId": { "type": "string", "minLength": 1 },
+    "evaluationId": { "type": "string", "minLength": 1 }
+  }
+}

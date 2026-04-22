@@ -10,6 +10,7 @@ const links = [
   { href: "/evaluations", label: "Evaluations" },
   { href: "/initial-packages", label: "Initial packages" },
   { href: "/issues", label: "Review issues" },
+  { href: "/final-packages", label: "Final packages" },
   { href: "/packages", label: "Package preview" },
   { href: "/states", label: "States" },
   { href: "/admin", label: "Admin config" },
