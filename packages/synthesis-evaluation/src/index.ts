@@ -2,12 +2,22 @@
  * Synthesis + seven-condition evaluation — Pass 6 implementation.
  * Spec refs: §19 (synthesis: common-path + difference blocks + §19.11 output),
  *            §20.3 (seven conditions), §20.4 (five axes), §20.5 (per-axis states),
- *            §20.10 (hybrid outcome philosophy — not deterministic),
- *            §20.11–20.14 (the four outcomes).
+ *            §20.10 (hybrid outcome: seven conditions "must govern" final outcome;
+ *                    axis rubrics are supporting lenses only),
+ *            §20.11–20.14 (the four outcomes and their enabling conditions).
  *
  * Architecture constraint: this package must not import from core-state,
- * core-case, or sessions-clarification. Per §20.10, evaluation outcome is
- * operator-supplied; this package does not derive it from axes/conditions.
+ * core-case, or sessions-clarification.
+ *
+ * Outcome governance (§20.10 + §20.11–20.14):
+ *   The operator supplies the outcome, but the seven conditions constrain it.
+ *   If any condition is false (i.e. essential workflow completion is broken):
+ *     - ready_for_initial_package is invalid (§20.11 requires no blocking issues)
+ *     - finalizable_with_review is invalid (§20.13 requires no issue that breaks
+ *       essential workflow completion)
+ *     - ready_for_final_package is invalid (§20.14 requires no blocking issue)
+ *     - needs_more_clarification is the only valid outcome (§20.12)
+ *   Axis states alone do NOT constrain the outcome; only the seven conditions do.
  */
 
 import {
@@ -147,10 +157,13 @@ export function listSynthesisByCaseId(
 
 /**
  * Validate an EvaluationRecord payload, reject duplicate IDs, persist a
- * StoredEvaluationRecord. Axes (§20.4), per-axis states (§20.5), seven
- * conditions (§20.3), and outcome (§20.11–20.14) are all enforced by the
- * schema. Per §20.10 the outcome is operator-supplied — this function does
- * not derive it from axes/conditions.
+ * StoredEvaluationRecord.
+ *
+ * After schema validation, enforces §20.10 seven-condition governance:
+ * if any condition is false (essential workflow completion is broken),
+ * the outcome must be needs_more_clarification — any "ready" or
+ * "finalizable" outcome is rejected (§20.11, §20.13, §20.14 each require
+ * that no issue breaks essential workflow completion).
  */
 export function createEvaluation(
   payload: unknown,
@@ -168,6 +181,32 @@ export function createEvaluation(
   }
 
   const record: EvaluationRecord = result.value;
+
+  // §20.10 seven-condition constraint: if any critical completeness condition
+  // is false, it "must govern the final outcome" (§20.10). Outcomes other than
+  // needs_more_clarification each require no broken essential condition:
+  //   §20.11 ("remaining issues do not prevent a useful analytical package")
+  //   §20.13 ("no remaining issue breaks essential workflow completion")
+  //   §20.14 ("no remaining blocking issue prevents final package creation")
+  const anyConditionFailed = Object.values(record.conditions).some(
+    (v) => v === false,
+  );
+  if (anyConditionFailed) {
+    const REQUIRES_INTACT_CONDITIONS = [
+      EvaluationOutcome.ReadyForInitialPackage,
+      EvaluationOutcome.FinalizableWithReview,
+      EvaluationOutcome.ReadyForFinalPackage,
+    ] as const;
+    if (
+      (REQUIRES_INTACT_CONDITIONS as readonly string[]).includes(record.outcome)
+    ) {
+      return {
+        ok: false,
+        error:
+          "§20.10: one or more critical completeness conditions are false — essential workflow completion is broken. Outcome must be needs_more_clarification (§20.12). Outcomes ready_for_initial_package (§20.11), finalizable_with_review (§20.13), and ready_for_final_package (§20.14) all require that no remaining issue breaks essential workflow completion.",
+      };
+    }
+  }
 
   const existing = repo.findById(record.evaluationId);
   if (existing !== null) {

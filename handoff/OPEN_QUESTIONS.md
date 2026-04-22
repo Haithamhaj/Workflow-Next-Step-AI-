@@ -37,29 +37,31 @@ If the answer permits back-transitions, update `SessionStateTransitions` in `pac
 
 ---
 
-## OQ-004 — Peer-level synthesis enrichment trigger ordering (§19.6–§19.9) (surfaced Pass 6, 2026-04-22)
+## OQ-004 — §19.7–§19.8 enrichment trigger (surfaced Pass 6, 2026-04-22)
 
-**Section affected:** `packages/synthesis-evaluation` — synthesis construction path; potentially additional fields on `SynthesisRecord` in `packages/contracts`.
+**Section affected:** `packages/synthesis-evaluation` — synthesis construction path.
 
-**Question:** Spec §19.6–§19.9 describes a hierarchy of enrichment sources (peer-level synthesis, reference material, prior cases) that may augment a synthesis before it is finalized. The spec describes the *purpose* of each enrichment source but does not specify the exact *trigger ordering* in code — i.e. when (if ever) enrichment runs automatically vs. on operator request, and in what order sources are consulted.
+**Question:** §19.7 states: *"When peer-level synthesis leaves a materially important difference unresolved, the system should seek enrichment or closure from higher relevant levels such as supervisor, manager, or another relevant owner."* §19.8 states the system should treat outside-department differences initially as a dependency/handoff/external interface rather than expanding into multi-department reconstruction. Neither section specifies: (a) whether enrichment seeking is triggered automatically at synthesis-record creation or is operator-driven; (b) what data structure or provenance fields would record that enrichment was sought or received.
 
-**Current resolution for Pass 6:** Synthesis implementation records the §19.11 minimum output (common path, difference blocks with the five literal §19.3 fields, major unresolved items, closure candidates, escalation candidates, confidence/evidence notes, optional session linkage). No automatic enrichment is performed. Enrichment is effectively deferred to operator action (the operator can re-submit a richer synthesis record). No invented trigger rules.
+**Current resolution for Pass 6:** No enrichment trigger logic is implemented. `createSynthesis` records the §19.11 minimum output only. Any enrichment is operator-driven via form re-submission. No trigger rules invented.
 
-**Operator action required:** Confirm whether Pass 7+ should introduce an automatic enrichment phase (and if so, literal trigger ordering), or whether enrichment remains operator-driven at the form level. If automated, specify which §19.6–§19.9 source runs first and under what condition.
+**Operator action required:** Confirm whether enrichment per §19.7–§19.8 is automatic (system-triggered on synthesis creation when unresolved differences exist) or operator-driven. If automatic, specify the trigger condition and the provenance fields required on `SynthesisRecord`. Without this, any implementation of enrichment triggering is invented governance.
 
-If the answer introduces automated enrichment, update `synthesis-evaluation` construction logic and potentially extend `synthesis-record.schema.json` with enrichment-provenance fields.
+If the answer introduces automatic triggering, update `synthesis-evaluation` construction logic and extend `synthesis-record.schema.json` with provenance fields.
 
 ---
 
-## OQ-005 — §21.4 conditional section triggers (surfaced Pass 6, 2026-04-22)
+## OQ-005 — §21.4 system auto-activation trigger (surfaced Pass 6, 2026-04-22)
 
-**Section affected:** `packages/contracts` — `initial-package-record.schema.json` (`outward.documentReferenceImplication`); `packages/packages-output` — `createInitialPackage` assembly logic.
+**Section affected:** `packages/packages-output` — `createInitialPackage` assembly logic.
 
-**Question:** Spec §21.4 describes a conditional outward section ("document / reference implication") that is included when certain conditions are met, but the conditions for inclusion/exclusion are not literally enumerated in the spec. Similarly, §21.4 may imply additional conditional sections beyond document/reference implication that were not made explicit.
+**Question:** §21.4 specifies two conditions under which the Document/Reference Implication section should appear: *(a) the user or operator requested it* — implemented as the optional `outward.documentReferenceImplication` field; *(b) "the system explicitly activates it because the case already supports an early documentation implication path"* — the spec does not define what conditions constitute an "early documentation implication path."
 
-**Current resolution for Pass 6:** `outward.documentReferenceImplication` is modeled as a single optional field. The operator decides whether to populate it (the `/initial-packages/new` form shows it as optional). No automatic trigger logic. Any additional §21.4 sections the spec may imply have not been added because their names and shapes are not literal.
+**Current resolution for Pass 6:** Only condition (a) is implemented. `outward.documentReferenceImplication` is an optional operator-supplied field. Condition (b) auto-activation is deferred because the triggering rule is not literally specified.
 
-**Operator action required:** Confirm (a) whether §21.4 inclusion should be operator-driven (current Pass 6 behavior) or derived from evaluation / synthesis signals via a literal rule, and (b) whether §21.4 implies additional conditional section fields beyond `documentReferenceImplication`. If either changes the shape, extend `initial-package-record.schema.json` and the assembly logic.
+**Operator action required:** Confirm what constitutes an "early documentation implication path" for condition (b) — specifically, what evaluation outcome value(s), synthesis fields, or other signals should cause the system to auto-activate the section. Without this literal rule, any auto-activation implementation is invented governance.
+
+If the answer specifies a literal trigger, add the auto-activation check to `createInitialPackage` in `packages/packages-output`.
 
 ---
 
