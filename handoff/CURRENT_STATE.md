@@ -1,6 +1,6 @@
 # Current State
 
-**Pass 6 (Synthesis + Evaluation + Initial Package) implemented on branch `pass-6-synthesis-evaluation`, pending merge to `main`. Prior baseline: Pass 5 accepted on `main` at `d4db2b3`.**
+**Pass 6 (Synthesis + Evaluation + Initial Package) accepted on `main` at `2258499`. Prior baseline: Pass 5 accepted on `main` at `d4db2b3`.**
 
 ---
 

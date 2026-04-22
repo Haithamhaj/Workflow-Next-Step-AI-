@@ -1,7 +1,7 @@
 # Pass 7 — Review / Issue Discussion
 
 ## Official pass sequence (do not rescope without operator approval)
-- **Pass 6:** Synthesis + Evaluation + Initial Package — **implemented on branch `pass-6-synthesis-evaluation`, pending merge to `main`**
+- **Pass 6:** Synthesis + Evaluation + Initial Package — **accepted on `main` at `2258499`**
 - **Pass 7:** Review / Issue Discussion — this pass
 - **Pass 8+:** Final Package, Release, and later flows — not in scope
 
@@ -10,7 +10,7 @@
 ## Goal
 Implement the Review / Issue Discussion layer that sits between an initial package (§21) and a final package (§21.13 — not in this pass). This is the spec §22 surface plus the §28.13 `ReviewState` lifecycle: the operator opens a review on an existing initial package, records issues / discussion points against it, transitions the review through its state family, and produces a structured artifact that a later pass (Final Package) will consume.
 
-All work is on a new review branch branched from `main` **after Pass 6 is merged**. Do not start Pass 7 until Pass 6 lands on `main`.
+All work is on a new review branch branched from `main`. Pass 6 is now on `main` — Pass 7 may begin.
 
 ---
 
@@ -72,10 +72,9 @@ All work is on a new review branch branched from `main` **after Pass 6 is merged
 - Pass 3 (sources-context + source UI) — accepted on `main`
 - Pass 4 (prompts + prompt UI) — accepted on `main`
 - Pass 5 (sessions-clarification + session UI) — accepted on `main`
-- Pass 6 (synthesis + evaluation + initial package) — **pending merge to `main`** from `pass-6-synthesis-evaluation`
-  - Acceptance gate resolved (2026-04-22): the §20.21–§20.22 AI-interpreted/admin-routed/rule-guarded model is implemented at commit `71d5d80`. The mechanical gate has been replaced with the 8-step snapshot-based governance. Pass 6 is ready to merge.
+- Pass 6 (synthesis + evaluation + initial package) — **accepted on `main` at `2258499`**
 
-Pass 7 implementation begins **after Pass 6 merges**.
+Pass 7 implementation may begin.
 
 ---
 
