@@ -1,6 +1,8 @@
 # Current State
 
-**Accepted baseline on `main`: Pass 7 (Review / Issue Discussion), accepted on 2026-04-22 via merge of `codex/pass-7-review-issue-discussion` (`a8f3523`) into `main`. See `git log -1 origin/main` for the current `origin/main` commit after the post-merge handoff sweep.**
+**Accepted baseline: Pass 8 (Final Package + Release), committed 2026-04-22, commit `e2c3c58` on branch `claude/blissful-bardeen-371869`.**
+
+Prior accepted baseline on `main`: Pass 7 (Review / Issue Discussion), merge of `a8f3523`.
 
 ---
 
@@ -13,89 +15,54 @@
 - `tsconfig.base.json`: strict, `noUncheckedIndexedAccess`, `resolveJsonModule`, Bundler resolution
 - Scripts: `dev`, `build`, `build:contracts`, `typecheck`, `clean`
 
-### `packages/contracts` (complete through Pass 7, accepted on main)
-- Prior Pass 6 schemas/types unchanged
-- New Pass 7 schema: `src/schemas/review-issue-record.schema.json`
-  - Required: `issueId`, `caseId`, `initialPackageId`, `evaluationId`, `reviewState`, `issueBrief`, `discussionThread`, `linkedEvidence`, `actionHistory`
-  - Optional: `synthesisId`, `releaseApprovalRecord`
-  - `issueBrief` mirrors the literal §25.4 minimum fields
-  - `discussionThread` contains `scopeBoundary`, ordered `entries[]`, optional `closureSummary`
-  - `actionHistory[]` uses the exact controlled action set from §25.10
-- New Pass 7 types: `src/types/review-issues.ts`
-  - `IssueBrief`
-  - `IssueDiscussionEntry`
-  - `IssueDiscussionThread`
-  - `IssueEvidenceLink`
-  - `ReviewAction`
-  - `ReleaseApprovalRecord`
-  - `ReviewIssueRecord`
-- `src/index.ts` exports `validateReviewIssueRecord`
+### `packages/contracts` (extended Pass 8)
+- All prior passes' schemas/types unchanged
+- New Pass 8 schema: `src/schemas/final-package-record.schema.json`
+  - `additionalProperties: false` at top level and on `gapLayer`
+  - Required top-level: `packageId`, `caseId`, `packageType`, `packageState`, `packageReleaseState`, `packageGeneratedAt`, `finalizationBasis`, `adminApprovalStatus`, `finalWorkflowReality`, `finalSourceOrReferenceOutput`, `finalGapAnalysis`, `improvementTargetsOrFinalRecommendations`, `uiOverviewLayer`, `outputDirection`, `gapLayer`
+  - Optional: `improvedOrTargetStateWorkflow`, `initialPackageId`, `evaluationId`
+  - `gapLayer`: `closedItems[]`, `nonBlockingRemainingItems[]`, `laterReviewItems[]`
+- New Pass 8 types: `src/types/final-package.ts`
+  - `AdminApprovalStatus` const enum: `not_approved | approved` (§25.16 — kept separate from `packageReleaseState`)
+  - `OutputDirection` const enum: four values (§29.8.4)
+  - `FinalPackageGapLayer` interface (§29.8.5)
+  - `FinalPackageRecord` interface (§29.8.1–§29.8.5)
+- `src/index.ts` exports `validateFinalPackageRecord`, `AdminApprovalStatus`, `OutputDirection`, `FinalPackageGapLayer`, `FinalPackageRecord`
 
-### `packages/core-state` (extended through Pass 7, accepted on main)
-- Prior Pass 2A `CaseStateTransitions` unchanged
-- New `ReviewStateTransitions` per §28.14:
-  - `no_review_needed -> review_required`
-  - `review_required -> issue_discussion_active | action_taken | review_resolved`
-  - `issue_discussion_active -> action_taken | review_resolved`
-  - `action_taken -> review_resolved`
-- New `isValidReviewTransition(from, to)`
+### `packages/core-state` (extended Pass 8)
+- All prior pass transitions unchanged
+- New `ReleaseStateTransitions` (§28.16): linear `not_releasable → pending_admin_approval → approved_for_release → released`, `pending_admin_approval` cannot be skipped
+- New `isValidReleaseTransition(from: ReleaseState, to: ReleaseState): boolean`
 
-### `packages/persistence` (extended through Pass 7, accepted on main)
-- Prior Pass 6 entities/repositories unchanged
-- New `StoredReviewIssueRecord` extends `ReviewIssueRecord` with `createdAt`, `updatedAt`
-- New `ReviewIssueRepository`:
-  - `save`
-  - `findById`
-  - `findByCaseId`
-  - `findByInitialPackageId`
-  - `findAll`
-- New `InMemoryReviewIssueRepository`
-- `createInMemoryStore()` now includes `reviewIssues`
+### `packages/persistence` (extended Pass 8)
+- All prior pass entities/repositories unchanged
+- New `StoredFinalPackageRecord extends FinalPackageRecord` with `createdAt`, `updatedAt`
+- New `FinalPackageRepository`: `save`, `findById`, `findByCaseId`, `findAll`
+- New `InMemoryFinalPackageRepository` (deep-copies `gapLayer` arrays on `save`)
+- `createInMemoryStore()` now includes `finalPackages`
 
-### `packages/review-issues` (implemented Pass 7, accepted on main)
-- Re-exports Pass 7 seam contracts from `@workflow/contracts`
-- Re-exports `StoredReviewIssueRecord` / `ReviewIssueRepository` from persistence
-- `createReviewIssue(payload, repo)` — validates via `validateReviewIssueRecord`, rejects duplicate IDs, stamps `createdAt` / `updatedAt`
-- `getReviewIssue`, `listReviewIssues`, `listReviewIssuesByInitialPackageId`
-- `transitionReviewIssue(issueId, toState, repo)` — validates via `isValidReviewTransition`
-- `addDiscussionEntry(issueId, { entryId, authorType, message }, repo)` — appends a stamped discussion entry and preserves scoped discussion behavior
-- `applyReviewAction(issueId, { actionId, actionType, actor, note }, repo)` — persists the exact §25.10 action and performs the mandatory resulting review-state update to `action_taken`
-- Dependencies: `@workflow/contracts`, `@workflow/core-state`, `@workflow/persistence`
+### `packages/packages-output` (extended Pass 8)
+- Re-exports `AdminApprovalStatus`, `OutputDirection`, `FinalPackageRecord`, `FinalPackageGapLayer` from `@workflow/contracts`
+- Re-exports `StoredFinalPackageRecord`, `FinalPackageRepository` from `@workflow/persistence`
+- `FinalPackageOk`, `FinalPackageError`, `FinalPackageResult` types
+- `createFinalPackage(payload, repo)` — validates with `validateFinalPackageRecord`, rejects duplicates, stamps `createdAt`/`updatedAt`
+- `getFinalPackage(packageId, repo)`
+- `listFinalPackages(repo)`
+- `listFinalPackagesByCaseId(caseId, repo)`
+- `updateFinalPackage(packageId, updates, repo)` — strips `createdAt`/`updatedAt` before re-validation (avoids `additionalProperties` rejection), re-validates, updates `updatedAt`
 
-### `packages/synthesis-evaluation`, `packages/packages-output`, `packages/core-case`, `packages/sources-context`, `packages/prompts`, `packages/sessions-clarification`
-- Pass 6 and earlier behavior unchanged
-
-### `apps/admin-web` (extended through Pass 7, accepted on main)
-- Prior Pass 6 surfaces unchanged
-- `app/api/issues/route.ts`
-  - `GET /api/issues`
-  - `POST /api/issues`
-- `app/api/issues/[id]/route.ts`
-  - `GET /api/issues/:id`
-- `app/api/issues/[id]/discussion/route.ts`
-  - `POST /api/issues/:id/discussion`
-- `app/api/issues/[id]/actions/route.ts`
-  - `POST /api/issues/:id/actions`
-- `app/api/issues/[id]/transition/route.ts`
-  - `POST /api/issues/:id/transition`
-- `app/issues/page.tsx`
-  - issue list table with `data-testid="review-issue-list"`
-- `app/issues/new/page.tsx`
-  - issue creation form with §25.4 fields, discussion scope boundary, linked evidence input
-  - renders `data-testid="validation-errors"` on API 400
-- `app/issues/[id]/page.tsx`
-  - issue detail page with initial-package/evaluation/synthesis back-links
-- `app/issues/[id]/IssueDetailClient.tsx`
-  - `data-testid="review-state-panel"`
-  - `data-testid="review-state-badge"`
-  - issue brief view
-  - linked evidence view
-  - discussion surface
-  - action controls using the exact §25.10 set
-  - explicit review-state transition form
-  - action history
-- `apps/admin-web/package.json` and `next.config.mjs` include `@workflow/review-issues`
-- `apps/admin-web/tsconfig.json` references `../../packages/review-issues`
+### `apps/admin-web` (extended Pass 8)
+- All prior pass surfaces unchanged
+- New API routes:
+  - `app/api/final-packages/route.ts`: `GET /api/final-packages`, `POST /api/final-packages`
+  - `app/api/final-packages/[id]/route.ts`: `GET /api/final-packages/:id`
+  - `app/api/final-packages/[id]/release/route.ts`: `POST /api/final-packages/:id/release` — validates `toState`, enforces `isValidReleaseTransition`, returns 400 with §28.16 citation on invalid transition
+- New UI pages:
+  - `app/final-packages/page.tsx` — list table with `data-testid="final-package-list"`
+  - `app/final-packages/new/page.tsx` — creation form (all §29.8 required fields; gap layer one-per-line textareas; checkbox for admin approval; `packageType` hardcoded)
+  - `app/final-packages/[id]/page.tsx` — detail server component (metadata, §24.13 structural separation section, §29.8.2 content sections, §29.8.5 gap layer)
+  - `app/final-packages/[id]/FinalPackageDetailClient.tsx` — `data-testid="release-state-panel"` with linear next-state buttons and §28.16 note; `data-testid="admin-approval-panel"` read-only with §25.16 note; packageState display; outputDirection display
+- `components/Nav.tsx` — added `{ href: "/final-packages", label: "Final packages" }` after `/issues`
 
 ### Remaining placeholder packages
 - `packages/domain-support`
@@ -103,24 +70,19 @@
 
 ---
 
-## What is proven (Pass 7 — accepted on `main` 2026-04-22, merge of `a8f3523`)
+## What is proven (Pass 8 — committed 2026-04-22, `e2c3c58`)
 
 | Check | Result |
 |---|---|
 | `pnpm build:contracts` | succeeds |
 | `pnpm typecheck` | 0 errors across all 14 workspace projects |
-| `pnpm build` | succeeds, including `next build` for `apps/admin-web` |
-| `POST /api/issues` empty body | HTTP 400 with Ajv-derived required-field list |
-| `POST /api/issues` valid payload | HTTP 201 with `StoredReviewIssueRecord` |
-| `POST /api/issues` duplicate ID | HTTP 409 |
-| `GET /api/issues/does-not-exist` | HTTP 404 |
-| `POST /api/issues/:id/transition` legal | HTTP 200 (`review_required -> issue_discussion_active`) |
-| `POST /api/issues/:id/transition` illegal | HTTP 400 transition-rule error |
-| `POST /api/issues/:id/discussion` during active discussion | HTTP 200 and persisted entry in `discussionThread.entries[]` |
-| `POST /api/issues/:id/actions` | HTTP 200 and persisted `actionHistory[]` entry with resulting `reviewState: "action_taken"` |
-| `/issues` | rendered HTML contains `data-testid="review-issue-list"` and seeded issue rows |
-| `/issues/:id` | rendered HTML contains `review-state-panel`, `review-state-badge`, initial-package back-link, discussion surface, linked evidence, and action controls |
-| `/issues/new` | rendered HTML contains the new issue form, scope boundary input, and linked evidence input; validation panel is wired in client code via `data-testid="validation-errors"` and proven through API 400 behavior |
+| `pnpm build` | succeeds; `/final-packages`, `/final-packages/[id]`, `/final-packages/new` appear in Next.js route output |
+| `POST /api/final-packages` valid §29.8 payload | HTTP 201 with `StoredFinalPackageRecord` |
+| `POST /api/final-packages` duplicate ID | HTTP 409 |
+| `GET /api/final-packages` | HTTP 200 JSON array |
+| `GET /api/final-packages/:id` | HTTP 200 with stored record |
+| `POST /api/final-packages/:id/release` valid (`not_releasable → pending_admin_approval`) | HTTP 200; `packageReleaseState` updated in response |
+| `POST /api/final-packages/:id/release` invalid skip (`pending_admin_approval → released`) | HTTP 400 `"Invalid release transition: 'pending_admin_approval' → 'released' is not allowed (§28.16)."` |
 
 ---
 
@@ -134,7 +96,7 @@
 | OQ-004 | §19.6–§19.9 peer-level enrichment trigger ordering not literal in spec. | 2026-04-22 |
 | OQ-005 | §21.4 conditional-section inclusion triggers not literal. | 2026-04-22 |
 
-Pass 7 introduced no new blocking governance questions.
+Pass 8 introduced no new blocking governance questions.
 
 ---
 
@@ -151,14 +113,12 @@ Pass 7 introduced no new blocking governance questions.
 
 ---
 
-## Output formalization direction (adopted 2026-04-22, pre-Pass 8)
+## Output formalization direction (adopted 2026-04-22)
 
-Output formalization for client-facing wording, document naming, section-label normalization, and enterprise-safe final deliverable presentation has been adopted as a non-governing enhancement direction. This does not alter mechanics, state logic, package eligibility, review/release gates, or governance contracts. Prompt reinforcement (rewriting or rebuilding prompt-chain logic) is deferred and is not part of accepted Pass 8 mechanics — it belongs to a separate later prompt-rebuild/analysis-improvement track.
+Output formalization for client-facing wording, document naming, section-label normalization, and enterprise-safe final deliverable presentation has been adopted as a non-governing enhancement direction. This does not alter mechanics, state logic, package eligibility, review/release gates, or governance contracts. Prompt reinforcement (rewriting or rebuilding prompt-chain logic) is deferred and belongs to a separate later prompt-rebuild/analysis-improvement track.
 
 ## What has NOT been built
 
-- Final Package assembly / UI
-- Release decision flow beyond the seam object
 - Real database persistence
 - Authentication / authorization
 - Python sidecar

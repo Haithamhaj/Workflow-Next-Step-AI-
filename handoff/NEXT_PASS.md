@@ -1,67 +1,54 @@
-# Pass 8 — Final Package + Release
+# Pass 9 — Package Preview + Release Decision Surface
 
 ## Official pass sequence
 - **Pass 6:** Synthesis + Evaluation + Initial Package — accepted on `main`
 - **Pass 7:** Review / Issue Discussion — accepted on `main` (2026-04-22)
-- **Pass 8:** Final Package + Release — **active next pass**
+- **Pass 8:** Final Package + Release — accepted on branch `claude/blissful-bardeen-371869` (2026-04-22)
+- **Pass 9:** Package Preview + Release Decision Surface — **active next pass**
+
+---
+
+## Context
+
+Pass 8 built the Final Package record, three API routes, and the admin-web surfaces for creation, detail, and release-state progression. The release panel in admin-web provides linear one-step transitions per §28.16.
+
+The admin-web already has a `/packages` nav entry (label: "Package preview") pointing at `/packages`. This route does not yet exist. Pass 9 should implement it, along with any remaining release-decision surface that was not covered by Pass 8.
 
 ---
 
 ## Goal
-Build the Final Package layer that consumes the accepted Pass 6 artifacts plus the accepted Pass 7 review-issue artifacts, while keeping final-package logic separate from release approval logic.
+
+Build the Package Preview surface and any release-decision controls that are defined in the spec but not yet implemented, without duplicating or replacing the Pass 8 final-package surfaces.
 
 ---
 
 ## Scope
 
-### Final Package
-- `packages/packages-output`
-  - final package record type + validator in contracts
-  - final package assembly helpers
-  - current-state vs target-state separation
-  - residual-gaps visibility
-- `packages/contracts`
-  - final package seam contract(s)
-- `packages/persistence`
-  - final package repository + in-memory implementation
+Determine from the spec documents what the `/packages` (Package preview) surface is supposed to show. Likely candidates:
 
-### Release flow
-- `packages/core-state`
-  - release-state transition wiring using existing `ReleaseState`
-- release approval / release routing should remain structurally separate from package existence
+- A unified view of initial packages + final packages for a given case, showing package-type, state, release state, and admin-approval status side-by-side
+- Cross-package navigation and linkage (initial → final, final → evaluation back-links)
+- Any release-readiness checklist view defined in the spec (e.g., release eligibility conditions that must be satisfied before `approved_for_release`)
 
-### Admin UI
-- final package list / detail / creation or promotion surface
-- release approval controls
-- clear separation between:
-  - final package content
-  - release approval state
-  - residual items / later review items
-
----
-
-## Output formalization boundary for Pass 8
-
-Pass 8 may adopt client-facing output wording and naming refinements. This is limited to:
-- section labels and targeted document naming on final package output
-- package preview wording and enterprise-safe output presentation
-- surface-level changes in `packages/packages-output` and `apps/admin-web` output surfaces
-
-The following are outside Pass 8 scope and must not be touched under formalization:
-- package mechanics, package-entry conditions, or eligibility rules
-- release logic or release-state transitions
-- review-state logic or blocking thresholds
-- governance contracts in `packages/contracts`
-- prompt reinforcement — belongs to a separate later prompt-rebuild/analysis-improvement track
-
-## Do not widen scope
-- No management inquiry implementation unless an authority file explicitly pulls it forward
-- No broad refactor of Pass 7 review-issue flows
-- No real database, auth, CI, or deployment work
+Before coding, identify the literal spec section(s) that define the Package Preview surface. If the spec does not literally define it, record the question in `handoff/OPEN_QUESTIONS.md` and surface it to the operator before coding.
 
 ---
 
 ## Stop conditions
-- If the review-to-final-package promotion rule is not literal, stop and surface it
-- If release approval gates are not literal, stop and surface them
-- If current-state vs target-state separation would require invented fields, stop and surface it
+
+- If the Package Preview spec section is not literal, stop and surface OQ-new
+- If release eligibility conditions (beyond linear transition gating) are defined in the spec but not implemented, surface as a new open question
+- No broad rewrites of Pass 8 surfaces
+- No prompt reinforcement, no management inquiry, no mechanics drift
+
+---
+
+## Hard rules (inherited from CLAUDE.md)
+
+- One pass per session
+- Local patch first
+- No broad rewrites
+- Business logic stays in domain packages, not in admin-web
+- Schema changes go through `packages/contracts`
+- Prove with `pnpm typecheck`, `pnpm build`, and curl/browser before closing the pass
+- Update `CURRENT_STATE.md` and `NEXT_PASS.md` at the end of the accepted pass
