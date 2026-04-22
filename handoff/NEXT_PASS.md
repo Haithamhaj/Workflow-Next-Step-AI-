@@ -3,7 +3,7 @@
 ## Official pass sequence
 - **Pass 6:** Synthesis + Evaluation + Initial Package — accepted on `main`
 - **Pass 7:** Review / Issue Discussion — accepted on `main` (2026-04-22)
-- **Pass 8:** Final Package + Release — accepted on branch `claude/blissful-bardeen-371869` (2026-04-22)
+- **Pass 8:** Final Package + Release — accepted on `main` (2026-04-22), commit `3171ad4`
 - **Pass 9:** Package Preview + Release Decision Surface — **active next pass**
 
 ---

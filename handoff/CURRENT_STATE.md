@@ -1,8 +1,8 @@
 # Current State
 
-**Accepted baseline: Pass 8 (Final Package + Release), committed 2026-04-22, commit `e2c3c58` on branch `claude/blissful-bardeen-371869`.**
+**Accepted baseline: Pass 8 (Final Package + Release), merged to `main` 2026-04-22, commit `3171ad4`.**
 
-Prior accepted baseline on `main`: Pass 7 (Review / Issue Discussion), merge of `a8f3523`.
+Prior accepted baseline on `main`: Pass 7 (Review / Issue Discussion), commit `a8f3523`.
 
 ---
 
