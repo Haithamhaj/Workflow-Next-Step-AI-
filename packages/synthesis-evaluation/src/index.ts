@@ -4,20 +4,21 @@
  *            §20.3 (seven conditions), §20.4 (five axes), §20.5 (per-axis states),
  *            §20.10 (hybrid outcome: seven conditions "must govern" final outcome;
  *                    axis rubrics are supporting lenses only),
- *            §20.11–20.14 (the four outcomes and their enabling conditions).
+ *            §20.11–20.14 (the four outcomes and their enabling conditions),
+ *            §20.19–20.20 (workflow validity vs automation-supportiveness),
+ *            §20.21–20.22 (AI-interpreted / admin-routed / rule-guarded model).
  *
  * Architecture constraint: this package must not import from core-state,
  * core-case, or sessions-clarification.
  *
- * Outcome governance (§20.10 + §20.11–20.14):
- *   The operator supplies the outcome, but the seven conditions constrain it.
- *   If any condition is false (i.e. essential workflow completion is broken):
- *     - ready_for_initial_package is invalid (§20.11 requires no blocking issues)
- *     - finalizable_with_review is invalid (§20.13 requires no issue that breaks
- *       essential workflow completion)
- *     - ready_for_final_package is invalid (§20.14 requires no blocking issue)
- *     - needs_more_clarification is the only valid outcome (§20.12)
- *   Axis states alone do NOT constrain the outcome; only the seven conditions do.
+ * Outcome governance (§20.21–§20.22 active model):
+ *   1. LLM generates per-condition interpretations at preview time (stored as snapshot).
+ *   2. Admin reviews interpretations and confirms/rejects blocking labels.
+ *   3. Server enforces: snapshot basis must match submitted payload (integrity).
+ *   4. Server enforces: all LLM-blocking conditions require adminBlockingConfirmation.
+ *   5. Server enforces: adminNote required when admin rejects a blocking label.
+ *   6. Narrow hard-stop: admin-confirmed blocking + incompatible outcome → 400.
+ *   Axis states alone do NOT constrain the outcome.
  */
 
 import {
@@ -36,6 +37,7 @@ import type {
   StoredEvaluationRecord,
   SynthesisRepository,
   EvaluationRepository,
+  InterpretationSnapshotRepository,
 } from "@workflow/persistence";
 
 export const SYNTHESIS_EVALUATION_PACKAGE =
@@ -52,12 +54,15 @@ export type {
   EvaluationRecord,
   EvaluationAxes,
   EvaluationConditions,
+  ConditionInterpretations,
+  ConditionInterpretation,
 } from "@workflow/contracts";
 export type {
   StoredSynthesisRecord,
   StoredEvaluationRecord,
   SynthesisRepository,
   EvaluationRepository,
+  InterpretationSnapshotRepository,
 } from "@workflow/persistence";
 
 // ---------------------------------------------------------------------------
@@ -156,58 +161,115 @@ export function listSynthesisByCaseId(
 // ---------------------------------------------------------------------------
 
 /**
- * Validate an EvaluationRecord payload, reject duplicate IDs, persist a
- * StoredEvaluationRecord.
+ * Validate an EvaluationRecord payload, verify snapshot integrity, enforce
+ * admin blocking confirmations, apply narrow hard-stop, then persist.
  *
- * After schema validation, enforces §20.10 seven-condition governance:
- * if any condition is false (essential workflow completion is broken),
- * the outcome must be needs_more_clarification — any "ready" or
- * "finalizable" outcome is rejected (§20.11, §20.13, §20.14 each require
- * that no issue breaks essential workflow completion).
+ * §20.21–§20.22 AI-interpreted / admin-routed / rule-guarded model:
+ *   1. Schema validation (Ajv).
+ *   2. Snapshot lookup — interpretationSnapshotId must exist.
+ *   3. Basis integrity — submitted conditions + outcome must match snapshot.basis.
+ *   4. For each condition the LLM labelled workflow-blocking, admin must supply
+ *      adminBlockingConfirmations[key] (true or false).
+ *   5. adminNote required when any blocking label is rejected (false).
+ *   6. Narrow hard-stop: admin-confirmed blocking + incompatible outcome → 400.
+ *   7. Duplicate check.
+ *   8. Persist with conditionInterpretations copied from snapshot.
  */
 export function createEvaluation(
   payload: unknown,
   repo: EvaluationRepository,
+  snapshotRepo: InterpretationSnapshotRepository,
 ): EvaluationResult {
   const result = validateEvaluationRecord(payload);
   if (!result.ok) {
     const messages = result.errors
       .map((e) => e.message ?? String(e))
       .join("; ");
-    return {
-      ok: false,
-      error: `Invalid EvaluationRecord: ${messages}`,
-    };
+    return { ok: false, error: `Invalid EvaluationRecord: ${messages}` };
   }
 
   const record: EvaluationRecord = result.value;
 
-  // §20.10 seven-condition constraint: if any critical completeness condition
-  // is false, it "must govern the final outcome" (§20.10). Outcomes other than
-  // needs_more_clarification each require no broken essential condition:
-  //   §20.11 ("remaining issues do not prevent a useful analytical package")
-  //   §20.13 ("no remaining issue breaks essential workflow completion")
-  //   §20.14 ("no remaining blocking issue prevents final package creation")
-  const anyConditionFailed = Object.values(record.conditions).some(
-    (v) => v === false,
+  // Step 2: snapshot lookup
+  const snapshot = snapshotRepo.findById(record.interpretationSnapshotId);
+  if (snapshot === null) {
+    return {
+      ok: false,
+      error: `Interpretation snapshot '${record.interpretationSnapshotId}' not found. Submit the conditions via /api/evaluations/interpret before creating an evaluation.`,
+    };
+  }
+
+  // Step 3: basis integrity — submitted payload must match what the admin reviewed
+  const basisConditionsMatch =
+    JSON.stringify(snapshot.basis.conditions) ===
+    JSON.stringify(record.conditions);
+  if (!basisConditionsMatch) {
+    return {
+      ok: false,
+      error:
+        "Snapshot integrity failure: the submitted conditions do not match the conditions in the interpretation snapshot. Re-run the analysis before submitting.",
+    };
+  }
+  if (snapshot.basis.outcome !== record.outcome) {
+    return {
+      ok: false,
+      error:
+        "Snapshot integrity failure: the submitted outcome does not match the outcome in the interpretation snapshot. Re-run the analysis before submitting.",
+    };
+  }
+
+  // Step 4: admin must confirm/reject each condition labelled blocking by the LLM
+  const blockingKeys = (
+    Object.keys(snapshot.conditionInterpretations) as (keyof EvaluationConditions)[]
+  ).filter(
+    (k) => snapshot.conditionInterpretations[k]?.workflowEffect === "blocking",
   );
-  if (anyConditionFailed) {
-    const REQUIRES_INTACT_CONDITIONS = [
-      EvaluationOutcome.ReadyForInitialPackage,
-      EvaluationOutcome.FinalizableWithReview,
-      EvaluationOutcome.ReadyForFinalPackage,
-    ] as const;
-    if (
-      (REQUIRES_INTACT_CONDITIONS as readonly string[]).includes(record.outcome)
-    ) {
+
+  for (const key of blockingKeys) {
+    if (record.adminBlockingConfirmations?.[key] === undefined) {
       return {
         ok: false,
-        error:
-          "§20.10: one or more critical completeness conditions are false — essential workflow completion is broken. Outcome must be needs_more_clarification (§20.12). Outcomes ready_for_initial_package (§20.11), finalizable_with_review (§20.13), and ready_for_final_package (§20.14) all require that no remaining issue breaks essential workflow completion.",
+        error: `§20.22: the LLM labelled condition '${key}' as workflow-blocking. adminBlockingConfirmations.${key} must be true (confirmed blocking) or false (label rejected).`,
       };
     }
   }
 
+  // Step 5: adminNote required when any blocking label is rejected
+  const anyRejected = blockingKeys.some(
+    (k) => record.adminBlockingConfirmations?.[k] === false,
+  );
+  if (anyRejected && !record.adminNote?.trim()) {
+    return {
+      ok: false,
+      error:
+        "adminNote is required when rejecting a blocking label — provide a brief explanation for traceability.",
+    };
+  }
+
+  // Step 6: narrow hard-stop — admin-confirmed blocking + incompatible outcome
+  const INCOMPATIBLE_WITH_CONFIRMED_BLOCKING = [
+    EvaluationOutcome.ReadyForInitialPackage,
+    EvaluationOutcome.FinalizableWithReview,
+    EvaluationOutcome.ReadyForFinalPackage,
+  ] as const;
+
+  const anyConfirmed = blockingKeys.some(
+    (k) => record.adminBlockingConfirmations?.[k] === true,
+  );
+  if (
+    anyConfirmed &&
+    (INCOMPATIBLE_WITH_CONFIRMED_BLOCKING as readonly string[]).includes(
+      record.outcome,
+    )
+  ) {
+    return {
+      ok: false,
+      error:
+        "§20.22 hard-stop: at least one condition is admin-confirmed as workflow-blocking. The outcome must be needs_more_clarification while a materially blocking condition remains unresolved.",
+    };
+  }
+
+  // Step 7: duplicate check
   const existing = repo.findById(record.evaluationId);
   if (existing !== null) {
     return {
@@ -216,9 +278,11 @@ export function createEvaluation(
     };
   }
 
+  // Step 8: persist with interpretations from the snapshot
   const stored: StoredEvaluationRecord = {
     ...record,
     createdAt: new Date().toISOString(),
+    conditionInterpretations: snapshot.conditionInterpretations,
   };
 
   repo.save(stored);

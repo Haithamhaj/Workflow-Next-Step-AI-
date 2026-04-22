@@ -3,7 +3,9 @@
  * Source of truth is src/schemas/evaluation-record.schema.json.
  * Spec refs: §20.3 seven workflow-completeness conditions, §20.4 five axes,
  *            §20.5 four per-axis states, §20.10 hybrid outcome model (not
- *            a deterministic derivation), §20.11–§20.14 four outcomes.
+ *            a deterministic derivation), §20.11–§20.14 four outcomes,
+ *            §20.19–§20.20 workflow validity vs automation-supportiveness,
+ *            §20.21–§20.22 AI-interpreted / admin-routed / rule-guarded model.
  */
 
 /** Four per-axis states from §20.5. */
@@ -48,6 +50,28 @@ export interface EvaluationConditions {
   boundary: boolean;
 }
 
+/** Impact on workflow documentability — two levels per §20.19–§20.20. */
+export type ConditionWorkflowEffect = "none" | "non_blocking" | "blocking";
+
+/** Impact on automation-supportiveness — a separate maturity level (§20.19). */
+export type ConditionAutomationEffect =
+  | "none"
+  | "limiting"
+  | "blocking_for_automation";
+
+/** LLM-generated interpretation for one false condition (§20.21). */
+export interface ConditionInterpretation {
+  workflowEffect: ConditionWorkflowEffect;
+  automationEffect: ConditionAutomationEffect;
+  whyItMatters: string;
+  recommendedActions: string[];
+}
+
+/** Partial map — only false conditions receive an interpretation entry. */
+export type ConditionInterpretations = Partial<
+  Record<keyof EvaluationConditions, ConditionInterpretation>
+>;
+
 export interface EvaluationRecord {
   evaluationId: string;
   caseId: string;
@@ -57,4 +81,10 @@ export interface EvaluationRecord {
   outcome: EvaluationOutcome;
   readinessReasoning: string;
   confidenceEvidenceNotes?: string;
+  /** UUID of the InterpretationSnapshot the admin reviewed before submitting. */
+  interpretationSnapshotId: string;
+  /** Admin confirmations for conditions the LLM labelled as workflow-blocking. */
+  adminBlockingConfirmations?: Partial<Record<keyof EvaluationConditions, boolean>>;
+  /** Required when admin rejects at least one blocking label (traceability). */
+  adminNote?: string;
 }

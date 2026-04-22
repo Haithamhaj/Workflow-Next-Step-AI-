@@ -12,7 +12,8 @@
     "axes",
     "conditions",
     "outcome",
-    "readinessReasoning"
+    "readinessReasoning",
+    "interpretationSnapshotId"
   ],
   "properties": {
     "evaluationId": {
@@ -90,6 +91,30 @@
     "confidenceEvidenceNotes": {
       "type": "string",
       "description": "Optional confidence/evidence notes."
+    },
+    "interpretationSnapshotId": {
+      "type": "string",
+      "minLength": 1,
+      "description": "UUID of the InterpretationSnapshot the admin reviewed before submitting (§20.21)."
+    },
+    "adminBlockingConfirmations": {
+      "type": "object",
+      "description": "Admin confirmation for each condition the LLM labelled as workflow-blocking. True = confirmed blocking; false = admin rejects the blocking label.",
+      "properties": {
+        "sequenceContinuity": { "type": "boolean" },
+        "aToBToCClarity": { "type": "boolean" },
+        "coreStepConditions": { "type": "boolean" },
+        "decisionRuleOrThreshold": { "type": "boolean" },
+        "handoffResponsibility": { "type": "boolean" },
+        "controlOrApproval": { "type": "boolean" },
+        "boundary": { "type": "boolean" }
+      },
+      "additionalProperties": false
+    },
+    "adminNote": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Required when admin rejects at least one blocking label — traceability note explaining the override."
     }
   },
   "definitions": {

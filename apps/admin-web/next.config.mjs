@@ -11,6 +11,7 @@ const nextConfig = {
     "@workflow/sessions-clarification",
     "@workflow/synthesis-evaluation",
     "@workflow/packages-output",
+    "@workflow/integrations",
   ],
 };
 

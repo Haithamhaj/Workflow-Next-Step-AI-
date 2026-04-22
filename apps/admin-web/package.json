@@ -19,6 +19,7 @@
     "@workflow/prompts": "workspace:*",
     "@workflow/sessions-clarification": "workspace:*",
     "@workflow/synthesis-evaluation": "workspace:*",
+    "@workflow/integrations": "workspace:*",
     "@workflow/packages-output": "workspace:*",
     "next": "14.2.5",
     "react": "18.3.1",

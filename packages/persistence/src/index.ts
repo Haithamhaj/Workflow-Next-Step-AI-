@@ -8,6 +8,9 @@ import type {
   ClarificationQuestion,
   SynthesisRecord,
   EvaluationRecord,
+  EvaluationConditions,
+  EvaluationOutcome,
+  ConditionInterpretations,
   InitialPackageRecord,
 } from "@workflow/contracts";
 
@@ -53,9 +56,32 @@ export interface StoredSynthesisRecord extends SynthesisRecord {
   createdAt: string;
 }
 
-/** Persistent evaluation record (§20 payload + createdAt). */
+/** Persistent evaluation record (§20 payload + createdAt + conditionInterpretations). */
 export interface StoredEvaluationRecord extends EvaluationRecord {
   createdAt: string;
+  conditionInterpretations: ConditionInterpretations;
+}
+
+/**
+ * Snapshot of the LLM-generated interpretation that the admin reviewed.
+ * Stored at preview time; referenced by evaluationSnapshotId on final submit.
+ * The basis fields allow the server to verify the submitted evaluation
+ * matches exactly what the admin saw.
+ */
+export interface InterpretationSnapshot {
+  snapshotId: string;
+  conditionInterpretations: ConditionInterpretations;
+  basis: {
+    conditions: EvaluationConditions;
+    outcome: EvaluationOutcome;
+    synthesisContext?: string;
+  };
+  createdAt: string;
+}
+
+export interface InterpretationSnapshotRepository {
+  save(snapshot: InterpretationSnapshot): void;
+  findById(snapshotId: string): InterpretationSnapshot | null;
 }
 
 /** Persistent initial-package record (§21 payload + createdAt). */
@@ -292,6 +318,20 @@ class InMemoryInitialPackageRepository implements InitialPackageRepository {
   }
 }
 
+class InMemoryInterpretationSnapshotRepository
+  implements InterpretationSnapshotRepository
+{
+  private readonly store = new Map<string, InterpretationSnapshot>();
+
+  save(snapshot: InterpretationSnapshot): void {
+    this.store.set(snapshot.snapshotId, { ...snapshot });
+  }
+
+  findById(snapshotId: string): InterpretationSnapshot | null {
+    return this.store.get(snapshotId) ?? null;
+  }
+}
+
 // ---------------------------------------------------------------------------
 // Factory
 // ---------------------------------------------------------------------------
@@ -304,6 +344,7 @@ export interface InMemoryStore {
   synthesis: SynthesisRepository;
   evaluations: EvaluationRepository;
   initialPackages: InitialPackageRepository;
+  snapshots: InterpretationSnapshotRepository;
 }
 
 export function createInMemoryStore(): InMemoryStore {
@@ -315,8 +356,9 @@ export function createInMemoryStore(): InMemoryStore {
     synthesis: new InMemorySynthesisRepository(),
     evaluations: new InMemoryEvaluationRepository(),
     initialPackages: new InMemoryInitialPackageRepository(),
+    snapshots: new InMemoryInterpretationSnapshotRepository(),
   };
 }
 
-// Re-export CaseConfiguration for use by core-case without double-importing contracts
-export type { CaseConfiguration };
+// Re-export for use by domain packages without double-importing contracts
+export type { CaseConfiguration, ConditionInterpretations };

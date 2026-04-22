@@ -19,7 +19,7 @@ export async function POST(request: Request) {
       { status: 400 },
     );
   }
-  const outcome = createEvaluation(body, store.evaluations);
+  const outcome = createEvaluation(body, store.evaluations, store.snapshots);
   if (!outcome.ok) {
     const status = outcome.error.includes("already exists") ? 409 : 400;
     return NextResponse.json({ error: outcome.error }, { status });
