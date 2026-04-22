@@ -1,119 +1,162 @@
-# Pass 6 — Workflow Evaluation (§20) + Evaluation UI
+# Pass 6 — Synthesis + Evaluation + Initial Package
+
+## Official pass sequence (do not rescope without operator approval)
+- **Pass 6:** Synthesis + Evaluation + Initial Package
+- **Pass 7:** Review / Issue Discussion
+
+This file defines Pass 6 as a single cohesive pass covering all three areas. Any attempt to split synthesis out of Pass 6, or to pull review work forward into Pass 6, is an unapproved rescoping of the official sequence.
+
+---
 
 ## Goal
-Implement the evaluation surface per spec §20 (Workflow Evaluation Logic). Each case produces an `EvaluationRecord` that holds:
-- the five §20.4 rubric axes, each carrying one §20.5 judgment state
-- the seven §20.3 critical completeness conditions, each carrying a satisfied/unsatisfied marker + an optional note
-- a derived §20.11–20.14 outcome
+Implement the three spec-defined bodies that turn a session's clarified workflow into a reviewable analytical artifact:
 
-The admin UI must let operators create, view, and inspect evaluation records attached to a case.
+1. **Synthesis** (spec §19 — Synthesis Logic) — produce synthesis output from session material.
+2. **Evaluation** (spec §20 — Workflow Evaluation Logic) — judge the synthesized workflow against the seven critical completeness conditions and the practical rubric axes, yielding a §20.11–20.14 outcome.
+3. **Initial Package** (spec §21 — Initial Workflow Package) — assemble the first outward analytical package using the synthesis output and evaluation judgments.
 
-Synthesis (§19, difference blocks, common path, peer-level synthesis) is **explicitly out of scope** for Pass 6 and lands in Pass 7. Evaluation is the narrower, fully-enumerated slice and is implemented first.
+All three are delivered in this one pass. Admin UI surfaces must exist for each so an operator can observe and act on them.
 
 ---
 
 ## Scope
 
-### Build — `packages/contracts`
-- `src/schemas/evaluation-record.schema.json` — JSON Schema Draft-07
-  - Required: `evaluationId`, `caseId`, `axisJudgments`, `completenessConditions`, `outcome`
-  - `axisJudgments`: object keyed by the five §20.4 axes, each valued by one §20.5 state
-  - `completenessConditions`: array of 7 entries keyed by §20.3 condition ordinal (1–7), each with `satisfied: boolean` and optional `note: string`
-  - `outcome`: one of the four §20.11–20.14 enum strings
-- `src/types/evaluation-record.ts`:
-  - `JudgmentState` — enum of exactly `strong`, `partial`, `weak`, `blocking` (§20.5)
-  - `RubricAxis` — enum of exactly `workflow_completeness`, `sequence_clarity`, `decision_exception_clarity`, `ownership_handoff_clarity`, `documentation_strength` (§20.4)
-  - `EvaluationOutcome` — enum of exactly `ready_for_initial_package`, `needs_more_clarification`, `finalizable_with_review`, `ready_for_final_package` (§20.11–20.14)
-  - `CompletenessConditionId` — numeric literal union `1 | 2 | 3 | 4 | 5 | 6 | 7`
-  - `EvaluationRecord` type
-- `src/index.ts` — export `validateEvaluationRecord` via `makeValidator<EvaluationRecord>`
-- String enum values derived **literally** from the spec wording — no invention
+### Synthesis (§19)
 
-### Build — `packages/persistence`
-- `EvaluationRecord` re-export from contracts (no type redefinition)
-- `EvaluationRepository` interface: `save`, `findById`, `findByCaseId`, `findAll`
-- `InMemoryEvaluationRepository` (Map-based, keyed by `evaluationId`)
-- Extend `createInMemoryStore()` to include `evaluations: EvaluationRepository`
+- `packages/synthesis-evaluation` body — synthesis half:
+  - Synthesis record type + validator (contracts owns the schema and type)
+  - Function(s) to construct synthesis output from session material, preserving §19.11 required fields
+  - Difference-block representation per §19.5+ (temporary structured synthesis objects)
+  - Common-path handling per §19.3/§19.4
+  - Peer-level synthesis and enrichment behaviour per §19.6–§19.9, subject to governance confirmation (see Stop Conditions)
+- `packages/contracts`:
+  - `synthesis-record.schema.json` (Draft-07) + TypeScript type
+  - `validateSynthesisRecord` exported from `src/index.ts`
+- `packages/persistence`:
+  - `SynthesisRecord` repository interface and `InMemorySynthesisRepository`
+  - Extend `createInMemoryStore()`
 
-### Build — `packages/synthesis-evaluation` body
-(The package is named `synthesis-evaluation` but Pass 6 fills only the evaluation half. Synthesis helpers remain skeleton for Pass 7.)
-- `createEvaluation(payload, repo)` — validates via `validateEvaluationRecord`, rejects duplicate IDs, returns `EvaluationOutcome` result
-- `getEvaluation(evaluationId, repo)` — lookup by ID
-- `listEvaluations(repo)`
-- `listEvaluationsByCaseId(caseId, repo)`
-- `isBlockingAxis(state: JudgmentState)` predicate — true for `blocking`
-- `conditionIsSatisfied(record, id: CompletenessConditionId)` predicate
-- Re-exports: `JudgmentState`, `RubricAxis`, `EvaluationOutcome`, `CompletenessConditionId`, `EvaluationRecord`, `EvaluationRepository`
-- Architecture constraints:
-  - does NOT import from `packages/core-case`, `packages/sessions-clarification`, or `packages/core-state`
-  - does NOT compute the outcome itself — the `outcome` field is supplied by the caller. Pass 6 is a persistence + classification surface, not a scoring engine. If an operator later requests automated outcome derivation, it is a Pass 7+ concern and must be scoped separately. **Stop condition:** do not invent a rule that maps axis states + condition marks to outcomes unless the spec explicitly states one. §20.3/§20.10 describe *philosophy* ("seven conditions govern final outcome interpretation") but do not specify a deterministic mapping.
+### Evaluation (§20)
 
-### Build — `apps/admin-web`
-- `app/api/evaluations/route.ts` — `GET /api/evaluations` + `POST /api/evaluations`
-- `app/api/evaluations/[id]/route.ts` — `GET /api/evaluations/:id` (404 on miss)
-- `app/evaluations/page.tsx` — list server component; columns include Evaluation ID, Case ID, Outcome (badge), Blocking count (# axes at `blocking`)
-- `app/evaluations/new/page.tsx` — client component; form with the 5 axis dropdowns, 7 condition checkbox+note rows, and outcome dropdown; `data-testid="validation-errors"` error panel
-- `app/evaluations/[id]/page.tsx` — server component; visually distinct panel (`data-testid="outcome-panel"`) showing outcome + §20.11–20.14 header; axis table; seven-condition table with §20.3 labels
-- `app/evaluations/OutcomeBadge.tsx` — color-mapped badge for all 4 outcomes
-- `next.config.mjs` — `transpilePackages` already includes `@workflow/synthesis-evaluation`
+- `packages/synthesis-evaluation` body — evaluation half:
+  - Five §20.4 rubric axes: **Workflow Completeness**, **Sequence Clarity**, **Decision / Exception Clarity**, **Ownership / Handoff Clarity**, **Documentation Strength**
+  - Four §20.5 judgment states (per axis): **Strong**, **Partial**, **Weak**, **Blocking**
+  - Seven §20.3 critical completeness conditions:
+    1. continuity of the core workflow sequence
+    2. clarity of how point A leads to point B and how point B leads to point C
+    3. completeness of the conditions required to understand or execute a core step
+    4. the decision rule or threshold needed for a core branch
+    5. the handoff or responsibility needed for a core transition
+    6. the control or approval logic required for a core step
+    7. the boundary required to understand where the use case actually begins or ends
+  - Four §20.11–20.14 derived outcomes: **Ready for Initial Package**, **Needs More Clarification**, **Finalizable with Review**, **Ready for Final Package**
+  - Evaluation record type + validator (contracts-owned schema)
+  - Classification helpers — must not invent rules beyond what §20 literally specifies
+- `packages/contracts`: `evaluation-record.schema.json` + type + `validateEvaluationRecord`
+- `packages/persistence`: `EvaluationRecord` repository + in-memory implementation + store factory extension
 
-### Validate
+### Initial Package (§21)
+
+- Initial package assembly body (either inside `packages/packages-output` or a sibling — no new top-level package without justification):
+  - Mandatory sections (§21.3) — assembled from synthesis + evaluation inputs
+  - Conditional section logic (§21.4)
+  - Package-level status field logic (§21.5)
+  - Seven-condition visibility rule (§21.8) — conditions are **not** surfaced as a checklist in the outward package (§21.8 is explicit); they remain part of the admin-only judgment layer (§21.11)
+  - Analytical document layer (§21.6)
+  - UI overview layer (§21.10)
+  - Admin-only judgment layer (§21.11)
+- `packages/contracts`: `initial-package.schema.json` (Draft-07) + type + validator
+- `packages/persistence`: `InitialPackageRecord` repository + in-memory implementation + store factory extension
+
+### Admin UI (`apps/admin-web`)
+
+- Synthesis surface:
+  - `app/api/synthesis/route.ts` + `app/api/synthesis/[id]/route.ts`
+  - `app/synthesis/page.tsx`, `app/synthesis/new/page.tsx`, `app/synthesis/[id]/page.tsx`
+- Evaluation surface:
+  - `app/api/evaluations/route.ts` + `app/api/evaluations/[id]/route.ts`
+  - `app/evaluations/page.tsx`, `app/evaluations/new/page.tsx`, `app/evaluations/[id]/page.tsx`
+  - Outcome badge, axis table, seven-condition admin-only view (§21.11)
+- Initial Package surface:
+  - `app/api/initial-packages/route.ts` + `app/api/initial-packages/[id]/route.ts`
+  - `app/initial-packages/page.tsx`, `app/initial-packages/new/page.tsx`, `app/initial-packages/[id]/page.tsx`
+  - Outward view (no seven-condition checklist per §21.8) and admin-only judgment view (§21.11) clearly separated in the DOM
+- All error panels keyed with `data-testid="validation-errors"`
+- State/outcome panels keyed with a stable `data-testid` (e.g. `outcome-panel`, `package-status-panel`)
+
+### Validate (branch-local proof)
+
 - `pnpm typecheck` — 0 errors
-- `POST /api/evaluations` missing required field → HTTP 400 with Ajv error text
-- `POST /api/evaluations` valid body → HTTP 201 + persisted `EvaluationRecord`
-- `POST /api/evaluations` duplicate `evaluationId` → HTTP 409
-- `GET /api/evaluations` → returns persisted list
-- `GET /api/evaluations/:id` → returns record; 404 on miss
-- `/evaluations` list page renders the record with an outcome badge and blocking-count column
-- `/evaluations/new` with missing required field → validation error visible in rendered DOM (`data-testid="validation-errors"`)
-- `/evaluations/:id` detail page renders the outcome panel with §20.11–20.14 header, axis table, and all seven §20.3 conditions
+- Synthesis, evaluation, and initial package records each round-trip through their API: 201 on valid, 400 on invalid (Ajv-derived text), 409 on duplicate, 404 on miss
+- Each of the three list pages renders submitted records
+- Each of the three `/new` pages shows DOM validation error on missing required field
+- Each detail page shows the spec-mandated panels:
+  - Synthesis detail shows §19.11 required fields
+  - Evaluation detail shows axis table + seven-condition admin view + outcome
+  - Initial Package detail shows outward sections (§21.3, §21.4, §21.5) **and** admin-only judgment layer (§21.11), clearly separated; seven-condition checklist absent from the outward portion (§21.8)
 
 ### Do not widen scope
-- No synthesis logic (§19) — difference blocks, common-path detection, peer-level synthesis all land in Pass 7
-- No automatic outcome derivation — operator supplies the outcome
-- No seven-condition visibility propagation into the Initial Package (§21.8) — that is a Pass 7+ concern once package assembly exists
-- No LLM invocation
-- No real database
-- No authentication
+
+- No Review / Issue Discussion work (that is Pass 7)
+- No Final Package UI (§21.13 is explicit: Final Package UI is a later concern)
+- No LLM invocation, no real database, no authentication
 
 ---
 
 ## Dependencies on prior passes
-- Pass 1 (contracts scaffold) — complete
-- Pass 2 (state families, core-state, persistence, core-case, case UI) — complete
-- Pass 3 (sources-context) — complete
-- Pass 4 (prompts package + UI) — complete
-- Pass 5 (sessions-clarification + session UI) — complete
 
-Evaluation records reference `caseId` (not `sessionId`) because §20 frames evaluation at the case level. If the operator later wants session-level evaluation surfaces, that is a future pass — do not add a `sessionId` field speculatively.
+- Pass 1 (contracts scaffold) — complete on `main`
+- Pass 2 (state families, core-state, persistence, core-case, case UI) — complete on `main`
+- Pass 3 (sources-context + source UI) — complete on `main`
+- Pass 4 (prompts package + prompt UI) — complete on `main`
+- Pass 5 (sessions-clarification + session UI) — **pending merge to `main`** (branch `pass-5-sessions`). Pass 6 implementation begins once Pass 5 lands on `main`.
 
 ---
 
 ## Architecture constraints
-- Business logic belongs in `packages/synthesis-evaluation`, not in `apps/admin-web`
-- All evaluation types and schemas live in `packages/contracts`; `synthesis-evaluation` re-exports, does not redefine
+
+- Business logic lives in domain packages, not `apps/admin-web`
+- Contracts owns every shared type and schema; domain packages re-export, do not redefine
 - `makeValidator<T>` for all payload validation
-- `packages/synthesis-evaluation` must not import from `core-case`, `sessions-clarification`, or `core-state`
-- Enum values must match spec wording literally — if wording is ambiguous, record the question in `handoff/OPEN_QUESTIONS.md` and stop
+- `packages/synthesis-evaluation` must not import `core-case`, `sessions-clarification`, or `core-state`
+- Package-assembly code must not import prompt-rendering code (prompts vs. state/output stay separated per CLAUDE.md)
+- Spec-literal enum wording — no guessed synonyms, no reordering
 
 ---
 
-## Required proof before Pass 6 is accepted
+## Required proof before Pass 6 is implemented-on-branch
 
-1. `pnpm typecheck` — 0 errors across all packages
-2. `POST /api/evaluations` missing field → 400 with validator-derived error text
-3. `POST /api/evaluations` valid body → 201 + persisted record retrievable via `GET /api/evaluations/:id`
-4. `POST /api/evaluations` duplicate ID → 409
-5. `/evaluations` list page renders submitted record with outcome badge and blocking-count column
-6. `/evaluations/new` missing-field submit → validation error DOM proof (`data-testid="validation-errors"`)
-7. `/evaluations/:id` detail page DOM proof: outcome panel + axis table + seven-condition table all present
-8. Handoff updated: `CURRENT_STATE.md`, `DECISIONS_LOG.md`, `OPEN_QUESTIONS.md` reflect Pass 6 outcome
-9. Commit pushed to `origin`
+1. `pnpm typecheck` — 0 errors
+2. Synthesis API: 201 / 400 / 409 / 404 behaviors verified
+3. Evaluation API: 201 / 400 / 409 / 404 behaviors verified
+4. Initial Package API: 201 / 400 / 409 / 404 behaviors verified
+5. `/synthesis/new`, `/evaluations/new`, `/initial-packages/new` — DOM proof of `data-testid="validation-errors"` on missing required field
+6. `/synthesis/:id` — DOM proof of §19.11 required fields rendered
+7. `/evaluations/:id` — DOM proof of axis table + seven-condition admin view + outcome badge
+8. `/initial-packages/:id` — DOM proof that outward section renders §21.3/§21.4 sections AND admin-only judgment layer (§21.11) AND seven-condition checklist is **absent** from the outward portion (§21.8)
+9. Handoff updated: `CURRENT_STATE.md`, `DECISIONS_LOG.md`, `OPEN_QUESTIONS.md`
+10. Work committed to a Pass 6 review branch and pushed to origin
+11. Pass 6 is accepted only once the review branch is merged into `main`
 
 ---
 
-## Stop conditions
+## Stop conditions (invention-risk gates)
 
-- If the mapping from axis judgments + seven-condition marks to an outcome is not explicitly specified in the locked reference documents, **do not invent one**. Pass 6 requires the operator to supply the outcome. Record the absence as an open question if automated derivation is requested.
-- If any §20.3, §20.4, §20.5, or §20.11–20.14 enum value wording is ambiguous (e.g. hyphenation, case, plural form), record the question in `handoff/OPEN_QUESTIONS.md` before picking a canonical string.
-- Synthesis (§19) governance — difference-block shape, common-path detection threshold, peer-level enrichment rules — is **Pass 7** scope. Do not pull it into Pass 6 even if refactoring makes it tempting.
+Before touching code in each area, confirm the governance is specified. If any of the following cannot be resolved from the locked reference documents by literal reading, record it as a narrow, concrete entry in `handoff/OPEN_QUESTIONS.md` and surface it to the operator **before** implementing the affected area. Do not invent:
+
+- **Difference-block field structure (§19.5+)** — spec calls them "temporary structured synthesis objects" and describes purpose, but the exact persisted field shape may need operator confirmation at implementation time.
+- **Common-path support threshold (§19.3/§19.4)** — "sufficiently supported" is qualitative; if a boolean/threshold is needed in the schema, ask.
+- **Peer-level enrichment rules (§19.6–§19.9)** — hierarchy of enrichment sources is described but the exact trigger ordering in code may need confirmation.
+- **Axis-and-condition → outcome derivation (§20.10)** — spec describes a hybrid outcome philosophy, not a deterministic rule. Pass 6 must either (a) require the operator to supply the outcome explicitly, or (b) implement a rule only if §20.10 or an adjacent locked section states one literally.
+- **§21.4 conditional section triggers** — if the conditions for including/excluding a section are not literal, ask.
+
+These gates are part of Pass 6, not grounds to split Pass 6 into smaller passes.
+
+---
+
+## Out of scope for Pass 6 (belongs to Pass 7 or later)
+
+- Review / Issue Discussion surface (Pass 7)
+- Final Package UI (§21.13 — later)
+- Release decisions (§28.15 state family exists but release flow is later)
+- LLM transport, real database, authentication, CI — unchanged from prior passes

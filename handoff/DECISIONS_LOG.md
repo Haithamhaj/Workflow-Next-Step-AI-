@@ -42,7 +42,9 @@ Status: LOCKED | FORMALIZED | IMPL-EXTENSION
 
 ---
 
-## Pass 5 — Session lifecycle + clarification UI
+## Pass 5 — Session lifecycle + clarification UI (branch `pass-5-sessions`, pending merge)
+
+> Status: these decisions are recorded against the Pass 5 work on branch `pass-5-sessions`. They become baseline-active only after the branch is merged into `main`. Until merge, they are proposal-scoped.
 
 - **`SessionCreation` schema owns session intake contract; `SessionRecord` (persistence) extends it with `createdAt`, `currentState`, `clarificationQuestions`** — keeps contracts the single source of truth for payload shape; persistence owns the stored-form shape, not the intake shape — LOCKED
 - **`ClarificationQuestion` requires `question`, `explanation`, and `example` (all non-empty strings) per §17.8** — literal reading of the spec; missing any of the three is rejected by `addClarificationQuestion` — LOCKED
