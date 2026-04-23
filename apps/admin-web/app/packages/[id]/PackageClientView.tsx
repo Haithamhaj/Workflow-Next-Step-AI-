@@ -66,7 +66,7 @@ export function PackageClientView({ detail }: { detail: PackageSurfaceDetail }) 
 
   return (
     <>
-      <section className="package-overview-row" data-testid="package-overview-row">
+      <section className="package-summary-row" data-testid="package-summary-row">
         <div className="package-overview-card">
           <span className="package-card-label">Package view</span>
           <h3>{detail.kind === "final_package" ? "Final client delivery" : "Initial client preview"}</h3>
@@ -106,13 +106,8 @@ export function PackageClientView({ detail }: { detail: PackageSurfaceDetail }) 
           </button>
         ))}
         <Link href={detail.downloadHref} className="package-download-link">
-          Download package text
+          Export package
         </Link>
-        {detail.adminReleaseHref ? (
-          <Link href={detail.adminReleaseHref} className="package-admin-link">
-            Open admin release controls
-          </Link>
-        ) : null}
       </section>
 
       {activeTab === "preview" ? (
@@ -211,7 +206,7 @@ export function PackageClientView({ detail }: { detail: PackageSurfaceDetail }) 
               tone={releaseTone(detail.finalPackage?.packageReleaseState ?? null)}
             />
             <DetailPill
-              label="Admin approval"
+              label="Approval status"
               value={detail.finalPackage?.adminApprovalStatus ?? "not_applicable"}
               tone={detail.finalPackage?.adminApprovalStatus === "approved" ? "#58d68d" : "#8a9099"}
             />

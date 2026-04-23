@@ -19,7 +19,7 @@ const links = [
 export function Nav() {
   return (
     <aside className="sidebar">
-      <h1>Workflow Admin</h1>
+      <h1>Workflow</h1>
       <nav>
         <ul>
           {links.map((l) => (

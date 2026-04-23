@@ -14,50 +14,54 @@ function uniqueCaseCount(records: PackageSurfaceListItem[]): number {
   return new Set(records.map((record) => record.caseContext.caseId)).size;
 }
 
+function uniqueDomains(records: PackageSurfaceListItem[]): string[] {
+  return [...new Set(records.map((record) => record.caseContext.domain))];
+}
+
+function uniqueDepartments(records: PackageSurfaceListItem[]): string[] {
+  return [...new Set(records.map((record) => record.caseContext.mainDepartment))];
+}
+
 export default async function PackagePreviewPage() {
   const records = await getPackages();
   const finalCount = records.filter((record) => record.kind === "final_package").length;
-  const previewCount = records.filter((record) => record.kind === "initial_preview").length;
-  const reviewVisibleCount = records.filter((record) => record.reviewItemCount > 0).length;
 
   return (
     <div className="package-surface-page">
-      <section className="client-context-strip" data-testid="client-context-strip">
-        <span>{uniqueCaseCount(records)} case views</span>
-        <span>{finalCount} final delivery packages</span>
-        <span>{previewCount} preview packages</span>
-        <span>{reviewVisibleCount} review-visible items</span>
+      <section className="product-context-strip" data-testid="product-context-strip">
+        <span>{uniqueDomains(records).join(" · ") || "All domains"}</span>
+        <span>{uniqueDepartments(records).join(" · ") || "All departments"}</span>
+        <span>{records.length} packages · {uniqueCaseCount(records)} cases</span>
       </section>
 
       <header className="package-header">
         <div>
-          <div className="package-kicker">Client-facing delivery surface</div>
+          <div className="package-kicker">Packages</div>
           <h2>Workflow delivery packages</h2>
           <p>
-            Unified package preview, workflow comparison, download, and release
-            visibility built on accepted Pass 8 package logic.
+            Unified workflow package views with preview, comparison, export, and release status.
           </p>
         </div>
       </header>
 
-      <section className="package-overview-row" data-testid="package-overview-row">
+      <section className="package-summary-row" data-testid="package-summary-row">
         <div className="package-overview-card">
           <span className="package-card-label">Overview</span>
           <h3>{records.length} delivery surfaces</h3>
-          <p>Client-facing package views available from accepted initial and final package outputs.</p>
+          <p>Package views covering initial previews and final deliverables.</p>
         </div>
         <div className="package-overview-card">
           <span className="package-card-label">Release visibility</span>
           <h3>{finalCount} final packages</h3>
-          <p>Release state and review visibility are presented read-only from the accepted Pass 8 and Pass 7 records.</p>
+          <p>Release state and review visibility across all workflow packages.</p>
         </div>
       </section>
 
       <section className="package-list-section" data-testid="package-surface-list">
-        <div className="package-panel-header">Available client-facing surfaces</div>
+        <div className="package-panel-header">Available packages</div>
         {records.length === 0 ? (
           <div className="package-empty-state">
-            No package surfaces exist yet. Create initial or final packages in the accepted Pass 6/8 flows first.
+            No packages available yet. Packages will appear here once created through the workflow.
           </div>
         ) : (
           <div className="package-list-grid">
@@ -77,11 +81,6 @@ export default async function PackagePreviewPage() {
                 <div className="package-list-links">
                   <Link href={`/packages/${record.id}`}>Open surface</Link>
                   <Link href={record.downloadHref}>Download</Link>
-                  {record.linkedFinalPackageId ? (
-                    <Link href={`/final-packages/${record.linkedFinalPackageId}`}>Admin detail</Link>
-                  ) : (
-                    <Link href={`/initial-packages/${record.linkedInitialPackageId}`}>Admin detail</Link>
-                  )}
                 </div>
               </article>
             ))}

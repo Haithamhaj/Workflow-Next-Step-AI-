@@ -123,6 +123,11 @@ function reviewVisibilityLabel(reviewIssues: StoredReviewIssueRecord[]): string 
   return `${reviewIssues.length} linked review item${reviewIssues.length === 1 ? "" : "s"} resolved`;
 }
 
+function dedupedTitle(useCaseLabel: string, suffix: string): string {
+  const trimmed = useCaseLabel.replace(/\s+(delivery|preview)$/i, "").trim();
+  return trimmed ? `${trimmed} ${suffix}` : suffix;
+}
+
 function finalSubtitle(
   finalPackage: StoredFinalPackageRecord,
   initialPackage: StoredInitialPackageRecord,
@@ -171,7 +176,7 @@ export function listPackageSurfaceItems(store: InMemoryStore): PackageSurfaceLis
     items.push({
       id: finalPackage.packageId,
       kind: "final_package",
-      title: `${caseContext.useCaseLabel} delivery package`,
+      title: dedupedTitle(caseContext.useCaseLabel, "delivery package"),
       subtitle:
         linkedInitial !== null
           ? finalSubtitle(finalPackage, linkedInitial, finalPackage.adminApprovalStatus)
@@ -206,7 +211,7 @@ export function listPackageSurfaceItems(store: InMemoryStore): PackageSurfaceLis
     items.push({
       id: initialPackage.initialPackageId,
       kind: "initial_preview",
-      title: `${caseContext.useCaseLabel} preview package`,
+      title: dedupedTitle(caseContext.useCaseLabel, "preview package"),
       subtitle: initialSubtitle(initialPackage),
       caseContext,
       packageStateLabel: packageStateLabel(null, initialPackage),
@@ -243,7 +248,7 @@ export function getPackageSurfaceDetail(
     return {
       id: finalPackage.packageId,
       kind: "final_package",
-      title: `${caseContext.useCaseLabel} delivery package`,
+      title: dedupedTitle(caseContext.useCaseLabel, "delivery package"),
       subtitle: finalSubtitle(
         finalPackage,
         initialPackage,
@@ -254,7 +259,7 @@ export function getPackageSurfaceDetail(
       finalPackage,
       reviewIssues,
       downloadHref: `/packages/${encodeURIComponent(finalPackage.packageId)}/download`,
-      adminReleaseHref: `/final-packages/${encodeURIComponent(finalPackage.packageId)}`,
+      adminReleaseHref: undefined,
     };
   }
 
@@ -268,7 +273,7 @@ export function getPackageSurfaceDetail(
   return {
     id: initialPackage.initialPackageId,
     kind: "initial_preview",
-    title: `${caseContext.useCaseLabel} preview package`,
+    title: dedupedTitle(caseContext.useCaseLabel, "preview package"),
     subtitle: initialSubtitle(initialPackage),
     caseContext,
     initialPackage,

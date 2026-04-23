@@ -59,7 +59,7 @@ code { background: #15191f; padding: 1px 5px; border-radius: 3px; font-size: 12.
   gap: 18px;
 }
 
-.client-context-strip {
+.product-context-strip {
   display: flex;
   flex-wrap: wrap;
   gap: 10px;
@@ -103,7 +103,7 @@ code { background: #15191f; padding: 1px 5px; border-radius: 3px; font-size: 12.
   text-transform: uppercase;
 }
 
-.package-overview-row,
+.package-summary-row,
 .package-copy-grid,
 .workflow-column-grid,
 .package-list-grid {
@@ -143,8 +143,7 @@ code { background: #15191f; padding: 1px 5px; border-radius: 3px; font-size: 12.
 }
 
 .package-tab,
-.package-download-link,
-.package-admin-link {
+.package-download-link {
   padding: 8px 14px;
   border-radius: 999px;
   border: 1px solid #243445;
@@ -269,7 +268,7 @@ code { background: #15191f; padding: 1px 5px; border-radius: 3px; font-size: 12.
     padding: 20px;
   }
 
-  .package-overview-row,
+  .package-summary-row,
   .package-copy-grid,
   .workflow-column-grid,
   .package-list-grid {

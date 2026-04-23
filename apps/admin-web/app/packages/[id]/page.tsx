@@ -23,7 +23,7 @@ export default async function PackageSurfaceDetailPage({
 
   return (
     <div className="package-surface-page">
-      <section className="client-context-strip" data-testid="client-context-strip">
+      <section className="product-context-strip" data-testid="product-context-strip">
         <span>{detail.caseContext.domain}</span>
         <span>{detail.caseContext.mainDepartment}</span>
         <span>{detail.caseContext.subDepartment ?? "Core workflow"}</span>
@@ -32,7 +32,7 @@ export default async function PackageSurfaceDetailPage({
 
       <p style={{ marginBottom: "8px" }}>
         <Link href="/packages" style={{ color: "#7af" }}>
-          ← All delivery surfaces
+          ← All packages
         </Link>
       </p>
 

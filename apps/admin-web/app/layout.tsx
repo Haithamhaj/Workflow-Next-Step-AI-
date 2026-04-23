@@ -3,8 +3,8 @@ import type { ReactNode } from "react";
 import { Nav } from "../components/Nav";
 
 export const metadata = {
-  title: "Workflow Admin",
-  description: "Workflow Analysis Document Engine — admin shell",
+  title: "Workflow",
+  description: "Workflow Analysis Document Engine",
 };
 
 export default function RootLayout({ children }: { children: ReactNode }) {
