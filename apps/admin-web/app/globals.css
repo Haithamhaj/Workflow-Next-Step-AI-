@@ -52,3 +52,227 @@ code { background: #15191f; padding: 1px 5px; border-radius: 3px; font-size: 12.
 
 /* add muted variable for form labels */
 :root { --fg-muted: var(--muted); }
+
+.package-surface-page {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.client-context-strip {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  padding: 10px 14px;
+  border: 1px solid #233044;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #0f1722, #121926);
+  color: #9fb6cf;
+  font-size: 12px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.package-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  align-items: flex-start;
+}
+
+.package-header h2 {
+  margin: 2px 0 6px;
+  font-size: 28px;
+  line-height: 1.15;
+}
+
+.package-header p {
+  margin: 0;
+  max-width: 720px;
+  color: #b9c2cc;
+}
+
+.package-kicker,
+.package-card-label,
+.package-panel-header,
+.package-pill-label,
+.package-list-meta {
+  color: #7f90a3;
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.package-overview-row,
+.package-copy-grid,
+.workflow-column-grid,
+.package-list-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.package-overview-card,
+.package-panel,
+.package-copy-block,
+.package-list-card {
+  border: 1px solid #22303f;
+  border-radius: 18px;
+  background: linear-gradient(180deg, #101822, #0d131c);
+  padding: 18px;
+}
+
+.package-overview-card h3,
+.package-copy-block h3,
+.package-list-card h3 {
+  margin: 6px 0 8px;
+}
+
+.package-overview-card p,
+.package-copy-block p,
+.package-list-card p {
+  margin: 0;
+  color: #c9d3dc;
+}
+
+.package-tab-row {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.package-tab,
+.package-download-link,
+.package-admin-link {
+  padding: 8px 14px;
+  border-radius: 999px;
+  border: 1px solid #243445;
+  background: #10161e;
+  color: #dfe8ef;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.package-tab-active {
+  background: #17304c;
+  border-color: #4f8cff;
+}
+
+.package-pill-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: flex-start;
+}
+
+.package-pill {
+  display: inline-flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 140px;
+  padding: 10px 12px;
+  border-radius: 14px;
+  background: #0e141b;
+  border: 1px solid #1d2936;
+}
+
+.package-pill-value,
+.package-chip {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 12px;
+}
+
+.package-chip {
+  display: inline-flex;
+  padding: 6px 10px;
+  border-radius: 999px;
+  background: #10161e;
+  border: 1px solid #233547;
+  color: #d2dce5;
+}
+
+.workflow-visual-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.workflow-step {
+  display: grid;
+  grid-template-columns: 34px 1fr;
+  gap: 12px;
+  align-items: flex-start;
+  border-radius: 16px;
+  padding: 14px;
+}
+
+.current-step {
+  background: #121b24;
+  border: 1px solid #24445b;
+}
+
+.target-step {
+  background: #102018;
+  border: 1px solid #2e6340;
+}
+
+.workflow-step-index {
+  display: inline-flex;
+  width: 28px;
+  height: 28px;
+  border-radius: 999px;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.08);
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
+.package-plain-list {
+  margin: 0;
+  padding-left: 18px;
+  color: #d5dee7;
+}
+
+.package-inline-note {
+  color: #8ea0b0;
+  font-size: 12px;
+}
+
+.package-list-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+  margin-top: 14px;
+}
+
+.package-empty-state {
+  border: 1px dashed #30465d;
+  border-radius: 16px;
+  padding: 20px;
+  color: #b7c2cd;
+  background: #0e141b;
+}
+
+@media (max-width: 900px) {
+  .layout {
+    grid-template-columns: 1fr;
+  }
+
+  .sidebar {
+    border-right: none;
+    border-bottom: 1px solid var(--border);
+  }
+
+  main {
+    max-width: none;
+    padding: 20px;
+  }
+
+  .package-overview-row,
+  .package-copy-grid,
+  .workflow-column-grid,
+  .package-list-grid {
+    grid-template-columns: 1fr;
+  }
+}
