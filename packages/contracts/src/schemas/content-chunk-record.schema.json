@@ -1,0 +1,27 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://workflow.local/schemas/content-chunk-record.json",
+  "title": "ContentChunkRecord",
+  "description": "A single chunk of extracted content ready for embedding (Pass 2 Phase 1 contract; pipeline built later).",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "chunkId",
+    "intakeSourceId",
+    "caseId",
+    "ordinal",
+    "contentRef",
+    "createdAt"
+  ],
+  "properties": {
+    "chunkId": { "type": "string", "minLength": 1 },
+    "intakeSourceId": { "type": "string", "minLength": 1 },
+    "caseId": { "type": "string", "minLength": 1 },
+    "ordinal": { "type": "integer", "minimum": 0 },
+    "contentRef": { "type": "string", "minLength": 1 },
+    "tokenCount": { "type": "integer", "minimum": 0 },
+    "charCount": { "type": "integer", "minimum": 0 },
+    "sha256": { "type": "string" },
+    "createdAt": { "type": "string", "format": "date-time" }
+  }
+}

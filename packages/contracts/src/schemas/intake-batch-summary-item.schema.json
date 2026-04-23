@@ -1,0 +1,24 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://workflow.local/schemas/intake-batch-summary-item.json",
+  "title": "IntakeBatchSummaryItem",
+  "description": "Per-source summary row displayed in batch triage UI (Pass 2 Phase 1).",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["intakeBatchId", "intakeSourceId", "adminDisposition"],
+  "properties": {
+    "intakeBatchId": { "type": "string", "minLength": 1 },
+    "intakeSourceId": { "type": "string", "minLength": 1 },
+    "suggestedRole": { "type": "string" },
+    "suggestedAuthority": {
+      "type": "string",
+      "enum": ["company_truth", "informational_domain_support", "unknown"]
+    },
+    "summary": { "type": "string" },
+    "confidenceScore": { "type": "number", "minimum": 0, "maximum": 1 },
+    "adminDisposition": {
+      "type": "string",
+      "enum": ["pending", "accepted", "rejected", "deferred"]
+    }
+  }
+}

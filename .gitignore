@@ -8,3 +8,9 @@ dist
 .env.local
 *.log
 coverage
+
+# Local artifact storage + sqlite DBs (keep directory structure via .gitkeep)
+data/**
+!data/README.md
+!data/*/
+!data/*/.gitkeep

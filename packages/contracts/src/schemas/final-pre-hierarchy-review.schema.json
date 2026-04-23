@@ -1,0 +1,31 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://workflow.local/schemas/final-pre-hierarchy-review.json",
+  "title": "FinalPreHierarchyReviewRecord",
+  "description": "Durable row for the final pre-hierarchy review (Pass 2 Phase 1 contract; UI built later).",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "reviewId",
+    "caseId",
+    "useCaseLabel",
+    "status",
+    "createdBy",
+    "createdAt",
+    "updatedAt"
+  ],
+  "properties": {
+    "reviewId": { "type": "string", "minLength": 1 },
+    "caseId": { "type": "string", "minLength": 1 },
+    "structuredContextId": { "type": "string", "minLength": 1 },
+    "useCaseLabel": { "type": "string", "minLength": 1 },
+    "status": {
+      "type": "string",
+      "enum": ["draft", "submitted", "approved", "returned"]
+    },
+    "createdBy": { "type": "string", "minLength": 1 },
+    "createdAt": { "type": "string", "format": "date-time" },
+    "updatedAt": { "type": "string", "format": "date-time" },
+    "reviewNotes": { "type": "string" }
+  }
+}

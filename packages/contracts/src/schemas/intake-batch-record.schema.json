@@ -1,0 +1,33 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://workflow.local/schemas/intake-batch-record.json",
+  "title": "IntakeBatchRecord",
+  "description": "Grouping of intake sources submitted for admin triage (Pass 2 Phase 1).",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "intakeBatchId",
+    "caseId",
+    "createdBy",
+    "createdAt",
+    "batchStatus"
+  ],
+  "properties": {
+    "intakeBatchId": { "type": "string", "minLength": 1 },
+    "caseId": { "type": "string", "minLength": 1 },
+    "createdBy": { "type": "string", "minLength": 1 },
+    "createdAt": { "type": "string", "format": "date-time" },
+    "batchStatus": {
+      "type": "string",
+      "enum": [
+        "collecting",
+        "under_triage",
+        "admin_review",
+        "decided",
+        "closed"
+      ]
+    },
+    "label": { "type": "string" },
+    "notes": { "type": "string" }
+  }
+}

@@ -1,94 +1,43 @@
-import type { CaseConfiguration, CaseState, SourceRegistration } from "@workflow/contracts";
+/**
+ * Pass 2 Phase 1 — persistence package barrel.
+ *
+ * Entity types, repository interfaces, and the composite Store shape live in
+ * ./entities.js. Two factories satisfy Store: createInMemoryStore (./in-memory)
+ * and createSqliteStore (./sqlite/repositories). Pass 1 consumers import
+ * `InMemoryStore` and `createInMemoryStore`, which remain exported here.
+ */
 
 export const PERSISTENCE_PACKAGE = "@workflow/persistence" as const;
 
-// ---------------------------------------------------------------------------
-// Entity types
-// ---------------------------------------------------------------------------
+export type {
+  Case,
+  Source,
+  Store,
+  InMemoryStore,
+  CaseConfiguration,
+  CaseRepository,
+  SourceRepository,
+  IntakeSourceRepository,
+  IntakeBatchRepository,
+  IntakeBatchSummaryItemRepository,
+  AIIntakeSuggestionRepository,
+  AdminIntakeDecisionRepository,
+  StructuredContextRepository,
+  StructuredContextFieldEvidenceRepository,
+  ProviderExtractionJobRepository,
+  ContentChunkRepository,
+  EmbeddingJobRepository,
+  WebsiteCrawlPlanRepository,
+  WebsiteCrawlCandidatePageRepository,
+  WebsiteCrawlApprovalRepository,
+  WebsiteSiteSummaryRepository,
+  FinalPreHierarchyReviewRepository,
+} from "./entities.js";
 
-export interface Case {
-  caseId: string;
-  domain: string;
-  mainDepartment: string;
-  subDepartment?: string;
-  useCaseLabel: string;
-  companyProfileRef: string;
-  operatorNotes?: string;
-  createdAt: string;
-  state: CaseState;
-}
-
-export interface Source extends SourceRegistration {
-  registeredAt: string;
-}
-
-// ---------------------------------------------------------------------------
-// Repository interfaces — backend-agnostic
-// ---------------------------------------------------------------------------
-
-export interface CaseRepository {
-  save(c: Case): void;
-  findById(caseId: string): Case | null;
-  findAll(): Case[];
-}
-
-export interface SourceRepository {
-  save(s: Source): void;
-  findByCaseId(caseId: string): Source[];
-  findAll(): Source[];
-}
-
-// ---------------------------------------------------------------------------
-// In-memory implementations
-// ---------------------------------------------------------------------------
-
-class InMemoryCaseRepository implements CaseRepository {
-  private readonly store = new Map<string, Case>();
-
-  save(c: Case): void {
-    this.store.set(c.caseId, { ...c });
-  }
-
-  findById(caseId: string): Case | null {
-    return this.store.get(caseId) ?? null;
-  }
-
-  findAll(): Case[] {
-    return Array.from(this.store.values());
-  }
-}
-
-class InMemorySourceRepository implements SourceRepository {
-  private readonly store: Source[] = [];
-
-  save(s: Source): void {
-    this.store.push({ ...s });
-  }
-
-  findByCaseId(caseId: string): Source[] {
-    return this.store.filter((s) => s.caseId === caseId);
-  }
-
-  findAll(): Source[] {
-    return [...this.store];
-  }
-}
-
-// ---------------------------------------------------------------------------
-// Factory
-// ---------------------------------------------------------------------------
-
-export interface InMemoryStore {
-  cases: CaseRepository;
-  sources: SourceRepository;
-}
-
-export function createInMemoryStore(): InMemoryStore {
-  return {
-    cases: new InMemoryCaseRepository(),
-    sources: new InMemorySourceRepository(),
-  };
-}
-
-// Re-export CaseConfiguration for use by core-case without double-importing contracts
-export type { CaseConfiguration };
+export { createInMemoryStore } from "./in-memory.js";
+export { createSqliteStore, type SqliteStore } from "./sqlite/repositories.js";
+export {
+  openDatabase,
+  closeDatabase,
+  type SqliteDatabase,
+} from "./sqlite/database.js";
