@@ -1,0 +1,61 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://workflow.local/schemas/ai-intake-suggestion.json",
+  "title": "AIIntakeSuggestion",
+  "description": "AI-generated triage suggestion for a single intake source (Pass 2 Phase 1).",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "suggestionId",
+    "intakeSourceId",
+    "caseId",
+    "provider",
+    "model",
+    "promptVersion",
+    "generatedAt"
+  ],
+  "properties": {
+    "suggestionId": { "type": "string", "minLength": 1 },
+    "intakeSourceId": { "type": "string", "minLength": 1 },
+    "caseId": { "type": "string", "minLength": 1 },
+    "provider": {
+      "type": "string",
+      "enum": ["openai", "anthropic", "mistral", "local", "other"]
+    },
+    "model": { "type": "string", "minLength": 1 },
+    "promptVersion": { "type": "string", "minLength": 1 },
+    "generatedAt": { "type": "string", "format": "date-time" },
+    "suggestedIntakeType": {
+      "type": "string",
+      "enum": [
+        "uploaded_document",
+        "uploaded_form",
+        "uploaded_template",
+        "uploaded_contract_sample",
+        "uploaded_quotation_sample",
+        "uploaded_role_document",
+        "uploaded_workflow_reference",
+        "uploaded_contextual_source"
+      ]
+    },
+    "suggestedAuthority": {
+      "type": "string",
+      "enum": ["company_truth", "informational_domain_support"]
+    },
+    "suggestedTimingTag": {
+      "type": "string",
+      "enum": [
+        "uploaded_at_case_setup",
+        "uploaded_after_round_1",
+        "uploaded_before_reanalysis",
+        "uploaded_before_round_2",
+        "uploaded_during_gap_closure",
+        "uploaded_for_finalization_support"
+      ]
+    },
+    "suggestedRole": { "type": "string" },
+    "rationale": { "type": "string" },
+    "confidenceScore": { "type": "number", "minimum": 0, "maximum": 1 },
+    "rawJsonRef": { "type": "string" }
+  }
+}

@@ -1,0 +1,47 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://workflow.local/schemas/intake-source-record.json",
+  "title": "IntakeSourceRecord",
+  "description": "A single source submitted into an intake batch for triage (Pass 2 Phase 1).",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "intakeSourceId",
+    "intakeBatchId",
+    "caseId",
+    "submittedBy",
+    "submittedAt",
+    "mode",
+    "intakeStatus"
+  ],
+  "properties": {
+    "intakeSourceId": { "type": "string", "minLength": 1 },
+    "intakeBatchId": { "type": "string", "minLength": 1 },
+    "caseId": { "type": "string", "minLength": 1 },
+    "submittedBy": { "type": "string", "minLength": 1 },
+    "submittedAt": { "type": "string", "format": "date-time" },
+    "mode": {
+      "type": "string",
+      "enum": ["file_upload", "url_reference", "pasted_text", "audio_upload"]
+    },
+    "displayName": { "type": "string" },
+    "sourceUrl": { "type": "string" },
+    "mimeType": { "type": "string" },
+    "sizeBytes": { "type": "integer", "minimum": 0 },
+    "storageRef": { "type": "string" },
+    "contentRef": { "type": "string" },
+    "intakeStatus": {
+      "type": "string",
+      "enum": [
+        "registered",
+        "ai_suggested",
+        "admin_decided_accept",
+        "admin_decided_reject",
+        "processing",
+        "processed",
+        "failed"
+      ]
+    },
+    "notes": { "type": "string" }
+  }
+}

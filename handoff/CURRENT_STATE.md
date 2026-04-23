@@ -1,17 +1,12 @@
 # Current State
 
-**Accepted baseline: Pass 9 (Package Preview + Release Decision Surface), merged to `main` 2026-04-23, commit `41a8232`.**
+**Pass 2 Phase 1 proven. `pass2_not_complete` — Phase 2 (providers, crawling, transcription, embeddings) not yet built.**
 
-Prior accepted baseline on `main`: Pass 8 (Final Package + Release), commit `3171ad4`.
+Status vocabulary for Pass 2: `phase_draft` / `phase_partially_proven` / `phase_proven` / `pass2_not_complete`.
 
----
-
-## Official pass sequence
-
-- **Pass 6:** Synthesis + Evaluation + Initial Package — accepted on `main`
-- **Pass 7:** Review / Issue Discussion — accepted on `main` (2026-04-22), commit `a8f3523`
-- **Pass 8:** Final Package + Release — accepted on `main` (2026-04-22), commit `3171ad4`
-- **Pass 9:** Package Preview + Release Decision Surface — **accepted on `main` (2026-04-23), commit `41a8232`**
+- Phase 1 (contracts + local database + persistence + artifact storage): **`phase_proven`**
+- Phase 2 (providers, crawling, transcription, embeddings): **`phase_draft`** (not started)
+- Pass 2 overall: **`pass2_not_complete`**
 
 ---
 
@@ -19,108 +14,86 @@ Prior accepted baseline on `main`: Pass 8 (Final Package + Release), commit `317
 
 ### Repo root
 - pnpm 9.12.0 workspace; `apps/*`, `packages/*`
-- Node >= 20 engine constraint
-- TypeScript 5.4.5, ESM (`"type": "module"` everywhere), composite builds with project references
-- `tsconfig.base.json`: strict, `noUncheckedIndexedAccess`, `resolveJsonModule`, Bundler resolution
-- Scripts: `dev`, `build`, `build:contracts`, `typecheck`, `clean`
-
-### `packages/contracts` (extended Pass 8)
-- All prior passes' schemas/types unchanged
-- New Pass 8 schema: `src/schemas/final-package-record.schema.json`
-  - `additionalProperties: false` at top level and on `gapLayer`
-  - Required top-level: `packageId`, `caseId`, `packageType`, `packageState`, `packageReleaseState`, `packageGeneratedAt`, `finalizationBasis`, `adminApprovalStatus`, `finalWorkflowReality`, `finalSourceOrReferenceOutput`, `finalGapAnalysis`, `improvementTargetsOrFinalRecommendations`, `uiOverviewLayer`, `outputDirection`, `gapLayer`
-  - Optional: `improvedOrTargetStateWorkflow`, `initialPackageId`, `evaluationId`
-  - `gapLayer`: `closedItems[]`, `nonBlockingRemainingItems[]`, `laterReviewItems[]`
-- New Pass 8 types: `src/types/final-package.ts`
-  - `AdminApprovalStatus` const enum: `not_approved | approved` (§25.16 — kept separate from `packageReleaseState`)
-  - `OutputDirection` const enum: four values (§29.8.4)
-  - `FinalPackageGapLayer` interface (§29.8.5)
-  - `FinalPackageRecord` interface (§29.8.1–§29.8.5)
-- `src/index.ts` exports `validateFinalPackageRecord`, `AdminApprovalStatus`, `OutputDirection`, `FinalPackageGapLayer`, `FinalPackageRecord`
-
-### `packages/core-state` (extended Pass 8)
-- All prior pass transitions unchanged
-- New `ReleaseStateTransitions` (§28.16): linear `not_releasable → pending_admin_approval → approved_for_release → released`, `pending_admin_approval` cannot be skipped
-- New `isValidReleaseTransition(from: ReleaseState, to: ReleaseState): boolean`
-
-### `packages/persistence` (extended Pass 8)
-- All prior pass entities/repositories unchanged
-- New `StoredFinalPackageRecord extends FinalPackageRecord` with `createdAt`, `updatedAt`
-- New `FinalPackageRepository`: `save`, `findById`, `findByCaseId`, `findAll`
-- New `InMemoryFinalPackageRepository` (deep-copies `gapLayer` arrays on `save`)
-- `createInMemoryStore()` now includes `finalPackages`
-
-### `packages/packages-output` (extended Pass 8)
-- Re-exports `AdminApprovalStatus`, `OutputDirection`, `FinalPackageRecord`, `FinalPackageGapLayer` from `@workflow/contracts`
-- Re-exports `StoredFinalPackageRecord`, `FinalPackageRepository` from `@workflow/persistence`
-- `FinalPackageOk`, `FinalPackageError`, `FinalPackageResult` types
-- `createFinalPackage(payload, repo)` — validates with `validateFinalPackageRecord`, rejects duplicates, stamps `createdAt`/`updatedAt`
-- `getFinalPackage(packageId, repo)`
-- `listFinalPackages(repo)`
-- `listFinalPackagesByCaseId(caseId, repo)`
-- `updateFinalPackage(packageId, updates, repo)` — strips `createdAt`/`updatedAt` before re-validation (avoids `additionalProperties` rejection), re-validates, updates `updatedAt`
-
-### `apps/admin-web` (extended Pass 8)
-- All prior pass surfaces unchanged
-- New API routes:
-  - `app/api/final-packages/route.ts`: `GET /api/final-packages`, `POST /api/final-packages`
-  - `app/api/final-packages/[id]/route.ts`: `GET /api/final-packages/:id`
-  - `app/api/final-packages/[id]/release/route.ts`: `POST /api/final-packages/:id/release` — validates `toState`, enforces `isValidReleaseTransition`, returns 400 with §28.16 citation on invalid transition
-- New UI pages:
-  - `app/final-packages/page.tsx` — list table with `data-testid="final-package-list"`
-  - `app/final-packages/new/page.tsx` — creation form (all §29.8 required fields; gap layer one-per-line textareas; checkbox for admin approval; `packageType` hardcoded)
-  - `app/final-packages/[id]/page.tsx` — detail server component (metadata, §24.13 structural separation section, §29.8.2 content sections, §29.8.5 gap layer)
-  - `app/final-packages/[id]/FinalPackageDetailClient.tsx` — `data-testid="release-state-panel"` with linear next-state buttons and §28.16 note; `data-testid="admin-approval-panel"` read-only with §25.16 note; packageState display; outputDirection display
-- `components/Nav.tsx` — added `{ href: "/final-packages", label: "Final packages" }` after `/issues`
-
-### `apps/admin-web` (extended Pass 9 — Package Preview + Release Decision Surface)
-
-Pass 9 is the main client-facing delivery surface of the product. It is a presentation-layer pass over accepted Pass 8 package logic. No new mechanics were introduced.
-
-- **Global shell correction:** `layout.tsx` title/description and `Nav.tsx` heading changed from "Workflow Admin" / "admin shell" to "Workflow" on all pages
-- **Package surface library:** `lib/package-surface.ts` — `dedupedTitle()`, `buildPackageListItem()`, `buildPackageDetail()` for list/detail generation; `adminReleaseHref` set to `undefined` (no admin release link on client surface)
-- **API aggregation routes:**
-  - `app/api/packages/route.ts`: `GET /api/packages` — aggregates initial + final packages into unified list
-  - `app/api/packages/[id]/route.ts`: `GET /api/packages/:id` — resolves single package by ID
-- **Package list page:** `app/packages/page.tsx` — product-context-strip with domain/department badges, package-summary-row cards, no admin-centric links
-- **Package detail page:** `app/packages/[id]/page.tsx` — product-context-strip with domain/department/subDepartment/caseId, overview + workflow tabs
-- **Package client view:** `app/packages/[id]/PackageClientView.tsx` — tabs (preview/workflow/comparison/status), "Export package" link, no admin release controls
-- **Package download:** `app/packages/[id]/download/route.ts` — JSON download surface
-- **CSS:** `globals.css` — package surface classes: `.product-context-strip`, `.package-summary-row`, `.package-overview-card`, `.package-copy-grid`, `.workflow-visual-stack`, `.package-pill`, responsive breakpoints
-
-### Remaining placeholder packages
-- `packages/domain-support`
-- `packages/shared-utils`
+- Node >= 20; TypeScript 5.4.5 strict, `noUncheckedIndexedAccess`; ESM everywhere; composite project references
+- Scripts: `dev`, `build`, `build:contracts`, `typecheck`, `clean`, `prove:pass2-phase1`
+- Root `devDependencies`: `@workflow/contracts`, `@workflow/persistence` (workspace links for `scripts/*.mjs`)
+- `.claude/launch.json` — preview server config for admin-web on port 3000
 
 ---
 
-## What is proven (Pass 9 — committed 2026-04-23, `41a8232`)
+### `packages/contracts` (Pass 2 entities complete)
 
-Pass 8 proofs remain valid (see Pass 8 proof table in git history). Pass 9 additional proofs:
+All 15 Pass 2 contract entities added as Draft-07 JSON schemas + TypeScript types + Ajv validators via `makeValidator<T>`:
+
+| Entity | Validator |
+|---|---|
+| `CaseConfiguration` | `validateCaseConfiguration` (Pass 1) |
+| `SourceRegistration` | `validateSourceRegistration` (Pass 1) |
+| `IntakeSourceRecord` | `validateIntakeSourceRecord` |
+| `IntakeBatchRecord` | `validateIntakeBatchRecord` |
+| `IntakeBatchSummaryItem` | `validateIntakeBatchSummaryItem` |
+| `AIIntakeSuggestion` | `validateAIIntakeSuggestion` |
+| `AdminIntakeDecision` | `validateAdminIntakeDecision` |
+| `StructuredContextRecord` | `validateStructuredContextRecord` |
+| `StructuredContextFieldEvidence` | `validateStructuredContextFieldEvidence` |
+| `ProviderExtractionJob` | `validateProviderExtractionJob` |
+| `ContentChunkRecord` | `validateContentChunkRecord` |
+| `EmbeddingJobRecord` | `validateEmbeddingJobRecord` |
+| `WebsiteCrawlPlan` | `validateWebsiteCrawlPlan` |
+| `WebsiteCrawlCandidatePage` | `validateWebsiteCrawlCandidatePage` |
+| `WebsiteCrawlApproval` | `validateWebsiteCrawlApproval` |
+| `WebsiteSiteSummary` | `validateWebsiteSiteSummary` |
+| `FinalPreHierarchyReviewRecord` | `validateFinalPreHierarchyReviewRecord` |
+
+State families (unchanged): `CaseState`, `SessionState`, `PackageState`, `ReviewState`, `ReleaseState`. `RolloutState` remains formally deferred (operator decision, 2026-04-21).
+
+---
+
+### `packages/persistence` (SQLite + in-memory)
+
+- `src/entities.ts` — all 17 repo interfaces + composite `Store` shape
+- `src/in-memory.ts` — `createInMemoryStore(): Store` (used by admin-web for Pass 2A cases UI)
+- `src/sqlite/database.ts` — `openDatabase(dbPath)`: parent `mkdir`, `better-sqlite3` open, WAL journal + foreign keys, migration runner tracked in `_migrations` table, per-version transactions
+- `src/sqlite/schema.ts` — 17 DDL tables mirroring contract fields 1:1. Array columns (`seedUrls`, `evidenceRefs`) stored as TEXT JSON at the repo boundary
+- `src/sqlite/repositories.ts` — all 17 repositories with `save` / `findById` / list-by-parent accessors; `undefined ↔ NULL` handled via `nullable` + `stripNulls`
+- `createSqliteStore(dbPath): SqliteStore` — durable adapter; same interface as `InMemoryStore` so consumers are backend-agnostic
+- Back-compat: `InMemoryStore = Store` type alias retained for Pass 1 admin-web singleton
+
+### `packages/core-state`, `packages/core-case` (unchanged from Pass 2A)
+
+- `CaseStateTransitions` matrix + `isValidTransition`
+- `createCase` / `loadCase` / `listCases`
+
+---
+
+### `apps/admin-web` (unchanged from Pass 2A)
+
+- `/cases` list + `/cases/new` form, `GET` + `POST /api/cases` backed by the `InMemoryStore` singleton
+- No Pass 2 Phase 1 UI added; Phase 1 is a contracts-and-storage pass only
+
+---
+
+### `data/` (artifact storage)
+
+- `data/README.md` documents the layout
+- Subfolders (all git-ignored, kept via `.gitkeep`): `uploads/`, `extracted/`, `crawls/`, `transcripts/`, `embeddings/`
+- SQLite database files also live here (`data/workflow.db`, `data/test-pass2.db`)
+- `.gitignore` updated: `data/**` ignored, with `README.md` and `*/.gitkeep` re-included
+
+---
+
+## What is proven (Pass 2 Phase 1)
 
 | Check | Result |
 |---|---|
-| `pnpm build:contracts` | succeeds |
-| `pnpm typecheck` | 0 errors across all workspace projects |
-| `pnpm build` | succeeds |
-| `curl /packages` | Renders package list with `<title>Workflow</title>`, `<h1>Workflow</h1>`, `product-context-strip`, `package-summary-row` — zero banned strings |
-| `curl /packages/:id` | Renders package detail with product-context-strip, "Export package", package overview — zero banned strings |
-| No "Workflow Admin" or "admin shell" wording on any page | Confirmed via curl + rg |
-| No new routes beyond surface routes listed above | Confirmed via `git diff --name-only` |
+| `pnpm typecheck` | 0 errors across all workspace packages |
+| `pnpm build:contracts` | clean emit |
+| Validator round-trip for all 17 contract entities (Pass 1 + Pass 2) | 17/17 PASS |
+| SQLite store opens, schema migrates, writes one record per entity via repo boundary | PASS |
+| Close DB, re-open in a fresh `createSqliteStore`, read every record, `deepStrictEqual` to original | 17/17 PASS |
+| Proof script total | 35/35 checks passed → `phase_proven` |
 
----
-
-## Open questions
-
-| ID | Question | Recorded |
-|---|---|---|
-| OQ-001 | `role` enum values (`system`\|`user`) not explicitly enumerated. Operator confirmation required. | 2026-04-22 |
-| OQ-002 | `RolloutState` enum values not in spec. Formally deferred by operator. | 2026-04-21 |
-| OQ-003 | Session terminal-state looping. Operator confirmation required. | 2026-04-22 |
-| OQ-004 | §19.6–§19.9 peer-level enrichment trigger ordering not literal in spec. | 2026-04-22 |
-| OQ-005 | §21.4 conditional-section inclusion triggers not literal. | 2026-04-22 |
-
-Pass 8 introduced no new blocking governance questions.
+Proof script: [scripts/prove-pass2-phase1.mjs](scripts/prove-pass2-phase1.mjs). Run with `pnpm prove:pass2-phase1`.
 
 ---
 
@@ -128,24 +101,19 @@ Pass 8 introduced no new blocking governance questions.
 
 | Item | Location | Deferred to |
 |---|---|---|
-| `RolloutState` values | `packages/contracts/src/types/states.ts` | Indefinite — formal deferral |
-| Automated synthesis enrichment (§19.6–§19.9) | `packages/synthesis-evaluation/` | Deferred pending OQ-004 |
-| §20.10 outcome derivation | `packages/synthesis-evaluation/` | Intentionally not implemented — outcome remains operator-supplied |
-| §21.4 conditional-section automation | `packages/packages-output/` | Deferred pending OQ-005 |
-| `packages/domain-support` body | `packages/domain-support/src/index.ts` | Later pass |
-| `packages/shared-utils` body | `packages/shared-utils/src/index.ts` | Later pass |
+| `RolloutState` values | `packages/contracts/src/types/states.ts` | Indefinite — operator formally deferred |
+| Provider integrations (OpenAI, transcription) | — | Pass 2 Phase 2 |
+| Website crawl execution (fetch, parse, robots) | — | Pass 2 Phase 2 |
+| Embedding generation pipeline | — | Pass 2 Phase 2 |
+| Hierarchy, rollout, synthesis/evaluation | — | Pass 3+ |
+| UI surfaces for intake, structured context, crawls, review | `apps/admin-web/app/**` | Pass 3+ |
 
 ---
 
-## Output formalization direction (adopted 2026-04-22)
-
-Output formalization for client-facing wording, document naming, section-label normalization, and enterprise-safe final deliverable presentation has been adopted as a non-governing enhancement direction. This does not alter mechanics, state logic, package eligibility, review/release gates, or governance contracts. Prompt reinforcement (rewriting or rebuilding prompt-chain logic) is deferred and belongs to a separate later prompt-rebuild/analysis-improvement track.
-
-Pass 9 delivered the main client-facing delivery surface of the product. It is a presentation-layer pass built on accepted Pass 8 package logic and introduced no new mechanics.
-
 ## What has NOT been built
 
-- Real database persistence
-- Authentication / authorization
-- Python sidecar
-- CI / automated tests
+- Any provider call (no OpenAI, no transcription, no embeddings)
+- Any real website fetch or crawl worker
+- Any UI for the 15 Pass 2 entities (contracts + storage only)
+- Hierarchy, session, package, review, release logic
+- Authentication, CI/CD, tests

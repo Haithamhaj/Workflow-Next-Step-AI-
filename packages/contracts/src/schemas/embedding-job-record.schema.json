@@ -1,0 +1,37 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://workflow.local/schemas/embedding-job-record.json",
+  "title": "EmbeddingJobRecord",
+  "description": "Durable row tracking an async embedding job for a content chunk (Pass 2 Phase 1 contract; pipeline built later).",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "embeddingJobId",
+    "chunkId",
+    "caseId",
+    "provider",
+    "model",
+    "status",
+    "queuedAt"
+  ],
+  "properties": {
+    "embeddingJobId": { "type": "string", "minLength": 1 },
+    "chunkId": { "type": "string", "minLength": 1 },
+    "caseId": { "type": "string", "minLength": 1 },
+    "provider": {
+      "type": "string",
+      "enum": ["openai", "anthropic", "mistral", "deepgram", "local", "other"]
+    },
+    "model": { "type": "string", "minLength": 1 },
+    "status": {
+      "type": "string",
+      "enum": ["queued", "running", "succeeded", "failed", "cancelled"]
+    },
+    "dimension": { "type": "integer", "minimum": 1 },
+    "vectorStoreRef": { "type": "string" },
+    "vectorId": { "type": "string" },
+    "queuedAt": { "type": "string", "format": "date-time" },
+    "completedAt": { "type": "string", "format": "date-time" },
+    "errorMessage": { "type": "string" }
+  }
+}

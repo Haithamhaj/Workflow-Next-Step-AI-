@@ -1,0 +1,27 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://workflow.local/schemas/structured-context-record.json",
+  "title": "StructuredContextRecord",
+  "description": "Case-scoped structured context header (Pass 2 Phase 1).",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "structuredContextId",
+    "caseId",
+    "version",
+    "status",
+    "fieldCount",
+    "createdAt",
+    "updatedAt"
+  ],
+  "properties": {
+    "structuredContextId": { "type": "string", "minLength": 1 },
+    "caseId": { "type": "string", "minLength": 1 },
+    "version": { "type": "integer", "minimum": 1 },
+    "status": { "type": "string", "enum": ["draft", "active", "archived"] },
+    "fieldCount": { "type": "integer", "minimum": 0 },
+    "createdAt": { "type": "string", "format": "date-time" },
+    "updatedAt": { "type": "string", "format": "date-time" },
+    "notes": { "type": "string" }
+  }
+}

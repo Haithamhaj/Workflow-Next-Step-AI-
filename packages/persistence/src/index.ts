@@ -18,10 +18,6 @@ import type {
 
 export const PERSISTENCE_PACKAGE = "@workflow/persistence" as const;
 
-// ---------------------------------------------------------------------------
-// Entity types
-// ---------------------------------------------------------------------------
-
 export interface Case {
   caseId: string;
   domain: string;
@@ -461,3 +457,33 @@ export function createInMemoryStore(): InMemoryStore {
 
 // Re-export for use by domain packages without double-importing contracts
 export type { CaseConfiguration, ConditionInterpretations, FinalPackageRecord };
+
+// ---------------------------------------------------------------------------
+// Pass 2 Phase 1 — Phase 1 repository interfaces + SQLite store
+// ---------------------------------------------------------------------------
+
+export type {
+  IntakeSourceRepository,
+  IntakeBatchRepository,
+  IntakeBatchSummaryItemRepository,
+  AIIntakeSuggestionRepository,
+  AdminIntakeDecisionRepository,
+  StructuredContextRepository,
+  StructuredContextFieldEvidenceRepository,
+  ProviderExtractionJobRepository,
+  ContentChunkRepository,
+  EmbeddingJobRepository,
+  WebsiteCrawlPlanRepository,
+  WebsiteCrawlCandidatePageRepository,
+  WebsiteCrawlApprovalRepository,
+  WebsiteSiteSummaryRepository,
+  FinalPreHierarchyReviewRepository,
+  Store,
+} from "./entities.js";
+
+export { createSqliteStore, type SqliteStore } from "./sqlite/repositories.js";
+export {
+  openDatabase,
+  closeDatabase,
+  type SqliteDatabase,
+} from "./sqlite/database.js";

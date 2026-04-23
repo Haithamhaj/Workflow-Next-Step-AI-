@@ -1,0 +1,25 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://workflow.local/schemas/website-crawl-approval.json",
+  "title": "WebsiteCrawlApproval",
+  "description": "Admin approve/reject decision for a single candidate page (Pass 2 Phase 1 contract).",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "approvalId",
+    "crawlPlanId",
+    "candidatePageId",
+    "decidedBy",
+    "decidedAt",
+    "decision"
+  ],
+  "properties": {
+    "approvalId": { "type": "string", "minLength": 1 },
+    "crawlPlanId": { "type": "string", "minLength": 1 },
+    "candidatePageId": { "type": "string", "minLength": 1 },
+    "decidedBy": { "type": "string", "minLength": 1 },
+    "decidedAt": { "type": "string", "format": "date-time" },
+    "decision": { "type": "string", "enum": ["approve", "reject"] },
+    "reason": { "type": "string" }
+  }
+}

@@ -1,0 +1,41 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://workflow.local/schemas/provider-extraction-job.json",
+  "title": "ProviderExtractionJob",
+  "description": "Durable row tracking an async provider extraction job (Pass 2 Phase 1).",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "extractionJobId",
+    "intakeSourceId",
+    "caseId",
+    "provider",
+    "jobType",
+    "status",
+    "queuedAt"
+  ],
+  "properties": {
+    "extractionJobId": { "type": "string", "minLength": 1 },
+    "intakeSourceId": { "type": "string", "minLength": 1 },
+    "caseId": { "type": "string", "minLength": 1 },
+    "provider": {
+      "type": "string",
+      "enum": ["openai", "anthropic", "mistral", "deepgram", "local", "other"]
+    },
+    "model": { "type": "string" },
+    "jobType": {
+      "type": "string",
+      "enum": ["document_extract", "audio_transcribe", "image_ocr", "web_fetch"]
+    },
+    "status": {
+      "type": "string",
+      "enum": ["queued", "running", "succeeded", "failed", "cancelled"]
+    },
+    "queuedAt": { "type": "string", "format": "date-time" },
+    "startedAt": { "type": "string", "format": "date-time" },
+    "completedAt": { "type": "string", "format": "date-time" },
+    "inputRef": { "type": "string" },
+    "outputRef": { "type": "string" },
+    "errorMessage": { "type": "string" }
+  }
+}

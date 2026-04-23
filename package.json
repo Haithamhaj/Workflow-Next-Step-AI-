@@ -12,6 +12,11 @@
     "build": "pnpm -r build",
     "build:contracts": "pnpm --filter @workflow/contracts build",
     "typecheck": "pnpm -r typecheck",
-    "clean": "pnpm -r exec rm -rf dist .next .turbo"
+    "clean": "pnpm -r exec rm -rf dist .next .turbo",
+    "prove:pass2-phase1": "node scripts/prove-pass2-phase1.mjs"
+  },
+  "devDependencies": {
+    "@workflow/contracts": "workspace:*",
+    "@workflow/persistence": "workspace:*"
   }
 }
