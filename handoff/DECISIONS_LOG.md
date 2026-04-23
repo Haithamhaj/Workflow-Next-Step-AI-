@@ -96,6 +96,18 @@ Status: LOCKED | FORMALIZED | IMPL-EXTENSION
 
 ---
 
+## Pass 9 — Package Preview + Release Decision Surface (accepted on `main`, 2026-04-23, commit `41a8232`)
+
+> Status: these decisions are baseline-active. Pass 9 was merged into `main` on 2026-04-23 as a linear push of `codex/pass-9-package-preview`.
+
+- **Pass 9 is a presentation-layer pass only** — it builds the client-facing delivery surface on top of accepted Pass 8 package logic. No new mechanics, state transitions, contracts, release logic, review logic, analysis logic, or prompt-chain logic were introduced — LOCKED
+- **Global shell reads "Workflow" on all pages** — `layout.tsx` title/description and `Nav.tsx` heading changed from "Workflow Admin" / "admin shell" to "Workflow". No admin-centric wording remains on client-facing surfaces — LOCKED
+- **`lib/package-surface.ts` owns surface generation** — `dedupedTitle()` prevents word duplication in generated titles; `buildPackageListItem()` and `buildPackageDetail()` generate list and detail view models consumed by page components. Surface logic stays in admin-web, not in domain packages — IMPL-EXTENSION
+- **Package aggregation via existing API routes** — `/api/packages` and `/api/packages/:id` aggregate initial + final packages from existing repositories. No new persistence or domain logic added — IMPL-EXTENSION
+- **No next pass (Pass 10) is defined in any authority file** — operator must define next pass scope before any further implementation pass begins — FORMALIZED
+
+---
+
 ## dependency rules
 
 - **Skeleton packages depend on `@workflow/contracts` via `workspace:*`** — all domain types flow from contracts; packages must not define competing types — LOCKED

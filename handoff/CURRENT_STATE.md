@@ -1,8 +1,17 @@
 # Current State
 
-**Accepted baseline: Pass 8 (Final Package + Release), merged to `main` 2026-04-22, commit `3171ad4`.**
+**Accepted baseline: Pass 9 (Package Preview + Release Decision Surface), merged to `main` 2026-04-23, commit `41a8232`.**
 
-Prior accepted baseline on `main`: Pass 7 (Review / Issue Discussion), commit `a8f3523`.
+Prior accepted baseline on `main`: Pass 8 (Final Package + Release), commit `3171ad4`.
+
+---
+
+## Official pass sequence
+
+- **Pass 6:** Synthesis + Evaluation + Initial Package — accepted on `main`
+- **Pass 7:** Review / Issue Discussion — accepted on `main` (2026-04-22), commit `a8f3523`
+- **Pass 8:** Final Package + Release — accepted on `main` (2026-04-22), commit `3171ad4`
+- **Pass 9:** Package Preview + Release Decision Surface — **accepted on `main` (2026-04-23), commit `41a8232`**
 
 ---
 
@@ -64,25 +73,40 @@ Prior accepted baseline on `main`: Pass 7 (Review / Issue Discussion), commit `a
   - `app/final-packages/[id]/FinalPackageDetailClient.tsx` — `data-testid="release-state-panel"` with linear next-state buttons and §28.16 note; `data-testid="admin-approval-panel"` read-only with §25.16 note; packageState display; outputDirection display
 - `components/Nav.tsx` — added `{ href: "/final-packages", label: "Final packages" }` after `/issues`
 
+### `apps/admin-web` (extended Pass 9 — Package Preview + Release Decision Surface)
+
+Pass 9 is the main client-facing delivery surface of the product. It is a presentation-layer pass over accepted Pass 8 package logic. No new mechanics were introduced.
+
+- **Global shell correction:** `layout.tsx` title/description and `Nav.tsx` heading changed from "Workflow Admin" / "admin shell" to "Workflow" on all pages
+- **Package surface library:** `lib/package-surface.ts` — `dedupedTitle()`, `buildPackageListItem()`, `buildPackageDetail()` for list/detail generation; `adminReleaseHref` set to `undefined` (no admin release link on client surface)
+- **API aggregation routes:**
+  - `app/api/packages/route.ts`: `GET /api/packages` — aggregates initial + final packages into unified list
+  - `app/api/packages/[id]/route.ts`: `GET /api/packages/:id` — resolves single package by ID
+- **Package list page:** `app/packages/page.tsx` — product-context-strip with domain/department badges, package-summary-row cards, no admin-centric links
+- **Package detail page:** `app/packages/[id]/page.tsx` — product-context-strip with domain/department/subDepartment/caseId, overview + workflow tabs
+- **Package client view:** `app/packages/[id]/PackageClientView.tsx` — tabs (preview/workflow/comparison/status), "Export package" link, no admin release controls
+- **Package download:** `app/packages/[id]/download/route.ts` — JSON download surface
+- **CSS:** `globals.css` — package surface classes: `.product-context-strip`, `.package-summary-row`, `.package-overview-card`, `.package-copy-grid`, `.workflow-visual-stack`, `.package-pill`, responsive breakpoints
+
 ### Remaining placeholder packages
 - `packages/domain-support`
 - `packages/shared-utils`
 
 ---
 
-## What is proven (Pass 8 — committed 2026-04-22, `e2c3c58`)
+## What is proven (Pass 9 — committed 2026-04-23, `41a8232`)
+
+Pass 8 proofs remain valid (see Pass 8 proof table in git history). Pass 9 additional proofs:
 
 | Check | Result |
 |---|---|
 | `pnpm build:contracts` | succeeds |
-| `pnpm typecheck` | 0 errors across all 14 workspace projects |
-| `pnpm build` | succeeds; `/final-packages`, `/final-packages/[id]`, `/final-packages/new` appear in Next.js route output |
-| `POST /api/final-packages` valid §29.8 payload | HTTP 201 with `StoredFinalPackageRecord` |
-| `POST /api/final-packages` duplicate ID | HTTP 409 |
-| `GET /api/final-packages` | HTTP 200 JSON array |
-| `GET /api/final-packages/:id` | HTTP 200 with stored record |
-| `POST /api/final-packages/:id/release` valid (`not_releasable → pending_admin_approval`) | HTTP 200; `packageReleaseState` updated in response |
-| `POST /api/final-packages/:id/release` invalid skip (`pending_admin_approval → released`) | HTTP 400 `"Invalid release transition: 'pending_admin_approval' → 'released' is not allowed (§28.16)."` |
+| `pnpm typecheck` | 0 errors across all workspace projects |
+| `pnpm build` | succeeds |
+| `curl /packages` | Renders package list with `<title>Workflow</title>`, `<h1>Workflow</h1>`, `product-context-strip`, `package-summary-row` — zero banned strings |
+| `curl /packages/:id` | Renders package detail with product-context-strip, "Export package", package overview — zero banned strings |
+| No "Workflow Admin" or "admin shell" wording on any page | Confirmed via curl + rg |
+| No new routes beyond surface routes listed above | Confirmed via `git diff --name-only` |
 
 ---
 
@@ -117,7 +141,7 @@ Pass 8 introduced no new blocking governance questions.
 
 Output formalization for client-facing wording, document naming, section-label normalization, and enterprise-safe final deliverable presentation has been adopted as a non-governing enhancement direction. This does not alter mechanics, state logic, package eligibility, review/release gates, or governance contracts. Prompt reinforcement (rewriting or rebuilding prompt-chain logic) is deferred and belongs to a separate later prompt-rebuild/analysis-improvement track.
 
-Pass 9 is now formally defined in handoff authority as the main client-facing delivery surface of the product. It remains a presentation-layer pass built on accepted Pass 8 package logic and does not introduce new mechanics.
+Pass 9 delivered the main client-facing delivery surface of the product. It is a presentation-layer pass built on accepted Pass 8 package logic and introduced no new mechanics.
 
 ## What has NOT been built
 
