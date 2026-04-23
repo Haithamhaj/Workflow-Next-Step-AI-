@@ -1,6 +1,6 @@
 # Program Master Plan
 
-## Workflow Next Step AI — Post-Pass-9 Extension Program
+## Workflow Truth, Target Documentation, and Automation Readiness — Post-Pass-9 Extension Program
 
 ---
 
@@ -16,6 +16,8 @@ Its purpose is to:
 * establish priority order and dependencies
 * preserve deferred tracks so they are not forgotten
 * provide the source from which future passes will be derived one by one
+* clarify the product's full value path from workflow truth to target documentation to automation-readiness recommendations
+* integrate the scientific and methodological backbone that should guide analysis, terminology, evidence handling, and documentation reasoning
 
 This file is not a rewrite of Passes 1–9.
 It is the controlled extension plan built on top of them.
@@ -86,10 +88,13 @@ The accepted baseline does **not** mean the full product is complete.
 The repository still clearly shows unfinished areas such as:
 
 * unresolved governance questions
+* incomplete analytical and scientific backbone operationalization
 * incomplete prompt-system maturity
-* unbuilt domain-support logic
+* unbuilt domain-support logic as a real analytical layer
 * unfinished channel-delivery layer
 * missing productionization foundations such as real DB/auth/CI
+* unformalized automation-readiness outputs
+* undeveloped derived capability / skills layer
 
 ---
 
@@ -105,6 +110,7 @@ Several open implementation questions still exist and directly affect:
 * clarification loop behavior
 * enrichment trigger logic
 * conditional document-implication automation
+* adjacent correctness-sensitive distinctions such as workflow validity vs automation-supportiveness
 
 These must not remain open forever if the analytical core is to become dependable and extensible.
 
@@ -118,46 +124,90 @@ The system has strong workflow logic, but it still lacks a full operationalized 
 * threshold interpretation
 * ownership and handoff reasoning
 * document-direction reasoning
+* evidence-strength interpretation
+* evidence provenance and evidence-chain handling
+* workflow-to-target-document reasoning
+* workflow-to-automation-readiness reasoning
 
-### 4.3 The prompt system is not finished
+### 4.3 The scientific and methodological backbone is not yet operationalized
+
+The product needs a stronger explicit backbone for serious workflow and document analysis.
+That backbone should not become rigid compliance machinery, but it should guide analytical discipline.
+
+This includes at minimum:
+
+* ISO 9001 as a documented-information and process-discipline reference basis
+* BPMN as a workflow-structure interpretation basis
+* APQC as a process vocabulary and classification basis
+* SCOR where relevant for logistics / supply-chain-oriented domains
+* selected process-mining-inspired concepts such as conformance, variants, and structural comparison where useful
+
+### 4.4 The prompt system is not finished
 
 A prompt registry exists, but a full prompt system does not yet exist.
 
 What is still missing includes:
 
+* PromptSpec and CompiledPrompt structure
 * domain overlays
-
 * company overlays
-
 * use-case overlays
-
 * structured persona logic by context
-
 * compiled prompt governance
-
 * prompt-chain discipline
-
+* prompt explainability structure
+* prompt-to-source traceability
+* prompt-to-contract binding
+* prompt review packets
 * prompt evaluation and review harness
 
-### 4.4 Domain support is not finished
+### 4.5 Domain support is not finished
 
-The system direction clearly supports a non-authoritative domain-support layer, but the actual domain-support package is still not built as a real working layer.
+The system direction clearly supports a non-authoritative domain-support layer, but the actual domain-support package is still not built as a real working analytical layer.
 
-### 4.5 Channel delivery is not finished
+What is missing includes:
+
+* domain pack structure
+* terminology packs
+* artifact-type support
+* authority tagging and non-authoritative boundaries
+* domain support traceability
+* integration into analysis without overriding company truth
+
+### 4.6 Channel delivery is not finished
 
 Channels such as Telegram or other interaction adapters are not yet built as a complete interaction layer.
 
-### 4.6 Productionization is not finished
+What is still missing includes:
+
+* normalized participant input contract
+* channel adapter interface
+* conversation/session mapping bridge
+* transport-only channel logic
+* channel traceability without channel-owned analysis logic
+
+### 4.7 Automation-readiness outputs are not yet formalized
+
+The product already supports workflow validity and document-direction logic in principle, but it does not yet formalize automation-readiness as a structured downstream value output.
+
+What is still missing includes:
+
+* human-only vs AI-assisted vs automatable distinctions
+* automation blockers and prerequisites
+* workflow-to-automation-readiness reasoning
+* automation-supportive improvement recommendations
+* structured output that can add business value without turning the product into an automation engine
+
+### 4.8 Productionization is not finished
 
 The system still lacks:
 
 * real database persistence
-
 * authentication / authorization
-
 * CI / automated tests
-
 * broader deployment hardening
+* prompt execution observability and traceability
+* long-running case/session durability
 
 ---
 
@@ -175,11 +225,13 @@ But they are not the heart of this system.
 The heart is:
 
 * governed analysis
-* workflow understanding
+* workflow truth discovery
 * terminology interpretation
 * clarification logic
-* prompt intelligence
+* prompt governance
+* document-direction reasoning
 * output quality
+* automation-readiness reasoning built on top of grounded workflow understanding
 
 ### 5.3 Transport follows intelligence
 
@@ -201,6 +253,41 @@ Deferred means:
 * preserved
 * intentionally sequenced later
 
+### 5.5 Truth before automation
+
+Automation is a core value outcome of the product, but it is not the first truth layer of the product.
+
+The system must first establish:
+
+* workflow truth
+* documentation direction
+* structured gap understanding
+
+Only after those are sufficiently grounded may it produce serious automation-readiness recommendations.
+
+### 5.6 AI + admin collaborative analysis
+
+The system is not designed to replace the analyst or admin.
+It is designed to combine:
+
+* AI-first structured interpretation
+* admin-routed judgment
+* rule-guarded control
+
+This allows the product to scale analysis without surrendering governance or contextual judgment.
+
+### 5.7 Scientific discipline without rigid imitation
+
+The product should benefit from serious external analytical traditions and enterprise-grade reference patterns without becoming a clone of process-mining platforms, BPM suites, or compliance-heavy documentation systems.
+
+It should borrow discipline, vocabulary, and tested analytical patterns where useful, while remaining grounded in its own thesis:
+
+* reality-first
+* operator-led
+* human-governed
+* documentation-oriented
+* automation-aware
+
 ---
 
 ## 6. Core Workstreams
@@ -213,7 +300,7 @@ Close the open questions that still affect correctness, interpretation, or contr
 
 ### Why it matters
 
-If these items remain open, later prompt logic, analysis logic, and package logic may be built on unstable assumptions.
+If these items remain open, later prompt logic, analysis logic, document logic, and automation-readiness logic may be built on unstable assumptions.
 
 ### Main scope
 
@@ -223,6 +310,9 @@ This workstream closes or formalizes at minimum:
 * session terminal-state looping behavior
 * enrichment trigger logic
 * document implication auto-activation logic
+* workflow-validity vs automation-supportiveness distinction where correctness-sensitive
+* target-document logic vs target-state workflow logic where correctness-sensitive
+* prompt-to-governance boundaries where needed
 * any adjacent unresolved logic that materially affects correctness of analysis or output eligibility
 
 ### What it will produce
@@ -238,18 +328,19 @@ This workstream closes or formalizes at minimum:
 * channel implementation
 * productionization work
 * speculative new business features
+* early automation or skills implementation
 
 ---
 
-## Workstream B — Analysis Kernel & Terminology Toolkit
+## Workstream B — Analysis Kernel, Terminology Toolkit, and Scientific Backbone
 
 ### Purpose
 
-Turn analysis from a broad concept into a governed, reusable kernel.
+Turn analysis from a broad concept into a governed, reusable kernel supported by a clear scientific and methodological backbone.
 
 ### Why it matters
 
-The product’s real value depends on how it interprets workflow reality, references, terminology, thresholds, contradictions, and ownership structure.
+The product's real value depends on how it interprets workflow reality, references, terminology, thresholds, contradictions, ownership structure, target-document direction, and automation-readiness signals.
 
 ### Main scope
 
@@ -265,19 +356,34 @@ This workstream defines and builds at minimum:
 * workflow-boundary reasoning layer
 * document-direction reasoning layer
 * evidence-strength interpretation patterns
+* evidence provenance and evidence-chain model
+* reference suitability scoring framework
+* workflow-to-target-document reasoning
+* workflow-to-automation-readiness reasoning
+* domain-support model as a non-authoritative analytical support layer
+* scientific backbone operationalization using:
+
+  * ISO 9001 as documented-information basis
+  * BPMN as workflow-structure basis
+  * APQC as process vocabulary basis
+  * SCOR where domain-relevant
+  * selected conformance / variant concepts inspired by process-mining where useful
 
 ### What it will produce
 
 * reusable analysis modules
 * clearer interpretation logic
 * stronger case-level consistency
-* better foundations for follow-up questions, synthesis, evaluation, and document direction
+* evidence-traceable analytical outputs
+* better foundations for follow-up questions, synthesis, evaluation, document direction, and automation-readiness recommendations
+* domain packs and terminology support structures
 
 ### What it must not do
 
 * replace the core package boundaries
 * turn into a generic consulting framework
-* become a vague “AI understanding” layer with no operational outputs
+* become a vague "AI understanding" layer with no operational outputs
+* turn into a process-mining clone or compliance-heavy BPM suite
 
 ---
 
@@ -285,7 +391,7 @@ This workstream defines and builds at minimum:
 
 ### Purpose
 
-Upgrade the current prompt registry into a real prompt system.
+Upgrade the current prompt registry into a real governed prompt system.
 
 ### Why it matters
 
@@ -295,6 +401,8 @@ The system already has prompt-registry foundations, but not a full prompt archit
 
 This workstream defines and builds at minimum:
 
+* PromptSpec structure
+* CompiledPrompt structure
 * base persona model
 * domain overlays
 * company overlays
@@ -304,9 +412,12 @@ This workstream defines and builds at minimum:
 * synthesis/evaluation drafting families
 * compiled prompt structure
 * prompt explainability structure
+* prompt-to-source traceability
+* prompt-to-contract binding
 * prompt review packets
 * prompt evaluation harness
 * prompt-chain dependency mapping
+* grouped prompt capability families that may later support derived skills and bounded reusable functions
 
 ### What it will produce
 
@@ -314,12 +425,15 @@ This workstream defines and builds at minimum:
 * reusable prompt families
 * context-aware analytical behavior
 * better consistency across domains and companies
+* prompt reviewability
+* stronger foundations for later derived capability / skill layers
 
 ### What it must not do
 
 * override locked state/review/release logic
 * bury governance decisions in prompt text
 * become an uncontrolled personality playground
+* reduce capabilities to raw prompt strings without contracts or traceability
 
 ---
 
@@ -337,6 +451,9 @@ The system needs practical communication paths for participants and management, 
 
 This workstream may include:
 
+* normalized participant input contract
+* channel adapter interface
+* conversation/session mapping bridge
 * Telegram transport
 * later additional transport adapters where justified
 * channel traceability
@@ -354,6 +471,7 @@ They must not become alternate logic centers.
 
 * controlled interaction surfaces
 * reusable transport adapters
+* cleaner separation between channel payloads and core session logic
 * better operational usability
 * easier participant and management outreach
 
@@ -362,6 +480,7 @@ They must not become alternate logic centers.
 * create separate per-channel workflow engines
 * own package eligibility or review logic
 * alter core analytical judgment through channel behavior
+* become the place where case or session truth is decided
 
 ---
 
@@ -373,7 +492,7 @@ Make the system structurally ready for real operational use.
 
 ### Why it matters
 
-Even a strong analytical product remains fragile without real persistence, access control, and repeatable validation.
+Even a strong analytical product remains fragile without real persistence, access control, repeatable validation, and execution traceability.
 
 ### Main scope
 
@@ -385,6 +504,9 @@ This workstream may include:
 * CI / automated tests
 * deployment discipline
 * environment hardening
+* execution traceability / observability
+* prompt execution audit trails
+* long-running case/session durability
 * future sidecar or local-tool integration when earned
 
 ### What it will produce
@@ -419,19 +541,31 @@ They are **not** being dropped.
 
 * automation-supportive workflow strengthening
 * later automation preparation support
+* automation-readiness recommendation outputs
 * downstream execution-support artifacts
 * future automation-related extensions when earned
 
-### 7.3 Skills layer
+### 7.3 Derived capability / skills layer
 
-The earlier discussion around “skills” is preserved as a later extension path.
+The earlier discussion around "skills" is preserved as a later extension path.
 
-At this stage, it should be treated as a later structured capability layer that may sit on top of:
+At this stage, it should be treated as a later **derived capability layer** that sits on top of:
 
+* approved workflow truth
+* target-document and gap-closure reasoning
+* automation-readiness reasoning
 * governed analysis logic
 * domain-specific interpretation
 * prompt system maturity
 * explicit capability boundaries
+
+This layer may later produce for selected use cases:
+
+* skill candidate records
+* capability manifests
+* prompt-backed reusable bounded functions
+* future agent-usable skills
+* automation-support units
 
 Skills should not be built before the underlying analytical and prompt core is strong enough to support them safely.
 
@@ -441,6 +575,7 @@ Skills should not be built before the underlying analytical and prompt core is s
 * auxiliary preprocessing tools
 * future adapter expansion
 * optional specialized tooling
+* later observability and prompt-tracing integrations when earned
 
 These remain secondary to the core program.
 
@@ -456,7 +591,7 @@ The official priority order for the extension program is:
 
 ### Priority 2
 
-**Analysis Kernel & Terminology Toolkit**
+**Analysis Kernel, Terminology Toolkit, and Scientific Backbone**
 
 ### Priority 3
 
@@ -477,10 +612,12 @@ This order protects the product from growing outward before its inner logic is s
 In practical terms:
 
 * first close ambiguity
-* then strengthen analysis
+* then strengthen analysis and its scientific backbone
 * then strengthen prompts
 * then expose channels
 * then harden for broader use
+
+This order also preserves the rule that automation-readiness and later derived capabilities must grow from grounded workflow and documentation logic rather than preceding it.
 
 ---
 
@@ -506,8 +643,10 @@ Depends on:
 Unblocks:
 
 * Prompt System Architecture
+* stronger document-direction logic
+* stronger automation-readiness reasoning
+* better domain-support integration
 * better channel behavior later
-* better document direction and package quality
 
 ### 9.3 Prompt System Architecture dependencies
 
@@ -519,7 +658,7 @@ Depends on:
 Unblocks:
 
 * Channel Delivery
-* Skills track
+* later derived capability / skills layer
 * better domain/company adaptation
 
 ### 9.4 Channel Delivery dependencies
@@ -570,7 +709,7 @@ Its scope should be limited to:
 * resolving the currently open correctness-relevant questions
 * recording the resulting decisions cleanly
 * updating authority files accordingly
-* not widening into prompt implementation, channel work, or productization
+* not widening into analysis-kernel implementation, prompt implementation, channel work, automation logic implementation, or productization
 
 ---
 
@@ -614,6 +753,12 @@ No new pass should start unless it can be traced back to one of the workstreams 
 
 If a track is deferred, it should stay visible in this master plan rather than disappearing into memory.
 
+### 12.6 Scientific and external references guide but do not govern by imitation
+
+External references such as ISO 9001, BPMN, APQC, SCOR, prompt-governance patterns, and adapter patterns may inform build quality and structure.
+
+They must not be copied blindly or used to override the product's own thesis, authority model, or package boundaries.
+
 ---
 
 ## 13. Success Definition for This Extension Program
@@ -621,8 +766,11 @@ If a track is deferred, it should stay visible in this master plan rather than d
 This extension program is succeeding when:
 
 * the remaining governance ambiguity is closed
-* the analytical core becomes sharper and more reusable
+* the analytical core becomes sharper, more reusable, and more evidence-traceable
+* the scientific and methodological backbone is operationalized appropriately
 * the prompt system becomes governed and context-aware
+* target-document direction becomes stronger and more dependable
+* automation-readiness becomes a real downstream value output without becoming a premature execution engine
 * channels are added without becoming logic owners
 * productionization happens on top of a stronger core, not instead of it
 * deferred tracks remain visible and intentionally sequenced
@@ -638,18 +786,127 @@ What remains is the finishing of the true product heart.
 
 That heart is:
 
+* workflow truth discovery
 * governed analysis
 * terminology intelligence
+* scientific and methodological backbone
+* document-direction and target-document reasoning
 * prompt architecture
+* automation-readiness recommendations built on grounded workflow understanding
 * controlled interaction delivery
 * later production hardening
 
 The correct sequence is therefore:
 
 1. close ambiguity
-2. strengthen analytical intelligence
+2. strengthen analytical intelligence and its backbone
 3. strengthen prompt intelligence
 4. add channels
 5. harden the product
 
 This document is the master reference for that sequence.
+
+---
+
+## 15. Interpretation and Execution Notes
+
+The following notes do not reopen the plan, change its order, or weaken the closed baseline rule.
+They exist to protect later execution quality and reduce misreading when future passes are derived.
+
+### 15.1 Workstream B should be treated as one umbrella with internal subtracks
+
+Workstream B is intentionally broad because it contains the real analytical heart of the unfinished product.
+However, that breadth must not be mistaken for one giant implementation bucket.
+
+When future passes are derived from Workstream B, they should normally be split internally into narrower subtracks such as:
+
+* analysis kernel
+* terminology and evidence model
+* scientific backbone operationalization
+* domain-support integration
+* automation-readiness reasoning
+
+This note exists to preserve Workstream B as one coherent strategic workstream while preventing it from becoming an uncloseable execution monster later.
+
+### 15.2 Scientific backbone strengthens analysis; it must not become compliance theater
+
+The scientific and methodological backbone in this plan exists to strengthen analytical discipline, vocabulary quality, document reasoning, and workflow interpretation.
+
+It must **not** be used to:
+
+* force superficial conformity to external standards
+* imitate BPM or compliance frameworks cosmetically
+* burden the product with performative framework language that adds no operational value
+
+ISO 9001, BPMN, APQC, SCOR, and process-mining-inspired concepts should therefore be used as:
+
+* analytical support
+* vocabulary and structure support
+* reasoning support
+
+They must not become a pseudo-compliance layer or a framework-name decoration layer.
+
+### 15.3 Automation-readiness is not automation design
+
+Automation-readiness is a core downstream value output of this product.
+It is not the same as:
+
+* solution architecture
+* implementation design
+* RPA design
+* orchestration design
+* technical execution mapping
+
+The purpose of automation-readiness in this plan is to identify:
+
+* what is human-only
+* what is AI-assisted
+* what is partially automatable
+* what is a stronger automation candidate
+* what blockers still prevent serious automation
+
+It must remain a recommendation and readiness layer, not an implementation-design layer.
+
+### 15.4 Prompt families will later need clearer internal classification
+
+Workstream C is already strong enough at the master-plan level.
+However, when future passes are derived from it, the prompt system should later be organized more explicitly into prompt families such as:
+
+* governing prompts
+* analytical prompts
+* interaction prompts
+* output-shaping prompts
+
+This distinction is not required as a master-plan rewrite now, but it should guide later prompt architecture work so the system does not collapse all prompts into one undifferentiated layer.
+
+### 15.5 Healthy tensions that must remain visible
+
+This plan contains two healthy tensions that are intentional and must be managed carefully later.
+
+#### Tension A — truth before automation, while automation remains a core value output
+
+The system must not rush into automation framing before workflow truth and document direction are grounded.
+At the same time, automation-readiness remains one of the product's important business-value outputs.
+
+This is not a contradiction.
+It is an intentional ordering rule.
+
+#### Tension B — scientific backbone without rigid imitation
+
+The system should benefit from serious external analytical traditions while avoiding rigid mimicry, compliance theater, or framework-name inflation.
+
+This is also not a contradiction.
+It is a discipline requirement.
+
+### 15.6 Parts of the master plan that are stable enough and should not be casually disturbed
+
+The following areas of this master plan are considered stable enough and should not be casually reworked unless a later true strategic contradiction appears:
+
+* title and baseline framing
+* closed baseline rule
+* baseline snapshot
+* program philosophy
+* priority order
+* dependency map
+* deferred tracks
+* what starts now / what does not start now
