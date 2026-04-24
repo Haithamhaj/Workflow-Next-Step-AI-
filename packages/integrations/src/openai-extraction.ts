@@ -11,6 +11,7 @@ import type {
   ClassificationResult,
   ContextTransformResult,
   HierarchyDraftGenerationResult,
+  SourceHierarchyTriageGenerationResult,
 } from "./extraction-provider.js";
 
 function isOpenAIKeySet(): boolean {
@@ -81,5 +82,9 @@ export class OpenAIExtractionProvider implements ExtractionProvider {
 
   async generateHierarchyDraft(): Promise<HierarchyDraftGenerationResult> {
     throw new Error("OpenAI hierarchy draft generation is not wired in Pass 3 Patch 2.");
+  }
+
+  async generateSourceHierarchyTriage(): Promise<SourceHierarchyTriageGenerationResult> {
+    throw new Error("OpenAI source-to-hierarchy triage is not wired in Pass 3 Patch 3.");
   }
 }

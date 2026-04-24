@@ -15,6 +15,9 @@ import type {
   HierarchySourceBasis,
   IntakeSourceRole,
   ProviderName,
+  SourceHierarchyEvidenceStatus,
+  SourceHierarchySignalType,
+  SourceHierarchySuggestedScope,
   StructuredContext,
 } from "@workflow/contracts";
 import type {
@@ -24,6 +27,7 @@ import type {
   ClassificationResult,
   ContextTransformResult,
   HierarchyDraftGenerationResult,
+  SourceHierarchyTriageGenerationResult,
 } from "./extraction-provider.js";
 
 // ---------------------------------------------------------------------------
@@ -151,6 +155,36 @@ const SECONDARY_RELATIONSHIP_TYPES: HierarchySecondaryRelationshipType[] = [
 
 const CONFIDENCE_VALUES: HierarchyConfidence[] = ["high", "medium", "low", "unknown"];
 const SOURCE_BASIS_VALUES: HierarchySourceBasis[] = ["admin_entered", "pasted_text", "uploaded_document", "source_evidence_candidate", "unknown"];
+const SOURCE_TRIAGE_SIGNAL_TYPES: SourceHierarchySignalType[] = [
+  "role_name_signal",
+  "department_scope_signal",
+  "kpi_or_target_signal",
+  "responsibility_signal",
+  "approval_or_authority_signal",
+  "system_or_queue_signal",
+  "person_name_signal",
+  "cross_functional_signal",
+  "external_interface_signal",
+  "unclear_scope_signal",
+];
+const SOURCE_TRIAGE_SCOPES: SourceHierarchySuggestedScope[] = [
+  "company_wide",
+  "department_wide",
+  "team_or_unit",
+  "role_specific",
+  "person_or_occupant",
+  "system_or_queue",
+  "approval_or_control_node",
+  "external_interface",
+  "unknown_needs_review",
+];
+const SOURCE_TRIAGE_EVIDENCE_STATUSES: SourceHierarchyEvidenceStatus[] = [
+  "document_claim_only",
+  "admin_confirmed_relevance",
+  "participant_validation_needed",
+  "rejected_by_admin",
+  "scope_changed_by_admin",
+];
 
 function normalizeSourceRole(value: unknown): IntakeSourceRole {
   return typeof value === "string" && INTAKE_SOURCE_ROLES.includes(value as IntakeSourceRole)
@@ -184,6 +218,24 @@ function normalizeSourceBasis(value: unknown): HierarchySourceBasis {
   return typeof value === "string" && SOURCE_BASIS_VALUES.includes(value as HierarchySourceBasis)
     ? value as HierarchySourceBasis
     : "unknown";
+}
+
+function normalizeTriageSignalType(value: unknown): SourceHierarchySignalType {
+  return typeof value === "string" && SOURCE_TRIAGE_SIGNAL_TYPES.includes(value as SourceHierarchySignalType)
+    ? value as SourceHierarchySignalType
+    : "unclear_scope_signal";
+}
+
+function normalizeTriageScope(value: unknown): SourceHierarchySuggestedScope {
+  return typeof value === "string" && SOURCE_TRIAGE_SCOPES.includes(value as SourceHierarchySuggestedScope)
+    ? value as SourceHierarchySuggestedScope
+    : "unknown_needs_review";
+}
+
+function normalizeTriageEvidenceStatus(value: unknown): SourceHierarchyEvidenceStatus {
+  return typeof value === "string" && SOURCE_TRIAGE_EVIDENCE_STATUSES.includes(value as SourceHierarchyEvidenceStatus)
+    ? value as SourceHierarchyEvidenceStatus
+    : "document_claim_only";
 }
 
 export class GoogleExtractionProvider implements ExtractionProvider {
@@ -390,6 +442,65 @@ ${input.rawText.slice(0, 8000)}`;
     return {
       nodes,
       secondaryRelationships,
+      warnings,
+      provider: "google",
+      model: modelName,
+      rawText,
+    };
+  }
+
+  async generateSourceHierarchyTriage(input: {
+    compiledPrompt: string;
+  }): Promise<SourceHierarchyTriageGenerationResult> {
+    const client = this.getClient();
+    if (!client) {
+      throw new Error("GOOGLE_AI_API_KEY is not configured for Pass 3 source-to-hierarchy triage.");
+    }
+
+    const modelName = getApiModel("GOOGLE_SOURCE_TRIAGE_MODEL", getApiModel("GOOGLE_HIERARCHY_DRAFT_MODEL", "gemini-3.1-pro-preview"));
+    const model = client.getGenerativeModel({
+      model: modelName,
+      generationConfig: {
+        responseMimeType: "application/json",
+      },
+    });
+
+    const result = await model.generateContent([
+      { text: input.compiledPrompt },
+    ]);
+    const rawText = result.response.text();
+    const parsed = JSON.parse(rawText) as {
+      suggestions?: unknown[];
+      warnings?: unknown[];
+    };
+
+    const suggestions = (Array.isArray(parsed.suggestions) ? parsed.suggestions : []).map((raw) => {
+      const item = raw && typeof raw === "object" ? raw as Record<string, unknown> : {};
+      const suggestedScope = normalizeTriageScope(item.suggestedScope);
+      return {
+        sourceId: cleanString(item.sourceId) ?? "unknown_source",
+        sourceName: cleanString(item.sourceName) ?? cleanString(item.sourceId) ?? "Unknown source",
+        suggestedScope,
+        linkedNodeId: cleanString(item.linkedNodeId),
+        linkedScopeLevel: item.linkedScopeLevel ? normalizeTriageScope(item.linkedScopeLevel) : suggestedScope,
+        signalType: normalizeTriageSignalType(item.signalType),
+        suggestedReason: cleanString(item.suggestedReason) ?? "Provider suggested this as a tentative source-to-hierarchy evidence candidate.",
+        confidence: normalizeConfidence(item.confidence),
+        evidenceStatus: normalizeTriageEvidenceStatus(item.evidenceStatus),
+        participantValidationNeeded: typeof item.participantValidationNeeded === "boolean"
+          ? item.participantValidationNeeded
+          : normalizeTriageSignalType(item.signalType) !== "role_name_signal",
+        adminReviewQuestion: cleanString(item.adminReviewQuestion) ?? "Is this source only a documented/formal claim, or does it reflect actual practice?",
+        provider: "google" as const,
+        model: modelName,
+      };
+    });
+
+    const warnings = (Array.isArray(parsed.warnings) ? parsed.warnings : [])
+      .flatMap((warning) => cleanString(warning) ? [cleanString(warning)!] : []);
+
+    return {
+      suggestions,
       warnings,
       provider: "google",
       model: modelName,

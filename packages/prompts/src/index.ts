@@ -30,6 +30,7 @@ export type {
 } from "@workflow/contracts";
 
 export const PASS3_HIERARCHY_PROMPT_MODULE = "pass3.hierarchy.draft" as const;
+export const PASS3_SOURCE_TRIAGE_PROMPT_MODULE = "pass3.source_hierarchy.triage" as const;
 
 // ---------------------------------------------------------------------------
 // registerPrompt
@@ -154,6 +155,14 @@ export interface Pass3HierarchyPromptInput {
   structuredContextSummary?: string;
 }
 
+export interface Pass3SourceTriagePromptInput {
+  caseId: string;
+  sessionId: string;
+  primaryDepartment?: string;
+  hierarchyNodesJson: string;
+  sourcesJson: string;
+}
+
 export function defaultPass3HierarchyPromptSpec(now = new Date().toISOString()): StructuredPromptSpec {
   return {
     promptSpecId: "promptspec_pass3_hierarchy_draft_v1",
@@ -240,4 +249,85 @@ export function compileStructuredPromptSpec(
   ].join("\n\n");
 
   return `${sections}\n\n## Runtime Case Context\n${context}`;
+}
+
+export function defaultPass3SourceTriagePromptSpec(now = new Date().toISOString()): StructuredPromptSpec {
+  return {
+    promptSpecId: "promptspec_pass3_source_hierarchy_triage_v1",
+    linkedModule: PASS3_SOURCE_TRIAGE_PROMPT_MODULE,
+    purpose: "Suggest tentative source-to-hierarchy relevance links for admin review in Pass 3.",
+    status: "active",
+    version: 1,
+    inputContractRef: "IntakeSource[] + current HierarchyDraftRecord.nodes",
+    outputContractRef: "SourceHierarchyTriageSuggestion[]",
+    createdAt: now,
+    updatedAt: now,
+    blocks: [
+      {
+        blockId: "role_definition",
+        label: "Role Definition",
+        editable: true,
+        body: "You are a Pass 3 source relevance triage assistant. You identify only tentative evidence-candidate links between intake sources and hierarchy scopes/nodes for admin review.",
+      },
+      {
+        blockId: "mission",
+        label: "Pass 3 Source Triage Mission",
+        editable: true,
+        body: "Analyze existing intake sources for hierarchy relevance signals. Suggest candidate links to company-wide context, department-wide context, team/unit, role-specific node, person/occupant, system/queue, approval/control node, external interface, or unknown/needs review.",
+      },
+      {
+        blockId: "signal_and_scope_rules",
+        label: "Signal And Scope Rules",
+        editable: true,
+        body: "Use only these signalType values: role_name_signal, department_scope_signal, kpi_or_target_signal, responsibility_signal, approval_or_authority_signal, system_or_queue_signal, person_name_signal, cross_functional_signal, external_interface_signal, unclear_scope_signal. Use only these suggestedScope values: company_wide, department_wide, team_or_unit, role_specific, person_or_occupant, system_or_queue, approval_or_control_node, external_interface, unknown_needs_review.",
+      },
+      {
+        blockId: "evidence_candidate_rules",
+        label: "Evidence Candidate Rules",
+        editable: true,
+        body: "All suggestions are evidence candidates only. Default evidenceStatus to document_claim_only. Set participantValidationNeeded true for KPI/target, responsibility, approval/authority, or unclear practice claims. Ask an adminReviewQuestion that distinguishes documented/formal claims from actual practice.",
+      },
+      {
+        blockId: "prohibitions",
+        label: "Prohibitions",
+        editable: true,
+        body: "Do not treat source claims as workflow truth. Do not validate SOPs, KPIs, policies, responsibilities, or actual practice. Do not create participant targeting, rollout order, invitations, participant sessions, workflow analysis, reference suitability scoring, synthesis/evaluation, or package generation.",
+      },
+      {
+        blockId: "output_schema_contract",
+        label: "Output Schema / Contract",
+        editable: true,
+        body: "Return JSON only: {\"suggestions\":[{\"sourceId\":\"string\",\"sourceName\":\"string\",\"suggestedScope\":\"approved_scope_value\",\"linkedNodeId\":\"optional existing nodeId only\",\"linkedScopeLevel\":\"optional approved_scope_value\",\"signalType\":\"approved_signal_type\",\"suggestedReason\":\"string\",\"confidence\":\"high|medium|low|unknown\",\"evidenceStatus\":\"document_claim_only\",\"participantValidationNeeded\":true,\"adminReviewQuestion\":\"string\"}],\"warnings\":[\"string\"]}. Do not include participant_confirmed_later or contradicted_by_reality_later.",
+      },
+    ],
+  };
+}
+
+export function ensureActivePass3SourceTriagePromptSpec(repo: StructuredPromptSpecRepository): StructuredPromptSpec {
+  const existing = repo.findActiveByLinkedModule(PASS3_SOURCE_TRIAGE_PROMPT_MODULE);
+  if (existing) return existing;
+  const spec = defaultPass3SourceTriagePromptSpec();
+  const result = validateStructuredPromptSpec(spec);
+  if (!result.ok) {
+    const messages = result.errors.map((e) => e.message ?? String(e)).join("; ");
+    throw new Error(`Invalid default Pass 3 source triage PromptSpec: ${messages}`);
+  }
+  repo.save(spec);
+  return spec;
+}
+
+export function compilePass3SourceTriagePromptSpec(
+  spec: StructuredPromptSpec,
+  input: Pass3SourceTriagePromptInput,
+): string {
+  const sections = spec.blocks.map((block) => `## ${block.label}\n${block.body}`).join("\n\n");
+  const context = [
+    `caseId: ${input.caseId}`,
+    `sessionId: ${input.sessionId}`,
+    `primaryDepartment: ${input.primaryDepartment ?? "unknown"}`,
+    `hierarchyNodesJson:\n${input.hierarchyNodesJson}`,
+    `sourcesJson:\n${input.sourcesJson}`,
+  ].join("\n\n");
+
+  return `${sections}\n\n## Runtime Source Triage Context\n${context}`;
 }

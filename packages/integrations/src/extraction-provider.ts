@@ -6,6 +6,7 @@
 import type {
   HierarchyNodeRecord,
   HierarchySecondaryRelationship,
+  SourceHierarchyTriageSuggestion,
   ProviderName,
   StructuredContext,
   AttachmentScope,
@@ -35,6 +36,17 @@ export interface ContextTransformResult {
 export interface HierarchyDraftGenerationResult {
   nodes: HierarchyNodeRecord[];
   secondaryRelationships: HierarchySecondaryRelationship[];
+  warnings: string[];
+  provider: ProviderName;
+  model: string;
+  rawText: string;
+}
+
+export interface SourceHierarchyTriageGenerationResult {
+  suggestions: Omit<
+    SourceHierarchyTriageSuggestion,
+    "triageId" | "triageJobId" | "sessionId" | "caseId" | "adminDecision" | "createdAt" | "updatedAt"
+  >[];
   warnings: string[];
   provider: ProviderName;
   model: string;
@@ -74,4 +86,9 @@ export interface ExtractionProvider {
   generateHierarchyDraft(input: {
     compiledPrompt: string;
   }): Promise<HierarchyDraftGenerationResult>;
+
+  /** Generate Pass 3 source-to-hierarchy evidence-candidate suggestions from a visible compiled PromptSpec. */
+  generateSourceHierarchyTriage(input: {
+    compiledPrompt: string;
+  }): Promise<SourceHierarchyTriageGenerationResult>;
 }

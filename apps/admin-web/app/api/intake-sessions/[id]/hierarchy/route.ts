@@ -4,17 +4,23 @@ import {
   calculateHierarchyReadinessSnapshot,
   createPastedHierarchyIntake,
   createUploadedDocumentHierarchyIntake,
+  createManualSourceHierarchyLink,
   generateProviderBackedHierarchyDraft,
+  generateProviderBackedSourceHierarchyTriage,
   getHierarchyFoundationState,
   parsePastedHierarchyText,
   saveManualHierarchyDraft,
+  updateSourceHierarchyTriageSuggestion,
   type HierarchyNodeRecord,
   type HierarchySecondaryRelationship,
+  type SourceHierarchySuggestedScope,
 } from "@workflow/hierarchy-intake";
 import { providerRegistry } from "@workflow/integrations";
 import {
   compileStructuredPromptSpec,
+  compilePass3SourceTriagePromptSpec,
   ensureActivePass3HierarchyPromptSpec,
+  ensureActivePass3SourceTriagePromptSpec,
 } from "@workflow/prompts";
 import { store } from "../../../../../lib/store";
 
@@ -28,16 +34,21 @@ function repos() {
     hierarchyCorrections: store.hierarchyCorrections,
     approvedHierarchySnapshots: store.approvedHierarchySnapshots,
     hierarchyReadinessSnapshots: store.hierarchyReadinessSnapshots,
+    sourceHierarchyTriageJobs: store.sourceHierarchyTriageJobs,
+    sourceHierarchyTriageSuggestions: store.sourceHierarchyTriageSuggestions,
   };
 }
 
 function payload(sessionId: string) {
   const foundation = getHierarchyFoundationState(sessionId, repos());
   const promptSpec = ensureActivePass3HierarchyPromptSpec(store.structuredPromptSpecs);
+  const sourceTriagePromptSpec = ensureActivePass3SourceTriagePromptSpec(store.structuredPromptSpecs);
   return {
     ...foundation,
     promptSpec,
     compiledPromptPreview: compileStructuredPromptSpec(promptSpec, promptInput(sessionId)),
+    sourceTriagePromptSpec,
+    compiledSourceTriagePromptPreview: compilePass3SourceTriagePromptSpec(sourceTriagePromptSpec, sourceTriagePromptInput(sessionId)),
   };
 }
 
@@ -59,6 +70,30 @@ function promptInput(sessionId: string) {
         `Department context: ${structuredContext.context.departmentContextSummary}`,
       ].join("\n")
       : undefined,
+  };
+}
+
+function sourceTriagePromptInput(sessionId: string) {
+  const session = store.intakeSessions.findById(sessionId);
+  const draft = store.hierarchyDrafts.findBySessionId(sessionId);
+  const sources = store.intakeSources.findBySessionId(sessionId).map((source) => {
+    const artifacts = store.textArtifacts.findBySourceId(source.sourceId);
+    return {
+      sourceId: source.sourceId,
+      sourceName: source.displayName ?? source.fileName ?? source.websiteUrl ?? source.sourceId,
+      inputType: source.inputType,
+      bucket: source.bucket,
+      noteText: source.noteText,
+      extractedText: source.extractedText,
+      artifactText: artifacts.map((artifact) => artifact.text).join("\n\n").slice(0, 4000),
+    };
+  });
+  return {
+    caseId: session?.caseId ?? "unknown",
+    sessionId,
+    primaryDepartment: session?.primaryDepartment,
+    hierarchyNodesJson: JSON.stringify(draft?.nodes ?? [], null, 2),
+    sourcesJson: JSON.stringify(sources, null, 2),
   };
 }
 
@@ -133,6 +168,48 @@ export async function POST(
       return NextResponse.json({ ...payload(params.id), draft }, { status });
     }
 
+    if (action === "generate-source-triage") {
+      const promptSpec = ensureActivePass3SourceTriagePromptSpec(store.structuredPromptSpecs);
+      const compiledPrompt = compilePass3SourceTriagePromptSpec(promptSpec, sourceTriagePromptInput(params.id));
+      const result = await generateProviderBackedSourceHierarchyTriage({
+        sessionId: params.id,
+        provider: providerRegistry.getExtractionProvider("google"),
+        promptSpecId: promptSpec.promptSpecId,
+        compiledPrompt,
+      }, repos());
+      const status = result.job.status === "ai_triage_failed" ? 424 : 201;
+      return NextResponse.json({ ...payload(params.id), sourceTriageJob: result.job, sourceTriageSuggestions: result.suggestions }, { status });
+    }
+
+    if (action === "update-source-triage") {
+      const suggestion = updateSourceHierarchyTriageSuggestion({
+        triageId: typeof body.triageId === "string" ? body.triageId : "",
+        action: body.decisionAction as "accept" | "reject" | "change_scope" | "mark_participant_validation_needed" | "add_note",
+        suggestedScope: body.suggestedScope as SourceHierarchySuggestedScope | undefined,
+        linkedNodeId: typeof body.linkedNodeId === "string" ? body.linkedNodeId : undefined,
+        linkedScopeLevel: body.linkedScopeLevel as SourceHierarchySuggestedScope | undefined,
+        adminNote: typeof body.adminNote === "string" ? body.adminNote : undefined,
+      }, repos());
+      return NextResponse.json({ ...payload(params.id), sourceTriageSuggestion: suggestion }, { status: 201 });
+    }
+
+    if (action === "create-manual-source-link") {
+      const sourceId = typeof body.sourceId === "string" ? body.sourceId : "";
+      const source = store.intakeSources.findById(sourceId);
+      const suggestion = createManualSourceHierarchyLink({
+        sessionId: params.id,
+        sourceId,
+        sourceName: typeof body.sourceName === "string" ? body.sourceName : source?.displayName ?? source?.fileName ?? sourceId,
+        suggestedScope: body.suggestedScope as SourceHierarchySuggestedScope,
+        linkedNodeId: typeof body.linkedNodeId === "string" ? body.linkedNodeId : undefined,
+        linkedScopeLevel: body.linkedScopeLevel as SourceHierarchySuggestedScope | undefined,
+        adminNote: typeof body.adminNote === "string" ? body.adminNote : undefined,
+        participantValidationNeeded: Boolean(body.participantValidationNeeded),
+        createdBy: typeof body.createdBy === "string" ? body.createdBy : undefined,
+      }, repos());
+      return NextResponse.json({ ...payload(params.id), sourceTriageSuggestion: suggestion }, { status: 201 });
+    }
+
     if (action === "approve-structural-snapshot") {
       const approvedSnapshot = approveStructuralHierarchy({
         sessionId: params.id,
@@ -154,6 +231,9 @@ export async function POST(
         "parse-pasted-text",
         "save-manual-draft",
         "generate-ai-draft",
+        "generate-source-triage",
+        "update-source-triage",
+        "create-manual-source-link",
         "approve-structural-snapshot",
         "calculate-readiness",
       ],

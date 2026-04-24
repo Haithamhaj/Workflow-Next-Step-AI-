@@ -164,3 +164,84 @@ export interface SourceHierarchyEvidenceCandidate {
   relevanceNote: string;
   createdAt: string;
 }
+
+export type SourceHierarchySignalType =
+  | "role_name_signal"
+  | "department_scope_signal"
+  | "kpi_or_target_signal"
+  | "responsibility_signal"
+  | "approval_or_authority_signal"
+  | "system_or_queue_signal"
+  | "person_name_signal"
+  | "cross_functional_signal"
+  | "external_interface_signal"
+  | "unclear_scope_signal";
+
+export type SourceHierarchySuggestedScope =
+  | "company_wide"
+  | "department_wide"
+  | "team_or_unit"
+  | "role_specific"
+  | "person_or_occupant"
+  | "system_or_queue"
+  | "approval_or_control_node"
+  | "external_interface"
+  | "unknown_needs_review";
+
+export type SourceHierarchyEvidenceStatus =
+  | "document_claim_only"
+  | "admin_confirmed_relevance"
+  | "participant_validation_needed"
+  | "rejected_by_admin"
+  | "scope_changed_by_admin";
+
+export type SourceHierarchyAdminDecision =
+  | "pending_review"
+  | "accepted_link"
+  | "rejected_link"
+  | "changed_scope"
+  | "participant_validation_needed"
+  | "admin_note_added";
+
+export type SourceHierarchyTriageJobStatus = "ai_triage_succeeded" | "ai_triage_failed" | "manual_link_created";
+
+export interface SourceHierarchyTriageJob {
+  triageJobId: string;
+  sessionId: string;
+  caseId: string;
+  status: SourceHierarchyTriageJobStatus;
+  provider?: "google" | "openai";
+  model?: string;
+  promptSpecId?: string;
+  compiledPrompt?: string;
+  rawProviderOutput?: string;
+  errorMessage?: string;
+  createdBy: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface SourceHierarchyTriageSuggestion {
+  triageId: string;
+  triageJobId?: string;
+  sessionId: string;
+  caseId: string;
+  sourceId: string;
+  sourceName: string;
+  suggestedScope: SourceHierarchySuggestedScope;
+  linkedNodeId?: string;
+  linkedScopeLevel?: SourceHierarchySuggestedScope;
+  signalType: SourceHierarchySignalType;
+  suggestedReason: string;
+  confidence: HierarchyConfidence;
+  evidenceStatus: SourceHierarchyEvidenceStatus;
+  participantValidationNeeded: boolean;
+  adminReviewQuestion: string;
+  adminDecision: SourceHierarchyAdminDecision;
+  adminNote?: string;
+  provider?: "google" | "openai";
+  model?: string;
+  promptSpecId?: string;
+  createdAt: string;
+  updatedAt: string;
+}

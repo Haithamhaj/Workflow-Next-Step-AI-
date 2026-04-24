@@ -1,8 +1,10 @@
 import Link from "next/link";
 import { getHierarchyFoundationState } from "@workflow/hierarchy-intake";
 import {
+  compilePass3SourceTriagePromptSpec,
   compileStructuredPromptSpec,
   ensureActivePass3HierarchyPromptSpec,
+  ensureActivePass3SourceTriagePromptSpec,
 } from "@workflow/prompts";
 import { store } from "../../../../lib/store";
 import HierarchyFoundationClient from "./HierarchyFoundationClient";
@@ -28,6 +30,27 @@ function promptInput(sessionId: string) {
   };
 }
 
+function sourceTriagePromptInput(sessionId: string) {
+  const session = store.intakeSessions.findById(sessionId);
+  const draft = store.hierarchyDrafts.findBySessionId(sessionId);
+  const sources = store.intakeSources.findBySessionId(sessionId).map((source) => ({
+    sourceId: source.sourceId,
+    sourceName: source.displayName ?? source.fileName ?? source.websiteUrl ?? source.sourceId,
+    inputType: source.inputType,
+    bucket: source.bucket,
+    noteText: source.noteText,
+    extractedText: source.extractedText,
+    artifactText: store.textArtifacts.findBySourceId(source.sourceId).map((artifact) => artifact.text).join("\n\n").slice(0, 4000),
+  }));
+  return {
+    caseId: session?.caseId ?? "unknown",
+    sessionId,
+    primaryDepartment: session?.primaryDepartment,
+    hierarchyNodesJson: JSON.stringify(draft?.nodes ?? [], null, 2),
+    sourcesJson: JSON.stringify(sources, null, 2),
+  };
+}
+
 export default function HierarchyPage({ params }: { params: { id: string } }) {
   const foundation = getHierarchyFoundationState(params.id, {
     intakeSessions: store.intakeSessions,
@@ -36,12 +59,17 @@ export default function HierarchyPage({ params }: { params: { id: string } }) {
     hierarchyCorrections: store.hierarchyCorrections,
     approvedHierarchySnapshots: store.approvedHierarchySnapshots,
     hierarchyReadinessSnapshots: store.hierarchyReadinessSnapshots,
+    sourceHierarchyTriageJobs: store.sourceHierarchyTriageJobs,
+    sourceHierarchyTriageSuggestions: store.sourceHierarchyTriageSuggestions,
   });
   const promptSpec = ensureActivePass3HierarchyPromptSpec(store.structuredPromptSpecs);
+  const sourceTriagePromptSpec = ensureActivePass3SourceTriagePromptSpec(store.structuredPromptSpecs);
   const state = {
     ...foundation,
     promptSpec,
     compiledPromptPreview: compileStructuredPromptSpec(promptSpec, promptInput(params.id)),
+    sourceTriagePromptSpec,
+    compiledSourceTriagePromptPreview: compilePass3SourceTriagePromptSpec(sourceTriagePromptSpec, sourceTriagePromptInput(params.id)),
   };
 
   return (

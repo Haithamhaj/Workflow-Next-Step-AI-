@@ -21,6 +21,8 @@ export {
   approvedHierarchySnapshotSchema,
   hierarchyReadinessSnapshotSchema,
   promptSpecSchema,
+  sourceHierarchyTriageJobSchema,
+  sourceHierarchyTriageSuggestionSchema,
 } from "./schemas/index.js";
 
 import { makeValidator } from "./validate.js";
@@ -44,6 +46,8 @@ import {
   approvedHierarchySnapshotSchema,
   hierarchyReadinessSnapshotSchema,
   promptSpecSchema,
+  sourceHierarchyTriageJobSchema,
+  sourceHierarchyTriageSuggestionSchema,
 } from "./schemas/index.js";
 import type { CaseConfiguration } from "./types/case-configuration.js";
 import type { SourceRegistration } from "./types/source-registration.js";
@@ -55,7 +59,7 @@ import type { InitialPackageRecord } from "./types/initial-package-record.js";
 import type { ReviewIssueRecord } from "./types/review-issues.js";
 import type { FinalPackageRecord } from "./types/final-package.js";
 import type { IntakeBucket, IntakeInputType, IntakeSourceStatus, AttachmentScope, CrawlPagePriority, CrawlSessionStatus, ProviderName, AudioMode, HierarchyInputMethod, IntakeSession, IntakeSource, WebsiteCrawlSession, AdminIntakeDecision } from "./types/intake.js";
-import type { ApprovedHierarchySnapshot, HierarchyCorrectionEvent, HierarchyDraftRecord, HierarchyIntakeRecord, HierarchyReadinessSnapshot } from "./types/hierarchy.js";
+import type { ApprovedHierarchySnapshot, HierarchyCorrectionEvent, HierarchyDraftRecord, HierarchyIntakeRecord, HierarchyReadinessSnapshot, SourceHierarchyTriageJob, SourceHierarchyTriageSuggestion } from "./types/hierarchy.js";
 import type { StructuredPromptSpec } from "./types/prompt-spec.js";
 import {
   SessionState,
@@ -140,3 +144,9 @@ export const validateHierarchyReadinessSnapshot =
 
 export const validateStructuredPromptSpec =
   makeValidator<StructuredPromptSpec>(promptSpecSchema);
+
+export const validateSourceHierarchyTriageJob =
+  makeValidator<SourceHierarchyTriageJob>(sourceHierarchyTriageJobSchema);
+
+export const validateSourceHierarchyTriageSuggestion =
+  makeValidator<SourceHierarchyTriageSuggestion>(sourceHierarchyTriageSuggestionSchema);

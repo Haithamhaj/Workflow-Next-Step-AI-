@@ -33,4 +33,6 @@ export const store: InMemoryStore = globalThis.__workflowStore__ ?? (globalThis.
   approvedHierarchySnapshots: intakeRepositories.approvedHierarchySnapshots,
   hierarchyReadinessSnapshots: intakeRepositories.hierarchyReadinessSnapshots,
   structuredPromptSpecs: intakeRepositories.structuredPromptSpecs,
+  sourceHierarchyTriageJobs: intakeRepositories.sourceHierarchyTriageJobs,
+  sourceHierarchyTriageSuggestions: intakeRepositories.sourceHierarchyTriageSuggestions,
 });

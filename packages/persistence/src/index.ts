@@ -36,6 +36,8 @@ import type {
   HierarchyDraftRecord,
   HierarchyIntakeRecord,
   HierarchyReadinessSnapshot,
+  SourceHierarchyTriageJob,
+  SourceHierarchyTriageSuggestion,
   StructuredPromptSpec,
 } from "@workflow/contracts";
 
@@ -188,6 +190,10 @@ export interface StoredApprovedHierarchySnapshot extends ApprovedHierarchySnapsh
 export interface StoredHierarchyReadinessSnapshot extends HierarchyReadinessSnapshot {}
 
 export interface StoredStructuredPromptSpec extends StructuredPromptSpec {}
+
+export interface StoredSourceHierarchyTriageJob extends SourceHierarchyTriageJob {}
+
+export interface StoredSourceHierarchyTriageSuggestion extends SourceHierarchyTriageSuggestion {}
 
 // ---------------------------------------------------------------------------
 // Repository interfaces — backend-agnostic
@@ -429,6 +435,22 @@ export interface StructuredPromptSpecRepository {
   findByLinkedModule(linkedModule: string): StoredStructuredPromptSpec[];
   findActiveByLinkedModule(linkedModule: string): StoredStructuredPromptSpec | null;
   findAll(): StoredStructuredPromptSpec[];
+}
+
+export interface SourceHierarchyTriageJobRepository {
+  save(record: StoredSourceHierarchyTriageJob): void;
+  findById(triageJobId: string): StoredSourceHierarchyTriageJob | null;
+  findBySessionId(sessionId: string): StoredSourceHierarchyTriageJob[];
+  findLatestBySessionId(sessionId: string): StoredSourceHierarchyTriageJob | null;
+  findAll(): StoredSourceHierarchyTriageJob[];
+}
+
+export interface SourceHierarchyTriageSuggestionRepository {
+  save(record: StoredSourceHierarchyTriageSuggestion): void;
+  findById(triageId: string): StoredSourceHierarchyTriageSuggestion | null;
+  findBySessionId(sessionId: string): StoredSourceHierarchyTriageSuggestion[];
+  findBySourceId(sourceId: string): StoredSourceHierarchyTriageSuggestion[];
+  findAll(): StoredSourceHierarchyTriageSuggestion[];
 }
 
 // ---------------------------------------------------------------------------
@@ -1219,6 +1241,55 @@ class InMemoryStructuredPromptSpecRepository implements StructuredPromptSpecRepo
   }
 }
 
+class InMemorySourceHierarchyTriageJobRepository implements SourceHierarchyTriageJobRepository {
+  private readonly store = new Map<string, StoredSourceHierarchyTriageJob>();
+
+  save(record: StoredSourceHierarchyTriageJob): void {
+    this.store.set(record.triageJobId, { ...record });
+  }
+
+  findById(triageJobId: string): StoredSourceHierarchyTriageJob | null {
+    return this.store.get(triageJobId) ?? null;
+  }
+
+  findBySessionId(sessionId: string): StoredSourceHierarchyTriageJob[] {
+    return Array.from(this.store.values()).filter((record) => record.sessionId === sessionId);
+  }
+
+  findLatestBySessionId(sessionId: string): StoredSourceHierarchyTriageJob | null {
+    const records = this.findBySessionId(sessionId);
+    return records[records.length - 1] ?? null;
+  }
+
+  findAll(): StoredSourceHierarchyTriageJob[] {
+    return Array.from(this.store.values());
+  }
+}
+
+class InMemorySourceHierarchyTriageSuggestionRepository implements SourceHierarchyTriageSuggestionRepository {
+  private readonly store = new Map<string, StoredSourceHierarchyTriageSuggestion>();
+
+  save(record: StoredSourceHierarchyTriageSuggestion): void {
+    this.store.set(record.triageId, { ...record });
+  }
+
+  findById(triageId: string): StoredSourceHierarchyTriageSuggestion | null {
+    return this.store.get(triageId) ?? null;
+  }
+
+  findBySessionId(sessionId: string): StoredSourceHierarchyTriageSuggestion[] {
+    return Array.from(this.store.values()).filter((record) => record.sessionId === sessionId);
+  }
+
+  findBySourceId(sourceId: string): StoredSourceHierarchyTriageSuggestion[] {
+    return Array.from(this.store.values()).filter((record) => record.sourceId === sourceId);
+  }
+
+  findAll(): StoredSourceHierarchyTriageSuggestion[] {
+    return Array.from(this.store.values());
+  }
+}
+
 // ---------------------------------------------------------------------------
 // SQLite intake implementations — durable Phase 1 foundation
 // ---------------------------------------------------------------------------
@@ -1385,6 +1456,19 @@ function openIntakeDatabase(dbPath?: string): DatabaseSync {
       status TEXT NOT NULL,
       payload TEXT NOT NULL
     );
+    CREATE TABLE IF NOT EXISTS source_hierarchy_triage_jobs (
+      id TEXT PRIMARY KEY,
+      session_id TEXT NOT NULL,
+      case_id TEXT NOT NULL,
+      payload TEXT NOT NULL
+    );
+    CREATE TABLE IF NOT EXISTS source_hierarchy_triage_suggestions (
+      id TEXT PRIMARY KEY,
+      source_id TEXT NOT NULL,
+      session_id TEXT NOT NULL,
+      case_id TEXT NOT NULL,
+      payload TEXT NOT NULL
+    );
     CREATE INDEX IF NOT EXISTS idx_provider_jobs_source_id ON provider_extraction_jobs(source_id);
     CREATE INDEX IF NOT EXISTS idx_provider_jobs_session_id ON provider_extraction_jobs(session_id);
     CREATE INDEX IF NOT EXISTS idx_text_artifacts_source_id ON text_artifacts(source_id);
@@ -1422,6 +1506,10 @@ function openIntakeDatabase(dbPath?: string): DatabaseSync {
     CREATE INDEX IF NOT EXISTS idx_hierarchy_readiness_case_id ON hierarchy_readiness_snapshots(case_id);
     CREATE INDEX IF NOT EXISTS idx_prompt_specs_linked_module ON structured_prompt_specs(linked_module);
     CREATE INDEX IF NOT EXISTS idx_prompt_specs_status ON structured_prompt_specs(status);
+    CREATE INDEX IF NOT EXISTS idx_source_hierarchy_triage_jobs_session_id ON source_hierarchy_triage_jobs(session_id);
+    CREATE INDEX IF NOT EXISTS idx_source_hierarchy_triage_suggestions_source_id ON source_hierarchy_triage_suggestions(source_id);
+    CREATE INDEX IF NOT EXISTS idx_source_hierarchy_triage_suggestions_session_id ON source_hierarchy_triage_suggestions(session_id);
+    CREATE INDEX IF NOT EXISTS idx_source_hierarchy_triage_suggestions_case_id ON source_hierarchy_triage_suggestions(case_id);
   `);
   return db;
 }
@@ -2138,6 +2226,74 @@ export class SQLiteStructuredPromptSpecRepository implements StructuredPromptSpe
   }
 }
 
+export class SQLiteSourceHierarchyTriageJobRepository implements SourceHierarchyTriageJobRepository {
+  private readonly db: DatabaseSync;
+
+  constructor(dbPath?: string) {
+    this.db = openIntakeDatabase(dbPath);
+  }
+
+  save(record: StoredSourceHierarchyTriageJob): void {
+    this.db.prepare(
+      "INSERT INTO source_hierarchy_triage_jobs (id, session_id, case_id, payload) VALUES (?, ?, ?, ?) ON CONFLICT(id) DO UPDATE SET session_id = excluded.session_id, case_id = excluded.case_id, payload = excluded.payload",
+    ).run(record.triageJobId, record.sessionId, record.caseId, JSON.stringify(record));
+  }
+
+  findById(triageJobId: string): StoredSourceHierarchyTriageJob | null {
+    const row = this.db.prepare("SELECT payload FROM source_hierarchy_triage_jobs WHERE id = ?").get(triageJobId);
+    return parseStored<StoredSourceHierarchyTriageJob>(row);
+  }
+
+  findBySessionId(sessionId: string): StoredSourceHierarchyTriageJob[] {
+    const rows = this.db.prepare("SELECT payload FROM source_hierarchy_triage_jobs WHERE session_id = ? ORDER BY id").all(sessionId);
+    return parseStoredList<StoredSourceHierarchyTriageJob>(rows);
+  }
+
+  findLatestBySessionId(sessionId: string): StoredSourceHierarchyTriageJob | null {
+    const row = this.db.prepare("SELECT payload FROM source_hierarchy_triage_jobs WHERE session_id = ? ORDER BY id DESC LIMIT 1").get(sessionId);
+    return parseStored<StoredSourceHierarchyTriageJob>(row);
+  }
+
+  findAll(): StoredSourceHierarchyTriageJob[] {
+    const rows = this.db.prepare("SELECT payload FROM source_hierarchy_triage_jobs ORDER BY id").all();
+    return parseStoredList<StoredSourceHierarchyTriageJob>(rows);
+  }
+}
+
+export class SQLiteSourceHierarchyTriageSuggestionRepository implements SourceHierarchyTriageSuggestionRepository {
+  private readonly db: DatabaseSync;
+
+  constructor(dbPath?: string) {
+    this.db = openIntakeDatabase(dbPath);
+  }
+
+  save(record: StoredSourceHierarchyTriageSuggestion): void {
+    this.db.prepare(
+      "INSERT INTO source_hierarchy_triage_suggestions (id, source_id, session_id, case_id, payload) VALUES (?, ?, ?, ?, ?) ON CONFLICT(id) DO UPDATE SET source_id = excluded.source_id, session_id = excluded.session_id, case_id = excluded.case_id, payload = excluded.payload",
+    ).run(record.triageId, record.sourceId, record.sessionId, record.caseId, JSON.stringify(record));
+  }
+
+  findById(triageId: string): StoredSourceHierarchyTriageSuggestion | null {
+    const row = this.db.prepare("SELECT payload FROM source_hierarchy_triage_suggestions WHERE id = ?").get(triageId);
+    return parseStored<StoredSourceHierarchyTriageSuggestion>(row);
+  }
+
+  findBySessionId(sessionId: string): StoredSourceHierarchyTriageSuggestion[] {
+    const rows = this.db.prepare("SELECT payload FROM source_hierarchy_triage_suggestions WHERE session_id = ? ORDER BY id").all(sessionId);
+    return parseStoredList<StoredSourceHierarchyTriageSuggestion>(rows);
+  }
+
+  findBySourceId(sourceId: string): StoredSourceHierarchyTriageSuggestion[] {
+    const rows = this.db.prepare("SELECT payload FROM source_hierarchy_triage_suggestions WHERE source_id = ? ORDER BY id").all(sourceId);
+    return parseStoredList<StoredSourceHierarchyTriageSuggestion>(rows);
+  }
+
+  findAll(): StoredSourceHierarchyTriageSuggestion[] {
+    const rows = this.db.prepare("SELECT payload FROM source_hierarchy_triage_suggestions ORDER BY id").all();
+    return parseStoredList<StoredSourceHierarchyTriageSuggestion>(rows);
+  }
+}
+
 export function createSQLiteIntakeRepositories(dbPath?: string): {
   intakeSessions: IntakeSessionRepository;
   intakeSources: IntakeSourceRepository;
@@ -2161,6 +2317,8 @@ export function createSQLiteIntakeRepositories(dbPath?: string): {
   approvedHierarchySnapshots: ApprovedHierarchySnapshotRepository;
   hierarchyReadinessSnapshots: HierarchyReadinessSnapshotRepository;
   structuredPromptSpecs: StructuredPromptSpecRepository;
+  sourceHierarchyTriageJobs: SourceHierarchyTriageJobRepository;
+  sourceHierarchyTriageSuggestions: SourceHierarchyTriageSuggestionRepository;
 } {
   return {
     intakeSessions: new SQLiteIntakeSessionRepository(dbPath),
@@ -2185,6 +2343,8 @@ export function createSQLiteIntakeRepositories(dbPath?: string): {
     approvedHierarchySnapshots: new SQLiteApprovedHierarchySnapshotRepository(dbPath),
     hierarchyReadinessSnapshots: new SQLiteHierarchyReadinessSnapshotRepository(dbPath),
     structuredPromptSpecs: new SQLiteStructuredPromptSpecRepository(dbPath),
+    sourceHierarchyTriageJobs: new SQLiteSourceHierarchyTriageJobRepository(dbPath),
+    sourceHierarchyTriageSuggestions: new SQLiteSourceHierarchyTriageSuggestionRepository(dbPath),
   };
 }
 
@@ -2230,6 +2390,8 @@ export interface InMemoryStore {
   approvedHierarchySnapshots: ApprovedHierarchySnapshotRepository;
   hierarchyReadinessSnapshots: HierarchyReadinessSnapshotRepository;
   structuredPromptSpecs: StructuredPromptSpecRepository;
+  sourceHierarchyTriageJobs: SourceHierarchyTriageJobRepository;
+  sourceHierarchyTriageSuggestions: SourceHierarchyTriageSuggestionRepository;
   /** Raw file bytes keyed by sourceId. In-memory only — no persistence. */
   fileStore: Map<string, { bytes: ArrayBuffer; mimeType: string }>;
 }
@@ -2269,6 +2431,8 @@ export function createInMemoryStore(): InMemoryStore {
     approvedHierarchySnapshots: new InMemoryApprovedHierarchySnapshotRepository(),
     hierarchyReadinessSnapshots: new InMemoryHierarchyReadinessSnapshotRepository(),
     structuredPromptSpecs: new InMemoryStructuredPromptSpecRepository(),
+    sourceHierarchyTriageJobs: new InMemorySourceHierarchyTriageJobRepository(),
+    sourceHierarchyTriageSuggestions: new InMemorySourceHierarchyTriageSuggestionRepository(),
     fileStore: new Map(),
   };
 }
@@ -2296,6 +2460,8 @@ export type {
   HierarchyDraftRecord,
   HierarchyIntakeRecord,
   HierarchyReadinessSnapshot,
+  SourceHierarchyTriageJob,
+  SourceHierarchyTriageSuggestion,
   StructuredPromptSpec,
   WebsiteCrawlSession,
 };

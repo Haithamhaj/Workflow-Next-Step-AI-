@@ -31,6 +31,17 @@ type RelationshipType =
   | "external_interface_relationship"
   | "custom";
 
+type SourceTriageScope =
+  | "company_wide"
+  | "department_wide"
+  | "team_or_unit"
+  | "role_specific"
+  | "person_or_occupant"
+  | "system_or_queue"
+  | "approval_or_control_node"
+  | "external_interface"
+  | "unknown_needs_review";
+
 interface NodeRecord {
   nodeId: string;
   roleLabel: string;
@@ -58,6 +69,25 @@ interface SecondaryRelationship {
   sourceBasis: "admin_entered" | "pasted_text" | "uploaded_document" | "source_evidence_candidate" | "unknown";
 }
 
+interface SourceTriageSuggestion {
+  triageId: string;
+  sourceId: string;
+  sourceName: string;
+  suggestedScope: SourceTriageScope;
+  linkedNodeId?: string;
+  linkedScopeLevel?: SourceTriageScope;
+  signalType: string;
+  suggestedReason: string;
+  confidence: "high" | "medium" | "low" | "unknown";
+  evidenceStatus: string;
+  participantValidationNeeded: boolean;
+  adminReviewQuestion: string;
+  adminDecision: string;
+  adminNote?: string;
+  provider?: string;
+  model?: string;
+}
+
 interface Props {
   sessionId: string;
   initialState: {
@@ -71,6 +101,23 @@ interface Props {
       blocks: { blockId: string; label: string; body: string; editable: boolean }[];
     };
     compiledPromptPreview?: string;
+    sourceTriagePromptSpec?: {
+      promptSpecId: string;
+      linkedModule: string;
+      purpose: string;
+      status: string;
+      version: number;
+      blocks: { blockId: string; label: string; body: string; editable: boolean }[];
+    };
+    compiledSourceTriagePromptPreview?: string;
+    latestSourceTriageJob?: {
+      status: string;
+      provider?: string;
+      model?: string;
+      errorMessage?: string;
+    } | null;
+    sourceTriageSuggestions?: SourceTriageSuggestion[];
+    sourceTriageSuggestedScopes?: SourceTriageScope[];
     draft?: {
       status?: string;
       provider?: string;
@@ -135,6 +182,10 @@ export default function HierarchyFoundationClient({ sessionId, initialState }: P
   const [relationships, setRelationships] = useState<SecondaryRelationship[]>(
     initialState.draft?.secondaryRelationships ?? [],
   );
+  const [manualSourceId, setManualSourceId] = useState("");
+  const [manualSourceName, setManualSourceName] = useState("");
+  const [manualSourceScope, setManualSourceScope] = useState<SourceTriageScope>("unknown_needs_review");
+  const [sourceAdminNote, setSourceAdminNote] = useState("");
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
 
@@ -236,6 +287,73 @@ export default function HierarchyFoundationClient({ sessionId, initialState }: P
         ) : (
           <p className="muted">No active PromptSpec loaded.</p>
         )}
+      </section>
+
+      <section className="card">
+        <h3 style={{ marginTop: 0 }}>Source-to-Hierarchy Triage</h3>
+        <p className="muted">Links are tentative evidence candidates only. They do not validate workflow truth, responsibilities, KPIs, SOPs, policies, or actual practice.</p>
+        <button className="btn-primary" onClick={() => post("generate-source-triage")}>
+          Generate source triage
+        </button>
+        {state.latestSourceTriageJob ? (
+          <div style={{ marginTop: "10px" }}>
+            <p>Status: <code>{state.latestSourceTriageJob.status}</code></p>
+            {state.latestSourceTriageJob.provider ? <p>Provider: <code>{state.latestSourceTriageJob.provider}</code></p> : null}
+            {state.latestSourceTriageJob.model ? <p>Model: <code>{state.latestSourceTriageJob.model}</code></p> : null}
+            {state.latestSourceTriageJob.errorMessage ? <p style={{ color: "#f99" }}>Failure: {state.latestSourceTriageJob.errorMessage}</p> : null}
+          </div>
+        ) : null}
+        <div style={{ display: "grid", gap: "8px", marginTop: "12px" }}>
+          {(state.sourceTriageSuggestions ?? []).map((suggestion) => (
+            <div key={suggestion.triageId} style={{ border: "1px solid var(--border)", borderRadius: "4px", padding: "10px" }}>
+              <p><strong>{suggestion.sourceName}</strong> · <code>{suggestion.signalType}</code> · <code>{suggestion.suggestedScope}</code></p>
+              <p>{suggestion.suggestedReason}</p>
+              <p className="muted">{suggestion.adminReviewQuestion}</p>
+              <p>Evidence status: <code>{suggestion.evidenceStatus}</code> · Admin decision: <code>{suggestion.adminDecision}</code> · Participant validation needed: <code>{String(suggestion.participantValidationNeeded)}</code></p>
+              {suggestion.linkedNodeId ? <p>Linked node: <code>{suggestion.linkedNodeId}</code></p> : null}
+              {suggestion.adminNote ? <p>Admin note: {suggestion.adminNote}</p> : null}
+              <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
+                <button onClick={() => post("update-source-triage", { triageId: suggestion.triageId, decisionAction: "accept", adminNote: sourceAdminNote || undefined })}>Accept link</button>
+                <button onClick={() => post("update-source-triage", { triageId: suggestion.triageId, decisionAction: "reject", adminNote: sourceAdminNote || undefined })}>Reject link</button>
+                <button onClick={() => post("update-source-triage", { triageId: suggestion.triageId, decisionAction: "change_scope", suggestedScope: "department_wide", linkedScopeLevel: "department_wide", adminNote: sourceAdminNote || "Changed to department-wide evidence candidate." })}>Change to department-wide</button>
+                <button onClick={() => post("update-source-triage", { triageId: suggestion.triageId, decisionAction: "mark_participant_validation_needed", adminNote: sourceAdminNote || undefined })}>Needs participant validation</button>
+                <button onClick={() => post("update-source-triage", { triageId: suggestion.triageId, decisionAction: "add_note", adminNote: sourceAdminNote || "Admin reviewed source evidence candidate." })}>Add note</button>
+              </div>
+            </div>
+          ))}
+        </div>
+        <div style={{ display: "grid", gap: "8px", marginTop: "12px" }}>
+          <h4>Manual Source Link</h4>
+          <input value={manualSourceId} onChange={(event) => setManualSourceId(event.target.value)} placeholder="Source ID" style={inputStyle} />
+          <input value={manualSourceName} onChange={(event) => setManualSourceName(event.target.value)} placeholder="Source name" style={inputStyle} />
+          <select value={manualSourceScope} onChange={(event) => setManualSourceScope(event.target.value as SourceTriageScope)} style={inputStyle}>
+            {(state.sourceTriageSuggestedScopes ?? ["unknown_needs_review"]).map((scope) => <option key={scope} value={scope}>{scope}</option>)}
+          </select>
+          <input value={sourceAdminNote} onChange={(event) => setSourceAdminNote(event.target.value)} placeholder="Admin note for source triage actions" style={inputStyle} />
+          <button onClick={() => post("create-manual-source-link", {
+            sourceId: manualSourceId,
+            sourceName: manualSourceName || manualSourceId,
+            suggestedScope: manualSourceScope,
+            linkedScopeLevel: manualSourceScope,
+            adminNote: sourceAdminNote || undefined,
+            participantValidationNeeded: manualSourceScope === "role_specific",
+            createdBy: "admin",
+          })}>Create manual evidence candidate</button>
+        </div>
+        {state.sourceTriagePromptSpec ? (
+          <details style={{ marginTop: "12px" }}>
+            <summary>Source Triage PromptSpec and compiled preview</summary>
+            <p><code>{state.sourceTriagePromptSpec.promptSpecId}</code> v{state.sourceTriagePromptSpec.version} · {state.sourceTriagePromptSpec.status}</p>
+            {state.sourceTriagePromptSpec.blocks.map((block) => (
+              <details key={block.blockId}>
+                <summary>{block.label}</summary>
+                <pre style={{ whiteSpace: "pre-wrap" }}>{block.body}</pre>
+              </details>
+            ))}
+            <h4>Compiled Source Triage Prompt Preview</h4>
+            <pre style={{ whiteSpace: "pre-wrap", maxHeight: "360px", overflow: "auto" }}>{state.compiledSourceTriagePromptPreview}</pre>
+          </details>
+        ) : null}
       </section>
 
       <section className="card">

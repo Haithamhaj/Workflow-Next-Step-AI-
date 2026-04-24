@@ -1,0 +1,23 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://workflow.local/schemas/source-hierarchy-triage-job.json",
+  "title": "SourceHierarchyTriageJob",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["triageJobId", "sessionId", "caseId", "status", "createdBy", "createdAt", "updatedAt"],
+  "properties": {
+    "triageJobId": { "type": "string", "minLength": 1 },
+    "sessionId": { "type": "string", "minLength": 1 },
+    "caseId": { "type": "string", "minLength": 1 },
+    "status": { "type": "string", "enum": ["ai_triage_succeeded", "ai_triage_failed", "manual_link_created"] },
+    "provider": { "type": "string", "enum": ["google", "openai"] },
+    "model": { "type": "string" },
+    "promptSpecId": { "type": "string" },
+    "compiledPrompt": { "type": "string" },
+    "rawProviderOutput": { "type": "string" },
+    "errorMessage": { "type": "string" },
+    "createdBy": { "type": "string", "minLength": 1 },
+    "createdAt": { "type": "string", "minLength": 1 },
+    "updatedAt": { "type": "string", "minLength": 1 }
+  }
+}

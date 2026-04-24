@@ -4,6 +4,8 @@ import {
   validateHierarchyDraftRecord,
   validateHierarchyIntakeRecord,
   validateHierarchyReadinessSnapshot,
+  validateSourceHierarchyTriageJob,
+  validateSourceHierarchyTriageSuggestion,
   type ApprovedHierarchySnapshot,
   type HierarchyCorrectionEvent,
   type HierarchyDraftRecord,
@@ -14,6 +16,11 @@ import {
   type HierarchySecondaryRelationship,
   type HierarchySecondaryRelationshipType,
   type HierarchySourceBasis,
+  type SourceHierarchyAdminDecision,
+  type SourceHierarchyEvidenceStatus,
+  type SourceHierarchySuggestedScope,
+  type SourceHierarchyTriageJob,
+  type SourceHierarchyTriageSuggestion,
 } from "@workflow/contracts";
 import type {
   ApprovedHierarchySnapshotRepository,
@@ -22,6 +29,9 @@ import type {
   HierarchyIntakeRepository,
   HierarchyReadinessSnapshotRepository,
   IntakeSessionRepository,
+  IntakeSourceRepository,
+  SourceHierarchyTriageJobRepository,
+  SourceHierarchyTriageSuggestionRepository,
 } from "@workflow/persistence";
 
 export const HIERARCHY_INTAKE_PACKAGE = "@workflow/hierarchy-intake" as const;
@@ -37,15 +47,23 @@ export type {
   HierarchySecondaryRelationship,
   HierarchySecondaryRelationshipType,
   HierarchySourceBasis,
+  SourceHierarchyAdminDecision,
+  SourceHierarchyEvidenceStatus,
+  SourceHierarchySuggestedScope,
+  SourceHierarchyTriageJob,
+  SourceHierarchyTriageSuggestion,
 } from "@workflow/contracts";
 
 export interface HierarchyFoundationRepos {
   intakeSessions: IntakeSessionRepository;
+  intakeSources?: IntakeSourceRepository;
   hierarchyIntakes: HierarchyIntakeRepository;
   hierarchyDrafts: HierarchyDraftRepository;
   hierarchyCorrections: HierarchyCorrectionEventRepository;
   approvedHierarchySnapshots: ApprovedHierarchySnapshotRepository;
   hierarchyReadinessSnapshots: HierarchyReadinessSnapshotRepository;
+  sourceHierarchyTriageJobs?: SourceHierarchyTriageJobRepository;
+  sourceHierarchyTriageSuggestions?: SourceHierarchyTriageSuggestionRepository;
 }
 
 export interface HierarchyDraftProvider {
@@ -61,6 +79,34 @@ export interface HierarchyDraftProvider {
     rawText: string;
   }>;
 }
+
+export interface SourceHierarchyTriageProvider {
+  readonly name: "google" | "openai";
+  generateSourceHierarchyTriage(input: {
+    compiledPrompt: string;
+  }): Promise<{
+    suggestions: Omit<
+      SourceHierarchyTriageSuggestion,
+      "triageId" | "triageJobId" | "sessionId" | "caseId" | "adminDecision" | "createdAt" | "updatedAt"
+    >[];
+    warnings: string[];
+    provider: "google" | "openai";
+    model: string;
+    rawText: string;
+  }>;
+}
+
+export const SOURCE_TRIAGE_SUGGESTED_SCOPES: SourceHierarchySuggestedScope[] = [
+  "company_wide",
+  "department_wide",
+  "team_or_unit",
+  "role_specific",
+  "person_or_occupant",
+  "system_or_queue",
+  "approval_or_control_node",
+  "external_interface",
+  "unknown_needs_review",
+];
 
 export const HIERARCHY_GROUPING_LAYERS: HierarchyGroupingLayer[] = [
   "owner_or_executive",
@@ -378,6 +424,227 @@ export async function generateProviderBackedHierarchyDraft(input: {
   }
 }
 
+function requireSourceTriageRepos(repos: HierarchyFoundationRepos): {
+  jobs: SourceHierarchyTriageJobRepository;
+  suggestions: SourceHierarchyTriageSuggestionRepository;
+} {
+  if (!repos.sourceHierarchyTriageJobs || !repos.sourceHierarchyTriageSuggestions) {
+    throw new Error("Source-to-hierarchy triage repositories are not configured.");
+  }
+  return {
+    jobs: repos.sourceHierarchyTriageJobs,
+    suggestions: repos.sourceHierarchyTriageSuggestions,
+  };
+}
+
+export async function generateProviderBackedSourceHierarchyTriage(input: {
+  sessionId: string;
+  provider: SourceHierarchyTriageProvider | null;
+  promptSpecId: string;
+  compiledPrompt: string;
+}, repos: HierarchyFoundationRepos): Promise<{
+  job: SourceHierarchyTriageJob;
+  suggestions: SourceHierarchyTriageSuggestion[];
+}> {
+  const session = repos.intakeSessions.findById(input.sessionId);
+  if (!session) throw new Error(`Intake session not found: ${input.sessionId}`);
+  const triageRepos = requireSourceTriageRepos(repos);
+
+  const timestamp = now();
+  if (!input.provider) {
+    const job: SourceHierarchyTriageJob = {
+      triageJobId: id("source_hierarchy_triage_job"),
+      sessionId: session.sessionId,
+      caseId: session.caseId,
+      status: "ai_triage_failed",
+      promptSpecId: input.promptSpecId,
+      compiledPrompt: input.compiledPrompt,
+      errorMessage: "Google source-to-hierarchy triage provider configuration is missing.",
+      createdBy: "provider",
+      createdAt: timestamp,
+      updatedAt: timestamp,
+    };
+    const result = validateSourceHierarchyTriageJob(job);
+    if (!result.ok) throw new Error(`Invalid failed source triage job: ${validationMessage(result.errors)}`);
+    triageRepos.jobs.save(job);
+    return { job, suggestions: triageRepos.suggestions.findBySessionId(session.sessionId) };
+  }
+
+  try {
+    const generated = await input.provider.generateSourceHierarchyTriage({ compiledPrompt: input.compiledPrompt });
+    const job: SourceHierarchyTriageJob = {
+      triageJobId: id("source_hierarchy_triage_job"),
+      sessionId: session.sessionId,
+      caseId: session.caseId,
+      status: "ai_triage_succeeded",
+      provider: generated.provider,
+      model: generated.model,
+      promptSpecId: input.promptSpecId,
+      compiledPrompt: input.compiledPrompt,
+      rawProviderOutput: generated.rawText,
+      createdBy: "provider",
+      createdAt: timestamp,
+      updatedAt: timestamp,
+    };
+    const jobResult = validateSourceHierarchyTriageJob(job);
+    if (!jobResult.ok) throw new Error(`Invalid source triage job: ${validationMessage(jobResult.errors)}`);
+    triageRepos.jobs.save(job);
+
+    const suggestions = generated.suggestions.map((suggestion) => ({
+      ...suggestion,
+      triageId: id("source_hierarchy_triage"),
+      triageJobId: job.triageJobId,
+      sessionId: session.sessionId,
+      caseId: session.caseId,
+      evidenceStatus: suggestion.evidenceStatus ?? "document_claim_only",
+      participantValidationNeeded: suggestion.participantValidationNeeded,
+      adminDecision: "pending_review" as const,
+      provider: generated.provider,
+      model: generated.model,
+      promptSpecId: input.promptSpecId,
+      createdAt: timestamp,
+      updatedAt: timestamp,
+    }));
+    for (const suggestion of suggestions) {
+      const result = validateSourceHierarchyTriageSuggestion(suggestion);
+      if (!result.ok) throw new Error(`Invalid source triage suggestion: ${validationMessage(result.errors)}`);
+      triageRepos.suggestions.save(suggestion);
+    }
+    return { job, suggestions: triageRepos.suggestions.findBySessionId(session.sessionId) };
+  } catch (error) {
+    const job: SourceHierarchyTriageJob = {
+      triageJobId: id("source_hierarchy_triage_job"),
+      sessionId: session.sessionId,
+      caseId: session.caseId,
+      status: "ai_triage_failed",
+      provider: input.provider.name,
+      promptSpecId: input.promptSpecId,
+      compiledPrompt: input.compiledPrompt,
+      errorMessage: error instanceof Error ? error.message : String(error),
+      createdBy: "provider",
+      createdAt: timestamp,
+      updatedAt: timestamp,
+    };
+    const result = validateSourceHierarchyTriageJob(job);
+    if (!result.ok) throw new Error(`Invalid failed source triage job: ${validationMessage(result.errors)}`);
+    triageRepos.jobs.save(job);
+    return { job, suggestions: triageRepos.suggestions.findBySessionId(session.sessionId) };
+  }
+}
+
+export function createManualSourceHierarchyLink(input: {
+  sessionId: string;
+  sourceId: string;
+  sourceName: string;
+  suggestedScope: SourceHierarchySuggestedScope;
+  linkedNodeId?: string;
+  linkedScopeLevel?: SourceHierarchySuggestedScope;
+  signalType?: SourceHierarchyTriageSuggestion["signalType"];
+  suggestedReason?: string;
+  adminNote?: string;
+  participantValidationNeeded?: boolean;
+  createdBy?: string;
+}, repos: HierarchyFoundationRepos): SourceHierarchyTriageSuggestion {
+  const session = repos.intakeSessions.findById(input.sessionId);
+  if (!session) throw new Error(`Intake session not found: ${input.sessionId}`);
+  const triageRepos = requireSourceTriageRepos(repos);
+  const timestamp = now();
+  const job: SourceHierarchyTriageJob = {
+    triageJobId: id("source_hierarchy_triage_job"),
+    sessionId: session.sessionId,
+    caseId: session.caseId,
+    status: "manual_link_created",
+    createdBy: input.createdBy?.trim() || "admin",
+    createdAt: timestamp,
+    updatedAt: timestamp,
+  };
+  const jobResult = validateSourceHierarchyTriageJob(job);
+  if (!jobResult.ok) throw new Error(`Invalid manual source triage job: ${validationMessage(jobResult.errors)}`);
+  triageRepos.jobs.save(job);
+
+  const suggestion: SourceHierarchyTriageSuggestion = {
+    triageId: id("source_hierarchy_triage"),
+    triageJobId: job.triageJobId,
+    sessionId: session.sessionId,
+    caseId: session.caseId,
+    sourceId: input.sourceId,
+    sourceName: input.sourceName || input.sourceId,
+    suggestedScope: input.suggestedScope,
+    linkedNodeId: input.linkedNodeId,
+    linkedScopeLevel: input.linkedScopeLevel ?? input.suggestedScope,
+    signalType: input.signalType ?? "unclear_scope_signal",
+    suggestedReason: input.suggestedReason ?? "Manual admin source-to-hierarchy evidence candidate.",
+    confidence: "unknown",
+    evidenceStatus: input.participantValidationNeeded ? "participant_validation_needed" : "admin_confirmed_relevance",
+    participantValidationNeeded: input.participantValidationNeeded ?? false,
+    adminReviewQuestion: "Manual admin-created source relevance link; confirm this remains an evidence candidate and not workflow truth.",
+    adminDecision: input.participantValidationNeeded ? "participant_validation_needed" : "accepted_link",
+    adminNote: input.adminNote,
+    createdAt: timestamp,
+    updatedAt: timestamp,
+  };
+  const result = validateSourceHierarchyTriageSuggestion(suggestion);
+  if (!result.ok) throw new Error(`Invalid manual source triage suggestion: ${validationMessage(result.errors)}`);
+  triageRepos.suggestions.save(suggestion);
+  return suggestion;
+}
+
+export function updateSourceHierarchyTriageSuggestion(input: {
+  triageId: string;
+  action: "accept" | "reject" | "change_scope" | "mark_participant_validation_needed" | "add_note";
+  suggestedScope?: SourceHierarchySuggestedScope;
+  linkedNodeId?: string;
+  linkedScopeLevel?: SourceHierarchySuggestedScope;
+  adminNote?: string;
+}, repos: HierarchyFoundationRepos): SourceHierarchyTriageSuggestion {
+  const triageRepos = requireSourceTriageRepos(repos);
+  const existing = triageRepos.suggestions.findById(input.triageId);
+  if (!existing) throw new Error(`Source hierarchy triage suggestion not found: ${input.triageId}`);
+
+  let evidenceStatus: SourceHierarchyEvidenceStatus = existing.evidenceStatus;
+  let adminDecision: SourceHierarchyAdminDecision = existing.adminDecision;
+  let participantValidationNeeded = existing.participantValidationNeeded;
+  let suggestedScope = existing.suggestedScope;
+  let linkedScopeLevel = existing.linkedScopeLevel;
+  let linkedNodeId = existing.linkedNodeId;
+
+  if (input.action === "accept") {
+    evidenceStatus = "admin_confirmed_relevance";
+    adminDecision = "accepted_link";
+  } else if (input.action === "reject") {
+    evidenceStatus = "rejected_by_admin";
+    adminDecision = "rejected_link";
+  } else if (input.action === "change_scope") {
+    suggestedScope = input.suggestedScope ?? existing.suggestedScope;
+    linkedScopeLevel = input.linkedScopeLevel ?? suggestedScope;
+    linkedNodeId = input.linkedNodeId ?? existing.linkedNodeId;
+    evidenceStatus = "scope_changed_by_admin";
+    adminDecision = "changed_scope";
+  } else if (input.action === "mark_participant_validation_needed") {
+    participantValidationNeeded = true;
+    evidenceStatus = "participant_validation_needed";
+    adminDecision = "participant_validation_needed";
+  } else if (input.action === "add_note") {
+    adminDecision = "admin_note_added";
+  }
+
+  const updated: SourceHierarchyTriageSuggestion = {
+    ...existing,
+    suggestedScope,
+    linkedScopeLevel,
+    linkedNodeId,
+    evidenceStatus,
+    participantValidationNeeded,
+    adminDecision,
+    adminNote: input.adminNote ?? existing.adminNote,
+    updatedAt: now(),
+  };
+  const result = validateSourceHierarchyTriageSuggestion(updated);
+  if (!result.ok) throw new Error(`Invalid source triage update: ${validationMessage(result.errors)}`);
+  triageRepos.suggestions.save(updated);
+  return updated;
+}
+
 export function approveStructuralHierarchy(input: {
   sessionId: string;
   approvedBy?: string;
@@ -446,13 +713,26 @@ export function calculateHierarchyReadinessSnapshot(
 }
 
 export function getHierarchyFoundationState(sessionId: string, repos: HierarchyFoundationRepos) {
+  const sourceTriageRepos = repos.sourceHierarchyTriageJobs && repos.sourceHierarchyTriageSuggestions
+    ? {
+      sourceTriageJobs: repos.sourceHierarchyTriageJobs.findBySessionId(sessionId),
+      latestSourceTriageJob: repos.sourceHierarchyTriageJobs.findLatestBySessionId(sessionId),
+      sourceTriageSuggestions: repos.sourceHierarchyTriageSuggestions.findBySessionId(sessionId),
+    }
+    : {
+      sourceTriageJobs: [],
+      latestSourceTriageJob: null,
+      sourceTriageSuggestions: [],
+    };
   return {
     intake: repos.hierarchyIntakes.findBySessionId(sessionId),
     draft: repos.hierarchyDrafts.findBySessionId(sessionId),
     corrections: repos.hierarchyCorrections.findBySessionId(sessionId),
     approvedSnapshot: repos.approvedHierarchySnapshots.findBySessionId(sessionId),
     readinessSnapshot: repos.hierarchyReadinessSnapshots.findBySessionId(sessionId),
+    ...sourceTriageRepos,
     groupingLayers: HIERARCHY_GROUPING_LAYERS,
     secondaryRelationshipTypes: SECONDARY_RELATIONSHIP_TYPES,
+    sourceTriageSuggestedScopes: SOURCE_TRIAGE_SUGGESTED_SCOPES,
   };
 }
