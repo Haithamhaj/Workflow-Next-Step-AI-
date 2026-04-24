@@ -91,6 +91,26 @@ export {
 } from "./audio-review.js";
 export type { AudioTranscriptReviewRepos } from "./audio-review.js";
 
+export {
+  PRIMARY_DEPARTMENTS,
+  getDepartmentFraming,
+  saveDepartmentFraming,
+  assertPreHierarchyReady,
+  createStructuredContextFromAvailableMaterial,
+} from "./department-context.js";
+export type { DepartmentContextRepos } from "./department-context.js";
+
+export {
+  confirmFinalPreHierarchyReview,
+  createFinalPreHierarchyReview,
+  evaluateFinalPreHierarchyReadiness,
+  getFinalPreHierarchyReview,
+} from "./final-pre-hierarchy-review.js";
+export type {
+  FinalPreHierarchyReadiness,
+  FinalPreHierarchyReviewRepos,
+} from "./final-pre-hierarchy-review.js";
+
 // ---------------------------------------------------------------------------
 // registerSource
 // Validates the incoming payload against the SourceRegistration contract,

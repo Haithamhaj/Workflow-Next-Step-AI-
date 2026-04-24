@@ -145,7 +145,7 @@ export interface ProviderExtractionJob {
   sourceId: string;
   sessionId: string;
   caseId: string;
-  provider: ProviderName | "google_speech_to_text" | "crawl4ai";
+  provider: ProviderName | "google_speech_to_text" | "crawl4ai" | "fetch_html";
   jobKind: ProviderJobKind;
   status: ProviderJobStatus;
   inputType: IntakeInputType;

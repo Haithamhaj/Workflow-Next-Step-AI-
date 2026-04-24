@@ -223,14 +223,14 @@ export function approveWebsiteCrawlPlan(input: {
   return { plan: updatedPlan, approval };
 }
 
-function createCrawlJob(plan: StoredWebsiteCrawlPlan): StoredProviderExtractionJob {
+function createCrawlJob(plan: StoredWebsiteCrawlPlan, crawlProvider: CrawlProvider): StoredProviderExtractionJob {
   const timestamp = now();
   return {
     jobId: id("pjob"),
     sourceId: plan.sourceId,
     sessionId: plan.sessionId,
     caseId: plan.caseId,
-    provider: "crawl4ai",
+    provider: crawlProvider.name as StoredProviderExtractionJob["provider"],
     jobKind: "website_crawl",
     status: "queued",
     inputType: "website_url",
@@ -258,7 +258,7 @@ export async function runApprovedWebsiteCrawl(input: {
     throw new Error("Website crawl cannot run before admin approval is persisted.");
   }
 
-  const job = createCrawlJob(plan);
+  const job = createCrawlJob(plan, input.crawlProvider);
   input.repos.providerJobs.save(job);
   const runningJob: StoredProviderExtractionJob = { ...job, status: "running", updatedAt: now() };
   input.repos.providerJobs.save(runningJob);
@@ -269,7 +269,7 @@ export async function runApprovedWebsiteCrawl(input: {
     const crawled = await input.crawlProvider.crawlPages(approval.approvedUrls);
     const successful = crawled.filter((page) => page.statusCode >= 200 && page.statusCode < 300 && page.textContent.trim());
     if (successful.length === 0) {
-      throw new Error("Crawl4AI returned no successful pages with extracted text.");
+      throw new Error(`${input.crawlProvider.name} returned no successful pages with extracted text.`);
     }
 
     const pages = successful.map((page): StoredCrawledPageContent => ({

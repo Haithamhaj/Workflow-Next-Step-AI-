@@ -10,11 +10,15 @@ Phase 2 status: `phase_proven`.
 
 Phase 3 status: `phase_proven`.
 
-Phase 4 status: `phase_proven`.
+Phase 4 status: `phase_proven`; crawler-runtime caveat resolved by approved `fetch_html` CrawlerAdapter proof.
 
 Phase 5 status: `phase_proven`.
 
-Overall Pass 2 status: `pass2_not_complete`.
+Phase 6 status: `phase_proven`.
+
+Phase 7 status: `phase_proven`.
+
+Overall Pass 2 status: `pass2_not_complete` pending operator Section 19 acceptance confirmation.
 
 ---
 
@@ -109,7 +113,7 @@ Phase 4 builds the website crawl flow without starting later Pass 2 phases:
 
 `GOOGLE_EMBEDDING_MODEL` is configured as `gemini-embedding-2`. The Google key is not recorded in handoff files.
 
-In the local proof environment, Crawl4AI runtime was intentionally unavailable (`CRAWL4AI_URL` unset), so candidate discovery and approved crawl failed visibly with persisted errors. Because no crawl pages were produced, no crawl chunks or crawl-chunk embedding jobs were created in that proof run.
+The original local proof environment had Crawl4AI runtime unavailable (`CRAWL4AI_URL` unset), so candidate discovery and approved crawl failed visibly with persisted errors. The remaining crawler-runtime caveat was later resolved with a real approved `fetch_html` CrawlerAdapter proof. That proof completed candidate discovery, admin approval, approved crawl execution, page storage, site summary, chunk creation, and Google embedding generation using `gemini-embedding-2`.
 
 Phase 4 does not start audio transcript review UI, structured context generation, hierarchy intake, participant rollout, synthesis/evaluation, final package, or video input.
 
@@ -141,6 +145,62 @@ Early local proofs covered missing/invalid STT configuration and persisted visib
 The STT model strategy was then corrected: external uploaded audio now defaults to the GA Speech-to-Text V1 endpoint with model `latest_long`. A bounded V2 recognize path exists only when explicitly configured with `GOOGLE_STT_EXTERNAL_MODEL=chirp_3`; it is not the default because it requires recognizer/project setup. The proof preserved the admin-review trust boundary.
 
 Phase 5 does not start structured context generation, hierarchy intake, participant rollout, synthesis/evaluation, final package, or video input.
+
+---
+
+## What Pass 2 Phase 6 added
+
+Phase 6 builds department/use-case framing and an admin-created structured context layer without starting hierarchy:
+
+- primary department selection from a controlled list
+- Other / Custom Department support with preserved company-facing department label
+- internal department-family mapping suggestions and admin decisions: accept, edit, reject, or leave unknown
+- company context availability statuses:
+  - `company_context_provided`
+  - `company_context_skipped_by_admin`
+  - `company_context_pending_or_unknown`
+- department context availability statuses:
+  - `department_context_provided`
+  - `department_documents_not_available_confirmed`
+  - `department_context_skipped_by_admin`
+  - `department_context_pending_or_unknown`
+- required use-case boundary before pre-hierarchy readiness:
+  - `use_case_not_selected`
+  - `use_case_same_as_department`
+  - `use_case_selected_custom`
+  - `use_case_needs_admin_review`
+- SQLite-backed `DepartmentFramingRecord` and `StructuredContextRecord` repositories in `packages/persistence`
+- Phase 6 orchestration in `packages/sources-context`
+- admin API and UI at `/api/intake-sessions/[id]/department-context` and `/intake-sessions/[id]/context`
+- structured context fields that preserve company-level and department-level separation
+- field evidence links for operator notes, website sources, uploaded/extracted sources when available, contextual/admin confirmations, and provider job references when available
+- final pre-hierarchy readiness guard that blocks when use case is not selected
+
+Structured context in Phase 6 is admin-created from reviewed/available intake material. It does not claim AI deep analysis, workflow analysis, hierarchy generation, source-to-role linking, participant rollout, synthesis/evaluation, final package, or video support.
+
+---
+
+## What Pass 2 Phase 7 added
+
+Phase 7 builds the final pre-hierarchy review layer that closes intake/context framing without implementing hierarchy:
+
+- SQLite-backed `FinalPreHierarchyReviewRecord`
+- final-review readiness rules that block when:
+  - primary department is missing
+  - use case is not selected as same-as-department or custom
+  - structured context is missing
+  - company or department context availability remains pending/unknown
+- final review generation from persisted Phase 2-6 records
+- admin final review screen at `/intake-sessions/[id]/final-review`
+- final review API at `/api/intake-sessions/[id]/final-pre-hierarchy-review`
+- source summary by bucket and kind
+- structured context summary and evidence summary
+- visible crawler runtime caveat when website crawl success is not proven for the intake
+- visible low-confidence audio transcript notes when review metadata includes low provider confidence
+- admin confirmation with `confirmedBy`, `confirmedAt`, `adminConfirmationStatus`, and optional admin note
+- explicit next-slice handoff name: `Hierarchy Intake & Approval Build Slice`
+
+Phase 7 does not start hierarchy intake, hierarchy draft generation, source-to-role linking, participant targeting, rollout readiness, participant sessions, synthesis/evaluation, final package, video input, new provider work, new website crawl work, or new audio review work.
 
 ---
 
@@ -186,6 +246,41 @@ Phase 5 does not start structured context generation, hierarchy intake, particip
 | Phase 5 STT model strategy proof | provider status reported external audio model `latest_long` because no V2 project id was configured; `POST /api/intake-sources/isrc_phase5_model_audio_c/transcribe` succeeded through the V1 path, persisted provider job `pjob_565fb137-98a5-4653-9729-8072a25a2ba8` with model `latest_long`, raw artifact `artifact_8c242e64-976d-4245-8bfd-4714b18dcf78`, confidence `0.29832265`, and quality signal `average_confidence:0.298`; raw transcript remained untrusted with `trustedTranscriptArtifact: null`, no chunks, and no embedding jobs before admin approval |
 | Phase 5 structured-context boundary proof | `POST /api/intake-sessions/intake_phase5_proof/form-context` still returns `501` deferred to Phase 6 |
 | Phase 5 exclusion proof | video registration still rejected; hierarchy, rollout, synthesis/evaluation, final package, and video remain unstarted |
+| Phase 6 department dropdown proof | `/intake-sessions/intake_phase6_proof/context` renders controlled primary department options including Sales, Operations, HR, IT, Finance, Legal, Customer Support, Procurement, Marketing, and Other / Custom Department |
+| Phase 6 custom department proof | API saved `primaryDepartmentSelection: Other / Custom Department`, `customDepartmentLabel: Field Enablement`, and preserved `activeDepartmentLabel: Field Enablement` |
+| Phase 6 mapping decision proof | API persisted mapping decisions `accepted`, `edited`, `rejected`, and `unknown`; final proof kept `mappingDecision: edited` with `acceptedInternalFamily: operations` without overwriting the company-facing label |
+| Phase 6 company context proof | API persisted `company_context_skipped_by_admin`, `company_context_pending_or_unknown`, and final `company_context_provided` as non-blocking decisions |
+| Phase 6 department context proof | API persisted `department_documents_not_available_confirmed`, `department_context_skipped_by_admin`, `department_context_pending_or_unknown`, and final `department_context_provided` as non-blocking decisions |
+| Phase 6 use-case proof | API persisted `use_case_same_as_department` and final custom use case `Field service onboarding` with `useCaseScopeType: workflow` |
+| Phase 6 readiness guard proof | `POST /api/intake-sessions/intake_phase6_proof/department-context` with `check-readiness` returned `409` before framing/use case existed; after use-case selection it returned ready |
+| Phase 6 structured context proof | `POST /api/intake-sessions/intake_phase6_proof/department-context` with `generate-structured-context` returned `201` and persisted `structured_context_93d3fc09-f634-4c04-86d0-7715faa9d26a` with `status: draft` and `notes: Phase 6 admin-created structured context; hierarchy not implemented.` |
+| Phase 6 separation proof | structured context stored company fields (`companyScopeSummary`, `companyContextSummary`, `visibleCompanyLevelSignals`) separately from department fields (`mainDepartment`, `selectedUseCase`, `departmentContextSummary`, `visibleRoleFamiliesOrOrgSignals`, `departmentSpecificSignalsAndRisks`) |
+| Phase 6 evidence proof | field evidence linked company note `isrc_phase6_company_note` as `operator_original_note`, website source `isrc_phase6_site` as `extracted_from_website`, department note `isrc_phase6_dept_note` as `operator_original_note`, and department/use-case choices as `admin_confirmed` |
+| Phase 6 SQLite restart proof | after app restart using `/tmp/workflow-phase6-proof-20260424.sqlite`, department framing, structured context, field evidence, and source records reloaded through SQLite-backed persistence |
+| Phase 6 boundary proof | hierarchy draft route remains deferred; video input remains rejected; no participant rollout, synthesis/evaluation, final package, or video work was started |
+| Phase 7 missing-primary-department block proof | `POST /api/intake-sessions/intake_phase7_block_no_department/final-pre-hierarchy-review` returned `409` with reasons `Primary department and use-case framing has not been saved.` and missing structured context |
+| Phase 7 missing-use-case block proof | `POST /api/intake-sessions/intake_phase7_block_no_use_case/final-pre-hierarchy-review` returned `409` with reason `Use case must be selected as same-as-department or custom.` |
+| Phase 7 missing-structured-context block proof | `POST /api/intake-sessions/intake_phase7_block_no_context/final-pre-hierarchy-review` returned `409` with reason `Structured context is missing; generate or save an admin-created structured context before final review.` |
+| Phase 7 final review generation proof | `POST /api/intake-sessions/intake_phase7_ready/final-pre-hierarchy-review` returned `201` and persisted `final_pre_hierarchy_87653776-1245-4973-b77b-bb244da9bde5` |
+| Phase 7 final review content proof | generated review displayed company context `company_context_provided`, department context `department_context_provided`, selected department `Field Enablement`, use case `Technician onboarding`, source summary for company/manual note, company/website URL, department/audio, and department/manual note |
+| Phase 7 structured context/evidence proof | generated review referenced structured context `structured_context_7d95d3a5-f066-42da-881b-c2565a49a654`, summarized company and department context, and included evidence summaries for `departmentContextSummary`, `companyContextSummary`, `mainDepartment`, and `selectedUseCase` |
+| Phase 7 caveat proof | generated review included Crawl4AI caveat `Crawl4AI runtime success is not proven for this intake; configure CRAWL4AI_URL before relying on crawled site content.` |
+| Phase 7 audio confidence proof | generated review included low-confidence audio note `Audio transcript audioreview_phase7_low_confidence confidence 0.29; transcript remains review-sensitive.` |
+| Phase 7 admin confirmation proof | `POST /api/intake-sessions/intake_phase7_ready/final-pre-hierarchy-review` with action `confirm` persisted `adminConfirmationStatus: confirmed`, `confirmedBy: phase7-admin`, `confirmedAt`, and admin note |
+| Phase 7 SQLite restart proof | after app restart using `/tmp/workflow-phase7-proof-20260424.sqlite`, the confirmed final review reloaded with the same review ID, source summary, caveats, evidence summary, and confirmation fields |
+| Phase 7 UI proof | `/intake-sessions/intake_phase7_ready/final-review` rendered final pre-hierarchy review, company/department statuses, selected department/use case, source summary, structured context summary, evidence summary, Crawl4AI caveat, low-confidence audio note, confirmation state, and explicit next-slice boundary |
+| Phase 7 boundary proof | hierarchy draft route remains deferred; video input remains rejected; no hierarchy intake, hierarchy draft generation, source-to-role linking, participant targeting, rollout readiness, synthesis/evaluation, final package, or video work was started |
+| Crawler-runtime caveat closure provider proof | provider status reported crawl adapter `fetch_html`, available/live, and Google embeddings configured with model `gemini-embedding-2` |
+| Crawler-runtime caveat closure plan proof | website URL source `isrc_crawler_caveat_site` created crawl plan `crawlplan_42243cf3-5e8b-464f-a8b7-4c6df9ada877` with default `maxPages: 20`, `maxPageOptions: [20,30,40,50]`, and visible candidate page `https://example.com/` before crawl |
+| Crawler-runtime caveat closure pre-approval proof | executing unapproved plan `crawlplan_f98f46cc-1eef-4d1e-b4f7-1777bc03bd03` returned `409` with `Website crawl cannot run before admin approval is persisted.` |
+| Crawler-runtime caveat closure approval proof | approval `crawlapproval_207bed47-dbea-4bf9-8b44-9152733fc76c` persisted approved URL `https://example.com/` |
+| Crawler-runtime caveat closure crawl proof | approved crawl ran through selected `fetch_html` CrawlerAdapter and persisted succeeded crawl job `pjob_ce9c55e6-4848-4858-8d5f-28c20a70a665` with outputRef `crawlsummary_bfe20d04-595b-4ab1-9137-cc06f272db03` |
+| Crawler-runtime caveat closure page/summary/chunk proof | crawl persisted page `crawlpage_4545267f-fcc2-4aa5-96be-5757a0cd5fc2`, site summary `crawlsummary_bfe20d04-595b-4ab1-9137-cc06f272db03`, and chunk `chunk_10401220-ad1a-4020-94d8-451f6943079c`; page count `1`, chunk count `1` |
+| Crawler-runtime caveat closure embedding proof | crawl chunk generated succeeded Google embedding job `embedjob_43d5aa65-a089-41c3-9b0b-f8f2b7222964` with model `gemini-embedding-2`, chunkRefs `chunk_10401220-ad1a-4020-94d8-451f6943079c`, and outputRef `artifact_e314975e-e1a7-4b69-9c89-1f11e67de7bd` |
+| Crawler-runtime caveat closure traceability proof | page, chunk, crawl job, summary, approval, and embedding records all trace to source `isrc_crawler_caveat_site` and crawl plan `crawlplan_42243cf3-5e8b-464f-a8b7-4c6df9ada877` |
+| Crawler-runtime caveat closure UI proof | source detail hid page-level content by default and linked to crawl approval; page-level content appeared only in `/website-crawls/crawlplan_42243cf3-5e8b-464f-a8b7-4c6df9ada877/pages` drill-down |
+| Crawler-runtime caveat closure SQLite restart proof | after app restart using `/tmp/workflow-pass2-crawler-caveat-proof-20260424.sqlite`, plan, approval, page count, chunk count, summary, crawl job, and embedding job reloaded from SQLite |
+| Crawler-runtime caveat closure boundary proof | hierarchy draft route remains deferred; video input remains rejected; hierarchy, rollout, synthesis/evaluation, final package, and video remain unstarted |
 | All prior pass proofs (6–9) | Still valid — unchanged |
 
 ---
@@ -205,6 +300,21 @@ Phase 5 does not start structured context generation, hierarchy intake, particip
 ## What has NOT been built
 
 - Authentication / authorization
-- Structured context generation
+- AI/provider-authored structured context drafting
 - Hierarchy intake
 - Automated tests / CI
+
+---
+
+## Pass 2 completion status
+
+The crawler-runtime caveat is resolved.
+
+Pass 2 remains `pass2_not_complete` until the operator confirms Section 19 overall acceptance.
+
+Known implementation proof status after caveat closure:
+
+- Website crawling succeeded end-to-end through approved `fetch_html` CrawlerAdapter.
+- Crawl page output, site summary, chunk creation, and Google embedding generation were proven and persisted.
+- No known crawler-runtime proof remains missing from local verification.
+- Overall Pass 2 should be marked complete only after operator Section 19 acceptance confirmation.

@@ -5,6 +5,7 @@ export { GoogleExtractionProvider } from "./google-extraction.js";
 export { OpenAIExtractionProvider } from "./openai-extraction.js";
 export type { CrawlProvider, DiscoveredPage, CrawlPageResult } from "./crawl-provider.js";
 export { Crawl4AIAdapter, isCrawl4AILive } from "./crawl4ai-adapter.js";
+export { FetchHtmlCrawlerAdapter } from "./fetch-html-crawler.js";
 export type { STTProvider, STTResult } from "./stt-provider.js";
 export type { EmbeddingProvider, EmbeddingResult } from "./embedding-provider.js";
 export { GoogleEmbeddingProvider, defaultGoogleEmbeddingModel } from "./google-embedding.js";

@@ -9,3 +9,4 @@ export * from "./initial-package-record.js";
 export * from "./review-issues.js";
 export * from "./final-package.js";
 export * from "./intake.js";
+export * from "./structured-context.js";

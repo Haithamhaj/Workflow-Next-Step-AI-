@@ -1,71 +1,95 @@
-# Next Pass — Pass 2 Phase 6
+# Next Pass — Pass 2 Section 19 Acceptance Confirmation
 
 ## Official pass sequence
 
 - **Pass 2 Phase 1:** Intake & Context Build foundation — `phase_proven`
 - **Pass 2 Phase 2:** Intake Registration UI and Basic Admin Surfaces — `phase_proven`
 - **Pass 2 Phase 3:** Provider Integrations and Provider Job Tracking — `phase_proven`
-- **Pass 2 Phase 4:** Website Crawl Flow — `phase_proven` with runtime caveat
+- **Pass 2 Phase 4:** Website Crawl Flow — `phase_proven`; crawler-runtime caveat resolved by approved `fetch_html` CrawlerAdapter proof
 - **Pass 2 Phase 5:** External Audio Review Flow — `phase_proven`
+- **Pass 2 Phase 6:** Department, Custom Mapping, Use Case, and Structured Context — `phase_proven`
+- **Pass 2 Phase 7:** Final Pre-Hierarchy Review — `phase_proven`
 
 ---
 
 ## Status
 
-Overall Pass 2 status: `pass2_not_complete`.
+Overall Pass 2 status: `pass2_not_complete` pending operator Section 19 acceptance confirmation.
 
-Next implementation phase, only after operator approval:
+Next required work before marking overall Pass 2 complete:
 
-**Pass 2 Phase 6 — Structured Context Generation**
+**Pass 2 Section 19 Acceptance Confirmation**
+
+After Pass 2 is accepted complete by the operator, the next separate build slice is:
+
+**Hierarchy Intake & Approval Build Slice**
 
 ---
 
-## Phase 5 completion proof summary
+## Crawler-runtime caveat closure proof summary
 
-Real Google Speech-to-Text proof succeeded using local environment config:
+The remaining Pass 2 crawler-runtime caveat was resolved with a real approved crawler flow through the bounded `fetch_html` CrawlerAdapter:
 
-- `GOOGLE_STT_API_KEY`
-- `GOOGLE_STT_MODEL=latest_short`
-- `GOOGLE_STT_LANGUAGE_CODE=en-US`
+- selected crawler adapter: `fetch_html`
+- website source: `isrc_crawler_caveat_site`
+- crawl plan: `crawlplan_42243cf3-5e8b-464f-a8b7-4c6df9ada877`
+- default max pages: `20`
+- available max page options: `20`, `30`, `40`, `50`
+- approval: `crawlapproval_207bed47-dbea-4bf9-8b44-9152733fc76c`
+- crawl job: `pjob_ce9c55e6-4848-4858-8d5f-28c20a70a665`
+- crawl job status: `succeeded`
+- page count: `1`
+- chunk count: `1`
+- site summary: `crawlsummary_bfe20d04-595b-4ab1-9137-cc06f272db03`
+- chunk: `chunk_10401220-ad1a-4020-94d8-451f6943079c`
+- embedding job: `embedjob_43d5aa65-a089-41c3-9b0b-f8f2b7222964`
+- embedding job status: `succeeded`
+- embedding model: `gemini-embedding-2`
+- SQLite restart proof: succeeded with `/tmp/workflow-pass2-crawler-caveat-proof-20260424.sqlite`
 
-The key value is not recorded in handoff files.
+Page/chunk/embedding records preserve source URL and crawl-plan traceability. Page-level content remains hidden by default and appears only in the crawl page drill-down.
 
-STT model strategy after correction:
+---
 
-- external uploaded audio defaults to the Google Speech-to-Text V1 endpoint with model `latest_long`
-- no recognizer or location is required for the default external-upload path
-- V2 `chirp_3` remains an explicit/config-gated path only, not the default
-- `latest_short` is not the external-upload default; keep it only for short command/live-dictation scenarios
-- confidence remains a provider quality signal only; transcript trust still requires admin approval/edit
+## Phase 7 completion proof summary
 
-Succeeded proof records:
+Phase 7 added SQLite-backed final pre-hierarchy review generation and admin confirmation:
 
-- source: `isrc_phase5_real_audio`
-- provider job: `pjob_ca7c410f-a3c6-417e-9b35-1cc2265ff123`
-- provider: `google_speech_to_text`
-- job kind: `audio_transcription`
-- raw transcript artifact: `artifact_7d2d2f25-0cb6-429e-a353-7000839799a0`
-- provider confidence: `0.19816941`
-- provider quality signal: `average_confidence:0.198`
-- model strategy follow-up provider job: `pjob_565fb137-98a5-4653-9729-8072a25a2ba8`
-- model strategy follow-up model: `latest_long` because the local proof environment did not have a V2 project id configured
+- final review readiness guard
+- final review record persisted through `packages/persistence`
+- final review orchestration in `packages/sources-context`
+- final review API and admin screen
+- company/dept context status display
+- selected department/use-case display
+- source and batch summary
+- structured context and evidence summary
+- Crawl4AI runtime caveat display
+- low-confidence audio transcript note display when applicable
+- admin confirmation persistence
+- explicit handoff to the next separate hierarchy build slice
 
-Review boundary was proven:
+Phase 7 does not implement hierarchy intake, hierarchy draft generation, source-to-role linking, participant targeting, rollout readiness, synthesis/evaluation, final package, or video input.
 
-- raw transcript appeared as ready for review
-- raw transcript was not trusted before admin approval
-- approve-as-is created trusted text, chunk, and embedding job
-- edit created updated trusted text, chunk, and embedding job
-- reject/mark retry cleared current trusted transcript state
-- restart reloaded review state, provider job, raw artifact, chunks, and embedding jobs from SQLite
+---
+
+## Runtime notes preserved
+
+- Crawl4AI remains available as an adapter when configured with `CRAWL4AI_URL`.
+- The successful local crawler proof used `WORKFLOW_CRAWLER_ADAPTER=fetch_html`.
+- Google embedding model remains configurable and was set locally to `gemini-embedding-2` for prior proofs.
+- STT external uploaded audio default remains Google Speech-to-Text V1 `latest_long`; V2 `chirp_3` remains explicit/config-gated and is not the default.
+- Transcript confidence remains review-sensitive and does not make transcript text trusted without admin approval/edit.
+
+No secret values are recorded in handoff files.
 
 ---
 
 ## Explicitly not next without approval
 
-- Do not start Phase 6 without operator approval.
-- Do not start hierarchy intake, participant rollout, synthesis/evaluation, final package, or video input.
-- Do not add Whisper, local STT fallback, or a new provider.
+- Do not start the hierarchy build slice without operator approval.
+- Do not build hierarchy intake, hierarchy draft generation, source-to-role linking, participant targeting, or rollout readiness inside Pass 2.
+- Do not start synthesis/evaluation, final package, or video input.
+- Do not add new provider work, new website crawl capability, or new audio review capability unless the operator explicitly requests it.
 
 ---
 

@@ -13,6 +13,7 @@ import type { EmbeddingProvider } from "./embedding-provider.js";
 import { GoogleExtractionProvider } from "./google-extraction.js";
 import { OpenAIExtractionProvider } from "./openai-extraction.js";
 import { Crawl4AIAdapter } from "./crawl4ai-adapter.js";
+import { FetchHtmlCrawlerAdapter } from "./fetch-html-crawler.js";
 import { GoogleEmbeddingProvider } from "./google-embedding.js";
 import { GoogleSpeechToTextProvider } from "./google-stt.js";
 
@@ -69,6 +70,10 @@ function externalSTTModel(): string {
   return getEnv("GOOGLE_STT_EXTERNAL_MODEL") ?? "latest_long";
 }
 
+function crawlerAdapterName(): "crawl4ai" | "fetch_html" {
+  return getEnv("WORKFLOW_CRAWLER_ADAPTER") === "fetch_html" ? "fetch_html" : "crawl4ai";
+}
+
 // ---------------------------------------------------------------------------
 // Implementation
 // ---------------------------------------------------------------------------
@@ -113,6 +118,15 @@ export class EnvProviderRegistry implements ProviderRegistry {
   }
 
   getCrawlAvailability(): ProviderAvailability {
+    const adapter = crawlerAdapterName();
+    if (adapter === "fetch_html") {
+      return {
+        name: "fetch_html",
+        available: true,
+        reason: "Native fetch_html crawler selected — live bounded adapter",
+        live: true,
+      };
+    }
     const configured = envSet("CRAWL4AI_URL");
     return {
       name: "crawl4ai",
@@ -125,6 +139,7 @@ export class EnvProviderRegistry implements ProviderRegistry {
   }
 
   getCrawlProvider(): CrawlProvider | null {
+    if (crawlerAdapterName() === "fetch_html") return new FetchHtmlCrawlerAdapter();
     return new Crawl4AIAdapter();
   }
 

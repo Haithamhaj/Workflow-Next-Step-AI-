@@ -67,12 +67,18 @@ export default function IntakeSessionDetailPage({
         <Link className="btn-primary" href={`/intake-sessions/${params.id}/batch-summary`}>
           Batch summary
         </Link>
+        <Link className="btn-primary" href={`/intake-sessions/${params.id}/context`}>
+          Department context
+        </Link>
+        <Link className="btn-primary" href={`/intake-sessions/${params.id}/final-review`}>
+          Final pre-hierarchy review
+        </Link>
       </div>
 
       <div className="card" style={{ marginTop: "16px" }}>
-        <h3 style={{ margin: "0 0 8px" }}>Provider Results</h3>
+        <h3 style={{ margin: "0 0 8px" }}>Context and Provider Results</h3>
         <p style={{ margin: 0, color: "var(--fg-muted)" }}>
-          Extraction, crawling, transcription, embeddings, AI suggestions, and structured context generation are pending later phases.
+          Phase 6 structured context is available through Department context. Phase 7 final review closes intake/context framing; hierarchy intake remains deferred to a separate build slice.
         </p>
       </div>
 

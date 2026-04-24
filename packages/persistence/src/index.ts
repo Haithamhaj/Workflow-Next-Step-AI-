@@ -27,6 +27,9 @@ import type {
   TextArtifactRecord,
   EmbeddingJobRecord,
   AIIntakeSuggestion,
+  DepartmentFramingRecord,
+  FinalPreHierarchyReviewRecord,
+  StructuredContextRecord,
 } from "@workflow/contracts";
 
 import { mkdirSync } from "node:fs";
@@ -158,6 +161,12 @@ export interface StoredTextArtifactRecord extends TextArtifactRecord {}
 export interface StoredEmbeddingJobRecord extends EmbeddingJobRecord {}
 
 export interface StoredAIIntakeSuggestion extends AIIntakeSuggestion {}
+
+export interface StoredDepartmentFramingRecord extends DepartmentFramingRecord {}
+
+export interface StoredStructuredContextRecord extends StructuredContextRecord {}
+
+export interface StoredFinalPreHierarchyReviewRecord extends FinalPreHierarchyReviewRecord {}
 
 // ---------------------------------------------------------------------------
 // Repository interfaces — backend-agnostic
@@ -321,6 +330,28 @@ export interface AIIntakeSuggestionRepository {
   findBySourceId(sourceId: string): StoredAIIntakeSuggestion[];
   findBySessionId(sessionId: string): StoredAIIntakeSuggestion[];
   findAll(): StoredAIIntakeSuggestion[];
+}
+
+export interface DepartmentFramingRepository {
+  save(record: StoredDepartmentFramingRecord): void;
+  findBySessionId(sessionId: string): StoredDepartmentFramingRecord | null;
+  findAll(): StoredDepartmentFramingRecord[];
+}
+
+export interface StructuredContextRecordRepository {
+  save(record: StoredStructuredContextRecord): void;
+  findById(structuredContextId: string): StoredStructuredContextRecord | null;
+  findBySessionId(sessionId: string): StoredStructuredContextRecord | null;
+  findByCaseId(caseId: string): StoredStructuredContextRecord[];
+  findAll(): StoredStructuredContextRecord[];
+}
+
+export interface FinalPreHierarchyReviewRepository {
+  save(record: StoredFinalPreHierarchyReviewRecord): void;
+  findById(reviewId: string): StoredFinalPreHierarchyReviewRecord | null;
+  findBySessionId(sessionId: string): StoredFinalPreHierarchyReviewRecord | null;
+  findByCaseId(caseId: string): StoredFinalPreHierarchyReviewRecord[];
+  findAll(): StoredFinalPreHierarchyReviewRecord[];
 }
 
 // ---------------------------------------------------------------------------
@@ -865,6 +896,70 @@ class InMemoryAIIntakeSuggestionRepository implements AIIntakeSuggestionReposito
   }
 }
 
+class InMemoryDepartmentFramingRepository implements DepartmentFramingRepository {
+  private readonly store = new Map<string, StoredDepartmentFramingRecord>();
+
+  save(record: StoredDepartmentFramingRecord): void {
+    this.store.set(record.sessionId, { ...record });
+  }
+
+  findBySessionId(sessionId: string): StoredDepartmentFramingRecord | null {
+    return this.store.get(sessionId) ?? null;
+  }
+
+  findAll(): StoredDepartmentFramingRecord[] {
+    return Array.from(this.store.values());
+  }
+}
+
+class InMemoryStructuredContextRecordRepository implements StructuredContextRecordRepository {
+  private readonly store = new Map<string, StoredStructuredContextRecord>();
+
+  save(record: StoredStructuredContextRecord): void {
+    this.store.set(record.structuredContextId, { ...record });
+  }
+
+  findById(structuredContextId: string): StoredStructuredContextRecord | null {
+    return this.store.get(structuredContextId) ?? null;
+  }
+
+  findBySessionId(sessionId: string): StoredStructuredContextRecord | null {
+    return Array.from(this.store.values()).find((record) => record.sessionId === sessionId) ?? null;
+  }
+
+  findByCaseId(caseId: string): StoredStructuredContextRecord[] {
+    return Array.from(this.store.values()).filter((record) => record.caseId === caseId);
+  }
+
+  findAll(): StoredStructuredContextRecord[] {
+    return Array.from(this.store.values());
+  }
+}
+
+class InMemoryFinalPreHierarchyReviewRepository implements FinalPreHierarchyReviewRepository {
+  private readonly store = new Map<string, StoredFinalPreHierarchyReviewRecord>();
+
+  save(record: StoredFinalPreHierarchyReviewRecord): void {
+    this.store.set(record.reviewId, { ...record });
+  }
+
+  findById(reviewId: string): StoredFinalPreHierarchyReviewRecord | null {
+    return this.store.get(reviewId) ?? null;
+  }
+
+  findBySessionId(sessionId: string): StoredFinalPreHierarchyReviewRecord | null {
+    return Array.from(this.store.values()).find((record) => record.intakeSessionId === sessionId) ?? null;
+  }
+
+  findByCaseId(caseId: string): StoredFinalPreHierarchyReviewRecord[] {
+    return Array.from(this.store.values()).filter((record) => record.caseId === caseId);
+  }
+
+  findAll(): StoredFinalPreHierarchyReviewRecord[] {
+    return Array.from(this.store.values());
+  }
+}
+
 // ---------------------------------------------------------------------------
 // SQLite intake implementations — durable Phase 1 foundation
 // ---------------------------------------------------------------------------
@@ -967,6 +1062,24 @@ function openIntakeDatabase(dbPath?: string): DatabaseSync {
       session_id TEXT NOT NULL,
       payload TEXT NOT NULL
     );
+    CREATE TABLE IF NOT EXISTS department_framing_records (
+      id TEXT PRIMARY KEY,
+      session_id TEXT NOT NULL,
+      case_id TEXT NOT NULL,
+      payload TEXT NOT NULL
+    );
+    CREATE TABLE IF NOT EXISTS structured_context_records (
+      id TEXT PRIMARY KEY,
+      session_id TEXT NOT NULL,
+      case_id TEXT NOT NULL,
+      payload TEXT NOT NULL
+    );
+    CREATE TABLE IF NOT EXISTS final_pre_hierarchy_reviews (
+      id TEXT PRIMARY KEY,
+      session_id TEXT NOT NULL,
+      case_id TEXT NOT NULL,
+      payload TEXT NOT NULL
+    );
     CREATE INDEX IF NOT EXISTS idx_provider_jobs_source_id ON provider_extraction_jobs(source_id);
     CREATE INDEX IF NOT EXISTS idx_provider_jobs_session_id ON provider_extraction_jobs(session_id);
     CREATE INDEX IF NOT EXISTS idx_text_artifacts_source_id ON text_artifacts(source_id);
@@ -984,6 +1097,11 @@ function openIntakeDatabase(dbPath?: string): DatabaseSync {
     CREATE INDEX IF NOT EXISTS idx_content_chunks_source_id ON content_chunks(source_id);
     CREATE INDEX IF NOT EXISTS idx_audio_transcript_reviews_source_id ON audio_transcript_reviews(source_id);
     CREATE INDEX IF NOT EXISTS idx_audio_transcript_reviews_session_id ON audio_transcript_reviews(session_id);
+    CREATE UNIQUE INDEX IF NOT EXISTS idx_department_framing_session_id ON department_framing_records(session_id);
+    CREATE INDEX IF NOT EXISTS idx_structured_context_session_id ON structured_context_records(session_id);
+    CREATE INDEX IF NOT EXISTS idx_structured_context_case_id ON structured_context_records(case_id);
+    CREATE UNIQUE INDEX IF NOT EXISTS idx_final_pre_hierarchy_reviews_session_id ON final_pre_hierarchy_reviews(session_id);
+    CREATE INDEX IF NOT EXISTS idx_final_pre_hierarchy_reviews_case_id ON final_pre_hierarchy_reviews(case_id);
   `);
   return db;
 }
@@ -1370,6 +1488,98 @@ export class SQLiteAudioTranscriptReviewRepository implements AudioTranscriptRev
   }
 }
 
+export class SQLiteDepartmentFramingRepository implements DepartmentFramingRepository {
+  private readonly db: DatabaseSync;
+
+  constructor(dbPath?: string) {
+    this.db = openIntakeDatabase(dbPath);
+  }
+
+  save(record: StoredDepartmentFramingRecord): void {
+    this.db.prepare(
+      "INSERT INTO department_framing_records (id, session_id, case_id, payload) VALUES (?, ?, ?, ?) ON CONFLICT(id) DO UPDATE SET session_id = excluded.session_id, case_id = excluded.case_id, payload = excluded.payload",
+    ).run(record.framingId, record.sessionId, record.caseId, JSON.stringify(record));
+  }
+
+  findBySessionId(sessionId: string): StoredDepartmentFramingRecord | null {
+    const row = this.db.prepare("SELECT payload FROM department_framing_records WHERE session_id = ? ORDER BY id DESC LIMIT 1").get(sessionId);
+    return parseStored<StoredDepartmentFramingRecord>(row);
+  }
+
+  findAll(): StoredDepartmentFramingRecord[] {
+    const rows = this.db.prepare("SELECT payload FROM department_framing_records ORDER BY id").all();
+    return parseStoredList<StoredDepartmentFramingRecord>(rows);
+  }
+}
+
+export class SQLiteStructuredContextRecordRepository implements StructuredContextRecordRepository {
+  private readonly db: DatabaseSync;
+
+  constructor(dbPath?: string) {
+    this.db = openIntakeDatabase(dbPath);
+  }
+
+  save(record: StoredStructuredContextRecord): void {
+    this.db.prepare(
+      "INSERT INTO structured_context_records (id, session_id, case_id, payload) VALUES (?, ?, ?, ?) ON CONFLICT(id) DO UPDATE SET session_id = excluded.session_id, case_id = excluded.case_id, payload = excluded.payload",
+    ).run(record.structuredContextId, record.sessionId ?? "", record.caseId, JSON.stringify(record));
+  }
+
+  findById(structuredContextId: string): StoredStructuredContextRecord | null {
+    const row = this.db.prepare("SELECT payload FROM structured_context_records WHERE id = ?").get(structuredContextId);
+    return parseStored<StoredStructuredContextRecord>(row);
+  }
+
+  findBySessionId(sessionId: string): StoredStructuredContextRecord | null {
+    const row = this.db.prepare("SELECT payload FROM structured_context_records WHERE session_id = ? ORDER BY id DESC LIMIT 1").get(sessionId);
+    return parseStored<StoredStructuredContextRecord>(row);
+  }
+
+  findByCaseId(caseId: string): StoredStructuredContextRecord[] {
+    const rows = this.db.prepare("SELECT payload FROM structured_context_records WHERE case_id = ? ORDER BY id").all(caseId);
+    return parseStoredList<StoredStructuredContextRecord>(rows);
+  }
+
+  findAll(): StoredStructuredContextRecord[] {
+    const rows = this.db.prepare("SELECT payload FROM structured_context_records ORDER BY id").all();
+    return parseStoredList<StoredStructuredContextRecord>(rows);
+  }
+}
+
+export class SQLiteFinalPreHierarchyReviewRepository implements FinalPreHierarchyReviewRepository {
+  private readonly db: DatabaseSync;
+
+  constructor(dbPath?: string) {
+    this.db = openIntakeDatabase(dbPath);
+  }
+
+  save(record: StoredFinalPreHierarchyReviewRecord): void {
+    this.db.prepare(
+      "INSERT INTO final_pre_hierarchy_reviews (id, session_id, case_id, payload) VALUES (?, ?, ?, ?) ON CONFLICT(id) DO UPDATE SET session_id = excluded.session_id, case_id = excluded.case_id, payload = excluded.payload",
+    ).run(record.reviewId, record.intakeSessionId, record.caseId, JSON.stringify(record));
+  }
+
+  findById(reviewId: string): StoredFinalPreHierarchyReviewRecord | null {
+    const row = this.db.prepare("SELECT payload FROM final_pre_hierarchy_reviews WHERE id = ?").get(reviewId);
+    return parseStored<StoredFinalPreHierarchyReviewRecord>(row);
+  }
+
+  findBySessionId(sessionId: string): StoredFinalPreHierarchyReviewRecord | null {
+    const row = this.db.prepare("SELECT payload FROM final_pre_hierarchy_reviews WHERE session_id = ? ORDER BY id DESC LIMIT 1").get(sessionId);
+    return parseStored<StoredFinalPreHierarchyReviewRecord>(row);
+  }
+
+  findByCaseId(caseId: string): StoredFinalPreHierarchyReviewRecord[] {
+    const rows = this.db.prepare("SELECT payload FROM final_pre_hierarchy_reviews WHERE case_id = ? ORDER BY id").all(caseId);
+    return parseStoredList<StoredFinalPreHierarchyReviewRecord>(rows);
+  }
+
+  findAll(): StoredFinalPreHierarchyReviewRecord[] {
+    const rows = this.db.prepare("SELECT payload FROM final_pre_hierarchy_reviews ORDER BY id").all();
+    return parseStoredList<StoredFinalPreHierarchyReviewRecord>(rows);
+  }
+}
+
 export function createSQLiteIntakeRepositories(dbPath?: string): {
   intakeSessions: IntakeSessionRepository;
   intakeSources: IntakeSourceRepository;
@@ -1383,6 +1593,9 @@ export function createSQLiteIntakeRepositories(dbPath?: string): {
   websiteCrawlSiteSummaries: WebsiteCrawlSiteSummaryRepository;
   contentChunks: ContentChunkRepository;
   audioTranscriptReviews: AudioTranscriptReviewRepository;
+  departmentFraming: DepartmentFramingRepository;
+  structuredContexts: StructuredContextRecordRepository;
+  finalPreHierarchyReviews: FinalPreHierarchyReviewRepository;
 } {
   return {
     intakeSessions: new SQLiteIntakeSessionRepository(dbPath),
@@ -1397,6 +1610,9 @@ export function createSQLiteIntakeRepositories(dbPath?: string): {
     websiteCrawlSiteSummaries: new SQLiteWebsiteCrawlSiteSummaryRepository(dbPath),
     contentChunks: new SQLiteContentChunkRepository(dbPath),
     audioTranscriptReviews: new SQLiteAudioTranscriptReviewRepository(dbPath),
+    departmentFraming: new SQLiteDepartmentFramingRepository(dbPath),
+    structuredContexts: new SQLiteStructuredContextRecordRepository(dbPath),
+    finalPreHierarchyReviews: new SQLiteFinalPreHierarchyReviewRepository(dbPath),
   };
 }
 
@@ -1432,6 +1648,9 @@ export interface InMemoryStore {
   textArtifacts: TextArtifactRepository;
   embeddingJobs: EmbeddingJobRepository;
   aiIntakeSuggestions: AIIntakeSuggestionRepository;
+  departmentFraming: DepartmentFramingRepository;
+  structuredContexts: StructuredContextRecordRepository;
+  finalPreHierarchyReviews: FinalPreHierarchyReviewRepository;
   /** Raw file bytes keyed by sourceId. In-memory only — no persistence. */
   fileStore: Map<string, { bytes: ArrayBuffer; mimeType: string }>;
 }
@@ -1461,6 +1680,9 @@ export function createInMemoryStore(): InMemoryStore {
     textArtifacts: new InMemoryTextArtifactRepository(),
     embeddingJobs: new InMemoryEmbeddingJobRepository(),
     aiIntakeSuggestions: new InMemoryAIIntakeSuggestionRepository(),
+    departmentFraming: new InMemoryDepartmentFramingRepository(),
+    structuredContexts: new InMemoryStructuredContextRecordRepository(),
+    finalPreHierarchyReviews: new InMemoryFinalPreHierarchyReviewRepository(),
     fileStore: new Map(),
   };
 }
