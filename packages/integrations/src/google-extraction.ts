@@ -6,7 +6,7 @@
 
 import { GoogleGenerativeAI, SchemaType } from "@google/generative-ai";
 import type { ResponseSchema } from "@google/generative-ai";
-import type { ProviderName, StructuredContext } from "@workflow/contracts";
+import type { IntakeSourceRole, ProviderName, StructuredContext } from "@workflow/contracts";
 import type {
   ExtractionInput,
   ExtractionProvider,
@@ -32,7 +32,8 @@ function arrayBufferToBase64(buffer: ArrayBuffer): string {
 function isMultimodalMimeType(mimeType: string): boolean {
   return (
     mimeType.startsWith("image/") ||
-    mimeType.startsWith("audio/")
+    mimeType.startsWith("audio/") ||
+    mimeType === "application/pdf"
   );
 }
 
@@ -95,6 +96,23 @@ Given a source's display name and extracted text, determine:
 - shortRationale: one-sentence explanation
 This is intake triage only. Do not judge reference suitability, workflow truth, or document quality.`;
 
+const INTAKE_SOURCE_ROLES: IntakeSourceRole[] = [
+  "company_overview",
+  "company_context",
+  "org_signal",
+  "policy_reference",
+  "department_note",
+  "audio_transcript",
+  "website_url",
+  "general_intake_source",
+];
+
+function normalizeSourceRole(value: unknown): IntakeSourceRole {
+  return typeof value === "string" && INTAKE_SOURCE_ROLES.includes(value as IntakeSourceRole)
+    ? value as IntakeSourceRole
+    : "general_intake_source";
+}
+
 export class GoogleExtractionProvider implements ExtractionProvider {
   readonly name: ProviderName = "google";
 
@@ -110,7 +128,7 @@ export class GoogleExtractionProvider implements ExtractionProvider {
       throw new Error("GOOGLE_AI_API_KEY is not configured for Google document/OCR extraction.");
     }
 
-    const modelName = getApiModel("GOOGLE_EXTRACTION_MODEL", "gemini-2.0-flash");
+    const modelName = getApiModel("GOOGLE_EXTRACTION_MODEL", "gemini-3.1-pro-preview");
     const model = client.getGenerativeModel({ model: modelName });
     const prompt = "Extract all text content from this Pass 2 intake source. Return only extracted text, no commentary.";
     const parts: Array<{ text: string } | { inlineData: { data: string; mimeType: string } }> = [{ text: prompt }];
@@ -137,7 +155,7 @@ export class GoogleExtractionProvider implements ExtractionProvider {
       throw new Error("GOOGLE_AI_API_KEY is not configured for AI intake source-role suggestions.");
     }
 
-    const modelName = getApiModel("GOOGLE_SUGGESTION_MODEL", "gemini-2.0-flash");
+    const modelName = getApiModel("GOOGLE_SUGGESTION_MODEL", "gemini-3.1-pro-preview");
     const model = client.getGenerativeModel({
       model: modelName,
       generationConfig: {
@@ -158,7 +176,7 @@ export class GoogleExtractionProvider implements ExtractionProvider {
       reason?: string;
     };
     return {
-      suggestedSourceRole: parsed.suggestedSourceRole ?? parsed.suggestedType ?? "general_intake_source",
+      suggestedSourceRole: normalizeSourceRole(parsed.suggestedSourceRole ?? parsed.suggestedType),
       suggestedScope: (parsed.suggestedScope === "company_level" || parsed.suggestedScope === "department_level")
         ? parsed.suggestedScope
         : input.bucket === "company" ? "company_level" : "department_level",
@@ -179,61 +197,44 @@ export class GoogleExtractionProvider implements ExtractionProvider {
       throw new Error("GOOGLE_AI_API_KEY is not configured for structured context generation.");
     }
 
-    try {
-      const model = client.getGenerativeModel({
-        model: "gemini-2.0-flash",
-        generationConfig: {
-          responseMimeType: "application/json",
-          responseSchema: STRUCTURED_CONTEXT_SCHEMA,
-        },
-      });
+    const modelName = getApiModel("GOOGLE_STRUCTURED_CONTEXT_MODEL", "gemini-3.1-pro-preview");
+    const model = client.getGenerativeModel({
+      model: modelName,
+      generationConfig: {
+        responseMimeType: "application/json",
+        responseSchema: STRUCTURED_CONTEXT_SCHEMA,
+      },
+    });
 
-      const userPrompt = `Bucket: ${input.bucket}${input.domain ? `\nDomain hint: ${input.domain}` : ""}
+    const userPrompt = `Bucket: ${input.bucket}${input.domain ? `\nDomain hint: ${input.domain}` : ""}
 
 Raw source text:
 ${input.rawText.slice(0, 8000)}`;
 
-      const result = await model.generateContent([
-        { text: CONTEXT_SYSTEM },
-        { text: userPrompt },
-      ]);
+    const result = await model.generateContent([
+      { text: CONTEXT_SYSTEM },
+      { text: userPrompt },
+    ]);
 
-      const parsed = JSON.parse(result.response.text()) as StructuredContext;
+    const parsed = JSON.parse(result.response.text()) as StructuredContext;
 
-      // Validate required fields are present
-      const context: StructuredContext = {
-        companyName: parsed.companyName ?? "",
-        companyScopeSummary: parsed.companyScopeSummary ?? "",
-        domain: parsed.domain ?? input.domain ?? "unknown",
-        subtypeOrOperatingModel: parsed.subtypeOrOperatingModel || undefined,
-        visibleServicesOrProducts: Array.isArray(parsed.visibleServicesOrProducts) ? parsed.visibleServicesOrProducts : [],
-        mainDepartment: parsed.mainDepartment ?? "",
-        subUnitOrTeam: parsed.subUnitOrTeam || undefined,
-        visibleRoleFamiliesOrOrgSignals: Array.isArray(parsed.visibleRoleFamiliesOrOrgSignals) ? parsed.visibleRoleFamiliesOrOrgSignals : [],
-        keyContextSignalsAndRisks: Array.isArray(parsed.keyContextSignalsAndRisks) ? parsed.keyContextSignalsAndRisks : [],
-        confidenceAndUnknowns: parsed.confidenceAndUnknowns ?? "Extracted by Google Gemini — review recommended",
-      };
+    const context: StructuredContext = {
+      companyName: parsed.companyName ?? "",
+      companyScopeSummary: parsed.companyScopeSummary ?? "",
+      domain: parsed.domain ?? input.domain ?? "unknown",
+      subtypeOrOperatingModel: parsed.subtypeOrOperatingModel || undefined,
+      visibleServicesOrProducts: Array.isArray(parsed.visibleServicesOrProducts) ? parsed.visibleServicesOrProducts : [],
+      mainDepartment: parsed.mainDepartment ?? "",
+      subUnitOrTeam: parsed.subUnitOrTeam || undefined,
+      visibleRoleFamiliesOrOrgSignals: Array.isArray(parsed.visibleRoleFamiliesOrOrgSignals) ? parsed.visibleRoleFamiliesOrOrgSignals : [],
+      keyContextSignalsAndRisks: Array.isArray(parsed.keyContextSignalsAndRisks) ? parsed.keyContextSignalsAndRisks : [],
+      confidenceAndUnknowns: parsed.confidenceAndUnknowns ?? "Extracted by Google Gemini; admin review remains required.",
+    };
 
-      return {
-        structuredContext: context,
-        provider: "google",
-        model: "gemini-2.0-flash",
-      };
-    } catch {
-      return {
-        structuredContext: {
-          companyName: "",
-          companyScopeSummary: input.rawText.slice(0, 200),
-          domain: input.domain ?? "unknown",
-          visibleServicesOrProducts: [],
-          mainDepartment: "",
-          visibleRoleFamiliesOrOrgSignals: [],
-          keyContextSignalsAndRisks: [],
-          confidenceAndUnknowns: "Google API call failed — no extraction performed. Error during Gemini invocation.",
-        },
-        provider: "google",
-        model: "stub-api-failed",
-      };
-    }
+    return {
+      structuredContext: context,
+      provider: "google",
+      model: modelName,
+    };
   }
 }

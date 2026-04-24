@@ -27,6 +27,7 @@ import type {
   TextArtifactRecord,
   EmbeddingJobRecord,
   AIIntakeSuggestion,
+  AdminIntakeDecision,
   DepartmentFramingRecord,
   FinalPreHierarchyReviewRecord,
   StructuredContextRecord,
@@ -161,6 +162,8 @@ export interface StoredTextArtifactRecord extends TextArtifactRecord {}
 export interface StoredEmbeddingJobRecord extends EmbeddingJobRecord {}
 
 export interface StoredAIIntakeSuggestion extends AIIntakeSuggestion {}
+
+export interface StoredAdminIntakeDecision extends AdminIntakeDecision {}
 
 export interface StoredDepartmentFramingRecord extends DepartmentFramingRecord {}
 
@@ -330,6 +333,14 @@ export interface AIIntakeSuggestionRepository {
   findBySourceId(sourceId: string): StoredAIIntakeSuggestion[];
   findBySessionId(sessionId: string): StoredAIIntakeSuggestion[];
   findAll(): StoredAIIntakeSuggestion[];
+}
+
+export interface AdminIntakeDecisionRepository {
+  save(decision: StoredAdminIntakeDecision): void;
+  findById(decisionId: string): StoredAdminIntakeDecision | null;
+  findBySourceId(sourceId: string): StoredAdminIntakeDecision[];
+  findBySessionId(sessionId: string): StoredAdminIntakeDecision[];
+  findAll(): StoredAdminIntakeDecision[];
 }
 
 export interface DepartmentFramingRepository {
@@ -896,6 +907,30 @@ class InMemoryAIIntakeSuggestionRepository implements AIIntakeSuggestionReposito
   }
 }
 
+class InMemoryAdminIntakeDecisionRepository implements AdminIntakeDecisionRepository {
+  private readonly store = new Map<string, StoredAdminIntakeDecision>();
+
+  save(decision: StoredAdminIntakeDecision): void {
+    this.store.set(decision.decisionId, { ...decision });
+  }
+
+  findById(decisionId: string): StoredAdminIntakeDecision | null {
+    return this.store.get(decisionId) ?? null;
+  }
+
+  findBySourceId(sourceId: string): StoredAdminIntakeDecision[] {
+    return Array.from(this.store.values()).filter((decision) => decision.intakeSourceId === sourceId);
+  }
+
+  findBySessionId(sessionId: string): StoredAdminIntakeDecision[] {
+    return Array.from(this.store.values()).filter((decision) => decision.sessionId === sessionId);
+  }
+
+  findAll(): StoredAdminIntakeDecision[] {
+    return Array.from(this.store.values());
+  }
+}
+
 class InMemoryDepartmentFramingRepository implements DepartmentFramingRepository {
   private readonly store = new Map<string, StoredDepartmentFramingRecord>();
 
@@ -1025,6 +1060,13 @@ function openIntakeDatabase(dbPath?: string): DatabaseSync {
       session_id TEXT NOT NULL,
       payload TEXT NOT NULL
     );
+    CREATE TABLE IF NOT EXISTS admin_intake_decisions (
+      id TEXT PRIMARY KEY,
+      source_id TEXT NOT NULL,
+      session_id TEXT NOT NULL,
+      case_id TEXT NOT NULL,
+      payload TEXT NOT NULL
+    );
     CREATE TABLE IF NOT EXISTS website_crawl_plans (
       id TEXT PRIMARY KEY,
       source_id TEXT NOT NULL,
@@ -1086,6 +1128,9 @@ function openIntakeDatabase(dbPath?: string): DatabaseSync {
     CREATE INDEX IF NOT EXISTS idx_embedding_jobs_source_id ON embedding_jobs(source_id);
     CREATE INDEX IF NOT EXISTS idx_ai_suggestions_source_id ON ai_intake_suggestions(source_id);
     CREATE INDEX IF NOT EXISTS idx_ai_suggestions_session_id ON ai_intake_suggestions(session_id);
+    CREATE INDEX IF NOT EXISTS idx_admin_decisions_source_id ON admin_intake_decisions(source_id);
+    CREATE INDEX IF NOT EXISTS idx_admin_decisions_session_id ON admin_intake_decisions(session_id);
+    CREATE INDEX IF NOT EXISTS idx_admin_decisions_case_id ON admin_intake_decisions(case_id);
     CREATE INDEX IF NOT EXISTS idx_crawl_plans_source_id ON website_crawl_plans(source_id);
     CREATE INDEX IF NOT EXISTS idx_crawl_plans_session_id ON website_crawl_plans(session_id);
     CREATE INDEX IF NOT EXISTS idx_crawl_approvals_plan_id ON website_crawl_approvals(crawl_plan_id);
@@ -1306,6 +1351,40 @@ export class SQLiteAIIntakeSuggestionRepository implements AIIntakeSuggestionRep
   findAll(): StoredAIIntakeSuggestion[] {
     const rows = this.db.prepare("SELECT payload FROM ai_intake_suggestions ORDER BY id").all();
     return parseStoredList<StoredAIIntakeSuggestion>(rows);
+  }
+}
+
+export class SQLiteAdminIntakeDecisionRepository implements AdminIntakeDecisionRepository {
+  private readonly db: DatabaseSync;
+
+  constructor(dbPath?: string) {
+    this.db = openIntakeDatabase(dbPath);
+  }
+
+  save(decision: StoredAdminIntakeDecision): void {
+    this.db.prepare(
+      "INSERT INTO admin_intake_decisions (id, source_id, session_id, case_id, payload) VALUES (?, ?, ?, ?, ?) ON CONFLICT(id) DO UPDATE SET source_id = excluded.source_id, session_id = excluded.session_id, case_id = excluded.case_id, payload = excluded.payload",
+    ).run(decision.decisionId, decision.intakeSourceId, decision.sessionId, decision.caseId, JSON.stringify(decision));
+  }
+
+  findById(decisionId: string): StoredAdminIntakeDecision | null {
+    const row = this.db.prepare("SELECT payload FROM admin_intake_decisions WHERE id = ?").get(decisionId);
+    return parseStored<StoredAdminIntakeDecision>(row);
+  }
+
+  findBySourceId(sourceId: string): StoredAdminIntakeDecision[] {
+    const rows = this.db.prepare("SELECT payload FROM admin_intake_decisions WHERE source_id = ? ORDER BY id").all(sourceId);
+    return parseStoredList<StoredAdminIntakeDecision>(rows);
+  }
+
+  findBySessionId(sessionId: string): StoredAdminIntakeDecision[] {
+    const rows = this.db.prepare("SELECT payload FROM admin_intake_decisions WHERE session_id = ? ORDER BY id").all(sessionId);
+    return parseStoredList<StoredAdminIntakeDecision>(rows);
+  }
+
+  findAll(): StoredAdminIntakeDecision[] {
+    const rows = this.db.prepare("SELECT payload FROM admin_intake_decisions ORDER BY id").all();
+    return parseStoredList<StoredAdminIntakeDecision>(rows);
   }
 }
 
@@ -1587,6 +1666,7 @@ export function createSQLiteIntakeRepositories(dbPath?: string): {
   textArtifacts: TextArtifactRepository;
   embeddingJobs: EmbeddingJobRepository;
   aiIntakeSuggestions: AIIntakeSuggestionRepository;
+  adminIntakeDecisions: AdminIntakeDecisionRepository;
   websiteCrawlPlans: WebsiteCrawlPlanRepository;
   websiteCrawlApprovals: WebsiteCrawlApprovalRepository;
   crawledPageContents: CrawledPageContentRepository;
@@ -1604,6 +1684,7 @@ export function createSQLiteIntakeRepositories(dbPath?: string): {
     textArtifacts: new SQLiteTextArtifactRepository(dbPath),
     embeddingJobs: new SQLiteEmbeddingJobRepository(dbPath),
     aiIntakeSuggestions: new SQLiteAIIntakeSuggestionRepository(dbPath),
+    adminIntakeDecisions: new SQLiteAdminIntakeDecisionRepository(dbPath),
     websiteCrawlPlans: new SQLiteWebsiteCrawlPlanRepository(dbPath),
     websiteCrawlApprovals: new SQLiteWebsiteCrawlApprovalRepository(dbPath),
     crawledPageContents: new SQLiteCrawledPageContentRepository(dbPath),
@@ -1648,6 +1729,7 @@ export interface InMemoryStore {
   textArtifacts: TextArtifactRepository;
   embeddingJobs: EmbeddingJobRepository;
   aiIntakeSuggestions: AIIntakeSuggestionRepository;
+  adminIntakeDecisions: AdminIntakeDecisionRepository;
   departmentFraming: DepartmentFramingRepository;
   structuredContexts: StructuredContextRecordRepository;
   finalPreHierarchyReviews: FinalPreHierarchyReviewRepository;
@@ -1680,6 +1762,7 @@ export function createInMemoryStore(): InMemoryStore {
     textArtifacts: new InMemoryTextArtifactRepository(),
     embeddingJobs: new InMemoryEmbeddingJobRepository(),
     aiIntakeSuggestions: new InMemoryAIIntakeSuggestionRepository(),
+    adminIntakeDecisions: new InMemoryAdminIntakeDecisionRepository(),
     departmentFraming: new InMemoryDepartmentFramingRepository(),
     structuredContexts: new InMemoryStructuredContextRecordRepository(),
     finalPreHierarchyReviews: new InMemoryFinalPreHierarchyReviewRepository(),
@@ -1690,6 +1773,7 @@ export function createInMemoryStore(): InMemoryStore {
 // Re-export for use by domain packages without double-importing contracts
 export type {
   AIIntakeSuggestion,
+  AdminIntakeDecision,
   CaseConfiguration,
   ConditionInterpretations,
   EmbeddingJobRecord,

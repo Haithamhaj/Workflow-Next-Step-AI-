@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { store } from "../../../lib/store";
 import SourceActions from "./SourceActions";
+import SourceRoleDecisionForm from "./SourceRoleDecisionForm";
 
 export const dynamic = "force-dynamic";
 
@@ -25,6 +26,7 @@ export default function IntakeSourceDetailPage({
   if (!source) notFound();
   const providerJobs = store.providerJobs.findBySourceId(source.sourceId);
   const suggestions = store.aiIntakeSuggestions.findBySourceId(source.sourceId);
+  const sourceRoleDecisions = store.adminIntakeDecisions.findBySourceId(source.sourceId);
   const artifacts = store.textArtifacts.findBySourceId(source.sourceId);
   const crawlPlans = source.inputType === "website_url"
     ? store.websiteCrawlPlans.findBySourceId(source.sourceId)
@@ -155,6 +157,30 @@ export default function IntakeSourceDetailPage({
         <p style={{ margin: "8px 0 0", color: "var(--fg-muted)", fontSize: "0.85rem" }}>
           Suggestions are source-role intake triage only, not deep reference analysis.
         </p>
+      </div>
+
+      <div className="card" style={{ marginTop: "16px" }}>
+        <h3 style={{ margin: "0 0 8px" }}>Admin Source-Role Decision</h3>
+        <p style={{ marginTop: 0, color: "var(--fg-muted)" }}>
+          Confirm, edit, override, or mark the AI source-role suggestion for review. The original AI suggestion remains stored separately.
+        </p>
+        <SourceRoleDecisionForm
+          sourceId={source.sourceId}
+          suggestionId={suggestions.at(-1)?.suggestionId}
+          suggestedRole={suggestions.at(-1)?.suggestedSourceRole}
+          suggestedScope={suggestions.at(-1)?.suggestedScope}
+        />
+        {sourceRoleDecisions.length > 0 && (
+          <ul>
+            {sourceRoleDecisions.map((decision) => (
+              <li key={decision.decisionId}>
+                <code>{decision.decision}</code>
+                {decision.finalSourceRole ? ` — ${decision.finalSourceRole}` : ""}
+                {decision.finalScope ? ` — ${decision.finalScope}` : ""}
+              </li>
+            ))}
+          </ul>
+        )}
       </div>
 
       <div className="card" style={{ marginTop: "16px" }}>

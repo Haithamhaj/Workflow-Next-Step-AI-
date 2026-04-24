@@ -11,3 +11,6 @@ coverage
 apps/admin-web/data/*.json
 apps/admin-web/data/*.sqlite
 apps/admin-web/data/*.sqlite-*
+data/*.db
+data/*.sqlite
+data/*.sqlite-*

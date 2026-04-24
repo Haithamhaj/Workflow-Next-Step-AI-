@@ -3,9 +3,11 @@ import {
   PRIMARY_DEPARTMENTS,
   assertPreHierarchyReady,
   createStructuredContextFromAvailableMaterial,
+  createStructuredContextWithProvider,
   getDepartmentFraming,
   saveDepartmentFraming,
 } from "@workflow/sources-context";
+import { providerRegistry } from "@workflow/integrations";
 import { store } from "../../../../../lib/store";
 
 export const dynamic = "force-dynamic";
@@ -77,13 +79,18 @@ export async function POST(
     if (body.action === "check-readiness") {
       return NextResponse.json({ ...payload(params.id), readiness }, { status: readiness.ready ? 200 : 409 });
     }
-    if (body.action !== "generate-structured-context") {
-      return NextResponse.json({ error: "action must be check-readiness or generate-structured-context" }, { status: 400 });
+    if (body.action !== "generate-structured-context" && body.action !== "generate-ai-structured-context") {
+      return NextResponse.json({ error: "action must be check-readiness, generate-structured-context, or generate-ai-structured-context" }, { status: 400 });
     }
     if (!readiness.ready) {
       return NextResponse.json({ ...payload(params.id), readiness }, { status: 409 });
     }
-    const structuredContext = createStructuredContextFromAvailableMaterial(params.id, repos());
+    const structuredContext = body.action === "generate-ai-structured-context"
+      ? await createStructuredContextWithProvider({
+        sessionId: params.id,
+        provider: providerRegistry.getExtractionProvider("google"),
+      }, repos())
+      : createStructuredContextFromAvailableMaterial(params.id, repos());
     return NextResponse.json({ ...payload(params.id), structuredContext }, { status: 201 });
   } catch (error) {
     return NextResponse.json({ error: error instanceof Error ? error.message : String(error) }, { status: 400 });

@@ -59,12 +59,12 @@ export default function DepartmentContextClient({
     setMessage(res.ok ? "Saved" : String(data.error ?? "Save failed"));
   }
 
-  async function generate() {
+  async function generate(action = "generate-structured-context") {
     setMessage("");
     const res = await fetch(`/api/intake-sessions/${sessionId}/department-context`, {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ action: "generate-structured-context" }),
+      body: JSON.stringify({ action }),
     });
     const data = await res.json() as Record<string, unknown>;
     setState(data);
@@ -142,7 +142,8 @@ export default function DepartmentContextClient({
           </>
         )}
         <button className="btn-primary" onClick={save}>Save decisions</button>
-        <button className="btn-primary" onClick={generate} style={{ marginLeft: "8px" }}>Create structured context</button>
+        <button className="btn-primary" onClick={() => generate()} style={{ marginLeft: "8px" }}>Create structured context</button>
+        <button className="btn-primary" onClick={() => generate("generate-ai-structured-context")} style={{ marginLeft: "8px" }}>Generate with active LLM</button>
         {message && <p><code>{message}</code></p>}
         <p className="muted">Hierarchy intake is next, but it is not implemented in Phase 6.</p>
       </div>

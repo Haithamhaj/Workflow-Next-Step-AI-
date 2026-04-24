@@ -18,7 +18,7 @@ Phase 6 status: `phase_proven`.
 
 Phase 7 status: `phase_proven`.
 
-Overall Pass 2 status: `pass2_not_complete` pending operator Section 19 acceptance confirmation.
+Overall Pass 2 status: `pass2_complete_after_all_proofs`.
 
 ---
 
@@ -86,6 +86,7 @@ Phase 3 adds provider integration foundations and provider job tracking without 
 - SQLite-backed provider job, embedding job, text artifact, and AI intake suggestion repositories in `packages/persistence`
 - source-level provider extraction action and status API
 - source-role intake suggestion action and persisted `AIIntakeSuggestion` records
+- documented source-role vocabulary includes `company_overview`, `company_context`, `org_signal`, `policy_reference`, `department_note`, `audio_transcript`, `website_url`, and `general_intake_source`
 - embedding job API and persisted `EmbeddingJobRecord` records
 - provider status API showing configured availability and persisted jobs
 - source detail display for provider jobs, artifacts, and source-role intake triage suggestions
@@ -281,6 +282,15 @@ Phase 7 does not start hierarchy intake, hierarchy draft generation, source-to-r
 | Crawler-runtime caveat closure UI proof | source detail hid page-level content by default and linked to crawl approval; page-level content appeared only in `/website-crawls/crawlplan_42243cf3-5e8b-464f-a8b7-4c6df9ada877/pages` drill-down |
 | Crawler-runtime caveat closure SQLite restart proof | after app restart using `/tmp/workflow-pass2-crawler-caveat-proof-20260424.sqlite`, plan, approval, page count, chunk count, summary, crawl job, and embedding job reloaded from SQLite |
 | Crawler-runtime caveat closure boundary proof | hierarchy draft route remains deferred; video input remains rejected; hierarchy, rollout, synthesis/evaluation, final package, and video remain unstarted |
+| Section 19 closure document extraction proof | `POST /api/intake-sources/isrc_acceptance_doc/extract` succeeded through Google model `gemini-3.1-pro-preview`, persisted provider job `pjob_a0aec689-91a2-4fa4-a266-10b817978073`, and output artifact `artifact_51813f1a-1cd1-44c0-96c3-27873fb99be8` |
+| Section 19 closure OCR proof | `POST /api/intake-sources/isrc_acceptance_image/extract` succeeded through Google model `gemini-3.1-pro-preview`, persisted provider job `pjob_a5f454ed-5643-471d-a8aa-67a08f658b8a`, and output artifact `artifact_44d74823-1bdb-4f1b-ae39-34a30388049a` |
+| Section 19 closure AI source-role proof | `POST /api/intake-sources/isrc_acceptance_doc/suggest` succeeded with suggestion `suggestion_7306a6f2-bdc8-457b-87a9-f4c7a22919fb`, role `company_overview`, scope `company_level`, confidence `high`, and evidenceRefs count `1`; UI labels it source-role intake triage only |
+| Section 19 closure admin source-role decision proof | `POST /api/intake-sources/isrc_acceptance_doc/source-role-decision` persisted all four decisions: `confirmed_ai_suggestion`, `edited_ai_suggestion`, `overridden_by_admin`, and `marked_needs_review`; original `AIIntakeSuggestion` remained separately persisted |
+| Section 19 closure live dictation proof | `POST /api/live-dictation/transcribe` succeeded through Google Speech-to-Text V1 model `latest_short`, returned transcript text length `41`, and reported `sourceCreated: false`; saving the transcript through `/api/intake-sources` created manual note source `isrc_acceptance_live_note_real` with `noteOrigin: live_stt` |
+| Section 19 closure manual note structuring proof | `POST /api/intake-sources/isrc_acceptance_manual_note/structure-note` succeeded through Google model `gemini-3.1-pro-preview`, persisted provider job `pjob_e8cd9574-8f48-44dc-9b85-5d8b64001d74`, and output artifact `artifact_2224ab29-a4ab-4408-8936-82009855a916` preserving operator original note and AI-structured result |
+| Section 19 closure active-LLM structured context proof | `POST /api/intake-sessions/intake_acceptance_closure/department-context` with action `generate-ai-structured-context` persisted structured context `structured_context_50561611-3978-4aff-ba03-5554405a2d7f`, notes `Generated through active LLM provider google model gemini-3.1-pro-preview; intake/context only, no hierarchy.`, and field evidence across 4 fields |
+| Section 19 closure restart proof | after app restart using `/tmp/workflow-pass2-acceptance-closure-20260424d.sqlite`, document/OCR artifacts, AI suggestion, all four admin decisions, live-dictation manual note, manual-note structuring artifact, provider-generated structured context, and structured-context provider job reloaded from SQLite |
+| Section 19 closure documentation proof | `handoff/PASS2_LOCAL_PERSISTENCE.md` documents local DB initialization/path/reset, artifact storage locations, git-ignored local storage, and secret hygiene |
 | All prior pass proofs (6–9) | Still valid — unchanged |
 
 ---
@@ -300,7 +310,6 @@ Phase 7 does not start hierarchy intake, hierarchy draft generation, source-to-r
 ## What has NOT been built
 
 - Authentication / authorization
-- AI/provider-authored structured context drafting
 - Hierarchy intake
 - Automated tests / CI
 
@@ -310,11 +319,13 @@ Phase 7 does not start hierarchy intake, hierarchy draft generation, source-to-r
 
 The crawler-runtime caveat is resolved.
 
-Pass 2 remains `pass2_not_complete` until the operator confirms Section 19 overall acceptance.
+Pass 2 is `pass2_complete_after_all_proofs`.
 
-Known implementation proof status after caveat closure:
+Known implementation proof status after Section 19 closure:
 
 - Website crawling succeeded end-to-end through approved `fetch_html` CrawlerAdapter.
 - Crawl page output, site summary, chunk creation, and Google embedding generation were proven and persisted.
-- No known crawler-runtime proof remains missing from local verification.
-- Overall Pass 2 should be marked complete only after operator Section 19 acceptance confirmation.
+- Real Google document extraction and OCR succeeded with `gemini-3.1-pro-preview`.
+- Real AI source-role suggestion and active-LLM structured context generation succeeded with `gemini-3.1-pro-preview`.
+- Live dictation STT succeeded through Google Speech-to-Text and remained separate until saved as manual/operator note.
+- No known Section 19 proof remains missing from local verification.

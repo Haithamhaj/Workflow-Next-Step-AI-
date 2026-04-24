@@ -1,7 +1,8 @@
 /**
  * STT (Speech-to-Text) provider interface contract (§9, §11).
  * Audio modes: external_upload vs live_stt are architecturally separate.
- * This interface covers the external upload mode; live_stt is deferred.
+ * The same provider interface may transcribe either mode; callers own the
+ * review/source-save boundary.
  */
 
 export interface STTResult {
@@ -17,6 +18,6 @@ export interface STTResult {
 export interface STTProvider {
   readonly name: string;
 
-  /** Transcribe an audio file (external upload mode, §9). */
+  /** Transcribe provided audio bytes. */
   transcribe(input: { audioData: Uint8Array; mimeType: string }): Promise<STTResult>;
 }

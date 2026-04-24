@@ -17,6 +17,7 @@ export const store: InMemoryStore = globalThis.__workflowStore__ ?? (globalThis.
   textArtifacts: intakeRepositories.textArtifacts,
   embeddingJobs: intakeRepositories.embeddingJobs,
   aiIntakeSuggestions: intakeRepositories.aiIntakeSuggestions,
+  adminIntakeDecisions: intakeRepositories.adminIntakeDecisions,
   websiteCrawlPlans: intakeRepositories.websiteCrawlPlans,
   websiteCrawlApprovals: intakeRepositories.websiteCrawlApprovals,
   crawledPageContents: intakeRepositories.crawledPageContents,

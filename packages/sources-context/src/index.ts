@@ -73,6 +73,10 @@ export {
   runEmbeddingJob,
   runAIIntakeSuggestionJob,
 } from "./provider-jobs.js";
+export {
+  recordAdminSourceRoleDecision,
+  type AdminIntakeDecisionRepos,
+} from "./admin-intake-decision.js";
 export type { ProviderJobRepos } from "./provider-jobs.js";
 
 export {
@@ -97,6 +101,8 @@ export {
   saveDepartmentFraming,
   assertPreHierarchyReady,
   createStructuredContextFromAvailableMaterial,
+  createStructuredContextWithProvider,
+  structureManualNoteWithProvider,
 } from "./department-context.js";
 export type { DepartmentContextRepos } from "./department-context.js";
 

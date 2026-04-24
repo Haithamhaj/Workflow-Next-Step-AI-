@@ -55,6 +55,16 @@ export interface BatchSummaryItem {
   reason: string;
 }
 
+export type IntakeSourceRole =
+  | "company_overview"
+  | "company_context"
+  | "org_signal"
+  | "policy_reference"
+  | "department_note"
+  | "audio_transcript"
+  | "website_url"
+  | "general_intake_source";
+
 // ---------------------------------------------------------------------------
 // §10 — Website Crawl
 // ---------------------------------------------------------------------------
@@ -138,7 +148,8 @@ export type ProviderJobKind =
   | "website_url_scaffold"
   | "website_crawl"
   | "manual_note_suggestion"
-  | "source_role_suggestion";
+  | "source_role_suggestion"
+  | "structured_context_generation";
 
 export interface ProviderExtractionJob {
   jobId: string;
@@ -287,13 +298,35 @@ export interface AIIntakeSuggestion {
   caseId: string;
   provider: ProviderName;
   status: ProviderJobStatus;
-  suggestedSourceRole?: string;
+  suggestedSourceRole?: IntakeSourceRole;
   suggestedScope?: AttachmentScope;
   confidenceLevel?: "high" | "medium" | "low";
   shortRationale?: string;
+  evidenceRefs?: string[];
   errorMessage?: string;
   createdAt: string;
   updatedAt: string;
+}
+
+export type AdminSourceRoleDecisionStatus =
+  | "confirmed_ai_suggestion"
+  | "edited_ai_suggestion"
+  | "overridden_by_admin"
+  | "marked_needs_review";
+
+export interface AdminIntakeDecision {
+  decisionId: string;
+  intakeSourceId: string;
+  sessionId: string;
+  caseId: string;
+  suggestionId?: string;
+  decidedBy: string;
+  decidedAt: string;
+  decision: AdminSourceRoleDecisionStatus;
+  finalSourceRole?: string;
+  finalScope?: AttachmentScope;
+  reason?: string;
+  preservesOriginalSuggestion: boolean;
 }
 
 // ---------------------------------------------------------------------------

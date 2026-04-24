@@ -53,7 +53,19 @@
         "uploaded_for_finalization_support"
       ]
     },
-    "suggestedRole": { "type": "string" },
+    "suggestedRole": {
+      "type": "string",
+      "enum": [
+        "company_overview",
+        "company_context",
+        "org_signal",
+        "policy_reference",
+        "department_note",
+        "audio_transcript",
+        "website_url",
+        "general_intake_source"
+      ]
+    },
     "rationale": { "type": "string" },
     "confidenceScore": { "type": "number", "minimum": 0, "maximum": 1 },
     "rawJsonRef": { "type": "string" }

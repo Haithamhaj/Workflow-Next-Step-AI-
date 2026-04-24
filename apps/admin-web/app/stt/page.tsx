@@ -8,8 +8,11 @@ export default function STTPage() {
         <Link href="/intake-sessions">&larr; Intake</Link>
       </p>
       <div className="card">
+        <p style={{ marginTop: 0, color: "var(--fg-muted)" }}>
+          Live speech-to-text uses the configured Google STT provider path and remains separate from external audio-file transcript review.
+        </p>
         <p style={{ margin: 0, color: "var(--fg-muted)" }}>
-          Live speech-to-text remains separate from external audio-file transcription. Live dictation may only save text as a manual/operator note in Pass 2.
+          Live dictation does not create a case source until the admin saves the resulting text as a manual/operator note.
         </p>
       </div>
     </>

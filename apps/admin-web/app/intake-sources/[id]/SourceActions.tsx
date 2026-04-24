@@ -102,6 +102,9 @@ export default function SourceActions({ sourceId, status }: SourceActionsProps) 
         <button style={btnStyle} disabled={submitting} onClick={() => postAction(`/api/intake-sources/${sourceId}/suggest`)}>
           Generate intake suggestion
         </button>
+        <button style={btnStyle} disabled={submitting} onClick={() => postAction(`/api/intake-sources/${sourceId}/structure-note`)}>
+          Structure manual note
+        </button>
       </div>
     </div>
   );

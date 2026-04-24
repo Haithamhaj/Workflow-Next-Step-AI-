@@ -14,6 +14,7 @@ export {
   intakeSessionSchema,
   intakeSourceSchema,
   websiteCrawlSchema,
+  adminIntakeDecisionSchema,
 } from "./schemas/index.js";
 
 import { makeValidator } from "./validate.js";
@@ -30,6 +31,7 @@ import {
   intakeSessionSchema,
   intakeSourceSchema,
   websiteCrawlSchema,
+  adminIntakeDecisionSchema,
 } from "./schemas/index.js";
 import type { CaseConfiguration } from "./types/case-configuration.js";
 import type { SourceRegistration } from "./types/source-registration.js";
@@ -40,7 +42,7 @@ import type { EvaluationRecord } from "./types/evaluation-record.js";
 import type { InitialPackageRecord } from "./types/initial-package-record.js";
 import type { ReviewIssueRecord } from "./types/review-issues.js";
 import type { FinalPackageRecord } from "./types/final-package.js";
-import type { IntakeBucket, IntakeInputType, IntakeSourceStatus, AttachmentScope, CrawlPagePriority, CrawlSessionStatus, ProviderName, AudioMode, HierarchyInputMethod, IntakeSession, IntakeSource, WebsiteCrawlSession } from "./types/intake.js";
+import type { IntakeBucket, IntakeInputType, IntakeSourceStatus, AttachmentScope, CrawlPagePriority, CrawlSessionStatus, ProviderName, AudioMode, HierarchyInputMethod, IntakeSession, IntakeSource, WebsiteCrawlSession, AdminIntakeDecision } from "./types/intake.js";
 import {
   SessionState,
   PackageState,
@@ -103,3 +105,6 @@ export const validateIntakeSource =
 
 export const validateWebsiteCrawlSession =
   makeValidator<WebsiteCrawlSession>(websiteCrawlSchema);
+
+export const validateAdminIntakeDecision =
+  makeValidator<AdminIntakeDecision>(adminIntakeDecisionSchema);

@@ -3,7 +3,7 @@
  * Google is default; OpenAI is available. Admin selects; never auto-switched.
  */
 
-import type { ProviderName, StructuredContext, BatchSummaryItem, AttachmentScope } from "@workflow/contracts";
+import type { ProviderName, StructuredContext, BatchSummaryItem, AttachmentScope, IntakeSourceRole } from "@workflow/contracts";
 
 export interface ExtractionResult {
   text: string;
@@ -13,7 +13,7 @@ export interface ExtractionResult {
 }
 
 export interface ClassificationResult {
-  suggestedSourceRole: string;
+  suggestedSourceRole: IntakeSourceRole;
   suggestedScope: AttachmentScope;
   confidenceLevel: "high" | "medium" | "low";
   shortRationale: string;

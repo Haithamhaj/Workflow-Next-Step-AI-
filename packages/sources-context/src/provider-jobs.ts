@@ -108,6 +108,7 @@ export async function runProviderExtractionJob(input: {
   sttProvider: STTProvider | null;
   repos: ProviderJobRepos;
   contentOverride?: string;
+  binaryBase64?: string;
   audioBase64?: string;
   mimeType?: string;
 }): Promise<StoredProviderExtractionJob> {
@@ -166,13 +167,17 @@ export async function runProviderExtractionJob(input: {
     if (!input.extractionProvider) {
       return saveFailure(running, input.repos.providerJobs, "Google extraction/OCR provider configuration is missing.");
     }
-    const content = input.contentOverride ?? source.noteText ?? source.websiteUrl ?? "";
-    if (!content && (source.inputType === "document" || source.inputType === "image")) {
+    const content = input.contentOverride ?? source.noteText ?? source.websiteUrl ?? source.displayName ?? "";
+    const binaryData = input.binaryBase64
+      ? Uint8Array.from(atob(input.binaryBase64), (char) => char.charCodeAt(0)).buffer
+      : undefined;
+    if (!content && !binaryData && (source.inputType === "document" || source.inputType === "image")) {
       return saveFailure(running, input.repos.providerJobs, "No persisted document/image content or request contentOverride was provided.");
     }
     const result = await input.extractionProvider.extractText({
       content,
       mimeType: input.mimeType ?? source.mimeType,
+      binaryData,
     });
     const artifact = saveArtifact({
       sourceId: source.sourceId,
@@ -309,9 +314,18 @@ export async function runAIIntakeSuggestionJob(input: {
       suggestedScope: result.suggestedScope,
       confidenceLevel: result.confidenceLevel,
       shortRationale: `${result.shortRationale} This is intake triage only, not deep reference analysis.`,
+      evidenceRefs: artifacts.map((artifact) => artifact.artifactId).concat(trustedAudioArtifact ? [trustedAudioArtifact.artifactId] : []),
       updatedAt: now(),
     };
     input.repos.aiIntakeSuggestions.save(succeeded);
+    input.repos.intakeSources.save({
+      ...source,
+      aiSuggestedType: result.suggestedSourceRole,
+      aiSuggestedScope: result.suggestedScope,
+      aiConfidence: result.confidenceLevel,
+      aiReason: succeeded.shortRationale,
+      updatedAt: now(),
+    });
     return succeeded;
   } catch (error) {
     const failed: StoredAIIntakeSuggestion = {

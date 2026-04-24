@@ -2,55 +2,42 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "$id": "https://workflow.local/schemas/admin-intake-decision.json",
   "title": "AdminIntakeDecision",
-  "description": "Admin's accept/reject/defer/override decision for an intake source (Pass 2 Phase 1).",
+  "description": "Admin decision for an AI source-role/scope intake suggestion.",
   "type": "object",
   "additionalProperties": false,
   "required": [
     "decisionId",
     "intakeSourceId",
+    "sessionId",
     "caseId",
     "decidedBy",
     "decidedAt",
-    "decision"
+    "decision",
+    "preservesOriginalSuggestion"
   ],
   "properties": {
     "decisionId": { "type": "string", "minLength": 1 },
     "intakeSourceId": { "type": "string", "minLength": 1 },
+    "sessionId": { "type": "string", "minLength": 1 },
     "caseId": { "type": "string", "minLength": 1 },
+    "suggestionId": { "type": "string", "minLength": 1 },
     "decidedBy": { "type": "string", "minLength": 1 },
     "decidedAt": { "type": "string", "format": "date-time" },
     "decision": {
       "type": "string",
-      "enum": ["accept", "reject", "defer", "override"]
-    },
-    "finalIntakeType": {
-      "type": "string",
       "enum": [
-        "uploaded_document",
-        "uploaded_form",
-        "uploaded_template",
-        "uploaded_contract_sample",
-        "uploaded_quotation_sample",
-        "uploaded_role_document",
-        "uploaded_workflow_reference",
-        "uploaded_contextual_source"
+        "confirmed_ai_suggestion",
+        "edited_ai_suggestion",
+        "overridden_by_admin",
+        "marked_needs_review"
       ]
     },
-    "finalAuthority": {
+    "finalSourceRole": { "type": "string" },
+    "finalScope": {
       "type": "string",
-      "enum": ["company_truth", "informational_domain_support"]
+      "enum": ["company_level", "department_level", "team_unit_level", "role_level", "person_level", "shared", "unknown"]
     },
-    "finalTimingTag": {
-      "type": "string",
-      "enum": [
-        "uploaded_at_case_setup",
-        "uploaded_after_round_1",
-        "uploaded_before_reanalysis",
-        "uploaded_before_round_2",
-        "uploaded_during_gap_closure",
-        "uploaded_for_finalization_support"
-      ]
-    },
-    "reason": { "type": "string" }
+    "reason": { "type": "string" },
+    "preservesOriginalSuggestion": { "type": "boolean" }
   }
 }
