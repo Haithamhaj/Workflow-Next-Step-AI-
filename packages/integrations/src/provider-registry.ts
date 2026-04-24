@@ -16,6 +16,7 @@ import { Crawl4AIAdapter } from "./crawl4ai-adapter.js";
 import { FetchHtmlCrawlerAdapter } from "./fetch-html-crawler.js";
 import { GoogleEmbeddingProvider } from "./google-embedding.js";
 import { GoogleSpeechToTextProvider } from "./google-stt.js";
+import { getEnv, resolveGoogleAIProviderConfig } from "./google-config.js";
 
 export interface ProviderAvailability {
   name: string;
@@ -49,18 +50,6 @@ export interface ProviderRegistry {
 // Environment variable checks
 // ---------------------------------------------------------------------------
 
-declare const process: { env: Record<string, string | undefined> } | undefined;
-
-function getEnv(key: string): string | undefined {
-  try {
-    return (globalThis as Record<string, unknown>).process
-      ? ((globalThis as Record<string, unknown>).process as { env: Record<string, string | undefined> }).env[key]
-      : undefined;
-  } catch {
-    return undefined;
-  }
-}
-
 function envSet(key: string): boolean {
   const val = getEnv(key);
   return typeof val === "string" && val.length > 0;
@@ -80,14 +69,13 @@ function crawlerAdapterName(): "crawl4ai" | "fetch_html" {
 
 export class EnvProviderRegistry implements ProviderRegistry {
   getExtractionAvailability(): ProviderAvailability[] {
+    const google = resolveGoogleAIProviderConfig();
     return [
       {
         name: "google",
-        available: envSet("GOOGLE_AI_API_KEY"),
-        reason: envSet("GOOGLE_AI_API_KEY")
-          ? "API key configured — live"
-          : "No GOOGLE_AI_API_KEY — provider configuration missing",
-        live: envSet("GOOGLE_AI_API_KEY"),
+        available: google.configured,
+        reason: google.safeMessage,
+        live: google.configured,
       },
       {
         name: "openai",
@@ -101,7 +89,7 @@ export class EnvProviderRegistry implements ProviderRegistry {
   }
 
   getExtractionProvider(name: ProviderName): ExtractionProvider | null {
-    if (name === "google" && !envSet("GOOGLE_AI_API_KEY")) {
+    if (name === "google" && !resolveGoogleAIProviderConfig().configured) {
       return null;
     }
     if (name === "openai" && !envSet("OPENAI_API_KEY")) {
@@ -160,18 +148,19 @@ export class EnvProviderRegistry implements ProviderRegistry {
   }
 
   getEmbeddingAvailability(): ProviderAvailability {
+    const google = resolveGoogleAIProviderConfig();
     return {
       name: "google",
-      available: envSet("GOOGLE_AI_API_KEY"),
-      reason: envSet("GOOGLE_AI_API_KEY")
+      available: google.configured,
+      reason: google.configured
         ? `Google embeddings configured; model ${getEnv("GOOGLE_EMBEDDING_MODEL") ?? "gemini-embedding-2"}`
         : "No GOOGLE_AI_API_KEY — provider configuration missing",
-      live: envSet("GOOGLE_AI_API_KEY"),
+      live: google.configured,
     };
   }
 
   getEmbeddingProvider(): EmbeddingProvider | null {
-    if (!envSet("GOOGLE_AI_API_KEY")) return null;
+    if (!resolveGoogleAIProviderConfig().configured) return null;
     return new GoogleEmbeddingProvider();
   }
 

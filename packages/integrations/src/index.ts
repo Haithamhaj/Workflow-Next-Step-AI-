@@ -12,3 +12,5 @@ export { GoogleEmbeddingProvider, defaultGoogleEmbeddingModel } from "./google-e
 export { GoogleSpeechToTextProvider, defaultGoogleSTTModel } from "./google-stt.js";
 export { providerRegistry, EnvProviderRegistry } from "./provider-registry.js";
 export type { ProviderAvailability, ProviderRegistry } from "./provider-registry.js";
+export { resolveGoogleAIProviderConfig, classifyGoogleProviderError, getGoogleAIKeyOrThrow, GoogleProviderDiagnosticError } from "./google-config.js";
+export type { GoogleAIProviderConfig, ProviderDiagnosticsStatus } from "./google-config.js";

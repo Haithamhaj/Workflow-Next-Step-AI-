@@ -358,7 +358,7 @@ export async function generateProviderBackedHierarchyDraft(input: {
       updatedAt: timestamp,
       promptSpecId: input.promptSpecId,
       compiledPrompt: input.compiledPrompt,
-      errorMessage: "Google hierarchy draft provider configuration is missing.",
+      errorMessage: "provider_not_configured: Google AI provider is missing GOOGLE_AI_API_KEY.",
     };
     const result = validateHierarchyDraftRecord(failed);
     if (!result.ok) throw new Error(`Invalid failed hierarchy draft: ${validationMessage(result.errors)}`);
@@ -459,7 +459,7 @@ export async function generateProviderBackedSourceHierarchyTriage(input: {
       status: "ai_triage_failed",
       promptSpecId: input.promptSpecId,
       compiledPrompt: input.compiledPrompt,
-      errorMessage: "Google source-to-hierarchy triage provider configuration is missing.",
+      errorMessage: "provider_not_configured: Google AI provider is missing GOOGLE_AI_API_KEY.",
       createdBy: "provider",
       createdAt: timestamp,
       updatedAt: timestamp,

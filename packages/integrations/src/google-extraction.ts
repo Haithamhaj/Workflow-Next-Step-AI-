@@ -29,6 +29,7 @@ import type {
   HierarchyDraftGenerationResult,
   SourceHierarchyTriageGenerationResult,
 } from "./extraction-provider.js";
+import { classifyGoogleProviderError, getEnv, getGoogleAIKeyOrThrow, resolveGoogleAIProviderConfig } from "./google-config.js";
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -52,21 +53,9 @@ function isMultimodalMimeType(mimeType: string): boolean {
   );
 }
 
-function getApiKey(): string | undefined {
-  try {
-    return ((globalThis as Record<string, unknown>).process as { env: Record<string, string | undefined> } | undefined)?.env?.GOOGLE_AI_API_KEY;
-  } catch {
-    return undefined;
-  }
-}
-
 function getApiModel(key: string, fallback: string): string {
-  try {
-    const value = ((globalThis as Record<string, unknown>).process as { env: Record<string, string | undefined> } | undefined)?.env?.[key];
-    return typeof value === "string" && value.length > 0 ? value : fallback;
-  } catch {
-    return fallback;
-  }
+  const value = getEnv(key);
+  return typeof value === "string" && value.length > 0 ? value : fallback;
 }
 
 const STRUCTURED_CONTEXT_SCHEMA: ResponseSchema = {
@@ -242,9 +231,11 @@ export class GoogleExtractionProvider implements ExtractionProvider {
   readonly name: ProviderName = "google";
 
   private getClient(): GoogleGenerativeAI | null {
-    const key = getApiKey();
-    if (!key) return null;
-    return new GoogleGenerativeAI(key);
+    try {
+      return new GoogleGenerativeAI(getGoogleAIKeyOrThrow());
+    } catch {
+      return null;
+    }
   }
 
   async extractText(input: ExtractionInput): Promise<ExtractionResult> {
@@ -366,28 +357,33 @@ ${input.rawText.slice(0, 8000)}`;
   async generateHierarchyDraft(input: {
     compiledPrompt: string;
   }): Promise<HierarchyDraftGenerationResult> {
-    const client = this.getClient();
-    if (!client) {
-      throw new Error("GOOGLE_AI_API_KEY is not configured for Pass 3 hierarchy draft generation.");
+    const modelName = resolveGoogleAIProviderConfig().resolvedModel;
+    let rawText: string;
+    try {
+      const client = new GoogleGenerativeAI(getGoogleAIKeyOrThrow());
+      const model = client.getGenerativeModel({
+        model: modelName,
+        generationConfig: {
+          responseMimeType: "application/json",
+        },
+      });
+      const result = await model.generateContent([
+        { text: input.compiledPrompt },
+      ]);
+      rawText = result.response.text();
+    } catch (error) {
+      throw classifyGoogleProviderError(error);
     }
-
-    const modelName = getApiModel("GOOGLE_HIERARCHY_DRAFT_MODEL", "gemini-3.1-pro-preview");
-    const model = client.getGenerativeModel({
-      model: modelName,
-      generationConfig: {
-        responseMimeType: "application/json",
-      },
-    });
-
-    const result = await model.generateContent([
-      { text: input.compiledPrompt },
-    ]);
-    const rawText = result.response.text();
-    const parsed = JSON.parse(rawText) as {
+    let parsed: {
       nodes?: unknown[];
       secondaryRelationships?: unknown[];
       warnings?: unknown[];
     };
+    try {
+      parsed = JSON.parse(rawText) as typeof parsed;
+    } catch (error) {
+      throw classifyGoogleProviderError(error);
+    }
 
     const nodeIds = new Set<string>();
     const nodes: HierarchyNodeRecord[] = (Array.isArray(parsed.nodes) ? parsed.nodes : []).map((raw, index) => {
@@ -452,27 +448,32 @@ ${input.rawText.slice(0, 8000)}`;
   async generateSourceHierarchyTriage(input: {
     compiledPrompt: string;
   }): Promise<SourceHierarchyTriageGenerationResult> {
-    const client = this.getClient();
-    if (!client) {
-      throw new Error("GOOGLE_AI_API_KEY is not configured for Pass 3 source-to-hierarchy triage.");
+    const modelName = resolveGoogleAIProviderConfig().resolvedModel;
+    let rawText: string;
+    try {
+      const client = new GoogleGenerativeAI(getGoogleAIKeyOrThrow());
+      const model = client.getGenerativeModel({
+        model: modelName,
+        generationConfig: {
+          responseMimeType: "application/json",
+        },
+      });
+      const result = await model.generateContent([
+        { text: input.compiledPrompt },
+      ]);
+      rawText = result.response.text();
+    } catch (error) {
+      throw classifyGoogleProviderError(error);
     }
-
-    const modelName = getApiModel("GOOGLE_SOURCE_TRIAGE_MODEL", getApiModel("GOOGLE_HIERARCHY_DRAFT_MODEL", "gemini-3.1-pro-preview"));
-    const model = client.getGenerativeModel({
-      model: modelName,
-      generationConfig: {
-        responseMimeType: "application/json",
-      },
-    });
-
-    const result = await model.generateContent([
-      { text: input.compiledPrompt },
-    ]);
-    const rawText = result.response.text();
-    const parsed = JSON.parse(rawText) as {
+    let parsed: {
       suggestions?: unknown[];
       warnings?: unknown[];
     };
+    try {
+      parsed = JSON.parse(rawText) as typeof parsed;
+    } catch (error) {
+      throw classifyGoogleProviderError(error);
+    }
 
     const suggestions = (Array.isArray(parsed.suggestions) ? parsed.suggestions : []).map((raw) => {
       const item = raw && typeof raw === "object" ? raw as Record<string, unknown> : {};
