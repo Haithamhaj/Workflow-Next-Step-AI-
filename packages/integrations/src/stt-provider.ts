@@ -8,7 +8,10 @@ export interface STTResult {
   text: string;
   language?: string;
   durationSeconds?: number;
+  confidence?: number;
+  qualitySignal?: string;
   provider: string;
+  model?: string;
 }
 
 export interface STTProvider {

@@ -12,6 +12,8 @@ Phase 3 status: `phase_proven`.
 
 Phase 4 status: `phase_proven`.
 
+Phase 5 status: `phase_proven`.
+
 Overall Pass 2 status: `pass2_not_complete`.
 
 ---
@@ -75,7 +77,7 @@ Phase 3 adds provider integration foundations and provider job tracking without 
 
 - provider-agnostic extraction, STT, embedding, and intake-suggestion interfaces in `packages/integrations`
 - Google extraction/OCR provider path gated by `GOOGLE_AI_API_KEY`
-- Google Speech-to-Text provider path gated by `GOOGLE_STT_API_KEY`, with configurable `GOOGLE_STT_MODEL` defaulting to `chirp`
+- Google Speech-to-Text provider path gated by `GOOGLE_STT_API_KEY`; external audio defaults to V1 `latest_long`; V2 `chirp_3` remains explicit/config-gated only and is not the default; `latest_short` is reserved for short command/live-dictation scenarios
 - Google embedding provider path gated by `GOOGLE_AI_API_KEY`, with configurable `GOOGLE_EMBEDDING_MODEL`
 - SQLite-backed provider job, embedding job, text artifact, and AI intake suggestion repositories in `packages/persistence`
 - source-level provider extraction action and status API
@@ -113,6 +115,35 @@ Phase 4 does not start audio transcript review UI, structured context generation
 
 ---
 
+## What Pass 2 Phase 5 added
+
+Phase 5 builds the external audio-file transcript review flow without starting structured context generation:
+
+- audio source integration using existing persisted `audio` intake sources
+- audio transcription action routed through the Phase 3 Google Speech-to-Text provider path
+- persisted `AudioTranscriptReviewRecord` with statuses:
+  - `transcription_pending`
+  - `transcript_ready_for_review`
+  - `transcript_edited_by_admin`
+  - `transcript_approved`
+  - `transcript_rejected_or_needs_retry`
+- raw transcript artifact linkage for provider output
+- admin transcript review screen for external audio sources
+- approve-as-is, edit/save, reject/retry controls
+- trusted transcript artifact creation only after admin approval or edit
+- source `extractedText` update only from trusted approved/edited transcript text
+- transcript chunks and Google embedding jobs from trusted transcript text
+- audio review status surfaced on audio source detail and source list
+- live dictation remains separate and is still manual/operator-note only
+
+Early local proofs covered missing/invalid STT configuration and persisted visible failed jobs. The accepted real Google STT proof used `GOOGLE_STT_API_KEY`, `GOOGLE_STT_MODEL=latest_short`, and `GOOGLE_STT_LANGUAGE_CODE=en-US` from local environment only. It reached the real Google Speech-to-Text provider path, persisted a succeeded `ProviderExtractionJob`, persisted a raw transcript artifact linked to the audio source and provider job, preserved provider confidence/quality metadata when returned, and kept the raw transcript untrusted until admin approval/edit.
+
+The STT model strategy was then corrected: external uploaded audio now defaults to the GA Speech-to-Text V1 endpoint with model `latest_long`. A bounded V2 recognize path exists only when explicitly configured with `GOOGLE_STT_EXTERNAL_MODEL=chirp_3`; it is not the default because it requires recognizer/project setup. The proof preserved the admin-review trust boundary.
+
+Phase 5 does not start structured context generation, hierarchy intake, participant rollout, synthesis/evaluation, final package, or video input.
+
+---
+
 ## What is proven
 
 | Check | Result |
@@ -139,6 +170,22 @@ Phase 4 does not start audio transcript review UI, structured context generation
 | Phase 4 admin display proof | source detail shows crawl status and hides page-level content by default; crawl approval page shows candidates/approval controls; drill-down page is the only page-level content surface |
 | Phase 4 Google embedding config proof | `GET /api/provider-status` reported Google embeddings configured with model `gemini-embedding-2`; no missing Google key/model was reported |
 | Phase 4 exclusion proof | video registration still rejected; no audio transcript review UI, structured context generation, hierarchy, rollout, synthesis/evaluation, final package, or video work was started |
+| Phase 5 audio source proof | `audio` intake source `isrc_phase5_audio` registered through existing intake source API |
+| Phase 5 STT action proof | `POST /api/intake-sources/isrc_phase5_audio/transcribe` created persisted provider job `pjob_627483f6-a107-4dc3-aa72-361d4405dd8e` |
+| Phase 5 missing-STT proof | transcription returned `424` and persisted failed job with `Google Speech-to-Text provider configuration is missing.` |
+| Phase 5 review UI proof | `/intake-sources/isrc_phase5_audio/audio-review` rendered source metadata, provider job status, raw transcript area, editable field, approve/edit/reject/retry controls, and review status |
+| Phase 5 raw transcript boundary proof | before seeded review text existed, review API returned `rawTranscriptArtifact: null`, `trustedTranscriptArtifact: null`, `chunks: []`, and `embeddingJobs: []` |
+| Phase 5 approve/edit proof | seeded raw transcript fixture could be approved as-is and edited through the review API; approved/edited decisions created trusted `extracted_text` artifacts |
+| Phase 5 chunk/embedding proof | approved/edited transcript text created source-traceable chunks and Google embedding jobs using `gemini-embedding-2`; embedding jobs succeeded in the local proof |
+| Phase 5 reject/retry proof | reject action persisted `transcript_rejected_or_needs_retry` and cleared the current trusted transcript reference |
+| Phase 5 SQLite restart proof | after app restart using the same SQLite path, transcript review state, raw transcript artifact, provider job, chunks, and embedding jobs reloaded from SQLite |
+| Phase 5 live dictation boundary proof | `/stt` states live dictation remains separate and may only save manual/operator notes |
+| Phase 5 real Google STT proof | with `GOOGLE_STT_API_KEY`, `GOOGLE_STT_MODEL=latest_short`, and `GOOGLE_STT_LANGUAGE_CODE=en-US`, `POST /api/intake-sources/isrc_phase5_real_audio/transcribe` reached Google Speech-to-Text and persisted succeeded provider job `pjob_ca7c410f-a3c6-417e-9b35-1cc2265ff123` with outputRef `artifact_7d2d2f25-0cb6-429e-a353-7000839799a0`, confidence `0.19816941`, and quality signal `average_confidence:0.198` |
+| Phase 5 real raw transcript boundary proof | before admin approval, review state was `transcript_ready_for_review`, raw transcript artifact `artifact_7d2d2f25-0cb6-429e-a353-7000839799a0` was present, `trustedTranscriptArtifact` was `null`, and chunks/embedding jobs were empty |
+| Phase 5 real approve/edit/reject proof | approving the real raw transcript created trusted artifact `artifact_9c8f8c90-a68e-4830-8c5a-d5f59bff952a`, chunk `chunk_41c8a0bc-9b88-497a-ab49-6e279d9fc480`, and embedding job `embedjob_650dc7ea-7a2d-4fa5-85ed-c00c4e9ddce7`; editing created trusted artifact `artifact_27621db2-3a6e-40df-b112-d58e59d892c3`, chunk `chunk_3b867ef8-7152-4b25-a2f2-17990db97a1d`, and embedding job `embedjob_730f89d0-aeaa-4b2a-b246-8ac8b44184db`; rejecting set review status back to `transcript_rejected_or_needs_retry` and cleared current trusted artifact |
+| Phase 5 STT model strategy proof | provider status reported external audio model `latest_long` because no V2 project id was configured; `POST /api/intake-sources/isrc_phase5_model_audio_c/transcribe` succeeded through the V1 path, persisted provider job `pjob_565fb137-98a5-4653-9729-8072a25a2ba8` with model `latest_long`, raw artifact `artifact_8c242e64-976d-4245-8bfd-4714b18dcf78`, confidence `0.29832265`, and quality signal `average_confidence:0.298`; raw transcript remained untrusted with `trustedTranscriptArtifact: null`, no chunks, and no embedding jobs before admin approval |
+| Phase 5 structured-context boundary proof | `POST /api/intake-sessions/intake_phase5_proof/form-context` still returns `501` deferred to Phase 6 |
+| Phase 5 exclusion proof | video registration still rejected; hierarchy, rollout, synthesis/evaluation, final package, and video remain unstarted |
 | All prior pass proofs (6–9) | Still valid — unchanged |
 
 ---
@@ -158,7 +205,6 @@ Phase 4 does not start audio transcript review UI, structured context generation
 ## What has NOT been built
 
 - Authentication / authorization
-- Phase 5 External Audio Review Flow
 - Structured context generation
 - Hierarchy intake
 - Automated tests / CI

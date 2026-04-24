@@ -29,6 +29,9 @@ export default function IntakeSourceDetailPage({
   const crawlPlans = source.inputType === "website_url"
     ? store.websiteCrawlPlans.findBySourceId(source.sourceId)
     : [];
+  const audioReview = source.inputType === "audio"
+    ? store.audioTranscriptReviews.findBySourceId(source.sourceId)
+    : null;
 
   return (
     <>
@@ -94,6 +97,24 @@ export default function IntakeSourceDetailPage({
           )}
           <p style={{ margin: "8px 0 0", color: "var(--fg-muted)", fontSize: "0.85rem" }}>
             Page-level crawl content is hidden by default and available only from the crawl drill-down.
+          </p>
+        </div>
+      )}
+
+      {source.inputType === "audio" && (
+        <div className="card" style={{ marginTop: "16px" }}>
+          <h3 style={{ margin: "0 0 8px" }}>External Audio Transcript Review</h3>
+          <p style={{ marginTop: 0, color: "var(--fg-muted)" }}>
+            Raw external audio transcripts remain draft text until an admin approves or edits them.
+          </p>
+          <p>
+            <Link href={`/intake-sources/${source.sourceId}/audio-review`}>Open transcript review</Link>
+          </p>
+          <p style={{ margin: 0 }}>
+            Review status: <code>{audioReview?.status ?? "transcription_pending"}</code>
+          </p>
+          <p style={{ margin: "8px 0 0", color: "var(--fg-muted)", fontSize: "0.85rem" }}>
+            Live admin dictation remains separate and may only save text as a manual/operator note.
           </p>
         </div>
       )}

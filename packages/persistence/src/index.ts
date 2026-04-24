@@ -22,6 +22,7 @@ import type {
   CrawledPageContent,
   WebsiteCrawlSiteSummary,
   ContentChunkRecord,
+  AudioTranscriptReviewRecord,
   ProviderExtractionJob,
   TextArtifactRecord,
   EmbeddingJobRecord,
@@ -147,6 +148,8 @@ export interface StoredCrawledPageContent extends CrawledPageContent {}
 export interface StoredWebsiteCrawlSiteSummary extends WebsiteCrawlSiteSummary {}
 
 export interface StoredContentChunkRecord extends ContentChunkRecord {}
+
+export interface StoredAudioTranscriptReviewRecord extends AudioTranscriptReviewRecord {}
 
 export interface StoredProviderExtractionJob extends ProviderExtractionJob {}
 
@@ -280,6 +283,14 @@ export interface ContentChunkRepository {
   findByPageContentId(pageContentId: string): StoredContentChunkRecord[];
   findBySourceId(sourceId: string): StoredContentChunkRecord[];
   findAll(): StoredContentChunkRecord[];
+}
+
+export interface AudioTranscriptReviewRepository {
+  save(review: StoredAudioTranscriptReviewRecord): void;
+  findById(reviewId: string): StoredAudioTranscriptReviewRecord | null;
+  findBySourceId(sourceId: string): StoredAudioTranscriptReviewRecord | null;
+  findBySessionId(sessionId: string): StoredAudioTranscriptReviewRecord[];
+  findAll(): StoredAudioTranscriptReviewRecord[];
 }
 
 export interface ProviderExtractionJobRepository {
@@ -742,6 +753,30 @@ class InMemoryContentChunkRepository implements ContentChunkRepository {
   }
 }
 
+class InMemoryAudioTranscriptReviewRepository implements AudioTranscriptReviewRepository {
+  private readonly store = new Map<string, StoredAudioTranscriptReviewRecord>();
+
+  save(review: StoredAudioTranscriptReviewRecord): void {
+    this.store.set(review.reviewId, { ...review });
+  }
+
+  findById(reviewId: string): StoredAudioTranscriptReviewRecord | null {
+    return this.store.get(reviewId) ?? null;
+  }
+
+  findBySourceId(sourceId: string): StoredAudioTranscriptReviewRecord | null {
+    return Array.from(this.store.values()).find((review) => review.sourceId === sourceId) ?? null;
+  }
+
+  findBySessionId(sessionId: string): StoredAudioTranscriptReviewRecord[] {
+    return Array.from(this.store.values()).filter((review) => review.sessionId === sessionId);
+  }
+
+  findAll(): StoredAudioTranscriptReviewRecord[] {
+    return Array.from(this.store.values());
+  }
+}
+
 class InMemoryProviderExtractionJobRepository implements ProviderExtractionJobRepository {
   private readonly store = new Map<string, StoredProviderExtractionJob>();
 
@@ -926,6 +961,12 @@ function openIntakeDatabase(dbPath?: string): DatabaseSync {
       page_content_id TEXT NOT NULL,
       payload TEXT NOT NULL
     );
+    CREATE TABLE IF NOT EXISTS audio_transcript_reviews (
+      id TEXT PRIMARY KEY,
+      source_id TEXT NOT NULL,
+      session_id TEXT NOT NULL,
+      payload TEXT NOT NULL
+    );
     CREATE INDEX IF NOT EXISTS idx_provider_jobs_source_id ON provider_extraction_jobs(source_id);
     CREATE INDEX IF NOT EXISTS idx_provider_jobs_session_id ON provider_extraction_jobs(session_id);
     CREATE INDEX IF NOT EXISTS idx_text_artifacts_source_id ON text_artifacts(source_id);
@@ -941,6 +982,8 @@ function openIntakeDatabase(dbPath?: string): DatabaseSync {
     CREATE INDEX IF NOT EXISTS idx_content_chunks_plan_id ON content_chunks(crawl_plan_id);
     CREATE INDEX IF NOT EXISTS idx_content_chunks_page_id ON content_chunks(page_content_id);
     CREATE INDEX IF NOT EXISTS idx_content_chunks_source_id ON content_chunks(source_id);
+    CREATE INDEX IF NOT EXISTS idx_audio_transcript_reviews_source_id ON audio_transcript_reviews(source_id);
+    CREATE INDEX IF NOT EXISTS idx_audio_transcript_reviews_session_id ON audio_transcript_reviews(session_id);
   `);
   return db;
 }
@@ -1293,6 +1336,40 @@ export class SQLiteContentChunkRepository implements ContentChunkRepository {
   }
 }
 
+export class SQLiteAudioTranscriptReviewRepository implements AudioTranscriptReviewRepository {
+  private readonly db: DatabaseSync;
+
+  constructor(dbPath?: string) {
+    this.db = openIntakeDatabase(dbPath);
+  }
+
+  save(review: StoredAudioTranscriptReviewRecord): void {
+    this.db.prepare(
+      "INSERT INTO audio_transcript_reviews (id, source_id, session_id, payload) VALUES (?, ?, ?, ?) ON CONFLICT(id) DO UPDATE SET source_id = excluded.source_id, session_id = excluded.session_id, payload = excluded.payload",
+    ).run(review.reviewId, review.sourceId, review.sessionId, JSON.stringify(review));
+  }
+
+  findById(reviewId: string): StoredAudioTranscriptReviewRecord | null {
+    const row = this.db.prepare("SELECT payload FROM audio_transcript_reviews WHERE id = ?").get(reviewId);
+    return parseStored<StoredAudioTranscriptReviewRecord>(row);
+  }
+
+  findBySourceId(sourceId: string): StoredAudioTranscriptReviewRecord | null {
+    const row = this.db.prepare("SELECT payload FROM audio_transcript_reviews WHERE source_id = ? ORDER BY id DESC LIMIT 1").get(sourceId);
+    return parseStored<StoredAudioTranscriptReviewRecord>(row);
+  }
+
+  findBySessionId(sessionId: string): StoredAudioTranscriptReviewRecord[] {
+    const rows = this.db.prepare("SELECT payload FROM audio_transcript_reviews WHERE session_id = ? ORDER BY id").all(sessionId);
+    return parseStoredList<StoredAudioTranscriptReviewRecord>(rows);
+  }
+
+  findAll(): StoredAudioTranscriptReviewRecord[] {
+    const rows = this.db.prepare("SELECT payload FROM audio_transcript_reviews ORDER BY id").all();
+    return parseStoredList<StoredAudioTranscriptReviewRecord>(rows);
+  }
+}
+
 export function createSQLiteIntakeRepositories(dbPath?: string): {
   intakeSessions: IntakeSessionRepository;
   intakeSources: IntakeSourceRepository;
@@ -1305,6 +1382,7 @@ export function createSQLiteIntakeRepositories(dbPath?: string): {
   crawledPageContents: CrawledPageContentRepository;
   websiteCrawlSiteSummaries: WebsiteCrawlSiteSummaryRepository;
   contentChunks: ContentChunkRepository;
+  audioTranscriptReviews: AudioTranscriptReviewRepository;
 } {
   return {
     intakeSessions: new SQLiteIntakeSessionRepository(dbPath),
@@ -1318,6 +1396,7 @@ export function createSQLiteIntakeRepositories(dbPath?: string): {
     crawledPageContents: new SQLiteCrawledPageContentRepository(dbPath),
     websiteCrawlSiteSummaries: new SQLiteWebsiteCrawlSiteSummaryRepository(dbPath),
     contentChunks: new SQLiteContentChunkRepository(dbPath),
+    audioTranscriptReviews: new SQLiteAudioTranscriptReviewRepository(dbPath),
   };
 }
 
@@ -1348,6 +1427,7 @@ export interface InMemoryStore {
   crawledPageContents: CrawledPageContentRepository;
   websiteCrawlSiteSummaries: WebsiteCrawlSiteSummaryRepository;
   contentChunks: ContentChunkRepository;
+  audioTranscriptReviews: AudioTranscriptReviewRepository;
   providerJobs: ProviderExtractionJobRepository;
   textArtifacts: TextArtifactRepository;
   embeddingJobs: EmbeddingJobRepository;
@@ -1376,6 +1456,7 @@ export function createInMemoryStore(): InMemoryStore {
     crawledPageContents: new InMemoryCrawledPageContentRepository(),
     websiteCrawlSiteSummaries: new InMemoryWebsiteCrawlSiteSummaryRepository(),
     contentChunks: new InMemoryContentChunkRepository(),
+    audioTranscriptReviews: new InMemoryAudioTranscriptReviewRepository(),
     providerJobs: new InMemoryProviderExtractionJobRepository(),
     textArtifacts: new InMemoryTextArtifactRepository(),
     embeddingJobs: new InMemoryEmbeddingJobRepository(),
@@ -1400,5 +1481,6 @@ export type {
   CrawledPageContent,
   WebsiteCrawlSiteSummary,
   ContentChunkRecord,
+  AudioTranscriptReviewRecord,
   WebsiteCrawlSession,
 };

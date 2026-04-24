@@ -5,7 +5,7 @@ export async function POST() {
     {
       status: "deferred",
       phase: "Pass 2 Phase 6",
-      message: "Structured context generation UI is not started in Pass 2 Phase 3.",
+      message: "Structured context generation is not started in Pass 2 Phase 5.",
     },
     { status: 501 },
   );

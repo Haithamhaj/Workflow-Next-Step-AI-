@@ -65,6 +65,10 @@ function envSet(key: string): boolean {
   return typeof val === "string" && val.length > 0;
 }
 
+function externalSTTModel(): string {
+  return getEnv("GOOGLE_STT_EXTERNAL_MODEL") ?? "latest_long";
+}
+
 // ---------------------------------------------------------------------------
 // Implementation
 // ---------------------------------------------------------------------------
@@ -129,7 +133,7 @@ export class EnvProviderRegistry implements ProviderRegistry {
       name: "google_speech_to_text",
       available: envSet("GOOGLE_STT_API_KEY"),
       reason: envSet("GOOGLE_STT_API_KEY")
-        ? `Google Speech-to-Text configured; model ${getEnv("GOOGLE_STT_MODEL") ?? "chirp"}`
+        ? `Google Speech-to-Text configured; external audio model ${externalSTTModel()}`
         : "No GOOGLE_STT_API_KEY — provider configuration missing",
       live: envSet("GOOGLE_STT_API_KEY"),
     };

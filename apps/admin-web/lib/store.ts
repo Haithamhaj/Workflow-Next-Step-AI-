@@ -22,4 +22,5 @@ export const store: InMemoryStore = globalThis.__workflowStore__ ?? (globalThis.
   crawledPageContents: intakeRepositories.crawledPageContents,
   websiteCrawlSiteSummaries: intakeRepositories.websiteCrawlSiteSummaries,
   contentChunks: intakeRepositories.contentChunks,
+  audioTranscriptReviews: intakeRepositories.audioTranscriptReviews,
 });

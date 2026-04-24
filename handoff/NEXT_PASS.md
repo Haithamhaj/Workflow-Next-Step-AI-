@@ -1,15 +1,12 @@
-# Next Pass — Pass 2 Phase 5
+# Next Pass — Pass 2 Phase 6
 
 ## Official pass sequence
 
-- **Pass 6:** Synthesis + Evaluation + Initial Package — accepted on `main`
-- **Pass 7:** Review / Issue Discussion — accepted on `main` (2026-04-22)
-- **Pass 8:** Final Package + Release — accepted on `main` (2026-04-22), commit `3171ad4`
-- **Pass 9:** Package Preview + Release Decision Surface — accepted on `main` (2026-04-23), commit `41a8232`
 - **Pass 2 Phase 1:** Intake & Context Build foundation — `phase_proven`
 - **Pass 2 Phase 2:** Intake Registration UI and Basic Admin Surfaces — `phase_proven`
 - **Pass 2 Phase 3:** Provider Integrations and Provider Job Tracking — `phase_proven`
-- **Pass 2 Phase 4:** Website Crawl Flow — `phase_proven`
+- **Pass 2 Phase 4:** Website Crawl Flow — `phase_proven` with runtime caveat
+- **Pass 2 Phase 5:** External Audio Review Flow — `phase_proven`
 
 ---
 
@@ -17,38 +14,58 @@
 
 Overall Pass 2 status: `pass2_not_complete`.
 
-Next implementation phase:
+Next implementation phase, only after operator approval:
 
-**Pass 2 Phase 5 — External Audio Review Flow**
-
-Do not start Phase 5 without operator approval.
+**Pass 2 Phase 6 — Structured Context Generation**
 
 ---
 
-## Phase 5 scope
+## Phase 5 completion proof summary
 
-Build next:
+Real Google Speech-to-Text proof succeeded using local environment config:
 
-- external audio transcript review UI
-- admin review of raw provider transcript output
-- transcript acceptance/rejection or correction surfaces
-- persisted review decision/status for external audio transcript material
-- clear boundary that reviewed transcript material supports intake/context only
+- `GOOGLE_STT_API_KEY`
+- `GOOGLE_STT_MODEL=latest_short`
+- `GOOGLE_STT_LANGUAGE_CODE=en-US`
 
-Stop condition for Phase 5:
+The key value is not recorded in handoff files.
 
-- external audio transcript review can open for an audio source with a raw transcript artifact
-- admin review state persists across restart
-- accepted/corrected transcript remains source-traceable
-- raw transcript is not allowed to silently influence structured context without review
-- failures and missing provider/runtime conditions remain visible
+STT model strategy after correction:
+
+- external uploaded audio defaults to the Google Speech-to-Text V1 endpoint with model `latest_long`
+- no recognizer or location is required for the default external-upload path
+- V2 `chirp_3` remains an explicit/config-gated path only, not the default
+- `latest_short` is not the external-upload default; keep it only for short command/live-dictation scenarios
+- confidence remains a provider quality signal only; transcript trust still requires admin approval/edit
+
+Succeeded proof records:
+
+- source: `isrc_phase5_real_audio`
+- provider job: `pjob_ca7c410f-a3c6-417e-9b35-1cc2265ff123`
+- provider: `google_speech_to_text`
+- job kind: `audio_transcription`
+- raw transcript artifact: `artifact_7d2d2f25-0cb6-429e-a353-7000839799a0`
+- provider confidence: `0.19816941`
+- provider quality signal: `average_confidence:0.198`
+- model strategy follow-up provider job: `pjob_565fb137-98a5-4653-9729-8072a25a2ba8`
+- model strategy follow-up model: `latest_long` because the local proof environment did not have a V2 project id configured
+
+Review boundary was proven:
+
+- raw transcript appeared as ready for review
+- raw transcript was not trusted before admin approval
+- approve-as-is created trusted text, chunk, and embedding job
+- edit created updated trusted text, chunk, and embedding job
+- reject/mark retry cleared current trusted transcript state
+- restart reloaded review state, provider job, raw artifact, chunks, and embedding jobs from SQLite
 
 ---
 
-## Explicitly not Phase 5
+## Explicitly not next without approval
 
-- Structured context formation belongs to a later phase.
-- Hierarchy intake, participant rollout, synthesis/evaluation, final package, and video input remain out of scope.
+- Do not start Phase 6 without operator approval.
+- Do not start hierarchy intake, participant rollout, synthesis/evaluation, final package, or video input.
+- Do not add Whisper, local STT fallback, or a new provider.
 
 ---
 

@@ -84,6 +84,13 @@ export {
 } from "./website-crawl-flow.js";
 export type { WebsiteCrawlFlowRepos } from "./website-crawl-flow.js";
 
+export {
+  getOrCreateAudioTranscriptReview,
+  startExternalAudioTranscription,
+  saveAudioTranscriptDecision,
+} from "./audio-review.js";
+export type { AudioTranscriptReviewRepos } from "./audio-review.js";
+
 // ---------------------------------------------------------------------------
 // registerSource
 // Validates the incoming payload against the SourceRegistration contract,

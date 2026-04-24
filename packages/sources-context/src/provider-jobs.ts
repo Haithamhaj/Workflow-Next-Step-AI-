@@ -8,6 +8,7 @@ import type {
 } from "@workflow/contracts";
 import type {
   AIIntakeSuggestionRepository,
+  AudioTranscriptReviewRepository,
   EmbeddingJobRepository,
   IntakeSourceRepository,
   ProviderExtractionJobRepository,
@@ -29,6 +30,7 @@ export interface ProviderJobRepos {
   textArtifacts: TextArtifactRepository;
   embeddingJobs: EmbeddingJobRepository;
   aiIntakeSuggestions: AIIntakeSuggestionRepository;
+  audioTranscriptReviews?: AudioTranscriptReviewRepository;
 }
 
 function now(): string {
@@ -83,6 +85,8 @@ function saveArtifact(input: {
   jobId: string;
   kind: TextArtifactRecord["artifactKind"];
   text: string;
+  providerConfidence?: number;
+  providerQualitySignal?: string;
 }, repo: TextArtifactRepository): StoredTextArtifactRecord {
   const artifact: StoredTextArtifactRecord = {
     artifactId: id("artifact"),
@@ -90,6 +94,8 @@ function saveArtifact(input: {
     jobId: input.jobId,
     artifactKind: input.kind,
     text: input.text,
+    providerConfidence: input.providerConfidence,
+    providerQualitySignal: input.providerQualitySignal,
     createdAt: now(),
   };
   repo.save(artifact);
@@ -143,11 +149,13 @@ export async function runProviderExtractionJob(input: {
         jobId: running.jobId,
         kind: "raw_transcript",
         text: transcript.text,
+        providerConfidence: transcript.confidence,
+        providerQualitySignal: transcript.qualitySignal,
       }, input.repos.textArtifacts);
       const succeeded: StoredProviderExtractionJob = {
         ...running,
         status: "succeeded",
-        model: transcript.provider,
+        model: transcript.model ?? transcript.provider,
         outputRef: artifact.artifactId,
         updatedAt: now(),
       };
@@ -280,7 +288,15 @@ export async function runAIIntakeSuggestionJob(input: {
       throw new Error("Active LLM provider configuration is missing for intake source-role suggestion.");
     }
     const artifacts = input.repos.textArtifacts.findBySourceId(source.sourceId);
-    const extractedText = artifacts.at(-1)?.text ?? source.noteText ?? source.websiteUrl ?? source.displayName ?? "";
+    const audioReview = source.inputType === "audio" && input.repos.audioTranscriptReviews
+      ? input.repos.audioTranscriptReviews.findBySourceId(source.sourceId)
+      : null;
+    const trustedAudioArtifact = audioReview?.trustedTranscriptArtifactId
+      ? input.repos.textArtifacts.findById(audioReview.trustedTranscriptArtifactId)
+      : null;
+    const extractedText = source.inputType === "audio"
+      ? trustedAudioArtifact?.text ?? source.displayName ?? ""
+      : artifacts.at(-1)?.text ?? source.noteText ?? source.websiteUrl ?? source.displayName ?? "";
     const result = await input.provider.classifySource({
       displayName: source.displayName ?? source.fileName ?? source.websiteUrl ?? source.sourceId,
       extractedText,

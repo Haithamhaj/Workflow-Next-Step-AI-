@@ -9,7 +9,7 @@ export default function STTPage() {
       </p>
       <div className="card">
         <p style={{ margin: 0, color: "var(--fg-muted)" }}>
-          Live speech-to-text is deferred to the provider phase. Phase 2 does not implement an STT provider or claim provider-backed transcription.
+          Live speech-to-text remains separate from external audio-file transcription. Live dictation may only save text as a manual/operator note in Pass 2.
         </p>
       </div>
     </>

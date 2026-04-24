@@ -234,7 +234,36 @@ export interface TextArtifactRecord {
   jobId?: string;
   artifactKind: "extracted_text" | "raw_transcript" | "embedding_input";
   text: string;
+  providerConfidence?: number;
+  providerQualitySignal?: string;
   createdAt: string;
+}
+
+export type AudioTranscriptReviewStatus =
+  | "transcription_pending"
+  | "transcript_ready_for_review"
+  | "transcript_edited_by_admin"
+  | "transcript_approved"
+  | "transcript_rejected_or_needs_retry";
+
+export interface AudioTranscriptReviewRecord {
+  reviewId: string;
+  sourceId: string;
+  sessionId: string;
+  caseId: string;
+  status: AudioTranscriptReviewStatus;
+  providerJobId?: string;
+  rawTranscriptArtifactId?: string;
+  trustedTranscriptArtifactId?: string;
+  rawTranscriptText?: string;
+  editedTranscriptText?: string;
+  adminNotes?: string;
+  rejectionReason?: string;
+  providerConfidence?: number;
+  providerQualitySignal?: string;
+  reviewedAt?: string;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface EmbeddingJobRecord {

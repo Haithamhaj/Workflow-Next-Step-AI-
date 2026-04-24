@@ -39,7 +39,11 @@ export default function IntakeSourcesPage({
             </tr>
           </thead>
           <tbody>
-            {sources.map((source) => (
+            {sources.map((source) => {
+              const audioReview = source.inputType === "audio"
+                ? store.audioTranscriptReviews.findBySourceId(source.sourceId)
+                : null;
+              return (
               <tr key={source.sourceId} style={{ borderBottom: "1px solid var(--border)" }}>
                 <td style={{ padding: "0.5rem 0.75rem" }}>
                   <Link href={`/intake-sources/${source.sourceId}`}>
@@ -58,10 +62,12 @@ export default function IntakeSourcesPage({
                 </td>
                 <td style={{ padding: "0.5rem 0.75rem" }}><code>{source.status}</code></td>
                 <td style={{ padding: "0.5rem 0.75rem", color: "var(--fg-muted)" }}>
-                  {source.adminOverride ? "Admin override recorded" : "Not reviewed"}
+                  {source.inputType === "audio"
+                    ? audioReview?.status ?? "transcription_pending"
+                    : source.adminOverride ? "Admin override recorded" : "Not reviewed"}
                 </td>
               </tr>
-            ))}
+            );})}
           </tbody>
         </table>
       )}
