@@ -15,6 +15,12 @@ export {
   intakeSourceSchema,
   websiteCrawlSchema,
   adminIntakeDecisionSchema,
+  hierarchyIntakeSchema,
+  hierarchyDraftSchema,
+  hierarchyCorrectionSchema,
+  approvedHierarchySnapshotSchema,
+  hierarchyReadinessSnapshotSchema,
+  promptSpecSchema,
 } from "./schemas/index.js";
 
 import { makeValidator } from "./validate.js";
@@ -32,6 +38,12 @@ import {
   intakeSourceSchema,
   websiteCrawlSchema,
   adminIntakeDecisionSchema,
+  hierarchyIntakeSchema,
+  hierarchyDraftSchema,
+  hierarchyCorrectionSchema,
+  approvedHierarchySnapshotSchema,
+  hierarchyReadinessSnapshotSchema,
+  promptSpecSchema,
 } from "./schemas/index.js";
 import type { CaseConfiguration } from "./types/case-configuration.js";
 import type { SourceRegistration } from "./types/source-registration.js";
@@ -43,6 +55,8 @@ import type { InitialPackageRecord } from "./types/initial-package-record.js";
 import type { ReviewIssueRecord } from "./types/review-issues.js";
 import type { FinalPackageRecord } from "./types/final-package.js";
 import type { IntakeBucket, IntakeInputType, IntakeSourceStatus, AttachmentScope, CrawlPagePriority, CrawlSessionStatus, ProviderName, AudioMode, HierarchyInputMethod, IntakeSession, IntakeSource, WebsiteCrawlSession, AdminIntakeDecision } from "./types/intake.js";
+import type { ApprovedHierarchySnapshot, HierarchyCorrectionEvent, HierarchyDraftRecord, HierarchyIntakeRecord, HierarchyReadinessSnapshot } from "./types/hierarchy.js";
+import type { StructuredPromptSpec } from "./types/prompt-spec.js";
 import {
   SessionState,
   PackageState,
@@ -108,3 +122,21 @@ export const validateWebsiteCrawlSession =
 
 export const validateAdminIntakeDecision =
   makeValidator<AdminIntakeDecision>(adminIntakeDecisionSchema);
+
+export const validateHierarchyIntakeRecord =
+  makeValidator<HierarchyIntakeRecord>(hierarchyIntakeSchema);
+
+export const validateHierarchyDraftRecord =
+  makeValidator<HierarchyDraftRecord>(hierarchyDraftSchema);
+
+export const validateHierarchyCorrectionEvent =
+  makeValidator<HierarchyCorrectionEvent>(hierarchyCorrectionSchema);
+
+export const validateApprovedHierarchySnapshot =
+  makeValidator<ApprovedHierarchySnapshot>(approvedHierarchySnapshotSchema);
+
+export const validateHierarchyReadinessSnapshot =
+  makeValidator<HierarchyReadinessSnapshot>(hierarchyReadinessSnapshotSchema);
+
+export const validateStructuredPromptSpec =
+  makeValidator<StructuredPromptSpec>(promptSpecSchema);

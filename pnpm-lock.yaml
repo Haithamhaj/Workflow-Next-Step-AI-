@@ -26,6 +26,9 @@ importers:
       '@workflow/core-state':
         specifier: workspace:*
         version: link:../../packages/core-state
+      '@workflow/hierarchy-intake':
+        specifier: workspace:*
+        version: link:../../packages/hierarchy-intake
       '@workflow/integrations':
         specifier: workspace:*
         version: link:../../packages/integrations
@@ -117,6 +120,19 @@ importers:
       '@workflow/contracts':
         specifier: workspace:*
         version: link:../contracts
+    devDependencies:
+      typescript:
+        specifier: ^5.4.5
+        version: 5.9.3
+
+  packages/hierarchy-intake:
+    dependencies:
+      '@workflow/contracts':
+        specifier: workspace:*
+        version: link:../contracts
+      '@workflow/persistence':
+        specifier: workspace:*
+        version: link:../persistence
     devDependencies:
       typescript:
         specifier: ^5.4.5

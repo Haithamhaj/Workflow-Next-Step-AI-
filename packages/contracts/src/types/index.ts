@@ -10,3 +10,5 @@ export * from "./review-issues.js";
 export * from "./final-package.js";
 export * from "./intake.js";
 export * from "./structured-context.js";
+export * from "./hierarchy.js";
+export * from "./prompt-spec.js";

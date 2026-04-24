@@ -1,17 +1,25 @@
 import Link from "next/link";
+import { getHierarchyFoundationState } from "@workflow/hierarchy-intake";
+import { store } from "../../../../lib/store";
+import HierarchyFoundationClient from "./HierarchyFoundationClient";
 
 export default function HierarchyPage({ params }: { params: { id: string } }) {
+  const state = getHierarchyFoundationState(params.id, {
+    intakeSessions: store.intakeSessions,
+    hierarchyIntakes: store.hierarchyIntakes,
+    hierarchyDrafts: store.hierarchyDrafts,
+    hierarchyCorrections: store.hierarchyCorrections,
+    approvedHierarchySnapshots: store.approvedHierarchySnapshots,
+    hierarchyReadinessSnapshots: store.hierarchyReadinessSnapshots,
+  });
+
   return (
     <>
-      <h2>Hierarchy Intake Deferred</h2>
+      <h2>Hierarchy Intake & Structural Approval</h2>
       <p>
         <Link href={`/intake-sessions/${params.id}`}>&larr; Session detail</Link>
       </p>
-      <div className="card">
-        <p style={{ margin: 0, color: "var(--fg-muted)" }}>
-          Hierarchy intake is outside Pass 2 Phase 3 and has not been started.
-        </p>
-      </div>
+      <HierarchyFoundationClient sessionId={params.id} initialState={state} />
     </>
   );
 }

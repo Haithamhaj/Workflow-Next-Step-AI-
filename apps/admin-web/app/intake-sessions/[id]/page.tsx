@@ -73,12 +73,15 @@ export default function IntakeSessionDetailPage({
         <Link className="btn-primary" href={`/intake-sessions/${params.id}/final-review`}>
           Final pre-hierarchy review
         </Link>
+        <Link className="btn-primary" href={`/intake-sessions/${params.id}/hierarchy`}>
+          Hierarchy intake
+        </Link>
       </div>
 
       <div className="card" style={{ marginTop: "16px" }}>
         <h3 style={{ margin: "0 0 8px" }}>Context and Provider Results</h3>
         <p style={{ margin: 0, color: "var(--fg-muted)" }}>
-          Phase 6 structured context is available through Department context. Phase 7 final review closes intake/context framing; hierarchy intake remains deferred to a separate build slice.
+          Phase 6 structured context is available through Department context. Phase 7 final review closes intake/context framing. Pass 3 hierarchy intake is structural only and does not create participant targeting or rollout.
         </p>
       </div>
 

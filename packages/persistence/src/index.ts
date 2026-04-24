@@ -31,6 +31,12 @@ import type {
   DepartmentFramingRecord,
   FinalPreHierarchyReviewRecord,
   StructuredContextRecord,
+  ApprovedHierarchySnapshot,
+  HierarchyCorrectionEvent,
+  HierarchyDraftRecord,
+  HierarchyIntakeRecord,
+  HierarchyReadinessSnapshot,
+  StructuredPromptSpec,
 } from "@workflow/contracts";
 
 import { mkdirSync } from "node:fs";
@@ -170,6 +176,18 @@ export interface StoredDepartmentFramingRecord extends DepartmentFramingRecord {
 export interface StoredStructuredContextRecord extends StructuredContextRecord {}
 
 export interface StoredFinalPreHierarchyReviewRecord extends FinalPreHierarchyReviewRecord {}
+
+export interface StoredHierarchyIntakeRecord extends HierarchyIntakeRecord {}
+
+export interface StoredHierarchyDraftRecord extends HierarchyDraftRecord {}
+
+export interface StoredHierarchyCorrectionEvent extends HierarchyCorrectionEvent {}
+
+export interface StoredApprovedHierarchySnapshot extends ApprovedHierarchySnapshot {}
+
+export interface StoredHierarchyReadinessSnapshot extends HierarchyReadinessSnapshot {}
+
+export interface StoredStructuredPromptSpec extends StructuredPromptSpec {}
 
 // ---------------------------------------------------------------------------
 // Repository interfaces — backend-agnostic
@@ -363,6 +381,54 @@ export interface FinalPreHierarchyReviewRepository {
   findBySessionId(sessionId: string): StoredFinalPreHierarchyReviewRecord | null;
   findByCaseId(caseId: string): StoredFinalPreHierarchyReviewRecord[];
   findAll(): StoredFinalPreHierarchyReviewRecord[];
+}
+
+export interface HierarchyIntakeRepository {
+  save(record: StoredHierarchyIntakeRecord): void;
+  findById(hierarchyIntakeId: string): StoredHierarchyIntakeRecord | null;
+  findBySessionId(sessionId: string): StoredHierarchyIntakeRecord | null;
+  findByCaseId(caseId: string): StoredHierarchyIntakeRecord[];
+  findAll(): StoredHierarchyIntakeRecord[];
+}
+
+export interface HierarchyDraftRepository {
+  save(record: StoredHierarchyDraftRecord): void;
+  findById(hierarchyDraftId: string): StoredHierarchyDraftRecord | null;
+  findBySessionId(sessionId: string): StoredHierarchyDraftRecord | null;
+  findByCaseId(caseId: string): StoredHierarchyDraftRecord[];
+  findAll(): StoredHierarchyDraftRecord[];
+}
+
+export interface HierarchyCorrectionEventRepository {
+  save(record: StoredHierarchyCorrectionEvent): void;
+  findById(correctionId: string): StoredHierarchyCorrectionEvent | null;
+  findBySessionId(sessionId: string): StoredHierarchyCorrectionEvent[];
+  findByDraftId(hierarchyDraftId: string): StoredHierarchyCorrectionEvent[];
+  findAll(): StoredHierarchyCorrectionEvent[];
+}
+
+export interface ApprovedHierarchySnapshotRepository {
+  save(record: StoredApprovedHierarchySnapshot): void;
+  findById(approvedSnapshotId: string): StoredApprovedHierarchySnapshot | null;
+  findBySessionId(sessionId: string): StoredApprovedHierarchySnapshot | null;
+  findByCaseId(caseId: string): StoredApprovedHierarchySnapshot[];
+  findAll(): StoredApprovedHierarchySnapshot[];
+}
+
+export interface HierarchyReadinessSnapshotRepository {
+  save(record: StoredHierarchyReadinessSnapshot): void;
+  findById(readinessSnapshotId: string): StoredHierarchyReadinessSnapshot | null;
+  findBySessionId(sessionId: string): StoredHierarchyReadinessSnapshot | null;
+  findByCaseId(caseId: string): StoredHierarchyReadinessSnapshot[];
+  findAll(): StoredHierarchyReadinessSnapshot[];
+}
+
+export interface StructuredPromptSpecRepository {
+  save(record: StoredStructuredPromptSpec): void;
+  findById(promptSpecId: string): StoredStructuredPromptSpec | null;
+  findByLinkedModule(linkedModule: string): StoredStructuredPromptSpec[];
+  findActiveByLinkedModule(linkedModule: string): StoredStructuredPromptSpec | null;
+  findAll(): StoredStructuredPromptSpec[];
 }
 
 // ---------------------------------------------------------------------------
@@ -995,6 +1061,164 @@ class InMemoryFinalPreHierarchyReviewRepository implements FinalPreHierarchyRevi
   }
 }
 
+class InMemoryHierarchyIntakeRepository implements HierarchyIntakeRepository {
+  private readonly store = new Map<string, StoredHierarchyIntakeRecord>();
+
+  save(record: StoredHierarchyIntakeRecord): void {
+    this.store.set(record.hierarchyIntakeId, { ...record });
+  }
+
+  findById(hierarchyIntakeId: string): StoredHierarchyIntakeRecord | null {
+    return this.store.get(hierarchyIntakeId) ?? null;
+  }
+
+  findBySessionId(sessionId: string): StoredHierarchyIntakeRecord | null {
+    return Array.from(this.store.values()).find((record) => record.sessionId === sessionId) ?? null;
+  }
+
+  findByCaseId(caseId: string): StoredHierarchyIntakeRecord[] {
+    return Array.from(this.store.values()).filter((record) => record.caseId === caseId);
+  }
+
+  findAll(): StoredHierarchyIntakeRecord[] {
+    return Array.from(this.store.values());
+  }
+}
+
+class InMemoryHierarchyDraftRepository implements HierarchyDraftRepository {
+  private readonly store = new Map<string, StoredHierarchyDraftRecord>();
+
+  save(record: StoredHierarchyDraftRecord): void {
+    this.store.set(record.hierarchyDraftId, {
+      ...record,
+      nodes: record.nodes.map((node) => ({ ...node })),
+      secondaryRelationships: record.secondaryRelationships.map((relationship) => ({ ...relationship })),
+    });
+  }
+
+  findById(hierarchyDraftId: string): StoredHierarchyDraftRecord | null {
+    return this.store.get(hierarchyDraftId) ?? null;
+  }
+
+  findBySessionId(sessionId: string): StoredHierarchyDraftRecord | null {
+    return Array.from(this.store.values()).find((record) => record.sessionId === sessionId) ?? null;
+  }
+
+  findByCaseId(caseId: string): StoredHierarchyDraftRecord[] {
+    return Array.from(this.store.values()).filter((record) => record.caseId === caseId);
+  }
+
+  findAll(): StoredHierarchyDraftRecord[] {
+    return Array.from(this.store.values());
+  }
+}
+
+class InMemoryHierarchyCorrectionEventRepository implements HierarchyCorrectionEventRepository {
+  private readonly store = new Map<string, StoredHierarchyCorrectionEvent>();
+
+  save(record: StoredHierarchyCorrectionEvent): void {
+    this.store.set(record.correctionId, {
+      ...record,
+      nodes: record.nodes.map((node) => ({ ...node })),
+      secondaryRelationships: record.secondaryRelationships.map((relationship) => ({ ...relationship })),
+    });
+  }
+
+  findById(correctionId: string): StoredHierarchyCorrectionEvent | null {
+    return this.store.get(correctionId) ?? null;
+  }
+
+  findBySessionId(sessionId: string): StoredHierarchyCorrectionEvent[] {
+    return Array.from(this.store.values()).filter((record) => record.sessionId === sessionId);
+  }
+
+  findByDraftId(hierarchyDraftId: string): StoredHierarchyCorrectionEvent[] {
+    return Array.from(this.store.values()).filter((record) => record.hierarchyDraftId === hierarchyDraftId);
+  }
+
+  findAll(): StoredHierarchyCorrectionEvent[] {
+    return Array.from(this.store.values());
+  }
+}
+
+class InMemoryApprovedHierarchySnapshotRepository implements ApprovedHierarchySnapshotRepository {
+  private readonly store = new Map<string, StoredApprovedHierarchySnapshot>();
+
+  save(record: StoredApprovedHierarchySnapshot): void {
+    if (this.store.has(record.approvedSnapshotId)) return;
+    this.store.set(record.approvedSnapshotId, {
+      ...record,
+      nodes: record.nodes.map((node) => ({ ...node })),
+      secondaryRelationships: record.secondaryRelationships.map((relationship) => ({ ...relationship })),
+    });
+  }
+
+  findById(approvedSnapshotId: string): StoredApprovedHierarchySnapshot | null {
+    return this.store.get(approvedSnapshotId) ?? null;
+  }
+
+  findBySessionId(sessionId: string): StoredApprovedHierarchySnapshot | null {
+    return Array.from(this.store.values()).find((record) => record.sessionId === sessionId) ?? null;
+  }
+
+  findByCaseId(caseId: string): StoredApprovedHierarchySnapshot[] {
+    return Array.from(this.store.values()).filter((record) => record.caseId === caseId);
+  }
+
+  findAll(): StoredApprovedHierarchySnapshot[] {
+    return Array.from(this.store.values());
+  }
+}
+
+class InMemoryHierarchyReadinessSnapshotRepository implements HierarchyReadinessSnapshotRepository {
+  private readonly store = new Map<string, StoredHierarchyReadinessSnapshot>();
+
+  save(record: StoredHierarchyReadinessSnapshot): void {
+    this.store.set(record.readinessSnapshotId, { ...record, reasons: [...record.reasons] });
+  }
+
+  findById(readinessSnapshotId: string): StoredHierarchyReadinessSnapshot | null {
+    return this.store.get(readinessSnapshotId) ?? null;
+  }
+
+  findBySessionId(sessionId: string): StoredHierarchyReadinessSnapshot | null {
+    const records = Array.from(this.store.values()).filter((record) => record.sessionId === sessionId);
+    return records[records.length - 1] ?? null;
+  }
+
+  findByCaseId(caseId: string): StoredHierarchyReadinessSnapshot[] {
+    return Array.from(this.store.values()).filter((record) => record.caseId === caseId);
+  }
+
+  findAll(): StoredHierarchyReadinessSnapshot[] {
+    return Array.from(this.store.values());
+  }
+}
+
+class InMemoryStructuredPromptSpecRepository implements StructuredPromptSpecRepository {
+  private readonly store = new Map<string, StoredStructuredPromptSpec>();
+
+  save(record: StoredStructuredPromptSpec): void {
+    this.store.set(record.promptSpecId, { ...record, blocks: record.blocks.map((block) => ({ ...block })) });
+  }
+
+  findById(promptSpecId: string): StoredStructuredPromptSpec | null {
+    return this.store.get(promptSpecId) ?? null;
+  }
+
+  findByLinkedModule(linkedModule: string): StoredStructuredPromptSpec[] {
+    return Array.from(this.store.values()).filter((record) => record.linkedModule === linkedModule);
+  }
+
+  findActiveByLinkedModule(linkedModule: string): StoredStructuredPromptSpec | null {
+    return this.findByLinkedModule(linkedModule).find((record) => record.status === "active") ?? null;
+  }
+
+  findAll(): StoredStructuredPromptSpec[] {
+    return Array.from(this.store.values());
+  }
+}
+
 // ---------------------------------------------------------------------------
 // SQLite intake implementations — durable Phase 1 foundation
 // ---------------------------------------------------------------------------
@@ -1122,6 +1346,45 @@ function openIntakeDatabase(dbPath?: string): DatabaseSync {
       case_id TEXT NOT NULL,
       payload TEXT NOT NULL
     );
+    CREATE TABLE IF NOT EXISTS hierarchy_intakes (
+      id TEXT PRIMARY KEY,
+      session_id TEXT NOT NULL,
+      case_id TEXT NOT NULL,
+      payload TEXT NOT NULL
+    );
+    CREATE TABLE IF NOT EXISTS hierarchy_drafts (
+      id TEXT PRIMARY KEY,
+      intake_id TEXT NOT NULL,
+      session_id TEXT NOT NULL,
+      case_id TEXT NOT NULL,
+      payload TEXT NOT NULL
+    );
+    CREATE TABLE IF NOT EXISTS hierarchy_corrections (
+      id TEXT PRIMARY KEY,
+      draft_id TEXT NOT NULL,
+      session_id TEXT NOT NULL,
+      case_id TEXT NOT NULL,
+      payload TEXT NOT NULL
+    );
+    CREATE TABLE IF NOT EXISTS approved_hierarchy_snapshots (
+      id TEXT PRIMARY KEY,
+      draft_id TEXT NOT NULL,
+      session_id TEXT NOT NULL,
+      case_id TEXT NOT NULL,
+      payload TEXT NOT NULL
+    );
+    CREATE TABLE IF NOT EXISTS hierarchy_readiness_snapshots (
+      id TEXT PRIMARY KEY,
+      session_id TEXT NOT NULL,
+      case_id TEXT NOT NULL,
+      payload TEXT NOT NULL
+    );
+    CREATE TABLE IF NOT EXISTS structured_prompt_specs (
+      id TEXT PRIMARY KEY,
+      linked_module TEXT NOT NULL,
+      status TEXT NOT NULL,
+      payload TEXT NOT NULL
+    );
     CREATE INDEX IF NOT EXISTS idx_provider_jobs_source_id ON provider_extraction_jobs(source_id);
     CREATE INDEX IF NOT EXISTS idx_provider_jobs_session_id ON provider_extraction_jobs(session_id);
     CREATE INDEX IF NOT EXISTS idx_text_artifacts_source_id ON text_artifacts(source_id);
@@ -1147,6 +1410,18 @@ function openIntakeDatabase(dbPath?: string): DatabaseSync {
     CREATE INDEX IF NOT EXISTS idx_structured_context_case_id ON structured_context_records(case_id);
     CREATE UNIQUE INDEX IF NOT EXISTS idx_final_pre_hierarchy_reviews_session_id ON final_pre_hierarchy_reviews(session_id);
     CREATE INDEX IF NOT EXISTS idx_final_pre_hierarchy_reviews_case_id ON final_pre_hierarchy_reviews(case_id);
+    CREATE UNIQUE INDEX IF NOT EXISTS idx_hierarchy_intakes_session_id ON hierarchy_intakes(session_id);
+    CREATE INDEX IF NOT EXISTS idx_hierarchy_intakes_case_id ON hierarchy_intakes(case_id);
+    CREATE UNIQUE INDEX IF NOT EXISTS idx_hierarchy_drafts_session_id ON hierarchy_drafts(session_id);
+    CREATE INDEX IF NOT EXISTS idx_hierarchy_drafts_case_id ON hierarchy_drafts(case_id);
+    CREATE INDEX IF NOT EXISTS idx_hierarchy_corrections_session_id ON hierarchy_corrections(session_id);
+    CREATE INDEX IF NOT EXISTS idx_hierarchy_corrections_draft_id ON hierarchy_corrections(draft_id);
+    CREATE UNIQUE INDEX IF NOT EXISTS idx_approved_hierarchy_session_id ON approved_hierarchy_snapshots(session_id);
+    CREATE INDEX IF NOT EXISTS idx_approved_hierarchy_case_id ON approved_hierarchy_snapshots(case_id);
+    CREATE INDEX IF NOT EXISTS idx_hierarchy_readiness_session_id ON hierarchy_readiness_snapshots(session_id);
+    CREATE INDEX IF NOT EXISTS idx_hierarchy_readiness_case_id ON hierarchy_readiness_snapshots(case_id);
+    CREATE INDEX IF NOT EXISTS idx_prompt_specs_linked_module ON structured_prompt_specs(linked_module);
+    CREATE INDEX IF NOT EXISTS idx_prompt_specs_status ON structured_prompt_specs(status);
   `);
   return db;
 }
@@ -1659,6 +1934,210 @@ export class SQLiteFinalPreHierarchyReviewRepository implements FinalPreHierarch
   }
 }
 
+export class SQLiteHierarchyIntakeRepository implements HierarchyIntakeRepository {
+  private readonly db: DatabaseSync;
+
+  constructor(dbPath?: string) {
+    this.db = openIntakeDatabase(dbPath);
+  }
+
+  save(record: StoredHierarchyIntakeRecord): void {
+    this.db.prepare(
+      "INSERT INTO hierarchy_intakes (id, session_id, case_id, payload) VALUES (?, ?, ?, ?) ON CONFLICT(id) DO UPDATE SET session_id = excluded.session_id, case_id = excluded.case_id, payload = excluded.payload",
+    ).run(record.hierarchyIntakeId, record.sessionId, record.caseId, JSON.stringify(record));
+  }
+
+  findById(hierarchyIntakeId: string): StoredHierarchyIntakeRecord | null {
+    const row = this.db.prepare("SELECT payload FROM hierarchy_intakes WHERE id = ?").get(hierarchyIntakeId);
+    return parseStored<StoredHierarchyIntakeRecord>(row);
+  }
+
+  findBySessionId(sessionId: string): StoredHierarchyIntakeRecord | null {
+    const row = this.db.prepare("SELECT payload FROM hierarchy_intakes WHERE session_id = ? ORDER BY id DESC LIMIT 1").get(sessionId);
+    return parseStored<StoredHierarchyIntakeRecord>(row);
+  }
+
+  findByCaseId(caseId: string): StoredHierarchyIntakeRecord[] {
+    const rows = this.db.prepare("SELECT payload FROM hierarchy_intakes WHERE case_id = ? ORDER BY id").all(caseId);
+    return parseStoredList<StoredHierarchyIntakeRecord>(rows);
+  }
+
+  findAll(): StoredHierarchyIntakeRecord[] {
+    const rows = this.db.prepare("SELECT payload FROM hierarchy_intakes ORDER BY id").all();
+    return parseStoredList<StoredHierarchyIntakeRecord>(rows);
+  }
+}
+
+export class SQLiteHierarchyDraftRepository implements HierarchyDraftRepository {
+  private readonly db: DatabaseSync;
+
+  constructor(dbPath?: string) {
+    this.db = openIntakeDatabase(dbPath);
+  }
+
+  save(record: StoredHierarchyDraftRecord): void {
+    this.db.prepare(
+      "INSERT INTO hierarchy_drafts (id, intake_id, session_id, case_id, payload) VALUES (?, ?, ?, ?, ?) ON CONFLICT(id) DO UPDATE SET intake_id = excluded.intake_id, session_id = excluded.session_id, case_id = excluded.case_id, payload = excluded.payload",
+    ).run(record.hierarchyDraftId, record.hierarchyIntakeId, record.sessionId, record.caseId, JSON.stringify(record));
+  }
+
+  findById(hierarchyDraftId: string): StoredHierarchyDraftRecord | null {
+    const row = this.db.prepare("SELECT payload FROM hierarchy_drafts WHERE id = ?").get(hierarchyDraftId);
+    return parseStored<StoredHierarchyDraftRecord>(row);
+  }
+
+  findBySessionId(sessionId: string): StoredHierarchyDraftRecord | null {
+    const row = this.db.prepare("SELECT payload FROM hierarchy_drafts WHERE session_id = ? ORDER BY id DESC LIMIT 1").get(sessionId);
+    return parseStored<StoredHierarchyDraftRecord>(row);
+  }
+
+  findByCaseId(caseId: string): StoredHierarchyDraftRecord[] {
+    const rows = this.db.prepare("SELECT payload FROM hierarchy_drafts WHERE case_id = ? ORDER BY id").all(caseId);
+    return parseStoredList<StoredHierarchyDraftRecord>(rows);
+  }
+
+  findAll(): StoredHierarchyDraftRecord[] {
+    const rows = this.db.prepare("SELECT payload FROM hierarchy_drafts ORDER BY id").all();
+    return parseStoredList<StoredHierarchyDraftRecord>(rows);
+  }
+}
+
+export class SQLiteHierarchyCorrectionEventRepository implements HierarchyCorrectionEventRepository {
+  private readonly db: DatabaseSync;
+
+  constructor(dbPath?: string) {
+    this.db = openIntakeDatabase(dbPath);
+  }
+
+  save(record: StoredHierarchyCorrectionEvent): void {
+    this.db.prepare(
+      "INSERT INTO hierarchy_corrections (id, draft_id, session_id, case_id, payload) VALUES (?, ?, ?, ?, ?) ON CONFLICT(id) DO UPDATE SET draft_id = excluded.draft_id, session_id = excluded.session_id, case_id = excluded.case_id, payload = excluded.payload",
+    ).run(record.correctionId, record.hierarchyDraftId, record.sessionId, record.caseId, JSON.stringify(record));
+  }
+
+  findById(correctionId: string): StoredHierarchyCorrectionEvent | null {
+    const row = this.db.prepare("SELECT payload FROM hierarchy_corrections WHERE id = ?").get(correctionId);
+    return parseStored<StoredHierarchyCorrectionEvent>(row);
+  }
+
+  findBySessionId(sessionId: string): StoredHierarchyCorrectionEvent[] {
+    const rows = this.db.prepare("SELECT payload FROM hierarchy_corrections WHERE session_id = ? ORDER BY id").all(sessionId);
+    return parseStoredList<StoredHierarchyCorrectionEvent>(rows);
+  }
+
+  findByDraftId(hierarchyDraftId: string): StoredHierarchyCorrectionEvent[] {
+    const rows = this.db.prepare("SELECT payload FROM hierarchy_corrections WHERE draft_id = ? ORDER BY id").all(hierarchyDraftId);
+    return parseStoredList<StoredHierarchyCorrectionEvent>(rows);
+  }
+
+  findAll(): StoredHierarchyCorrectionEvent[] {
+    const rows = this.db.prepare("SELECT payload FROM hierarchy_corrections ORDER BY id").all();
+    return parseStoredList<StoredHierarchyCorrectionEvent>(rows);
+  }
+}
+
+export class SQLiteApprovedHierarchySnapshotRepository implements ApprovedHierarchySnapshotRepository {
+  private readonly db: DatabaseSync;
+
+  constructor(dbPath?: string) {
+    this.db = openIntakeDatabase(dbPath);
+  }
+
+  save(record: StoredApprovedHierarchySnapshot): void {
+    this.db.prepare(
+      "INSERT INTO approved_hierarchy_snapshots (id, draft_id, session_id, case_id, payload) VALUES (?, ?, ?, ?, ?) ON CONFLICT(id) DO NOTHING",
+    ).run(record.approvedSnapshotId, record.hierarchyDraftId, record.sessionId, record.caseId, JSON.stringify(record));
+  }
+
+  findById(approvedSnapshotId: string): StoredApprovedHierarchySnapshot | null {
+    const row = this.db.prepare("SELECT payload FROM approved_hierarchy_snapshots WHERE id = ?").get(approvedSnapshotId);
+    return parseStored<StoredApprovedHierarchySnapshot>(row);
+  }
+
+  findBySessionId(sessionId: string): StoredApprovedHierarchySnapshot | null {
+    const row = this.db.prepare("SELECT payload FROM approved_hierarchy_snapshots WHERE session_id = ? ORDER BY id DESC LIMIT 1").get(sessionId);
+    return parseStored<StoredApprovedHierarchySnapshot>(row);
+  }
+
+  findByCaseId(caseId: string): StoredApprovedHierarchySnapshot[] {
+    const rows = this.db.prepare("SELECT payload FROM approved_hierarchy_snapshots WHERE case_id = ? ORDER BY id").all(caseId);
+    return parseStoredList<StoredApprovedHierarchySnapshot>(rows);
+  }
+
+  findAll(): StoredApprovedHierarchySnapshot[] {
+    const rows = this.db.prepare("SELECT payload FROM approved_hierarchy_snapshots ORDER BY id").all();
+    return parseStoredList<StoredApprovedHierarchySnapshot>(rows);
+  }
+}
+
+export class SQLiteHierarchyReadinessSnapshotRepository implements HierarchyReadinessSnapshotRepository {
+  private readonly db: DatabaseSync;
+
+  constructor(dbPath?: string) {
+    this.db = openIntakeDatabase(dbPath);
+  }
+
+  save(record: StoredHierarchyReadinessSnapshot): void {
+    this.db.prepare(
+      "INSERT INTO hierarchy_readiness_snapshots (id, session_id, case_id, payload) VALUES (?, ?, ?, ?) ON CONFLICT(id) DO UPDATE SET session_id = excluded.session_id, case_id = excluded.case_id, payload = excluded.payload",
+    ).run(record.readinessSnapshotId, record.sessionId, record.caseId, JSON.stringify(record));
+  }
+
+  findById(readinessSnapshotId: string): StoredHierarchyReadinessSnapshot | null {
+    const row = this.db.prepare("SELECT payload FROM hierarchy_readiness_snapshots WHERE id = ?").get(readinessSnapshotId);
+    return parseStored<StoredHierarchyReadinessSnapshot>(row);
+  }
+
+  findBySessionId(sessionId: string): StoredHierarchyReadinessSnapshot | null {
+    const row = this.db.prepare("SELECT payload FROM hierarchy_readiness_snapshots WHERE session_id = ? ORDER BY id DESC LIMIT 1").get(sessionId);
+    return parseStored<StoredHierarchyReadinessSnapshot>(row);
+  }
+
+  findByCaseId(caseId: string): StoredHierarchyReadinessSnapshot[] {
+    const rows = this.db.prepare("SELECT payload FROM hierarchy_readiness_snapshots WHERE case_id = ? ORDER BY id").all(caseId);
+    return parseStoredList<StoredHierarchyReadinessSnapshot>(rows);
+  }
+
+  findAll(): StoredHierarchyReadinessSnapshot[] {
+    const rows = this.db.prepare("SELECT payload FROM hierarchy_readiness_snapshots ORDER BY id").all();
+    return parseStoredList<StoredHierarchyReadinessSnapshot>(rows);
+  }
+}
+
+export class SQLiteStructuredPromptSpecRepository implements StructuredPromptSpecRepository {
+  private readonly db: DatabaseSync;
+
+  constructor(dbPath?: string) {
+    this.db = openIntakeDatabase(dbPath);
+  }
+
+  save(record: StoredStructuredPromptSpec): void {
+    this.db.prepare(
+      "INSERT INTO structured_prompt_specs (id, linked_module, status, payload) VALUES (?, ?, ?, ?) ON CONFLICT(id) DO UPDATE SET linked_module = excluded.linked_module, status = excluded.status, payload = excluded.payload",
+    ).run(record.promptSpecId, record.linkedModule, record.status, JSON.stringify(record));
+  }
+
+  findById(promptSpecId: string): StoredStructuredPromptSpec | null {
+    const row = this.db.prepare("SELECT payload FROM structured_prompt_specs WHERE id = ?").get(promptSpecId);
+    return parseStored<StoredStructuredPromptSpec>(row);
+  }
+
+  findByLinkedModule(linkedModule: string): StoredStructuredPromptSpec[] {
+    const rows = this.db.prepare("SELECT payload FROM structured_prompt_specs WHERE linked_module = ? ORDER BY id").all(linkedModule);
+    return parseStoredList<StoredStructuredPromptSpec>(rows);
+  }
+
+  findActiveByLinkedModule(linkedModule: string): StoredStructuredPromptSpec | null {
+    const row = this.db.prepare("SELECT payload FROM structured_prompt_specs WHERE linked_module = ? AND status = 'active' ORDER BY id DESC LIMIT 1").get(linkedModule);
+    return parseStored<StoredStructuredPromptSpec>(row);
+  }
+
+  findAll(): StoredStructuredPromptSpec[] {
+    const rows = this.db.prepare("SELECT payload FROM structured_prompt_specs ORDER BY id").all();
+    return parseStoredList<StoredStructuredPromptSpec>(rows);
+  }
+}
+
 export function createSQLiteIntakeRepositories(dbPath?: string): {
   intakeSessions: IntakeSessionRepository;
   intakeSources: IntakeSourceRepository;
@@ -1676,6 +2155,12 @@ export function createSQLiteIntakeRepositories(dbPath?: string): {
   departmentFraming: DepartmentFramingRepository;
   structuredContexts: StructuredContextRecordRepository;
   finalPreHierarchyReviews: FinalPreHierarchyReviewRepository;
+  hierarchyIntakes: HierarchyIntakeRepository;
+  hierarchyDrafts: HierarchyDraftRepository;
+  hierarchyCorrections: HierarchyCorrectionEventRepository;
+  approvedHierarchySnapshots: ApprovedHierarchySnapshotRepository;
+  hierarchyReadinessSnapshots: HierarchyReadinessSnapshotRepository;
+  structuredPromptSpecs: StructuredPromptSpecRepository;
 } {
   return {
     intakeSessions: new SQLiteIntakeSessionRepository(dbPath),
@@ -1694,6 +2179,12 @@ export function createSQLiteIntakeRepositories(dbPath?: string): {
     departmentFraming: new SQLiteDepartmentFramingRepository(dbPath),
     structuredContexts: new SQLiteStructuredContextRecordRepository(dbPath),
     finalPreHierarchyReviews: new SQLiteFinalPreHierarchyReviewRepository(dbPath),
+    hierarchyIntakes: new SQLiteHierarchyIntakeRepository(dbPath),
+    hierarchyDrafts: new SQLiteHierarchyDraftRepository(dbPath),
+    hierarchyCorrections: new SQLiteHierarchyCorrectionEventRepository(dbPath),
+    approvedHierarchySnapshots: new SQLiteApprovedHierarchySnapshotRepository(dbPath),
+    hierarchyReadinessSnapshots: new SQLiteHierarchyReadinessSnapshotRepository(dbPath),
+    structuredPromptSpecs: new SQLiteStructuredPromptSpecRepository(dbPath),
   };
 }
 
@@ -1733,6 +2224,12 @@ export interface InMemoryStore {
   departmentFraming: DepartmentFramingRepository;
   structuredContexts: StructuredContextRecordRepository;
   finalPreHierarchyReviews: FinalPreHierarchyReviewRepository;
+  hierarchyIntakes: HierarchyIntakeRepository;
+  hierarchyDrafts: HierarchyDraftRepository;
+  hierarchyCorrections: HierarchyCorrectionEventRepository;
+  approvedHierarchySnapshots: ApprovedHierarchySnapshotRepository;
+  hierarchyReadinessSnapshots: HierarchyReadinessSnapshotRepository;
+  structuredPromptSpecs: StructuredPromptSpecRepository;
   /** Raw file bytes keyed by sourceId. In-memory only — no persistence. */
   fileStore: Map<string, { bytes: ArrayBuffer; mimeType: string }>;
 }
@@ -1766,6 +2263,12 @@ export function createInMemoryStore(): InMemoryStore {
     departmentFraming: new InMemoryDepartmentFramingRepository(),
     structuredContexts: new InMemoryStructuredContextRecordRepository(),
     finalPreHierarchyReviews: new InMemoryFinalPreHierarchyReviewRepository(),
+    hierarchyIntakes: new InMemoryHierarchyIntakeRepository(),
+    hierarchyDrafts: new InMemoryHierarchyDraftRepository(),
+    hierarchyCorrections: new InMemoryHierarchyCorrectionEventRepository(),
+    approvedHierarchySnapshots: new InMemoryApprovedHierarchySnapshotRepository(),
+    hierarchyReadinessSnapshots: new InMemoryHierarchyReadinessSnapshotRepository(),
+    structuredPromptSpecs: new InMemoryStructuredPromptSpecRepository(),
     fileStore: new Map(),
   };
 }
@@ -1788,5 +2291,11 @@ export type {
   WebsiteCrawlSiteSummary,
   ContentChunkRecord,
   AudioTranscriptReviewRecord,
+  ApprovedHierarchySnapshot,
+  HierarchyCorrectionEvent,
+  HierarchyDraftRecord,
+  HierarchyIntakeRecord,
+  HierarchyReadinessSnapshot,
+  StructuredPromptSpec,
   WebsiteCrawlSession,
 };

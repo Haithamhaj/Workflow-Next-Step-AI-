@@ -1,0 +1,101 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://workflow.local/schemas/hierarchy-draft.json",
+  "title": "HierarchyDraftRecord",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["hierarchyDraftId", "hierarchyIntakeId", "sessionId", "caseId", "status", "nodes", "secondaryRelationships", "createdBy", "createdAt", "updatedAt"],
+  "properties": {
+    "hierarchyDraftId": { "type": "string", "minLength": 1 },
+    "hierarchyIntakeId": { "type": "string", "minLength": 1 },
+    "sessionId": { "type": "string", "minLength": 1 },
+    "caseId": { "type": "string", "minLength": 1 },
+    "status": { "type": "string", "enum": ["manual_admin_created"] },
+    "nodes": {
+      "type": "array",
+      "items": { "$ref": "#/definitions/hierarchyNode" }
+    },
+    "secondaryRelationships": {
+      "type": "array",
+      "items": { "$ref": "#/definitions/secondaryRelationship" }
+    },
+    "createdBy": { "type": "string", "minLength": 1 },
+    "createdAt": { "type": "string", "minLength": 1 },
+    "updatedAt": { "type": "string", "minLength": 1 }
+  },
+  "definitions": {
+    "groupLayer": {
+      "type": "string",
+      "enum": [
+        "owner_or_executive",
+        "director_layer",
+        "manager_layer",
+        "supervisor_layer",
+        "senior_individual_contributor",
+        "frontline_operational",
+        "support_role",
+        "shared_service_role",
+        "approval_or_control_role",
+        "external_interface",
+        "system_or_queue_node",
+        "committee_or_group",
+        "temporary_or_project_role",
+        "unknown",
+        "custom"
+      ]
+    },
+    "confidence": { "type": "string", "enum": ["high", "medium", "low", "unknown"] },
+    "hierarchyNode": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["nodeId", "roleLabel", "groupLayer"],
+      "properties": {
+        "nodeId": { "type": "string", "minLength": 1 },
+        "roleLabel": { "type": "string", "minLength": 1 },
+        "groupLayer": { "$ref": "#/definitions/groupLayer" },
+        "customGroupLabel": { "type": "string" },
+        "customGroupReason": { "type": "string" },
+        "primaryParentNodeId": { "type": "string" },
+        "personName": { "type": "string" },
+        "employeeId": { "type": "string" },
+        "internalIdentifier": { "type": "string" },
+        "occupantOfRole": { "type": "string" },
+        "candidateParticipantFlag": { "type": "boolean" },
+        "personRoleConfidence": { "$ref": "#/definitions/confidence" },
+        "notes": { "type": "string" }
+      }
+    },
+    "secondaryRelationship": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["relationshipId", "fromNodeId", "relatedNodeId", "relationshipType", "relationshipScope", "reasonOrNote", "confidence", "sourceBasis"],
+      "properties": {
+        "relationshipId": { "type": "string", "minLength": 1 },
+        "fromNodeId": { "type": "string", "minLength": 1 },
+        "relatedNodeId": { "type": "string", "minLength": 1 },
+        "relationshipType": {
+          "type": "string",
+          "enum": [
+            "dotted_line_manager",
+            "cross_functional_responsibility",
+            "shared_supervision",
+            "dual_reporting",
+            "temporary_project_reporting",
+            "operational_dependency",
+            "approval_relationship",
+            "matrix_relationship",
+            "external_interface_relationship",
+            "custom"
+          ]
+        },
+        "relationshipScope": { "type": "string" },
+        "reasonOrNote": { "type": "string" },
+        "confidence": { "$ref": "#/definitions/confidence" },
+        "sourceBasis": {
+          "type": "string",
+          "enum": ["admin_entered", "pasted_text", "uploaded_document", "source_evidence_candidate", "unknown"]
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,19 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://workflow.local/schemas/hierarchy-correction.json",
+  "title": "HierarchyCorrectionEvent",
+  "type": "object",
+  "additionalProperties": true,
+  "required": ["correctionId", "hierarchyDraftId", "sessionId", "caseId", "correctedBy", "correctedAt", "nodes", "secondaryRelationships"],
+  "properties": {
+    "correctionId": { "type": "string", "minLength": 1 },
+    "hierarchyDraftId": { "type": "string", "minLength": 1 },
+    "sessionId": { "type": "string", "minLength": 1 },
+    "caseId": { "type": "string", "minLength": 1 },
+    "correctedBy": { "type": "string", "minLength": 1 },
+    "correctedAt": { "type": "string", "minLength": 1 },
+    "correctionNote": { "type": "string" },
+    "nodes": { "type": "array" },
+    "secondaryRelationships": { "type": "array" }
+  }
+}

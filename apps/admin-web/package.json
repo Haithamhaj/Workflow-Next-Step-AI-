@@ -16,6 +16,7 @@
     "@workflow/core-state": "workspace:*",
     "@workflow/persistence": "workspace:*",
     "@workflow/sources-context": "workspace:*",
+    "@workflow/hierarchy-intake": "workspace:*",
     "@workflow/prompts": "workspace:*",
     "@workflow/sessions-clarification": "workspace:*",
     "@workflow/synthesis-evaluation": "workspace:*",

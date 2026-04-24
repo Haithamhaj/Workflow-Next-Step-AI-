@@ -11,6 +11,12 @@ import intakeSessionSchema from "./intake-session.schema.json" with { type: "jso
 import intakeSourceSchema from "./intake-source.schema.json" with { type: "json" };
 import websiteCrawlSchema from "./website-crawl.schema.json" with { type: "json" };
 import adminIntakeDecisionSchema from "./admin-intake-decision.schema.json" with { type: "json" };
+import hierarchyIntakeSchema from "./hierarchy-intake.schema.json" with { type: "json" };
+import hierarchyDraftSchema from "./hierarchy-draft.schema.json" with { type: "json" };
+import hierarchyCorrectionSchema from "./hierarchy-correction.schema.json" with { type: "json" };
+import approvedHierarchySnapshotSchema from "./approved-hierarchy-snapshot.schema.json" with { type: "json" };
+import hierarchyReadinessSnapshotSchema from "./hierarchy-readiness-snapshot.schema.json" with { type: "json" };
+import promptSpecSchema from "./prompt-spec.schema.json" with { type: "json" };
 
 export {
   caseConfigurationSchema,
@@ -26,4 +32,10 @@ export {
   intakeSourceSchema,
   websiteCrawlSchema,
   adminIntakeDecisionSchema,
+  hierarchyIntakeSchema,
+  hierarchyDraftSchema,
+  hierarchyCorrectionSchema,
+  approvedHierarchySnapshotSchema,
+  hierarchyReadinessSnapshotSchema,
+  promptSpecSchema,
 };
