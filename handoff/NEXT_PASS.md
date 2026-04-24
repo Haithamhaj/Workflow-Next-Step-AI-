@@ -1,63 +1,63 @@
-# Pass 2 Phase 2 — Providers, Crawling, Transcription, Embeddings
+# Next Pass — Pass 2 Phase 5
 
-## Goal
+## Official pass sequence
 
-Wire the execution layer on top of the Phase 1 contracts + SQLite persistence: provider extraction jobs actually run, website crawls fetch candidate pages, media gets transcribed, and content chunks get embedded. No UI. No hierarchy. No synthesis.
-
-After this phase Pass 2 moves from `pass2_not_complete` toward `phase_proven` for Phase 2 specifically — full Pass 2 acceptance still requires whatever subsequent phases the spec calls out.
-
----
-
-## Scope
-
-### Build
-
-- **Provider extraction runner** — consumes `ProviderExtractionJob` rows with `status="queued"`, calls the configured provider, writes `ContentChunkRecord` rows + artifact files under `data/extracted/`, updates job status (`running` → `succeeded` | `failed`) with `startedAt`/`completedAt` and error capture.
-- **Website crawl worker** — consumes `WebsiteCrawlPlan` + approved `WebsiteCrawlCandidatePage` rows, fetches page bodies into `data/crawls/`, updates page status (`approved` → `fetched` | `fetch_failed`), maintains `WebsiteSiteSummary` counters.
-- **Transcription job path** — handles media-type intake sources by dispatching to a transcription provider, output lands in `data/transcripts/`, produces `ContentChunkRecord` rows on the same content-chunk boundary as text extraction.
-- **Embedding pipeline** — consumes `EmbeddingJobRecord` rows (`status="queued"`), calls embedding provider, persists vector outputs under `data/embeddings/` referenced by the chunk, updates job status.
-- **Provider adapter boundary** — `packages/integrations` gains a small interface per provider family (extraction, transcription, embedding) so Phase 2 can swap real providers for test doubles without touching the runner code.
-- **Configuration** — environment-driven provider credentials via `.env` (never committed), read at process start.
-
-### Do not widen scope
-
-- No admin UI for any of these entities (Phase 3+)
-- No `FinalPreHierarchyReviewRecord` workflow (that record exists as a contract; no reviewer UX yet)
-- No hierarchy construction
-- No authentication
-- No cross-case or multi-tenant concerns
-- Do not modify Phase 1 contracts or schemas; if a field is missing, stop and add it to `handoff/OPEN_QUESTIONS.md`
+- **Pass 6:** Synthesis + Evaluation + Initial Package — accepted on `main`
+- **Pass 7:** Review / Issue Discussion — accepted on `main` (2026-04-22)
+- **Pass 8:** Final Package + Release — accepted on `main` (2026-04-22), commit `3171ad4`
+- **Pass 9:** Package Preview + Release Decision Surface — accepted on `main` (2026-04-23), commit `41a8232`
+- **Pass 2 Phase 1:** Intake & Context Build foundation — `phase_proven`
+- **Pass 2 Phase 2:** Intake Registration UI and Basic Admin Surfaces — `phase_proven`
+- **Pass 2 Phase 3:** Provider Integrations and Provider Job Tracking — `phase_proven`
+- **Pass 2 Phase 4:** Website Crawl Flow — `phase_proven`
 
 ---
 
-## Dependencies on prior phases
+## Status
 
-- Pass 1 (scaffolding, contracts base) — complete
-- Pass 2A (state families, core-state, core-case, cases admin surface) — complete
-- Pass 2B (RolloutState formal deferral) — complete
-- **Pass 2 Phase 1 (all 15 Pass 2 contracts + SQLite persistence + artifact storage)** — `phase_proven` (see `CURRENT_STATE.md`)
+Overall Pass 2 status: `pass2_not_complete`.
 
----
+Next implementation phase:
 
-## Required proof before Phase 2 is `phase_proven`
+**Pass 2 Phase 5 — External Audio Review Flow**
 
-1. `pnpm typecheck` — 0 errors across all packages
-2. Queue a `ProviderExtractionJob` for a fixture intake source; runner completes it; `ContentChunkRecord` rows exist; artifact file exists under `data/extracted/<intakeSourceId>/`; job transitions `queued → running → succeeded` with both timestamps set.
-3. Queue a `WebsiteCrawlPlan` with one approved candidate page; crawl worker fetches it; page status transitions `approved → fetched`; body file exists under `data/crawls/<crawlPlanId>/`; `WebsiteSiteSummary` counters reflect the fetch.
-4. Submit a media intake source; transcription job completes; transcript file exists under `data/transcripts/<intakeSourceId>/`; one or more `ContentChunkRecord` rows reference it.
-5. Queue an `EmbeddingJobRecord` for a produced chunk; pipeline completes; embedding artifact persisted under `data/embeddings/<chunkId>/`; job transitions `queued → running → succeeded`.
-6. Restart the process mid-batch: unfinished jobs remain `queued`/`running`, finished jobs remain `succeeded` — no data loss, no duplicate writes on re-run.
-7. Failure path: induce a provider error on one job; status transitions to `failed` with `error` captured; sibling jobs unaffected.
-8. Proof script `scripts/prove-pass2-phase2.mjs` prints `phase_proven` on success; `pass2_not_complete` vocabulary used until all downstream phases are also accepted.
+Do not start Phase 5 without operator approval.
 
 ---
 
-## Out of scope — stop signals
+## Phase 5 scope
 
-If any of these come up during Phase 2, stop and record in `handoff/OPEN_QUESTIONS.md`:
+Build next:
 
-- Any need to change an existing Phase 1 schema field
-- Any reviewer/approval UX requirement
-- Any hierarchy / session / package / release concern
-- Any `RolloutState` value decision
-- Any cross-case aggregation
+- external audio transcript review UI
+- admin review of raw provider transcript output
+- transcript acceptance/rejection or correction surfaces
+- persisted review decision/status for external audio transcript material
+- clear boundary that reviewed transcript material supports intake/context only
+
+Stop condition for Phase 5:
+
+- external audio transcript review can open for an audio source with a raw transcript artifact
+- admin review state persists across restart
+- accepted/corrected transcript remains source-traceable
+- raw transcript is not allowed to silently influence structured context without review
+- failures and missing provider/runtime conditions remain visible
+
+---
+
+## Explicitly not Phase 5
+
+- Structured context formation belongs to a later phase.
+- Hierarchy intake, participant rollout, synthesis/evaluation, final package, and video input remain out of scope.
+
+---
+
+## Hard rules
+
+- One pass per session
+- Local patch first
+- No broad rewrites
+- Business logic stays in domain packages, not in admin-web
+- Schema changes go through `packages/contracts`
+- Prove with the checks required by the phase definition before closing the phase
+- Update `CURRENT_STATE.md` and `NEXT_PASS.md` at the end of the accepted phase

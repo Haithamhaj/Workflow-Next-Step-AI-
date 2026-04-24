@@ -1,0 +1,95 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://workflow.local/schemas/intake-session.json",
+  "title": "IntakeSession",
+  "description": "Intake session tracking company/department entry, context formation, and pre-hierarchy review (Pass 2 spec §4).",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "sessionId",
+    "caseId",
+    "bucket",
+    "status",
+    "providerConfig",
+    "createdAt"
+  ],
+  "properties": {
+    "sessionId": { "type": "string", "minLength": 1 },
+    "caseId": { "type": "string", "minLength": 1 },
+    "bucket": {
+      "description": "Primary intake bucket: Company or Department (§4.1).",
+      "type": "string",
+      "enum": ["company", "department"]
+    },
+    "status": {
+      "description": "Intake session lifecycle status.",
+      "type": "string",
+      "enum": [
+        "intake_started",
+        "sources_received",
+        "batch_summary_ready",
+        "context_formed",
+        "use_case_selected",
+        "pre_hierarchy_review",
+        "hierarchy_started"
+      ]
+    },
+    "providerConfig": {
+      "description": "Provider configuration for extraction (§8).",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["defaultProvider", "availableProviders"],
+      "properties": {
+        "defaultProvider": { "type": "string", "enum": ["google", "openai"] },
+        "availableProviders": {
+          "type": "array",
+          "items": { "type": "string", "enum": ["google", "openai"] },
+          "minItems": 1
+        }
+      }
+    },
+    "primaryDepartment": {
+      "description": "Admin-selected primary department (§12.3). Admin authority, not AI-selected.",
+      "type": "string"
+    },
+    "useCaseSelection": {
+      "description": "Use-case selection after context formation (§13).",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["useCaseLabel", "selectedAt"],
+      "properties": {
+        "useCaseLabel": { "type": "string", "minLength": 1 },
+        "selectedAt": { "type": "string", "format": "date-time" }
+      }
+    },
+    "structuredContext": {
+      "description": "AI-transformed structured context (§12.1).",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "companyName",
+        "companyScopeSummary",
+        "domain",
+        "visibleServicesOrProducts",
+        "mainDepartment",
+        "visibleRoleFamiliesOrOrgSignals",
+        "keyContextSignalsAndRisks",
+        "confidenceAndUnknowns"
+      ],
+      "properties": {
+        "companyName": { "type": "string" },
+        "companyScopeSummary": { "type": "string" },
+        "domain": { "type": "string" },
+        "subtypeOrOperatingModel": { "type": "string" },
+        "visibleServicesOrProducts": { "type": "array", "items": { "type": "string" } },
+        "mainDepartment": { "type": "string" },
+        "subUnitOrTeam": { "type": "string" },
+        "visibleRoleFamiliesOrOrgSignals": { "type": "array", "items": { "type": "string" } },
+        "keyContextSignalsAndRisks": { "type": "array", "items": { "type": "string" } },
+        "confidenceAndUnknowns": { "type": "string" }
+      }
+    },
+    "createdAt": { "type": "string", "format": "date-time" },
+    "updatedAt": { "type": "string", "format": "date-time" }
+  }
+}

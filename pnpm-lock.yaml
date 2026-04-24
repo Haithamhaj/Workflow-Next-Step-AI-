@@ -127,6 +127,9 @@ importers:
       '@anthropic-ai/sdk':
         specifier: ^0.39.0
         version: 0.39.0
+      '@google/generative-ai':
+        specifier: ^0.24.1
+        version: 0.24.1
       '@workflow/contracts':
         specifier: workspace:*
         version: link:../contracts
@@ -217,6 +220,9 @@ importers:
       '@workflow/contracts':
         specifier: workspace:*
         version: link:../contracts
+      '@workflow/integrations':
+        specifier: workspace:*
+        version: link:../integrations
       '@workflow/persistence':
         specifier: workspace:*
         version: link:../persistence
@@ -242,6 +248,10 @@ packages:
 
   '@anthropic-ai/sdk@0.39.0':
     resolution: {integrity: sha512-eMyDIPRZbt1CCLErRCi3exlAvNkBtRe+kW5vvJyef93PmNr/clstYgHhtvmkxN82nlKgzyGPCyGxrm0JQ1ZIdg==}
+
+  '@google/generative-ai@0.24.1':
+    resolution: {integrity: sha512-MqO+MLfM6kjxcKoy0p1wRzG3b4ZZXtPI+z2IE26UogS2Cm/XHO+7gGRBh6gcJsOiIVoH93UwKvW4HdgiOZCy9Q==}
+    engines: {node: '>=18.0.0'}
 
   '@next/env@14.2.5':
     resolution: {integrity: sha512-/zZGkrTOsraVfYjGP8uM0p6r0BDT6xWpkjdVbcz66PJVSpwXX3yNiRycxAuDfBKGWBrZBXRuK/YVlkNgxHGwmA==}
@@ -727,6 +737,8 @@ snapshots:
       node-fetch: 2.7.0
     transitivePeerDependencies:
       - encoding
+
+  '@google/generative-ai@0.24.1': {}
 
   '@next/env@14.2.5': {}
 
