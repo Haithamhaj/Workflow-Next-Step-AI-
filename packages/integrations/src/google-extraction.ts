@@ -6,13 +6,24 @@
 
 import { GoogleGenerativeAI, SchemaType } from "@google/generative-ai";
 import type { ResponseSchema } from "@google/generative-ai";
-import type { IntakeSourceRole, ProviderName, StructuredContext } from "@workflow/contracts";
+import type {
+  HierarchyConfidence,
+  HierarchyGroupingLayer,
+  HierarchyNodeRecord,
+  HierarchySecondaryRelationship,
+  HierarchySecondaryRelationshipType,
+  HierarchySourceBasis,
+  IntakeSourceRole,
+  ProviderName,
+  StructuredContext,
+} from "@workflow/contracts";
 import type {
   ExtractionInput,
   ExtractionProvider,
   ExtractionResult,
   ClassificationResult,
   ContextTransformResult,
+  HierarchyDraftGenerationResult,
 } from "./extraction-provider.js";
 
 // ---------------------------------------------------------------------------
@@ -107,10 +118,72 @@ const INTAKE_SOURCE_ROLES: IntakeSourceRole[] = [
   "general_intake_source",
 ];
 
+const GROUP_LAYERS: HierarchyGroupingLayer[] = [
+  "owner_or_executive",
+  "director_layer",
+  "manager_layer",
+  "supervisor_layer",
+  "senior_individual_contributor",
+  "frontline_operational",
+  "support_role",
+  "shared_service_role",
+  "approval_or_control_role",
+  "external_interface",
+  "system_or_queue_node",
+  "committee_or_group",
+  "temporary_or_project_role",
+  "unknown",
+  "custom",
+];
+
+const SECONDARY_RELATIONSHIP_TYPES: HierarchySecondaryRelationshipType[] = [
+  "dotted_line_manager",
+  "cross_functional_responsibility",
+  "shared_supervision",
+  "dual_reporting",
+  "temporary_project_reporting",
+  "operational_dependency",
+  "approval_relationship",
+  "matrix_relationship",
+  "external_interface_relationship",
+  "custom",
+];
+
+const CONFIDENCE_VALUES: HierarchyConfidence[] = ["high", "medium", "low", "unknown"];
+const SOURCE_BASIS_VALUES: HierarchySourceBasis[] = ["admin_entered", "pasted_text", "uploaded_document", "source_evidence_candidate", "unknown"];
+
 function normalizeSourceRole(value: unknown): IntakeSourceRole {
   return typeof value === "string" && INTAKE_SOURCE_ROLES.includes(value as IntakeSourceRole)
     ? value as IntakeSourceRole
     : "general_intake_source";
+}
+
+function cleanString(value: unknown): string | undefined {
+  return typeof value === "string" && value.trim().length > 0 ? value.trim() : undefined;
+}
+
+function normalizeGroupLayer(value: unknown): HierarchyGroupingLayer {
+  return typeof value === "string" && GROUP_LAYERS.includes(value as HierarchyGroupingLayer)
+    ? value as HierarchyGroupingLayer
+    : "unknown";
+}
+
+function normalizeSecondaryType(value: unknown): HierarchySecondaryRelationshipType {
+  return typeof value === "string" && SECONDARY_RELATIONSHIP_TYPES.includes(value as HierarchySecondaryRelationshipType)
+    ? value as HierarchySecondaryRelationshipType
+    : "custom";
+}
+
+function normalizeConfidence(value: unknown): HierarchyConfidence {
+  return typeof value === "string" && CONFIDENCE_VALUES.includes(value as HierarchyConfidence)
+    ? value as HierarchyConfidence
+    : "unknown";
+}
+
+function normalizeSourceBasis(value: unknown): HierarchySourceBasis {
+  return typeof value === "string" && SOURCE_BASIS_VALUES.includes(value as HierarchySourceBasis)
+    ? value as HierarchySourceBasis
+    : "unknown";
 }
 
 export class GoogleExtractionProvider implements ExtractionProvider {
@@ -235,6 +308,85 @@ ${input.rawText.slice(0, 8000)}`;
       structuredContext: context,
       provider: "google",
       model: modelName,
+    };
+  }
+
+  async generateHierarchyDraft(input: {
+    compiledPrompt: string;
+  }): Promise<HierarchyDraftGenerationResult> {
+    const client = this.getClient();
+    if (!client) {
+      throw new Error("GOOGLE_AI_API_KEY is not configured for Pass 3 hierarchy draft generation.");
+    }
+
+    const modelName = getApiModel("GOOGLE_HIERARCHY_DRAFT_MODEL", "gemini-3.1-pro-preview");
+    const model = client.getGenerativeModel({
+      model: modelName,
+      generationConfig: {
+        responseMimeType: "application/json",
+      },
+    });
+
+    const result = await model.generateContent([
+      { text: input.compiledPrompt },
+    ]);
+    const rawText = result.response.text();
+    const parsed = JSON.parse(rawText) as {
+      nodes?: unknown[];
+      secondaryRelationships?: unknown[];
+      warnings?: unknown[];
+    };
+
+    const nodeIds = new Set<string>();
+    const nodes: HierarchyNodeRecord[] = (Array.isArray(parsed.nodes) ? parsed.nodes : []).map((raw, index) => {
+      const item = raw && typeof raw === "object" ? raw as Record<string, unknown> : {};
+      const nodeId = cleanString(item.nodeId) ?? `ai_node_${index + 1}`;
+      nodeIds.add(nodeId);
+      const groupLayer = normalizeGroupLayer(item.groupLayer);
+      return {
+        nodeId,
+        roleLabel: cleanString(item.roleLabel) ?? `Unlabeled role ${index + 1}`,
+        groupLayer,
+        customGroupLabel: groupLayer === "custom" ? cleanString(item.customGroupLabel) ?? "Custom" : cleanString(item.customGroupLabel),
+        customGroupReason: cleanString(item.customGroupReason),
+        primaryParentNodeId: cleanString(item.primaryParentNodeId),
+        personName: cleanString(item.personName),
+        employeeId: cleanString(item.employeeId),
+        internalIdentifier: cleanString(item.internalIdentifier),
+        occupantOfRole: cleanString(item.occupantOfRole),
+        candidateParticipantFlag: typeof item.candidateParticipantFlag === "boolean" ? item.candidateParticipantFlag : undefined,
+        personRoleConfidence: normalizeConfidence(item.personRoleConfidence),
+        notes: cleanString(item.notes),
+      };
+    });
+
+    const secondaryRelationships: HierarchySecondaryRelationship[] = (Array.isArray(parsed.secondaryRelationships) ? parsed.secondaryRelationships : []).flatMap((raw, index) => {
+      const item = raw && typeof raw === "object" ? raw as Record<string, unknown> : {};
+      const fromNodeId = cleanString(item.fromNodeId);
+      const relatedNodeId = cleanString(item.relatedNodeId);
+      if (!fromNodeId || !relatedNodeId || !nodeIds.has(fromNodeId) || !nodeIds.has(relatedNodeId)) return [];
+      return [{
+        relationshipId: cleanString(item.relationshipId) ?? `ai_rel_${index + 1}`,
+        fromNodeId,
+        relatedNodeId,
+        relationshipType: normalizeSecondaryType(item.relationshipType),
+        relationshipScope: cleanString(item.relationshipScope) ?? "",
+        reasonOrNote: cleanString(item.reasonOrNote) ?? "",
+        confidence: normalizeConfidence(item.confidence),
+        sourceBasis: normalizeSourceBasis(item.sourceBasis),
+      }];
+    });
+
+    const warnings = (Array.isArray(parsed.warnings) ? parsed.warnings : [])
+      .flatMap((warning) => cleanString(warning) ? [cleanString(warning)!] : []);
+
+    return {
+      nodes,
+      secondaryRelationships,
+      warnings,
+      provider: "google",
+      model: modelName,
+      rawText,
     };
   }
 }

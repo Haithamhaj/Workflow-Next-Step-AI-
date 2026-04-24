@@ -10,7 +10,7 @@
     "hierarchyIntakeId": { "type": "string", "minLength": 1 },
     "sessionId": { "type": "string", "minLength": 1 },
     "caseId": { "type": "string", "minLength": 1 },
-    "status": { "type": "string", "enum": ["manual_admin_created"] },
+    "status": { "type": "string", "enum": ["manual_admin_created", "ai_draft_succeeded", "ai_draft_failed"] },
     "nodes": {
       "type": "array",
       "items": { "$ref": "#/definitions/hierarchyNode" }
@@ -21,7 +21,14 @@
     },
     "createdBy": { "type": "string", "minLength": 1 },
     "createdAt": { "type": "string", "minLength": 1 },
-    "updatedAt": { "type": "string", "minLength": 1 }
+    "updatedAt": { "type": "string", "minLength": 1 },
+    "provider": { "type": "string", "enum": ["google", "openai"] },
+    "model": { "type": "string" },
+    "promptSpecId": { "type": "string" },
+    "compiledPrompt": { "type": "string" },
+    "rawProviderOutput": { "type": "string" },
+    "warnings": { "type": "array", "items": { "type": "string" } },
+    "errorMessage": { "type": "string" }
   },
   "definitions": {
     "groupLayer": {

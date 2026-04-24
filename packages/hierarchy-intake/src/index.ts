@@ -48,6 +48,20 @@ export interface HierarchyFoundationRepos {
   hierarchyReadinessSnapshots: HierarchyReadinessSnapshotRepository;
 }
 
+export interface HierarchyDraftProvider {
+  readonly name: "google" | "openai";
+  generateHierarchyDraft(input: {
+    compiledPrompt: string;
+  }): Promise<{
+    nodes: HierarchyNodeRecord[];
+    secondaryRelationships: HierarchySecondaryRelationship[];
+    warnings: string[];
+    provider: "google" | "openai";
+    model: string;
+    rawText: string;
+  }>;
+}
+
 export const HIERARCHY_GROUPING_LAYERS: HierarchyGroupingLayer[] = [
   "owner_or_executive",
   "director_layer",
@@ -270,6 +284,98 @@ export function saveManualHierarchyDraft(input: {
 
   repos.hierarchyIntakes.save({ ...intake, status: "manual_draft_saved", updatedAt: timestamp });
   return draft;
+}
+
+export async function generateProviderBackedHierarchyDraft(input: {
+  sessionId: string;
+  provider: HierarchyDraftProvider | null;
+  promptSpecId: string;
+  compiledPrompt: string;
+}, repos: HierarchyFoundationRepos): Promise<HierarchyDraftRecord> {
+  const intake = repos.hierarchyIntakes.findBySessionId(input.sessionId);
+  if (!intake) throw new Error("Create hierarchy intake before generating an AI hierarchy draft.");
+
+  const timestamp = now();
+  const existing = repos.hierarchyDrafts.findBySessionId(input.sessionId);
+
+  if (!input.provider) {
+    const failed: HierarchyDraftRecord = {
+      hierarchyDraftId: existing?.hierarchyDraftId ?? id("hierarchy_draft"),
+      hierarchyIntakeId: intake.hierarchyIntakeId,
+      sessionId: intake.sessionId,
+      caseId: intake.caseId,
+      status: "ai_draft_failed",
+      nodes: [],
+      secondaryRelationships: [],
+      createdBy: existing?.createdBy ?? "provider",
+      createdAt: existing?.createdAt ?? timestamp,
+      updatedAt: timestamp,
+      promptSpecId: input.promptSpecId,
+      compiledPrompt: input.compiledPrompt,
+      errorMessage: "Google hierarchy draft provider configuration is missing.",
+    };
+    const result = validateHierarchyDraftRecord(failed);
+    if (!result.ok) throw new Error(`Invalid failed hierarchy draft: ${validationMessage(result.errors)}`);
+    repos.hierarchyDrafts.save(failed);
+    return failed;
+  }
+
+  try {
+    const generated = await input.provider.generateHierarchyDraft({
+      compiledPrompt: input.compiledPrompt,
+    });
+    const validation = validateHierarchyNodes({
+      nodes: generated.nodes,
+      secondaryRelationships: generated.secondaryRelationships,
+    });
+    if (!validation.ok) {
+      throw new Error(`Provider returned invalid hierarchy draft: ${validation.errors.join(" ")}`);
+    }
+
+    const draft: HierarchyDraftRecord = {
+      hierarchyDraftId: existing?.hierarchyDraftId ?? id("hierarchy_draft"),
+      hierarchyIntakeId: intake.hierarchyIntakeId,
+      sessionId: intake.sessionId,
+      caseId: intake.caseId,
+      status: "ai_draft_succeeded",
+      nodes: cloneNodes(generated.nodes),
+      secondaryRelationships: cloneRelationships(generated.secondaryRelationships),
+      createdBy: existing?.createdBy ?? "provider",
+      createdAt: existing?.createdAt ?? timestamp,
+      updatedAt: timestamp,
+      provider: generated.provider,
+      model: generated.model,
+      promptSpecId: input.promptSpecId,
+      compiledPrompt: input.compiledPrompt,
+      rawProviderOutput: generated.rawText,
+      warnings: generated.warnings,
+    };
+    const result = validateHierarchyDraftRecord(draft);
+    if (!result.ok) throw new Error(`Invalid AI hierarchy draft: ${validationMessage(result.errors)}`);
+    repos.hierarchyDrafts.save(draft);
+    return draft;
+  } catch (error) {
+    const failed: HierarchyDraftRecord = {
+      hierarchyDraftId: existing?.hierarchyDraftId ?? id("hierarchy_draft"),
+      hierarchyIntakeId: intake.hierarchyIntakeId,
+      sessionId: intake.sessionId,
+      caseId: intake.caseId,
+      status: "ai_draft_failed",
+      nodes: [],
+      secondaryRelationships: [],
+      createdBy: existing?.createdBy ?? "provider",
+      createdAt: existing?.createdAt ?? timestamp,
+      updatedAt: timestamp,
+      provider: input.provider.name,
+      promptSpecId: input.promptSpecId,
+      compiledPrompt: input.compiledPrompt,
+      errorMessage: error instanceof Error ? error.message : String(error),
+    };
+    const result = validateHierarchyDraftRecord(failed);
+    if (!result.ok) throw new Error(`Invalid failed hierarchy draft: ${validationMessage(result.errors)}`);
+    repos.hierarchyDrafts.save(failed);
+    return failed;
+  }
 }
 
 export function approveStructuralHierarchy(input: {

@@ -3,7 +3,14 @@
  * Google is default; OpenAI is available. Admin selects; never auto-switched.
  */
 
-import type { ProviderName, StructuredContext, BatchSummaryItem, AttachmentScope, IntakeSourceRole } from "@workflow/contracts";
+import type {
+  HierarchyNodeRecord,
+  HierarchySecondaryRelationship,
+  ProviderName,
+  StructuredContext,
+  AttachmentScope,
+  IntakeSourceRole,
+} from "@workflow/contracts";
 
 export interface ExtractionResult {
   text: string;
@@ -23,6 +30,15 @@ export interface ContextTransformResult {
   structuredContext: StructuredContext;
   provider: ProviderName;
   model: string;
+}
+
+export interface HierarchyDraftGenerationResult {
+  nodes: HierarchyNodeRecord[];
+  secondaryRelationships: HierarchySecondaryRelationship[];
+  warnings: string[];
+  provider: ProviderName;
+  model: string;
+  rawText: string;
 }
 
 export interface ExtractionInput {
@@ -53,4 +69,9 @@ export interface ExtractionProvider {
     bucket: string;
     domain?: string;
   }): Promise<ContextTransformResult>;
+
+  /** Generate a Pass 3 draft hierarchy from a visible compiled PromptSpec. */
+  generateHierarchyDraft(input: {
+    compiledPrompt: string;
+  }): Promise<HierarchyDraftGenerationResult>;
 }

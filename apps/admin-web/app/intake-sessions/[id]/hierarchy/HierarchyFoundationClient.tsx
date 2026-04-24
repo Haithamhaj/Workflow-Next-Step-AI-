@@ -62,7 +62,24 @@ interface Props {
   sessionId: string;
   initialState: {
     intake?: { pastedText?: string } | null;
-    draft?: { nodes: NodeRecord[]; secondaryRelationships: SecondaryRelationship[] } | null;
+    promptSpec?: {
+      promptSpecId: string;
+      linkedModule: string;
+      purpose: string;
+      status: string;
+      version: number;
+      blocks: { blockId: string; label: string; body: string; editable: boolean }[];
+    };
+    compiledPromptPreview?: string;
+    draft?: {
+      status?: string;
+      provider?: string;
+      model?: string;
+      errorMessage?: string;
+      warnings?: string[];
+      nodes: NodeRecord[];
+      secondaryRelationships: SecondaryRelationship[];
+    } | null;
     approvedSnapshot?: { approvedSnapshotId: string; structuralApprovalOnly: true; approvalScopeNote: string } | null;
     readinessSnapshot?: {
       status: string;
@@ -141,6 +158,8 @@ export default function HierarchyFoundationClient({ sessionId, initialState }: P
       setNodes(data.nodes);
     } else {
       setState(data);
+      if (data.draft?.nodes) setNodes(data.draft.nodes);
+      if (data.draft?.secondaryRelationships) setRelationships(data.draft.secondaryRelationships);
     }
     setMessage(action);
     return data;
@@ -161,7 +180,7 @@ export default function HierarchyFoundationClient({ sessionId, initialState }: P
 
       <section className="card">
         <h3 style={{ marginTop: 0 }}>Hierarchy Intake</h3>
-        <p className="muted">Manual foundation only. AI hierarchy generation and source triage are deferred.</p>
+        <p className="muted">AI hierarchy drafts are provider-backed drafts only. Admin review/correction is required before structural approval.</p>
         <textarea
           value={pastedText}
           onChange={(event) => setPastedText(event.target.value)}
@@ -177,6 +196,46 @@ export default function HierarchyFoundationClient({ sessionId, initialState }: P
             Parse into draft rows
           </button>
         </div>
+      </section>
+
+      <section className="card">
+        <h3 style={{ marginTop: 0 }}>Provider Draft</h3>
+        <p className="muted">Uses the active visible PromptSpec. If provider execution fails, the failure is persisted and manual drafting remains available.</p>
+        <button className="btn-primary" onClick={() => post("generate-ai-draft")}>
+          Generate AI draft
+        </button>
+        {state.draft?.status ? (
+          <div style={{ marginTop: "10px" }}>
+            <p>Status: <code>{state.draft.status}</code></p>
+            {state.draft.provider ? <p>Provider: <code>{state.draft.provider}</code></p> : null}
+            {state.draft.model ? <p>Model: <code>{state.draft.model}</code></p> : null}
+            {state.draft.errorMessage ? <p style={{ color: "#f99" }}>Failure: {state.draft.errorMessage}</p> : null}
+            {state.draft.warnings?.length ? (
+              <ul>{state.draft.warnings.map((warning) => <li key={warning}>{warning}</li>)}</ul>
+            ) : null}
+          </div>
+        ) : null}
+      </section>
+
+      <section className="card">
+        <h3 style={{ marginTop: 0 }}>Active PromptSpec</h3>
+        {state.promptSpec ? (
+          <>
+            <p><code>{state.promptSpec.promptSpecId}</code> v{state.promptSpec.version} · {state.promptSpec.status}</p>
+            <div style={{ display: "grid", gap: "8px" }}>
+              {state.promptSpec.blocks.map((block) => (
+                <details key={block.blockId} open={block.blockId === "role_definition" || block.blockId === "output_schema_contract"}>
+                  <summary>{block.label}</summary>
+                  <pre style={{ whiteSpace: "pre-wrap" }}>{block.body}</pre>
+                </details>
+              ))}
+            </div>
+            <h4>Compiled Prompt Preview</h4>
+            <pre style={{ whiteSpace: "pre-wrap", maxHeight: "360px", overflow: "auto" }}>{state.compiledPromptPreview}</pre>
+          </>
+        ) : (
+          <p className="muted">No active PromptSpec loaded.</p>
+        )}
       </section>
 
       <section className="card">

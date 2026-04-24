@@ -8,11 +8,13 @@
  */
 
 import {
+  validateStructuredPromptSpec,
   validatePromptRegistration,
   type PromptRegistration,
   type PromptRole,
+  type StructuredPromptSpec,
 } from "@workflow/contracts";
-import type { PromptRecord, PromptRepository } from "@workflow/persistence";
+import type { PromptRecord, PromptRepository, StructuredPromptSpecRepository } from "@workflow/persistence";
 
 // ---------------------------------------------------------------------------
 // Re-exports — consumers should not need to double-import contracts
@@ -23,7 +25,11 @@ export type {
   PromptType,
   PromptRole,
   PromptStatus,
+  StructuredPromptSpec,
+  StructuredPromptSpecBlock,
 } from "@workflow/contracts";
+
+export const PASS3_HIERARCHY_PROMPT_MODULE = "pass3.hierarchy.draft" as const;
 
 // ---------------------------------------------------------------------------
 // registerPrompt
@@ -137,4 +143,101 @@ export function isSystemPrompt(prompt: PromptRecord): boolean {
  */
 export function isUserPrompt(prompt: PromptRecord): boolean {
   return prompt.role === "user";
+}
+
+export interface Pass3HierarchyPromptInput {
+  caseId: string;
+  sessionId: string;
+  primaryDepartment?: string;
+  selectedUseCase?: string;
+  pastedHierarchyText?: string;
+  structuredContextSummary?: string;
+}
+
+export function defaultPass3HierarchyPromptSpec(now = new Date().toISOString()): StructuredPromptSpec {
+  return {
+    promptSpecId: "promptspec_pass3_hierarchy_draft_v1",
+    linkedModule: PASS3_HIERARCHY_PROMPT_MODULE,
+    purpose: "Draft a role-first hierarchy for admin correction and structural approval in Pass 3.",
+    status: "active",
+    version: 1,
+    inputContractRef: "HierarchyIntakeRecord + optional StructuredContextRecord",
+    outputContractRef: "HierarchyDraftRecord.nodes + HierarchyDraftRecord.secondaryRelationships",
+    createdAt: now,
+    updatedAt: now,
+    blocks: [
+      {
+        blockId: "role_definition",
+        label: "Role Definition",
+        editable: true,
+        body: "You are a hierarchy drafting assistant. You produce a draft organizational hierarchy for admin review.",
+      },
+      {
+        blockId: "pass3_mission",
+        label: "Pass 3 Mission",
+        editable: true,
+        body: "Use the provided Pass 3 intake/context to draft hierarchy nodes, primary parent links, optional secondary relationships, grouping layers, and uncertainty warnings.",
+      },
+      {
+        blockId: "case_context_inputs",
+        label: "Case Context Inputs",
+        editable: true,
+        body: "Use only the supplied case id, session id, primary department, selected use case, structured context summary, and pasted/uploaded hierarchy intake text.",
+      },
+      {
+        blockId: "hierarchy_drafting_rules",
+        label: "Hierarchy Drafting Rules",
+        editable: true,
+        body: "Create role-first nodes. Use stable nodeId values. Use primaryParentNodeId only when a primary reporting parent is visible. Use the approved grouping taxonomy exactly. If custom groupLayer is used, include customGroupLabel and optional customGroupReason.",
+      },
+      {
+        blockId: "uncertainty_rules",
+        label: "Uncertainty Rules",
+        editable: true,
+        body: "When a reporting relationship, grouping layer, or secondary relationship is unclear, use unknown values and add a warning. Do not invent missing structure.",
+      },
+      {
+        blockId: "prohibitions",
+        label: "Prohibitions",
+        editable: true,
+        body: "Do not approve the hierarchy. Do not create participant targeting, rollout order, invitations, participant sessions, workflow analysis, synthesis/evaluation, or package generation. Do not treat source claims as workflow truth. Do not output email, phone, WhatsApp, preferred channel, targeting status, invitation status, or session status fields.",
+      },
+      {
+        blockId: "output_schema_contract",
+        label: "Output Schema / Contract",
+        editable: true,
+        body: "Return JSON only: {\"nodes\":[{\"nodeId\":\"string\",\"roleLabel\":\"string\",\"groupLayer\":\"approved_taxonomy_value\",\"customGroupLabel\":\"optional\",\"customGroupReason\":\"optional\",\"primaryParentNodeId\":\"optional\",\"personName\":\"optional\",\"employeeId\":\"optional\",\"internalIdentifier\":\"optional\",\"occupantOfRole\":\"optional\",\"candidateParticipantFlag\":false,\"personRoleConfidence\":\"high|medium|low|unknown\",\"notes\":\"optional\"}],\"secondaryRelationships\":[{\"relationshipId\":\"string\",\"fromNodeId\":\"string\",\"relatedNodeId\":\"string\",\"relationshipType\":\"approved_secondary_relationship_value\",\"relationshipScope\":\"string\",\"reasonOrNote\":\"string\",\"confidence\":\"high|medium|low|unknown\",\"sourceBasis\":\"pasted_text|uploaded_document|admin_entered|source_evidence_candidate|unknown\"}],\"warnings\":[\"string\"]}.",
+      },
+    ],
+  };
+}
+
+export function ensureActivePass3HierarchyPromptSpec(repo: StructuredPromptSpecRepository): StructuredPromptSpec {
+  const existing = repo.findActiveByLinkedModule(PASS3_HIERARCHY_PROMPT_MODULE);
+  if (existing) return existing;
+  const spec = defaultPass3HierarchyPromptSpec();
+  const result = validateStructuredPromptSpec(spec);
+  if (!result.ok) {
+    const messages = result.errors.map((e) => e.message ?? String(e)).join("; ");
+    throw new Error(`Invalid default Pass 3 PromptSpec: ${messages}`);
+  }
+  repo.save(spec);
+  return spec;
+}
+
+export function compileStructuredPromptSpec(
+  spec: StructuredPromptSpec,
+  input: Pass3HierarchyPromptInput,
+): string {
+  const sections = spec.blocks.map((block) => `## ${block.label}\n${block.body}`).join("\n\n");
+  const context = [
+    `caseId: ${input.caseId}`,
+    `sessionId: ${input.sessionId}`,
+    `primaryDepartment: ${input.primaryDepartment ?? "unknown"}`,
+    `selectedUseCase: ${input.selectedUseCase ?? "unknown"}`,
+    `structuredContextSummary:\n${input.structuredContextSummary ?? "not provided"}`,
+    `hierarchyIntakeText:\n${input.pastedHierarchyText ?? "not provided"}`,
+  ].join("\n\n");
+
+  return `${sections}\n\n## Runtime Case Context\n${context}`;
 }

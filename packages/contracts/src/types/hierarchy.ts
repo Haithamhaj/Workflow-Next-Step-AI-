@@ -96,12 +96,19 @@ export interface HierarchyDraftRecord {
   hierarchyIntakeId: string;
   sessionId: string;
   caseId: string;
-  status: "manual_admin_created";
+  status: "manual_admin_created" | "ai_draft_succeeded" | "ai_draft_failed";
   nodes: HierarchyNodeRecord[];
   secondaryRelationships: HierarchySecondaryRelationship[];
   createdBy: string;
   createdAt: string;
   updatedAt: string;
+  provider?: "google" | "openai";
+  model?: string;
+  promptSpecId?: string;
+  compiledPrompt?: string;
+  rawProviderOutput?: string;
+  warnings?: string[];
+  errorMessage?: string;
 }
 
 export interface HierarchyCorrectionEvent {

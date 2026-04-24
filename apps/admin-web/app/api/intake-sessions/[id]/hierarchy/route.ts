@@ -4,12 +4,18 @@ import {
   calculateHierarchyReadinessSnapshot,
   createPastedHierarchyIntake,
   createUploadedDocumentHierarchyIntake,
+  generateProviderBackedHierarchyDraft,
   getHierarchyFoundationState,
   parsePastedHierarchyText,
   saveManualHierarchyDraft,
   type HierarchyNodeRecord,
   type HierarchySecondaryRelationship,
 } from "@workflow/hierarchy-intake";
+import { providerRegistry } from "@workflow/integrations";
+import {
+  compileStructuredPromptSpec,
+  ensureActivePass3HierarchyPromptSpec,
+} from "@workflow/prompts";
 import { store } from "../../../../../lib/store";
 
 export const dynamic = "force-dynamic";
@@ -26,7 +32,34 @@ function repos() {
 }
 
 function payload(sessionId: string) {
-  return getHierarchyFoundationState(sessionId, repos());
+  const foundation = getHierarchyFoundationState(sessionId, repos());
+  const promptSpec = ensureActivePass3HierarchyPromptSpec(store.structuredPromptSpecs);
+  return {
+    ...foundation,
+    promptSpec,
+    compiledPromptPreview: compileStructuredPromptSpec(promptSpec, promptInput(sessionId)),
+  };
+}
+
+function promptInput(sessionId: string) {
+  const session = store.intakeSessions.findById(sessionId);
+  const intake = store.hierarchyIntakes.findBySessionId(sessionId);
+  const structuredContext = store.structuredContexts.findBySessionId(sessionId);
+  return {
+    caseId: session?.caseId ?? "unknown",
+    sessionId,
+    primaryDepartment: session?.primaryDepartment,
+    selectedUseCase: session?.useCaseSelection?.useCaseLabel,
+    pastedHierarchyText: intake?.pastedText,
+    structuredContextSummary: structuredContext?.context
+      ? [
+        `Company: ${structuredContext.context.companyName}`,
+        `Department: ${structuredContext.context.mainDepartment}`,
+        `Use case: ${structuredContext.context.selectedUseCase}`,
+        `Department context: ${structuredContext.context.departmentContextSummary}`,
+      ].join("\n")
+      : undefined,
+  };
 }
 
 export async function GET(
@@ -87,6 +120,19 @@ export async function POST(
       return NextResponse.json({ ...payload(params.id), draft }, { status: 201 });
     }
 
+    if (action === "generate-ai-draft") {
+      const promptSpec = ensureActivePass3HierarchyPromptSpec(store.structuredPromptSpecs);
+      const compiledPrompt = compileStructuredPromptSpec(promptSpec, promptInput(params.id));
+      const draft = await generateProviderBackedHierarchyDraft({
+        sessionId: params.id,
+        provider: providerRegistry.getExtractionProvider("google"),
+        promptSpecId: promptSpec.promptSpecId,
+        compiledPrompt,
+      }, repos());
+      const status = draft.status === "ai_draft_failed" ? 424 : 201;
+      return NextResponse.json({ ...payload(params.id), draft }, { status });
+    }
+
     if (action === "approve-structural-snapshot") {
       const approvedSnapshot = approveStructuralHierarchy({
         sessionId: params.id,
@@ -107,6 +153,7 @@ export async function POST(
         "create-uploaded-document-intake",
         "parse-pasted-text",
         "save-manual-draft",
+        "generate-ai-draft",
         "approve-structural-snapshot",
         "calculate-readiness",
       ],
