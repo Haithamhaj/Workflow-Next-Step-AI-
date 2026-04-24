@@ -359,6 +359,13 @@ ${input.rawText.slice(0, 8000)}`;
         notes: cleanString(item.notes),
       };
     });
+    for (const node of nodes) {
+      const parentId = node.primaryParentNodeId;
+      if (!parentId) continue;
+      if (parentId.toLowerCase() === "unknown" || parentId === node.nodeId || !nodeIds.has(parentId)) {
+        delete node.primaryParentNodeId;
+      }
+    }
 
     const secondaryRelationships: HierarchySecondaryRelationship[] = (Array.isArray(parsed.secondaryRelationships) ? parsed.secondaryRelationships : []).flatMap((raw, index) => {
       const item = raw && typeof raw === "object" ? raw as Record<string, unknown> : {};
