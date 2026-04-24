@@ -7,6 +7,9 @@ import evaluationRecordSchema from "./evaluation-record.schema.json" with { type
 import initialPackageRecordSchema from "./initial-package-record.schema.json" with { type: "json" };
 import reviewIssueRecordSchema from "./review-issue-record.schema.json" with { type: "json" };
 import finalPackageRecordSchema from "./final-package-record.schema.json" with { type: "json" };
+import intakeSessionSchema from "./intake-session.schema.json" with { type: "json" };
+import intakeSourceSchema from "./intake-source.schema.json" with { type: "json" };
+import websiteCrawlSchema from "./website-crawl.schema.json" with { type: "json" };
 
 export {
   caseConfigurationSchema,
@@ -18,4 +21,7 @@ export {
   initialPackageRecordSchema,
   reviewIssueRecordSchema,
   finalPackageRecordSchema,
+  intakeSessionSchema,
+  intakeSourceSchema,
+  websiteCrawlSchema,
 };

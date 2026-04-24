@@ -2,7 +2,17 @@
 
 **Accepted baseline: Pass 9 (Package Preview + Release Decision Surface), merged to `main` 2026-04-23, commit `41a8232`.**
 
-Prior accepted baseline on `main`: Pass 8 (Final Package + Release), commit `3171ad4`.
+Pass 2 (Intake & Context Build) is active on top of the Pass 9 baseline.
+
+Phase 1 status: `phase_proven`.
+
+Phase 2 status: `phase_proven`.
+
+Phase 3 status: `phase_proven`.
+
+Phase 4 status: `phase_proven`.
+
+Overall Pass 2 status: `pass2_not_complete`.
 
 ---
 
@@ -15,98 +25,121 @@ Prior accepted baseline on `main`: Pass 8 (Final Package + Release), commit `317
 
 ---
 
-## What exists
+## What exists (all prior passes unchanged)
 
-### Repo root
-- pnpm 9.12.0 workspace; `apps/*`, `packages/*`
-- Node >= 20 engine constraint
-- TypeScript 5.4.5, ESM (`"type": "module"` everywhere), composite builds with project references
-- `tsconfig.base.json`: strict, `noUncheckedIndexedAccess`, `resolveJsonModule`, Bundler resolution
-- Scripts: `dev`, `build`, `build:contracts`, `typecheck`, `clean`
-
-### `packages/contracts` (extended Pass 8)
-- All prior passes' schemas/types unchanged
-- New Pass 8 schema: `src/schemas/final-package-record.schema.json`
-  - `additionalProperties: false` at top level and on `gapLayer`
-  - Required top-level: `packageId`, `caseId`, `packageType`, `packageState`, `packageReleaseState`, `packageGeneratedAt`, `finalizationBasis`, `adminApprovalStatus`, `finalWorkflowReality`, `finalSourceOrReferenceOutput`, `finalGapAnalysis`, `improvementTargetsOrFinalRecommendations`, `uiOverviewLayer`, `outputDirection`, `gapLayer`
-  - Optional: `improvedOrTargetStateWorkflow`, `initialPackageId`, `evaluationId`
-  - `gapLayer`: `closedItems[]`, `nonBlockingRemainingItems[]`, `laterReviewItems[]`
-- New Pass 8 types: `src/types/final-package.ts`
-  - `AdminApprovalStatus` const enum: `not_approved | approved` (§25.16 — kept separate from `packageReleaseState`)
-  - `OutputDirection` const enum: four values (§29.8.4)
-  - `FinalPackageGapLayer` interface (§29.8.5)
-  - `FinalPackageRecord` interface (§29.8.1–§29.8.5)
-- `src/index.ts` exports `validateFinalPackageRecord`, `AdminApprovalStatus`, `OutputDirection`, `FinalPackageGapLayer`, `FinalPackageRecord`
-
-### `packages/core-state` (extended Pass 8)
-- All prior pass transitions unchanged
-- New `ReleaseStateTransitions` (§28.16): linear `not_releasable → pending_admin_approval → approved_for_release → released`, `pending_admin_approval` cannot be skipped
-- New `isValidReleaseTransition(from: ReleaseState, to: ReleaseState): boolean`
-
-### `packages/persistence` (extended Pass 8)
-- All prior pass entities/repositories unchanged
-- New `StoredFinalPackageRecord extends FinalPackageRecord` with `createdAt`, `updatedAt`
-- New `FinalPackageRepository`: `save`, `findById`, `findByCaseId`, `findAll`
-- New `InMemoryFinalPackageRepository` (deep-copies `gapLayer` arrays on `save`)
-- `createInMemoryStore()` now includes `finalPackages`
-
-### `packages/packages-output` (extended Pass 8)
-- Re-exports `AdminApprovalStatus`, `OutputDirection`, `FinalPackageRecord`, `FinalPackageGapLayer` from `@workflow/contracts`
-- Re-exports `StoredFinalPackageRecord`, `FinalPackageRepository` from `@workflow/persistence`
-- `FinalPackageOk`, `FinalPackageError`, `FinalPackageResult` types
-- `createFinalPackage(payload, repo)` — validates with `validateFinalPackageRecord`, rejects duplicates, stamps `createdAt`/`updatedAt`
-- `getFinalPackage(packageId, repo)`
-- `listFinalPackages(repo)`
-- `listFinalPackagesByCaseId(caseId, repo)`
-- `updateFinalPackage(packageId, updates, repo)` — strips `createdAt`/`updatedAt` before re-validation (avoids `additionalProperties` rejection), re-validates, updates `updatedAt`
-
-### `apps/admin-web` (extended Pass 8)
-- All prior pass surfaces unchanged
-- New API routes:
-  - `app/api/final-packages/route.ts`: `GET /api/final-packages`, `POST /api/final-packages`
-  - `app/api/final-packages/[id]/route.ts`: `GET /api/final-packages/:id`
-  - `app/api/final-packages/[id]/release/route.ts`: `POST /api/final-packages/:id/release` — validates `toState`, enforces `isValidReleaseTransition`, returns 400 with §28.16 citation on invalid transition
-- New UI pages:
-  - `app/final-packages/page.tsx` — list table with `data-testid="final-package-list"`
-  - `app/final-packages/new/page.tsx` — creation form (all §29.8 required fields; gap layer one-per-line textareas; checkbox for admin approval; `packageType` hardcoded)
-  - `app/final-packages/[id]/page.tsx` — detail server component (metadata, §24.13 structural separation section, §29.8.2 content sections, §29.8.5 gap layer)
-  - `app/final-packages/[id]/FinalPackageDetailClient.tsx` — `data-testid="release-state-panel"` with linear next-state buttons and §28.16 note; `data-testid="admin-approval-panel"` read-only with §25.16 note; packageState display; outputDirection display
-- `components/Nav.tsx` — added `{ href: "/final-packages", label: "Final packages" }` after `/issues`
-
-### `apps/admin-web` (extended Pass 9 — Package Preview + Release Decision Surface)
-
-Pass 9 is the main client-facing delivery surface of the product. It is a presentation-layer pass over accepted Pass 8 package logic. No new mechanics were introduced.
-
-- **Global shell correction:** `layout.tsx` title/description and `Nav.tsx` heading changed from "Workflow Admin" / "admin shell" to "Workflow" on all pages
-- **Package surface library:** `lib/package-surface.ts` — `dedupedTitle()`, `buildPackageListItem()`, `buildPackageDetail()` for list/detail generation; `adminReleaseHref` set to `undefined` (no admin release link on client surface)
-- **API aggregation routes:**
-  - `app/api/packages/route.ts`: `GET /api/packages` — aggregates initial + final packages into unified list
-  - `app/api/packages/[id]/route.ts`: `GET /api/packages/:id` — resolves single package by ID
-- **Package list page:** `app/packages/page.tsx` — product-context-strip with domain/department badges, package-summary-row cards, no admin-centric links
-- **Package detail page:** `app/packages/[id]/page.tsx` — product-context-strip with domain/department/subDepartment/caseId, overview + workflow tabs
-- **Package client view:** `app/packages/[id]/PackageClientView.tsx` — tabs (preview/workflow/comparison/status), "Export package" link, no admin release controls
-- **Package download:** `app/packages/[id]/download/route.ts` — JSON download surface
-- **CSS:** `globals.css` — package surface classes: `.product-context-strip`, `.package-summary-row`, `.package-overview-card`, `.package-copy-grid`, `.workflow-visual-stack`, `.package-pill`, responsive breakpoints
-
-### Remaining placeholder packages
-- `packages/domain-support`
-- `packages/shared-utils`
+All Pass 6–9 packages, routes, and UI surfaces remain unchanged. See git history for full details.
 
 ---
 
-## What is proven (Pass 9 — committed 2026-04-23, `41a8232`)
+## What Pass 2 Phase 1 added
 
-Pass 8 proofs remain valid (see Pass 8 proof table in git history). Pass 9 additional proofs:
+Phase 1 landed the intake foundation only:
+
+- Pass 2 contract entities
+- Draft-07 schemas
+- validators
+- durable SQLite persistence
+- local artifact folders
+- proof script
+- handoff updates
+
+Phase 1 proof reported by the coding agent: `pnpm prove:pass2-phase1` passed 35/35 checks, including validator round-trips, SQLite save/restart round-trips, and write-phase smoke proof.
+
+Next required phase by the live Pass 2 Build Spec:
+
+**Pass 2 Phase 2 — Intake Registration UI and Basic Admin Surfaces**
+
+---
+
+## What Pass 2 Phase 2 added
+
+Phase 2 exposes the durable intake foundation through basic admin surfaces:
+
+- intake/context start and session list page
+- company/department primary bucket selection
+- source registration for document, website URL, manual note, image, and audio
+- manual note save flow as an operator-origin source
+- persisted intake source list and status view backed by `packages/persistence` SQLite intake repositories
+- persisted batch summary with AI suggestion placeholders marked `not_generated_yet`
+- source detail shell showing stored metadata and deferred provider outputs
+- explicit deferred responses for provider extraction, structured context generation, website crawling, and hierarchy draft routes
+- admin-web uses a thin store helper that calls `createSQLiteIntakeRepositories()` from `@workflow/persistence`; it does not own intake session/source persistence
+
+Phase 2 does not expose video input.
+
+---
+
+## What Pass 2 Phase 3 added
+
+Phase 3 adds provider integration foundations and provider job tracking without starting later flows:
+
+- provider-agnostic extraction, STT, embedding, and intake-suggestion interfaces in `packages/integrations`
+- Google extraction/OCR provider path gated by `GOOGLE_AI_API_KEY`
+- Google Speech-to-Text provider path gated by `GOOGLE_STT_API_KEY`, with configurable `GOOGLE_STT_MODEL` defaulting to `chirp`
+- Google embedding provider path gated by `GOOGLE_AI_API_KEY`, with configurable `GOOGLE_EMBEDDING_MODEL`
+- SQLite-backed provider job, embedding job, text artifact, and AI intake suggestion repositories in `packages/persistence`
+- source-level provider extraction action and status API
+- source-role intake suggestion action and persisted `AIIntakeSuggestion` records
+- embedding job API and persisted `EmbeddingJobRecord` records
+- provider status API showing configured availability and persisted jobs
+- source detail display for provider jobs, artifacts, and source-role intake triage suggestions
+
+Missing provider credentials produce visible failed jobs. They are not converted into success.
+
+Phase 3 does not start website crawling, crawl approval, transcript review UI, structured context generation UI, hierarchy, rollout, synthesis/evaluation, final package, or video.
+
+---
+
+## What Pass 2 Phase 4 added
+
+Phase 4 builds the website crawl flow without starting later Pass 2 phases:
+
+- website URL source integration using existing persisted `website_url` intake sources
+- Crawl4AI adapter boundary in `packages/integrations`; missing `CRAWL4AI_URL` now fails visibly instead of returning stub content
+- SQLite-backed crawl plan, approval, page-content, site-summary, and content-chunk repositories in `packages/persistence`
+- candidate-page discovery orchestration in `packages/sources-context`, including default max pages `20` and admin options `20`, `30`, `40`, `50`
+- priority/exclusion classification for homepage, about, services/solutions, departments/teams/org, policies/terms/SLA, contact, projects/case studies/portfolio, clients/customers/partners, and default exclusions/lower priority for login/signup, privacy/cookie, blog/news, careers/jobs, media galleries, query-param duplicates, and likely duplicate language variants
+- admin approval/edit flow with persisted `WebsiteCrawlApproval`
+- approved crawl execution through the Crawl4AI adapter only, with persisted `ProviderExtractionJob` status
+- page-content drill-down shell; page-level crawl content is not shown by default on source detail
+- chunk creation and Google embedding-job creation for crawl chunks when Crawl4AI returns content
+- provider status shows Crawl4AI runtime config separately from Google embedding config
+
+`GOOGLE_EMBEDDING_MODEL` is configured as `gemini-embedding-2`. The Google key is not recorded in handoff files.
+
+In the local proof environment, Crawl4AI runtime was intentionally unavailable (`CRAWL4AI_URL` unset), so candidate discovery and approved crawl failed visibly with persisted errors. Because no crawl pages were produced, no crawl chunks or crawl-chunk embedding jobs were created in that proof run.
+
+Phase 4 does not start audio transcript review UI, structured context generation, hierarchy intake, participant rollout, synthesis/evaluation, final package, or video input.
+
+---
+
+## What is proven
 
 | Check | Result |
 |---|---|
+| `pnpm prove:pass2-phase1` | passed 35/35 checks |
 | `pnpm build:contracts` | succeeds |
-| `pnpm typecheck` | 0 errors across all workspace projects |
+| `pnpm typecheck` | succeeds |
 | `pnpm build` | succeeds |
-| `curl /packages` | Renders package list with `<title>Workflow</title>`, `<h1>Workflow</h1>`, `product-context-strip`, `package-summary-row` — zero banned strings |
-| `curl /packages/:id` | Renders package detail with product-context-strip, "Export package", package overview — zero banned strings |
-| No "Workflow Admin" or "admin shell" wording on any page | Confirmed via curl + rg |
-| No new routes beyond surface routes listed above | Confirmed via `git diff --name-only` |
+| Phase 2 SQLite persistence proof | document, website URL, manual note, image, and audio source records registered through admin API, persisted to `apps/admin-web/data/intake-phase2.sqlite`, server restarted, and records reloaded through `packages/persistence` SQLite repositories |
+| Phase 2 batch/detail proof | batch summary and source detail pages return 200 for persisted records |
+| Phase 2 exclusion proof | video registration rejected; provider, extraction, crawl, structured context, and hierarchy routes return deferred 501 responses |
+| Phase 2 persistence-boundary correction | app-local file-backed intake metadata store removed; no `intake-file-store` or JSON metadata persistence remains in admin-web |
+| Phase 3 provider job proof | document extraction, image OCR, audio transcription, and website URL scaffold jobs created and persisted with statuses `failed` or `skipped` |
+| Phase 3 SQLite restart proof | provider jobs, embedding job, and AI intake suggestion reloaded after app restart through SQLite-backed persistence |
+| Phase 3 credential-gated provider proof | document/OCR failed visibly for missing `GOOGLE_AI_API_KEY`; audio transcription failed visibly for missing `GOOGLE_STT_API_KEY`; embedding failed visibly for missing `GOOGLE_AI_API_KEY`; source-role suggestion failed visibly for missing active LLM provider config |
+| Phase 3 boundary proof | website crawl route remains deferred to Phase 4; structured context route remains deferred; hierarchy route remains deferred; video remains rejected |
+| Phase 4 website source proof | `website_url` intake source `isrc_phase4_site` registered through existing intake source API |
+| Phase 4 crawl plan proof | `POST /api/website-crawls` created persisted plan `crawlplan_2386e6df-c83c-48f8-9986-ba060c9ab9e5` with default `maxPages: 20`; discovery failed visibly with `CRAWL4AI_URL is not configured for website candidate discovery.` |
+| Phase 4 max-page proof | `GET /api/website-crawls?sourceId=isrc_phase4_site` returned `defaultMaxPages: 20` and `maxPageOptions: [20,30,40,50]`; admin page rendered all four options |
+| Phase 4 pre-approval proof | `POST /api/website-crawls/.../execute` before approval returned `409` with `Website crawl cannot run before admin approval is persisted.` |
+| Phase 4 approval proof | `PATCH /api/website-crawls/...` persisted `WebsiteCrawlApproval` for `https://example.com` and status `approved` |
+| Phase 4 approved crawl proof | approved execution returned `424` with persisted failed `ProviderExtractionJob` provider `crawl4ai`, kind `website_crawl`, status `failed`, error `CRAWL4AI_URL is not configured for approved website crawling.` |
+| Phase 4 SQLite restart proof | after app restart using the same SQLite path, `GET /api/website-crawls/...` reloaded the crawl plan, approval, failed crawl job, `pageCount: 0`, `chunkCount: 0`, and no embedding jobs |
+| Phase 4 admin display proof | source detail shows crawl status and hides page-level content by default; crawl approval page shows candidates/approval controls; drill-down page is the only page-level content surface |
+| Phase 4 Google embedding config proof | `GET /api/provider-status` reported Google embeddings configured with model `gemini-embedding-2`; no missing Google key/model was reported |
+| Phase 4 exclusion proof | video registration still rejected; no audio transcript review UI, structured context generation, hierarchy, rollout, synthesis/evaluation, final package, or video work was started |
+| All prior pass proofs (6–9) | Still valid — unchanged |
 
 ---
 
@@ -120,32 +153,12 @@ Pass 8 proofs remain valid (see Pass 8 proof table in git history). Pass 9 addit
 | OQ-004 | §19.6–§19.9 peer-level enrichment trigger ordering not literal in spec. | 2026-04-22 |
 | OQ-005 | §21.4 conditional-section inclusion triggers not literal. | 2026-04-22 |
 
-Pass 8 introduced no new blocking governance questions.
-
 ---
-
-## What is intentionally placeholder
-
-| Item | Location | Deferred to |
-|---|---|---|
-| `RolloutState` values | `packages/contracts/src/types/states.ts` | Indefinite — formal deferral |
-| Automated synthesis enrichment (§19.6–§19.9) | `packages/synthesis-evaluation/` | Deferred pending OQ-004 |
-| §20.10 outcome derivation | `packages/synthesis-evaluation/` | Intentionally not implemented — outcome remains operator-supplied |
-| §21.4 conditional-section automation | `packages/packages-output/` | Deferred pending OQ-005 |
-| `packages/domain-support` body | `packages/domain-support/src/index.ts` | Later pass |
-| `packages/shared-utils` body | `packages/shared-utils/src/index.ts` | Later pass |
-
----
-
-## Output formalization direction (adopted 2026-04-22)
-
-Output formalization for client-facing wording, document naming, section-label normalization, and enterprise-safe final deliverable presentation has been adopted as a non-governing enhancement direction. This does not alter mechanics, state logic, package eligibility, review/release gates, or governance contracts. Prompt reinforcement (rewriting or rebuilding prompt-chain logic) is deferred and belongs to a separate later prompt-rebuild/analysis-improvement track.
-
-Pass 9 delivered the main client-facing delivery surface of the product. It is a presentation-layer pass built on accepted Pass 8 package logic and introduced no new mechanics.
 
 ## What has NOT been built
 
-- Real database persistence
 - Authentication / authorization
-- Python sidecar
-- CI / automated tests
+- Phase 5 External Audio Review Flow
+- Structured context generation
+- Hierarchy intake
+- Automated tests / CI

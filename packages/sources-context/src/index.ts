@@ -27,6 +27,64 @@ export type {
 } from "@workflow/contracts";
 
 // ---------------------------------------------------------------------------
+// Pass 2 — Intake & Context Build domain logic
+// ---------------------------------------------------------------------------
+
+export {
+  createIntakeSession,
+  getIntakeSession,
+  listIntakeSessionsByCase,
+  updateIntakeSessionStatus,
+  setStructuredContext,
+  setPrimaryDepartment,
+  selectUseCase,
+} from "./intake-session.js";
+
+export {
+  registerIntakeSource,
+  getIntakeSource,
+  listIntakeSourcesBySession,
+  updateIntakeSourceStatus,
+  updateIntakeSourceExtractedText,
+  buildBatchSummary,
+} from "./intake-source.js";
+
+export {
+  createCrawlSession,
+  getCrawlSession,
+  setDiscoveredPages,
+  approveCrawlPages,
+  setCrawlStatus,
+  setSiteSummary,
+} from "./intake-crawl.js";
+
+export {
+  formStructuredContext,
+  parseHierarchyDraft,
+} from "./context-formation.js";
+export type {
+  ContextTransformProvider,
+  ContextFormationResult,
+  HierarchyDraftResult,
+} from "./context-formation.js";
+
+export {
+  runProviderExtractionJob,
+  runEmbeddingJob,
+  runAIIntakeSuggestionJob,
+} from "./provider-jobs.js";
+export type { ProviderJobRepos } from "./provider-jobs.js";
+
+export {
+  createWebsiteCrawlPlan,
+  approveWebsiteCrawlPlan,
+  runApprovedWebsiteCrawl,
+  DEFAULT_WEBSITE_CRAWL_MAX_PAGES,
+  WEBSITE_CRAWL_MAX_PAGE_OPTIONS,
+} from "./website-crawl-flow.js";
+export type { WebsiteCrawlFlowRepos } from "./website-crawl-flow.js";
+
+// ---------------------------------------------------------------------------
 // registerSource
 // Validates the incoming payload against the SourceRegistration contract,
 // then writes a Source record (with registeredAt timestamp) to the repo.

@@ -1,0 +1,78 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://workflow.local/schemas/intake-source.json",
+  "title": "IntakeSource",
+  "description": "Individual source within an intake session. Tracks upload, status, and AI suggestions (Pass 2 spec §5, §6, §7).",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "sourceId",
+    "sessionId",
+    "caseId",
+    "inputType",
+    "bucket",
+    "status",
+    "createdAt"
+  ],
+  "properties": {
+    "sourceId": { "type": "string", "minLength": 1 },
+    "sessionId": { "type": "string", "minLength": 1 },
+    "caseId": { "type": "string", "minLength": 1 },
+    "inputType": {
+      "description": "Official input type for this slice (§4.3).",
+      "type": "string",
+      "enum": ["document", "website_url", "manual_note", "image", "audio", "video"]
+    },
+    "bucket": {
+      "description": "Primary intake bucket this source entered under (§4.1).",
+      "type": "string",
+      "enum": ["company", "department"]
+    },
+    "status": {
+      "description": "Minimum status set (§5.2).",
+      "type": "string",
+      "enum": ["uploaded", "stored", "extracting", "read", "failed", "pending_analysis", "needs_review"]
+    },
+    "displayName": { "type": "string" },
+    "fileName": { "description": "Original file name for uploaded sources.", "type": "string" },
+    "fileSize": { "description": "File size in bytes for uploaded sources.", "type": "number" },
+    "mimeType": { "description": "MIME type for uploaded sources.", "type": "string" },
+    "websiteUrl": { "description": "URL for website_url input type.", "type": "string" },
+    "noteText": { "description": "Raw text for manual_note input type (§11).", "type": "string" },
+    "noteOrigin": {
+      "description": "How the manual note was entered (§11.1).",
+      "type": "string",
+      "enum": ["typed_text", "live_stt"]
+    },
+    "attachmentScope": {
+      "description": "Flexible attachment scope (§7).",
+      "type": "string",
+      "enum": ["company_level", "department_level", "team_unit_level", "role_level", "person_level", "shared", "unknown"]
+    },
+    "aiSuggestedType": { "description": "AI-suggested functional type (§7).", "type": "string" },
+    "aiSuggestedScope": {
+      "description": "AI-suggested scope (§7).",
+      "type": "string",
+      "enum": ["company_level", "department_level", "team_unit_level", "role_level", "person_level", "shared", "unknown"]
+    },
+    "aiConfidence": {
+      "description": "AI confidence level (§7).",
+      "type": "string",
+      "enum": ["high", "medium", "low"]
+    },
+    "aiReason": { "description": "Short reason for AI suggestion (§7).", "type": "string" },
+    "extractedText": { "description": "Extracted text content after processing.", "type": "string" },
+    "adminOverride": {
+      "description": "Admin override of AI suggestions (§7).",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "classification": { "type": "string" },
+        "scope": { "type": "string" },
+        "overriddenAt": { "type": "string", "format": "date-time" }
+      }
+    },
+    "createdAt": { "type": "string", "format": "date-time" },
+    "updatedAt": { "type": "string", "format": "date-time" }
+  }
+}

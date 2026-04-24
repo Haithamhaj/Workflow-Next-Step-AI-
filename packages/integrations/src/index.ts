@@ -1,2 +1,13 @@
 export const INTEGRATIONS_PACKAGE = "@workflow/integrations" as const;
 export { generateEvaluationInterpretation } from "./evaluation-interpretation.js";
+export type { ExtractionInput, ExtractionProvider, ExtractionResult, ClassificationResult, ContextTransformResult } from "./extraction-provider.js";
+export { GoogleExtractionProvider } from "./google-extraction.js";
+export { OpenAIExtractionProvider } from "./openai-extraction.js";
+export type { CrawlProvider, DiscoveredPage, CrawlPageResult } from "./crawl-provider.js";
+export { Crawl4AIAdapter, isCrawl4AILive } from "./crawl4ai-adapter.js";
+export type { STTProvider, STTResult } from "./stt-provider.js";
+export type { EmbeddingProvider, EmbeddingResult } from "./embedding-provider.js";
+export { GoogleEmbeddingProvider, defaultGoogleEmbeddingModel } from "./google-embedding.js";
+export { GoogleSpeechToTextProvider, defaultGoogleSTTModel } from "./google-stt.js";
+export { providerRegistry, EnvProviderRegistry } from "./provider-registry.js";
+export type { ProviderAvailability, ProviderRegistry } from "./provider-registry.js";

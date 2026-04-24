@@ -11,6 +11,9 @@ export {
   initialPackageRecordSchema,
   reviewIssueRecordSchema,
   finalPackageRecordSchema,
+  intakeSessionSchema,
+  intakeSourceSchema,
+  websiteCrawlSchema,
 } from "./schemas/index.js";
 
 import { makeValidator } from "./validate.js";
@@ -24,6 +27,9 @@ import {
   initialPackageRecordSchema,
   reviewIssueRecordSchema,
   finalPackageRecordSchema,
+  intakeSessionSchema,
+  intakeSourceSchema,
+  websiteCrawlSchema,
 } from "./schemas/index.js";
 import type { CaseConfiguration } from "./types/case-configuration.js";
 import type { SourceRegistration } from "./types/source-registration.js";
@@ -34,6 +40,7 @@ import type { EvaluationRecord } from "./types/evaluation-record.js";
 import type { InitialPackageRecord } from "./types/initial-package-record.js";
 import type { ReviewIssueRecord } from "./types/review-issues.js";
 import type { FinalPackageRecord } from "./types/final-package.js";
+import type { IntakeBucket, IntakeInputType, IntakeSourceStatus, AttachmentScope, CrawlPagePriority, CrawlSessionStatus, ProviderName, AudioMode, HierarchyInputMethod, IntakeSession, IntakeSource, WebsiteCrawlSession } from "./types/intake.js";
 import {
   SessionState,
   PackageState,
@@ -87,3 +94,12 @@ export const validateReleaseState = makeValidator<ReleaseState>({
   type: "string",
   enum: Object.values(ReleaseState),
 });
+
+export const validateIntakeSession =
+  makeValidator<IntakeSession>(intakeSessionSchema);
+
+export const validateIntakeSource =
+  makeValidator<IntakeSource>(intakeSourceSchema);
+
+export const validateWebsiteCrawlSession =
+  makeValidator<WebsiteCrawlSession>(websiteCrawlSchema);
