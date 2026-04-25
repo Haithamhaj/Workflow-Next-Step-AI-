@@ -47,6 +47,9 @@ function repos() {
 
 function payload(sessionId: string) {
   const foundation = getHierarchyFoundationState(sessionId, repos());
+  const session = store.intakeSessions.findById(sessionId);
+  const structuredContext = store.structuredContexts.findBySessionId(sessionId);
+  const context = structuredContext?.context;
   const promptSpec = ensureActivePass3HierarchyPromptSpec(store.structuredPromptSpecs);
   const sourceTriagePromptSpec = ensureActivePass3SourceTriagePromptSpec(store.structuredPromptSpecs);
   const pass3PromptSpecs = listPass3PromptSpecs(store.structuredPromptSpecs);
@@ -54,6 +57,12 @@ function payload(sessionId: string) {
   const sourceDraftPrompt = pass3PromptSpecs.find((spec) => spec.linkedModule === pass3CapabilityModule("source_hierarchy_triage") && spec.status === "draft") ?? null;
   return {
     ...foundation,
+    sessionContext: {
+      companyName: context?.companyName,
+      department: context?.mainDepartment ?? session?.primaryDepartment,
+      useCase: context?.selectedUseCase ?? session?.useCaseSelection?.useCaseLabel,
+      caseId: session?.caseId,
+    },
     promptSpec,
     compiledPromptPreview: compileStructuredPromptSpec(promptSpec, promptInput(sessionId)),
     sourceTriagePromptSpec,

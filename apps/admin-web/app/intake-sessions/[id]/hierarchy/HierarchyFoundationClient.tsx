@@ -123,6 +123,12 @@ interface PromptTestRunView {
 interface Props {
   sessionId: string;
   initialState: {
+    sessionContext?: {
+      companyName?: string;
+      department?: string;
+      useCase?: string;
+      caseId?: string;
+    };
     intake?: { pastedText?: string } | null;
     promptSpec?: PromptSpecView;
     compiledPromptPreview?: string;
@@ -182,6 +188,60 @@ const inputStyle: React.CSSProperties = {
   boxSizing: "border-box",
 };
 
+const badgeStyle: React.CSSProperties = {
+  display: "inline-flex",
+  alignItems: "center",
+  gap: "4px",
+  padding: "0.16rem 0.45rem",
+  border: "1px solid var(--border)",
+  borderRadius: "999px",
+  fontSize: "0.74rem",
+  lineHeight: 1.25,
+  background: "rgba(255,255,255,0.04)",
+  whiteSpace: "nowrap",
+};
+
+const cardButtonStyle: React.CSSProperties = {
+  textAlign: "left",
+  width: "100%",
+  border: "1px solid var(--border)",
+  borderRadius: "8px",
+  padding: "10px",
+  background: "var(--bg)",
+  color: "var(--fg)",
+  cursor: "pointer",
+};
+
+function Badge({ children, tone = "neutral" }: { children: React.ReactNode; tone?: "neutral" | "good" | "warn" | "danger" | "info" }) {
+  const colors = {
+    neutral: "rgba(255,255,255,0.04)",
+    good: "rgba(65, 171, 93, 0.18)",
+    warn: "rgba(232, 169, 59, 0.18)",
+    danger: "rgba(205, 83, 83, 0.2)",
+    info: "rgba(75, 143, 214, 0.18)",
+  };
+  return <span style={{ ...badgeStyle, background: colors[tone] }}>{children}</span>;
+}
+
+function hasUncertainty(node: NodeRecord): boolean {
+  const text = `${node.groupLayer} ${node.notes ?? ""} ${node.primaryParentNodeId ?? ""}`.toLowerCase();
+  return node.groupLayer === "unknown" || text.includes("uncertain") || text.includes("unknown") || text.includes("unclear");
+}
+
+function scopeState(node: NodeRecord): "in_scope" | "partial" | "unknown" | "out_of_scope" {
+  if (node.groupLayer === "unknown") return "unknown";
+  if (node.groupLayer === "external_interface") return "out_of_scope";
+  if (hasUncertainty(node)) return "partial";
+  return "in_scope";
+}
+
+function scopeLabel(value: "in_scope" | "partial" | "unknown" | "out_of_scope"): string {
+  if (value === "in_scope") return "داخل النطاق";
+  if (value === "partial") return "جزئي";
+  if (value === "out_of_scope") return "خارج النطاق";
+  return "غير معروف";
+}
+
 function emptyNode(index: number): NodeRecord {
   return {
     nodeId: `node_${index}`,
@@ -224,10 +284,44 @@ export default function HierarchyFoundationClient({ sessionId, initialState }: P
   const [promptDraftEdit, setPromptDraftEdit] = useState("Draft note: keep outputs reviewable and preserve Pass 3 boundaries.");
   const [promptTestInput, setPromptTestInput] = useState("Sales Director\nSales Manager\n2 Supervisors\n3 Senior Sales\n2 Sales\n2 Account Managers\n2 Communicators");
   const [promptAdminNote, setPromptAdminNote] = useState("");
+  const [selectedNodeId, setSelectedNodeId] = useState(initialState.draft?.nodes?.[0]?.nodeId ?? "node_1");
+  const [collapsedNodeIds, setCollapsedNodeIds] = useState<Set<string>>(new Set());
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
 
   const nodeOptions = useMemo(() => nodes.filter((node) => node.nodeId.trim() && node.roleLabel.trim()), [nodes]);
+  const selectedNodeIndex = nodes.findIndex((node) => node.nodeId === selectedNodeId);
+  const selectedNode = selectedNodeIndex >= 0 ? nodes[selectedNodeIndex] : nodes[0];
+  const selectedNodeResolvedIndex = selectedNodeIndex >= 0 ? selectedNodeIndex : 0;
+  const childrenByParent = useMemo(() => {
+    const map = new Map<string, NodeRecord[]>();
+    for (const node of nodes) {
+      if (!node.primaryParentNodeId) continue;
+      map.set(node.primaryParentNodeId, [...(map.get(node.primaryParentNodeId) ?? []), node]);
+    }
+    return map;
+  }, [nodes]);
+  const rootNodes = useMemo(() => {
+    const ids = new Set(nodes.map((node) => node.nodeId));
+    return nodes.filter((node) => !node.primaryParentNodeId || !ids.has(node.primaryParentNodeId));
+  }, [nodes]);
+  const secondaryCountsByNode = useMemo(() => {
+    const map = new Map<string, number>();
+    for (const relationship of relationships) {
+      if (relationship.fromNodeId) map.set(relationship.fromNodeId, (map.get(relationship.fromNodeId) ?? 0) + 1);
+      if (relationship.relatedNodeId) map.set(relationship.relatedNodeId, (map.get(relationship.relatedNodeId) ?? 0) + 1);
+    }
+    return map;
+  }, [relationships]);
+  const sourceSignalsByNode = useMemo(() => {
+    const map = new Map<string, SourceTriageSuggestion[]>();
+    for (const suggestion of state.sourceTriageSuggestions ?? []) {
+      if (!suggestion.linkedNodeId) continue;
+      map.set(suggestion.linkedNodeId, [...(map.get(suggestion.linkedNodeId) ?? []), suggestion]);
+    }
+    return map;
+  }, [state.sourceTriageSuggestions]);
+  const globalParticipantValidationCount = (state.sourceTriageSuggestions ?? []).filter((suggestion) => suggestion.participantValidationNeeded).length;
 
   async function post(action: string, body: Record<string, unknown> = {}) {
     setError("");
@@ -262,6 +356,67 @@ export default function HierarchyFoundationClient({ sessionId, initialState }: P
     setRelationships((prev) => prev.map((relationship, i) => i === index ? { ...relationship, ...patch } : relationship));
   }
 
+  function toggleCollapsed(nodeId: string) {
+    setCollapsedNodeIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(nodeId)) next.delete(nodeId);
+      else next.add(nodeId);
+      return next;
+    });
+  }
+
+  function renderTreeNode(node: NodeRecord, depth = 0): React.ReactNode {
+    const children = childrenByParent.get(node.nodeId) ?? [];
+    const collapsed = collapsedNodeIds.has(node.nodeId);
+    const sourceSignals = sourceSignalsByNode.get(node.nodeId) ?? [];
+    const secondaryCount = secondaryCountsByNode.get(node.nodeId) ?? 0;
+    const participantValidation = sourceSignals.some((suggestion) => suggestion.participantValidationNeeded);
+    const uncertain = hasUncertainty(node);
+    const scope = scopeState(node);
+    const selected = selectedNode?.nodeId === node.nodeId;
+
+    return (
+      <div key={node.nodeId} style={{ marginInlineStart: depth ? "20px" : 0, paddingInlineStart: depth ? "12px" : 0, borderInlineStart: depth ? "1px solid var(--border)" : undefined }}>
+        <div style={{ display: "grid", gridTemplateColumns: "28px minmax(240px, 1fr)", gap: "8px", alignItems: "start", marginBottom: "8px" }}>
+          <button
+            aria-label={collapsed ? "Expand hierarchy branch" : "Collapse hierarchy branch"}
+            onClick={() => toggleCollapsed(node.nodeId)}
+            disabled={!children.length}
+            style={{ height: "28px", borderRadius: "4px", border: "1px solid var(--border)", background: "var(--bg)", color: "var(--fg)", cursor: children.length ? "pointer" : "default", opacity: children.length ? 1 : 0.35 }}
+          >
+            {children.length ? (collapsed ? "+" : "-") : "•"}
+          </button>
+          <button
+            data-testid={`hierarchy-node-card-${node.nodeId}`}
+            onClick={() => setSelectedNodeId(node.nodeId)}
+            style={{
+              ...cardButtonStyle,
+              borderColor: selected ? "#6ca8ff" : "var(--border)",
+              boxShadow: selected ? "0 0 0 1px #6ca8ff inset" : undefined,
+            }}
+          >
+            <div style={{ display: "flex", justifyContent: "space-between", gap: "10px", alignItems: "start" }}>
+              <div>
+                <strong>{node.roleLabel || node.nodeId}</strong>
+                <div className="muted" style={{ marginTop: "3px" }}><code>{node.nodeId}</code></div>
+              </div>
+              <Badge tone={scope === "in_scope" ? "good" : scope === "partial" ? "warn" : scope === "out_of_scope" ? "danger" : "neutral"}>{scopeLabel(scope)}</Badge>
+            </div>
+            <div style={{ display: "flex", flexWrap: "wrap", gap: "6px", marginTop: "8px" }}>
+              <Badge tone="info">{node.groupLayer}</Badge>
+              {node.occupantOfRole || node.personName ? <Badge tone="good">{node.occupantOfRole ?? node.personName}</Badge> : <Badge>person-light: 0</Badge>}
+              {sourceSignals.length ? <Badge tone="info">مصادر مرتبطة {sourceSignals.length}</Badge> : null}
+              {secondaryCount ? <Badge tone="info">علاقات ثانوية {secondaryCount}</Badge> : null}
+              {uncertain ? <Badge tone="warn">غير مؤكد</Badge> : null}
+              {participantValidation ? <Badge tone="warn">يحتاج تحقق من الموظفين</Badge> : null}
+            </div>
+          </button>
+        </div>
+        {!collapsed ? children.map((child) => renderTreeNode(child, depth + 1)) : null}
+      </div>
+    );
+  }
+
   const activePromptForCapability = promptCapability === "hierarchy_draft" ? state.promptSpec : state.sourceTriagePromptSpec;
   const draftPromptForCapability = promptCapability === "hierarchy_draft"
     ? state.promptDrafts?.hierarchyDraftPrompt
@@ -290,8 +445,110 @@ export default function HierarchyFoundationClient({ sessionId, initialState }: P
       {message ? <p className="muted">Saved: <code>{message}</code></p> : null}
       {error ? <div className="card" style={{ borderColor: "#933", color: "#f99" }}>{error}</div> : null}
 
+      <section className="card" data-testid="pass3-visual-workbench">
+        <div style={{ display: "flex", justifyContent: "space-between", gap: "12px", alignItems: "start", flexWrap: "wrap" }}>
+          <div>
+            <h3 style={{ margin: 0 }}>شجرة القسم</h3>
+            <p className="muted" style={{ marginBottom: 0 }}>المصدر هنا إشارة فقط وليس حقيقة تشغيلية. هذا لا يعني أن الواقع التشغيلي تم التحقق منه.</p>
+          </div>
+          <Badge tone="warn">اعتماد هيكلي فقط</Badge>
+        </div>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(170px, 1fr))", gap: "8px", marginTop: "12px" }}>
+          <div style={{ border: "1px solid var(--border)", borderRadius: "6px", padding: "8px" }}>
+            <div className="muted">الشركة</div>
+            <strong>{state.sessionContext?.companyName ?? state.sessionContext?.caseId ?? "غير محدد"}</strong>
+          </div>
+          <div style={{ border: "1px solid var(--border)", borderRadius: "6px", padding: "8px" }}>
+            <div className="muted">القسم</div>
+            <strong>{state.sessionContext?.department ?? "غير محدد"}</strong>
+          </div>
+          <div style={{ border: "1px solid var(--border)", borderRadius: "6px", padding: "8px" }}>
+            <div className="muted">حالة الهيكل</div>
+            <strong>{state.draft?.status ?? "مسودة يدوية"}</strong>
+          </div>
+          <div style={{ border: "1px solid var(--border)", borderRadius: "6px", padding: "8px" }}>
+            <div className="muted">جاهزية لتخطيط استهداف المشاركين</div>
+            <strong>{state.readinessSnapshot?.status ?? "لم تحسب بعد"}</strong>
+          </div>
+        </div>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: "14px", marginTop: "14px", alignItems: "start" }}>
+          <div style={{ border: "1px solid var(--border)", borderRadius: "8px", padding: "12px", maxHeight: "680px", overflow: "auto" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", gap: "8px", alignItems: "center", marginBottom: "10px" }}>
+              <h4 style={{ margin: 0 }}>الهيكل البصري</h4>
+              <div style={{ display: "flex", gap: "6px", flexWrap: "wrap" }}>
+                <Badge>{nodes.length} أدوار</Badge>
+                <Badge>{relationships.length} علاقات ثانوية</Badge>
+                {globalParticipantValidationCount ? <Badge tone="warn">يحتاج تحقق {globalParticipantValidationCount}</Badge> : null}
+              </div>
+            </div>
+            {rootNodes.length ? rootNodes.map((node) => renderTreeNode(node)) : (
+              <p className="muted">لا توجد عقد بعد. احفظ المدخلات أو أنشئ مسودة يدوية لعرض الشجرة.</p>
+            )}
+          </div>
+          <aside style={{ border: "1px solid var(--border)", borderRadius: "8px", padding: "12px", position: "sticky", top: "12px" }}>
+            <h4 style={{ marginTop: 0 }}>تفاصيل الدور</h4>
+            {selectedNode ? (
+              <div style={{ display: "grid", gap: "8px" }}>
+                <div style={{ display: "flex", gap: "6px", flexWrap: "wrap" }}>
+                  <Badge tone={scopeState(selectedNode) === "in_scope" ? "good" : scopeState(selectedNode) === "partial" ? "warn" : "neutral"}>{scopeLabel(scopeState(selectedNode))}</Badge>
+                  <Badge tone="info">{selectedNode.groupLayer}</Badge>
+                  {(sourceSignalsByNode.get(selectedNode.nodeId)?.length ?? 0) ? <Badge tone="info">مصادر مرتبطة {sourceSignalsByNode.get(selectedNode.nodeId)?.length}</Badge> : null}
+                  {(secondaryCountsByNode.get(selectedNode.nodeId) ?? 0) ? <Badge tone="info">علاقات ثانوية {secondaryCountsByNode.get(selectedNode.nodeId)}</Badge> : null}
+                  {hasUncertainty(selectedNode) ? <Badge tone="warn">غير مؤكد</Badge> : null}
+                </div>
+                <label>
+                  <span className="muted">Role label</span>
+                  <input value={selectedNode.roleLabel} onChange={(event) => updateNode(selectedNodeResolvedIndex, { roleLabel: event.target.value })} style={inputStyle} />
+                </label>
+                <label>
+                  <span className="muted">Grouping/layer</span>
+                  <select value={selectedNode.groupLayer} onChange={(event) => updateNode(selectedNodeResolvedIndex, { groupLayer: event.target.value as GroupLayer })} style={inputStyle}>
+                    {state.groupingLayers.map((layer) => <option key={layer} value={layer}>{layer}</option>)}
+                  </select>
+                </label>
+                <label>
+                  <span className="muted">Primary parent</span>
+                  <select value={selectedNode.primaryParentNodeId ?? ""} onChange={(event) => updateNode(selectedNodeResolvedIndex, { primaryParentNodeId: event.target.value || undefined })} style={inputStyle}>
+                    <option value="">No primary parent</option>
+                    {nodeOptions.filter((option) => option.nodeId !== selectedNode.nodeId).map((option) => (
+                      <option key={option.nodeId} value={option.nodeId}>{option.nodeId} - {option.roleLabel}</option>
+                    ))}
+                  </select>
+                </label>
+                <label>
+                  <span className="muted">Person-light occupant</span>
+                  <input value={selectedNode.occupantOfRole ?? selectedNode.personName ?? ""} onChange={(event) => updateNode(selectedNodeResolvedIndex, { occupantOfRole: event.target.value || undefined })} style={inputStyle} />
+                </label>
+                <label>
+                  <span className="muted">Notes / uncertainty</span>
+                  <textarea value={selectedNode.notes ?? ""} onChange={(event) => updateNode(selectedNodeResolvedIndex, { notes: event.target.value || undefined })} rows={3} style={inputStyle} />
+                </label>
+                <button className="btn-primary" onClick={() => post("save-manual-draft", { nodes, secondaryRelationships: relationships, createdBy: "admin", correctionNote: "Saved from visual hierarchy workbench." })}>
+                  حفظ تعديل الدور
+                </button>
+                <details>
+                  <summary>مصادر مرتبطة</summary>
+                  {(sourceSignalsByNode.get(selectedNode.nodeId) ?? []).length ? (
+                    <ul>
+                      {(sourceSignalsByNode.get(selectedNode.nodeId) ?? []).map((suggestion) => (
+                        <li key={suggestion.triageId}>
+                          <strong>{suggestion.sourceName}</strong> · <code>{suggestion.signalType}</code> · <code>{suggestion.evidenceStatus}</code>
+                          {suggestion.participantValidationNeeded ? <> · يحتاج تحقق من الموظفين</> : null}
+                        </li>
+                      ))}
+                    </ul>
+                  ) : <p className="muted">لا توجد مصادر مرتبطة مباشرة بهذه العقدة.</p>}
+                </details>
+              </div>
+            ) : (
+              <p className="muted">اختر عقدة من الشجرة لعرض التفاصيل.</p>
+            )}
+          </aside>
+        </div>
+      </section>
+
       <section className="card">
-        <h3 style={{ marginTop: 0 }}>Hierarchy Intake</h3>
+        <h3 style={{ marginTop: 0 }}>مدخلات الهيكل / Hierarchy Intake</h3>
         <p className="muted">AI hierarchy drafts are provider-backed drafts only. Admin review/correction is required before structural approval.</p>
         <textarea
           value={pastedText}
@@ -311,7 +568,7 @@ export default function HierarchyFoundationClient({ sessionId, initialState }: P
       </section>
 
       <section className="card">
-        <h3 style={{ marginTop: 0 }}>Provider Draft</h3>
+        <h3 style={{ marginTop: 0 }}>مسودة الذكاء الاصطناعي / Provider Draft</h3>
         <p className="muted">Uses the active visible PromptSpec. If provider execution fails, the failure is persisted and manual drafting remains available.</p>
         <button className="btn-primary" onClick={() => post("generate-ai-draft")}>
           Generate AI draft
@@ -330,7 +587,7 @@ export default function HierarchyFoundationClient({ sessionId, initialState }: P
       </section>
 
       <section className="card">
-        <h3 style={{ marginTop: 0 }}>Active PromptSpec</h3>
+        <h3 style={{ marginTop: 0 }}>الموجه النشط / Active PromptSpec</h3>
         {state.promptSpec ? (
           <>
             <p><code>{state.promptSpec.promptSpecId}</code> v{state.promptSpec.version} · {state.promptSpec.status}</p>
@@ -351,8 +608,8 @@ export default function HierarchyFoundationClient({ sessionId, initialState }: P
       </section>
 
       <section className="card">
-        <h3 style={{ marginTop: 0 }}>Source-to-Hierarchy Triage</h3>
-        <p className="muted">Links are tentative evidence candidates only. They do not validate workflow truth, responsibilities, KPIs, SOPs, policies, or actual practice.</p>
+        <h3 style={{ marginTop: 0 }}>مصادر مرتبطة / Source-to-Hierarchy Triage</h3>
+        <p className="muted">المصدر هنا إشارة فقط وليس حقيقة تشغيلية. Links are tentative evidence candidates only. They do not validate workflow truth, responsibilities, KPIs, SOPs, policies, or actual practice.</p>
         <button className="btn-primary" onClick={() => post("generate-source-triage")}>
           Generate source triage
         </button>
@@ -418,7 +675,7 @@ export default function HierarchyFoundationClient({ sessionId, initialState }: P
       </section>
 
       <section className="card">
-        <h3 style={{ marginTop: 0 }}>Prompt Draft Testing</h3>
+        <h3 style={{ marginTop: 0 }}>اختبار الموجهات / Prompt Draft Testing</h3>
         <p className="muted">Draft saves do not activate prompts. Promotion requires the explicit action below, and previous active versions remain stored for rollback/reference.</p>
         <div style={{ display: "grid", gap: "8px" }}>
           <select value={promptCapability} onChange={(event) => setPromptCapability(event.target.value as PromptCapability)} style={inputStyle}>
@@ -544,7 +801,7 @@ export default function HierarchyFoundationClient({ sessionId, initialState }: P
       </section>
 
       <section className="card">
-        <h3 style={{ marginTop: 0 }}>Manual Draft Hierarchy</h3>
+        <h3 style={{ marginTop: 0 }}>تصحيح يدوي / Manual Draft Hierarchy</h3>
         <table style={{ width: "100%", borderCollapse: "collapse" }}>
           <thead>
             <tr style={{ textAlign: "left", borderBottom: "1px solid var(--border)" }}>
@@ -601,7 +858,7 @@ export default function HierarchyFoundationClient({ sessionId, initialState }: P
       </section>
 
       <section className="card">
-        <h3 style={{ marginTop: 0 }}>Secondary Relationships</h3>
+        <h3 style={{ marginTop: 0 }}>العلاقات الثانوية / Secondary Relationships</h3>
         {relationships.map((relationship, index) => (
           <div key={`${relationship.relationshipId}-${index}`} style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "8px", marginBottom: "8px" }}>
             <input value={relationship.relationshipId} onChange={(event) => updateRelationship(index, { relationshipId: event.target.value })} style={inputStyle} />
@@ -624,8 +881,8 @@ export default function HierarchyFoundationClient({ sessionId, initialState }: P
       </section>
 
       <section className="card">
-        <h3 style={{ marginTop: 0 }}>Structural Approval & Readiness</h3>
-        <p className="muted">Approval is structural only. It does not validate responsibilities, KPIs, SOPs, policies, source claims, or workflow reality.</p>
+        <h3 style={{ marginTop: 0 }}>اعتماد هيكلي فقط وجاهزية / Structural Approval & Readiness</h3>
+        <p className="muted">اعتماد هيكلي فقط. هذا لا يعني أن الواقع التشغيلي تم التحقق منه. Approval is structural only. It does not validate responsibilities, KPIs, SOPs, policies, source claims, or workflow reality.</p>
         <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
           <button className="btn-primary" onClick={() => post("approve-structural-snapshot", { approvedBy: "admin" })}>
             Approve structural snapshot

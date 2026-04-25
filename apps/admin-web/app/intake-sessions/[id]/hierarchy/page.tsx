@@ -69,8 +69,17 @@ export default function HierarchyPage({ params }: { params: { id: string } }) {
   const pass3PromptSpecs = listPass3PromptSpecs(store.structuredPromptSpecs);
   const hierarchyDraftPrompt = pass3PromptSpecs.find((spec) => spec.linkedModule === pass3CapabilityModule("hierarchy_draft") && spec.status === "draft") ?? null;
   const sourceDraftPrompt = pass3PromptSpecs.find((spec) => spec.linkedModule === pass3CapabilityModule("source_hierarchy_triage") && spec.status === "draft") ?? null;
+  const session = store.intakeSessions.findById(params.id);
+  const structuredContext = store.structuredContexts.findBySessionId(params.id);
+  const context = structuredContext?.context;
   const state = {
     ...foundation,
+    sessionContext: {
+      companyName: context?.companyName,
+      department: context?.mainDepartment ?? session?.primaryDepartment,
+      useCase: context?.selectedUseCase ?? session?.useCaseSelection?.useCaseLabel,
+      caseId: session?.caseId,
+    },
     promptSpec,
     compiledPromptPreview: compileStructuredPromptSpec(promptSpec, promptInput(params.id)),
     sourceTriagePromptSpec,
