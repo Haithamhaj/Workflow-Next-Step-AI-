@@ -2,9 +2,13 @@
 
 ## Current status
 
-Pass 4 — Participant Targeting / Rollout Planning is implemented locally and pending acceptance.
+Pass 4 — Participant Targeting / Rollout Planning is accepted, closed, archived, and merged to `main`.
 
-Completion label after acceptance: `pass4_targeting_rollout_accepted`
+Completion label: `pass4_targeting_rollout_accepted`
+
+Pass 5 status: not started.
+
+Pass 5 must not be started in this pass. Start it only in a new, explicitly scoped Pass 5 conversation.
 
 Accepted Pass 3 patch chain:
 
@@ -30,6 +34,8 @@ Accepted Pass 3 patch chain:
 **Pass 5 — Participant Session Outreach / Narrative-First Clarification**
 
 Pass 5 begins after accepted Pass 4. It must consume approved Pass 4 targeting/rollout plans without reopening Pass 2, Pass 3, or Pass 4.
+
+Outreach/session creation begins only inside Pass 5 scope. Workflow analysis remains out unless explicitly scoped later.
 
 ## Boundaries preserved
 

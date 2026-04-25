@@ -2,13 +2,19 @@
 
 **Accepted baseline: Pass 9 (Package Preview + Release Decision Surface), merged to `main` 2026-04-23, commit `41a8232`.**
 
-**Pass 4 — Participant Targeting / Rollout Planning is implemented locally on branch `codex/pass4-targeting-rollout`.**
+**Pass 4 — Participant Targeting / Rollout Planning is accepted, closed, archived, and merged to `main`.**
 
-Pass 4 status: `pass4_targeting_rollout_implemented_pending_acceptance`
+Pass 4 status: `pass4_targeting_rollout_accepted`
 
-Pass 4 proof branch: `codex/pass4-targeting-rollout`
+Pass 4 accepted branch: `codex/pass4-targeting-rollout`
+
+Pass 4 accepted commit merged to main by fast-forward: `14c32adbcd1156ce6e18490468f866e922745e07`
+
+Pass 4 archive file: `handoff/PASS4_TARGETING_ROLLOUT_BUILD_SPEC.md`
 
 Pass 4 proof DB: `/tmp/workflow-pass4-proof.sqlite`
+
+Pass 4 main provider proof DB: `/tmp/workflow-pass4-main-proof.sqlite`
 
 Pass 4 proof commands passed:
 
