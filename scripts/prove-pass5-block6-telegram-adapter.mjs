@@ -11,6 +11,8 @@ import { createSQLiteIntakeRepositories } from "../packages/persistence/dist/ind
 import {
   createTelegramDeepLink,
   createWebSessionAccessToken,
+  buildParticipantGuidanceText,
+  buildTelegramParticipantGuidance,
   getTelegramConfig,
   handleTelegramStartCommand,
   handleTelegramTextMessage,
@@ -161,6 +163,32 @@ const session = participantSession("participant-session-telegram-1");
 const sessionValidation = validateParticipantSession(session);
 assert.equal(sessionValidation.ok, true, sessionValidation.ok ? "" : JSON.stringify(sessionValidation.errors));
 repos.participantSessions.save(session);
+
+const englishTelegramGuidance = buildTelegramParticipantGuidance(session);
+assert.equal(englishTelegramGuidance.includes("Hi Operations lead"), true);
+assert.equal(englishTelegramGuidance.includes("Refund exception handling"), true);
+assert.equal(englishTelegramGuidance.includes("Perfect order is not required"), true);
+const englishWebGuidance = buildParticipantGuidanceText(session, "web");
+assert.equal(englishWebGuidance.language, "en");
+assert.equal(englishWebGuidance.text.includes("You can write your answer or upload an audio recording"), true);
+
+const arabicBaseSession = participantSession("participant-session-telegram-ar");
+const arabicSession = {
+  ...arabicBaseSession,
+  languagePreference: "ar",
+  sessionContext: {
+    ...arabicBaseSession.sessionContext,
+    languagePreference: "ar",
+  },
+};
+const arabicTelegramGuidance = buildTelegramParticipantGuidance(arabicSession);
+assert.equal(arabicTelegramGuidance.includes("أهلًا Operations lead"), true);
+assert.equal(arabicTelegramGuidance.includes("شكرًا لتعاونك"), true);
+assert.equal(arabicTelegramGuidance.includes("Refund exception handling"), true);
+assert.equal(arabicTelegramGuidance.includes("أرسل إجابتك الآن كتابة"), true);
+const arabicWebGuidance = buildParticipantGuidanceText(arabicSession, "web");
+assert.equal(arabicWebGuidance.language, "ar");
+assert.equal(arabicWebGuidance.text.includes("يمكنك الإجابة كتابة أو رفع تسجيل صوتي"), true);
 
 const deepLink = createTelegramDeepLink(session, repos.sessionAccessTokens, options());
 assert.equal(deepLink.ok, true);

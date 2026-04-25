@@ -1,22 +1,11 @@
-import { resolveSessionAccessToken } from "@workflow/participant-sessions";
+import {
+  buildParticipantGuidanceText,
+  resolveSessionAccessToken,
+} from "@workflow/participant-sessions";
 import { store } from "../../../../lib/store";
 import { SessionNarrativeForm } from "./SessionNarrativeForm";
 
 export const dynamic = "force-dynamic";
-
-function guidanceLines(input: {
-  participantLabel: string;
-  selectedUseCase: string;
-  selectedDepartment: string;
-}) {
-  return [
-    `We are asking you because your perspective helps explain how ${input.selectedUseCase} actually works in ${input.selectedDepartment}.`,
-    "Please describe what really happens in practice, including the usual flow, exceptions, handoffs, tools, and decisions you notice.",
-    "The order does not need to be perfect. Start wherever it is easiest, and include details that seem practical or important.",
-    "It is okay to be uncertain. If something is not your responsibility, is handled by another team, or is outside your visibility, say that clearly.",
-    "You can write your answer or upload an audio recording. Audio will be saved for later transcript review.",
-  ];
-}
 
 function TokenErrorPanel({ message }: { message: string }) {
   return (
@@ -47,29 +36,36 @@ export default function ParticipantWebSessionPage({
 
   const session = resolved.participantSession;
   const alreadySubmitted = Boolean(session.firstNarrativeEvidenceId ?? session.rawEvidence.firstNarrativeEvidenceId);
-  const guidance = guidanceLines({
-    participantLabel: session.participantLabel,
-    selectedUseCase: session.selectedUseCase,
-    selectedDepartment: session.selectedDepartment,
-  });
+  const guidance = buildParticipantGuidanceText(session, "web");
 
   return (
-    <div style={{ maxWidth: "760px", display: "grid", gap: "18px" }}>
+    <div
+      dir={guidance.language === "ar" ? "rtl" : "ltr"}
+      lang={guidance.language}
+      style={{ maxWidth: "760px", display: "grid", gap: "18px" }}
+    >
       <section>
         <p className="muted" style={{ margin: "0 0 4px" }}>
           Participant session
         </p>
         <h2 style={{ marginBottom: "8px" }}>{session.participantLabel}</h2>
-        <p style={{ color: "#c6ced8", margin: 0 }}>
-          We are discussing <strong>{session.selectedUseCase}</strong> for{" "}
-          <strong>{session.selectedDepartment}</strong>.
-        </p>
+        {guidance.language === "ar" ? (
+          <p style={{ color: "#c6ced8", margin: 0 }}>
+            نناقش <strong>{session.selectedUseCase}</strong> ضمن{" "}
+            <strong>{session.selectedDepartment}</strong>.
+          </p>
+        ) : (
+          <p style={{ color: "#c6ced8", margin: 0 }}>
+            We are discussing <strong>{session.selectedUseCase}</strong> for{" "}
+            <strong>{session.selectedDepartment}</strong>.
+          </p>
+        )}
       </section>
 
       <section className="card" style={{ background: "#10161e" }}>
         <h3 style={{ marginTop: 0 }}>Before you begin</h3>
         <ul style={{ display: "grid", gap: "8px", paddingLeft: "20px", marginBottom: 0 }}>
-          {guidance.map((line) => (
+          {guidance.lines.map((line) => (
             <li key={line}>{line}</li>
           ))}
         </ul>

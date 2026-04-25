@@ -81,7 +81,7 @@ function participantSession(sessionId) {
     participantRoleOrNodeId: "role-telegram-smoke",
     selectedDepartment: "Operations",
     selectedUseCase: "Telegram live smoke workflow",
-    languagePreference: "en",
+    languagePreference: process.env.TELEGRAM_LIVE_LANGUAGE === "ar" ? "ar" : "en",
     sessionState: "session_prepared",
     channelStatus: "channel_selected_pending_dispatch",
     selectedParticipationMode: "telegram_bot",
@@ -95,7 +95,7 @@ function participantSession(sessionId) {
       participantRoleOrNodeId: "role-telegram-smoke",
       selectedDepartment: "Operations",
       selectedUseCase: "Telegram live smoke workflow",
-      languagePreference: "en",
+      languagePreference: process.env.TELEGRAM_LIVE_LANGUAGE === "ar" ? "ar" : "en",
     },
     channelAccess: {
       selectedParticipationMode: "telegram_bot",

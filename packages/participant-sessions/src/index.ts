@@ -1146,19 +1146,78 @@ function startTokenFrom(input: TelegramMessageInput): string | null {
   return match?.[1]?.trim() || null;
 }
 
+export type ParticipantGuidanceChannel = "telegram" | "web";
+
+export interface ParticipantGuidanceText {
+  language: "ar" | "en";
+  lines: string[];
+  text: string;
+}
+
+function guidanceLanguage(session: ParticipantSession): "ar" | "en" {
+  return session.languagePreference === "ar" ? "ar" : "en";
+}
+
+function guidanceName(session: ParticipantSession, binding?: TelegramIdentityBinding): string {
+  return binding?.telegramFirstName?.trim() || session.participantLabel.trim() || "there";
+}
+
+export function buildParticipantGuidanceText(
+  session: ParticipantSession,
+  channel: ParticipantGuidanceChannel,
+  binding?: TelegramIdentityBinding,
+): ParticipantGuidanceText {
+  const language = guidanceLanguage(session);
+  const name = guidanceName(session, binding);
+  if (language === "ar") {
+    const lines = channel === "telegram"
+      ? [
+          `أهلًا ${name}، شكرًا لتعاونك معنا.`,
+          `نحتاج نفهم كيف تتم عملية ${session.selectedUseCase} فعليًا من واقع تجربتك اليومية.`,
+          "اشرح ما يحدث عادة من طرفك، ولا تحتاج أن تكون الإجابة مرتبة بشكل مثالي.",
+          "إذا كان هناك جزء لا تعرفه، أو ليس من مسؤوليتك، أو يتولاه فريق آخر، قل ذلك بوضوح.",
+          "أرسل إجابتك الآن كتابة.",
+        ]
+      : [
+          `نحتاج نفهم كيف تتم عملية ${session.selectedUseCase} فعليًا من واقع تجربتك اليومية.`,
+          "اشرح ما يحدث عادة من طرفك، وليس فقط الطريقة المثالية أو الرسمية.",
+          "لا تحتاج أن تكون الإجابة مرتبة بشكل مثالي. ابدأ من المكان الأسهل لك.",
+          "إذا كان هناك جزء لا تعرفه، أو ليس من مسؤوليتك، أو يتولاه فريق آخر، قل ذلك بوضوح.",
+          "يمكنك الإجابة كتابة أو رفع تسجيل صوتي إذا كان متاحًا.",
+        ];
+    return {
+      language,
+      lines,
+      text: lines.join("\n\n"),
+    };
+  }
+  const lines = channel === "telegram"
+    ? [
+        `Hi ${name}, thank you for your help.`,
+        `We are asking about ${session.selectedUseCase} as it actually happens in daily work.`,
+        "Please describe what usually happens from your side. Perfect order is not required.",
+        "If something is outside your responsibility, unknown to you, or handled by another team, please say that clearly.",
+        "Please send your answer now by text.",
+      ]
+    : [
+        `We are asking you because your perspective helps explain how ${session.selectedUseCase} actually works in ${session.selectedDepartment}.`,
+        "Please describe what really happens in practice, including the usual flow, exceptions, handoffs, tools, and decisions you notice.",
+        "The order does not need to be perfect. Start wherever it is easiest, and include details that seem practical or important.",
+        "It is okay to be uncertain. If something is not your responsibility, is handled by another team, or is outside your visibility, say that clearly.",
+        "You can write your answer or upload an audio recording. Audio will be saved for later transcript review.",
+      ];
+  return {
+    language,
+    lines,
+    text: lines.join("\n\n"),
+  };
+}
+
 export function buildTelegramParticipantGuidance(
   session: ParticipantSession,
   binding?: TelegramIdentityBinding,
 ): string {
-  const greeting = binding?.telegramFirstName
-    ? `Hi ${binding.telegramFirstName}.`
-    : `Hi ${session.participantLabel}.`;
-  return [
-    greeting,
-    `We are asking you about ${session.selectedUseCase} in ${session.selectedDepartment}.`,
-    "Please describe what actually happens in practice. Perfect order is not required.",
-    "If you are unsure, if it is outside your responsibility, or if another team handles part of it, say that clearly.",
-  ].join("\n");
+  return buildParticipantGuidanceText(session, "telegram", binding).text;
 }
 
 export function handleTelegramStartCommand(
