@@ -2,6 +2,45 @@
 
 **Accepted baseline: Pass 9 (Package Preview + Release Decision Surface), merged to `main` 2026-04-23, commit `41a8232`.**
 
+**Pass 5 Block 11 — Admin Session Command Dashboard implemented on branch `codex/pass5-block0-1-contracts`.**
+
+Block 11 adds admin-facing Pass 5 operational visibility only:
+
+- dashboard route `/participant-sessions`
+- session detail route `/participant-sessions/[sessionId]`
+- thin admin action route `/api/participant-sessions/[sessionId]/actions`
+- dashboard composition helper for existing participant sessions, raw evidence, extraction drafts, clarification candidates, boundary signals, access tokens, and Telegram bindings
+- summary cards, filters, participant session table, next-action labels, and detail panels for Session Context, Channel Access, Raw Evidence, Analysis Progress, Clarification Queue, and Boundary / Escalation
+- exposed admin actions are limited to existing Block 10 domain functions: select next clarification candidate, formulate question with configured executor, mark asked, record answer, run answer recheck with configured executor, add admin exact question, and dismiss candidate
+- proof script: `scripts/prove-pass5-block11-admin-dashboard.mjs`
+
+Block 11 proof commands passed:
+
+- `pnpm build:contracts`
+- `node scripts/prove-pass5-block1-contracts.mjs`
+- `node scripts/prove-pass5-block2-persistence.mjs`
+- `node scripts/prove-pass5-block3-session-creation.mjs`
+- `node scripts/prove-pass5-block4-channel-access.mjs`
+- `node scripts/prove-pass5-block5-web-session.mjs`
+- `node scripts/prove-pass5-block6-telegram-adapter.mjs`
+- `node scripts/prove-pass5-block6b-language-guidance.mjs`
+- `node scripts/prove-pass5-block7-evidence-trust.mjs`
+- `node scripts/prove-pass5-block8-prompt-family.mjs`
+- `node scripts/prove-pass5-block9-first-pass-extraction.mjs`
+- `node scripts/prove-pass5-block10-clarification.mjs`
+- `node scripts/prove-pass5-block11-admin-dashboard.mjs`
+- `pnpm typecheck`
+- `pnpm build`
+
+Block 11 boundaries preserved:
+
+- no admin assistant execution
+- no Pass 6 synthesis/evaluation
+- no package generation
+- no WhatsApp API
+- no final provider-backed extraction proof
+- no new analysis mechanics beyond dashboard-facing composition
+
 **Pass 4 — Participant Targeting / Rollout Planning is accepted, closed, archived, and merged to `main`.**
 
 Pass 4 status: `pass4_targeting_rollout_accepted`

@@ -8,6 +8,7 @@ const links = [
   { href: "/sources", label: "Sources" },
   { href: "/prompts", label: "Prompts" },
   { href: "/targeting-rollout", label: "Targeting rollout" },
+  { href: "/participant-sessions", label: "Participant sessions" },
   { href: "/sessions", label: "Sessions" },
   { href: "/synthesis", label: "Synthesis" },
   { href: "/evaluations", label: "Evaluations" },
