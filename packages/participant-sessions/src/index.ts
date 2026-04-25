@@ -16,6 +16,7 @@ import {
   type ParticipantSession,
   type ParticipationMode,
   type RawEvidenceItem,
+  type RawEvidenceType,
   type SessionAccessToken,
   type SessionAccessTokenChannelType,
   type SessionAccessTokenStatus,
@@ -1389,5 +1390,430 @@ export function handleTelegramTextMessage(
     binding,
     rawEvidenceItem: evidenceItem,
     replyMessage: "Thank you. Your workflow description was recorded for review.",
+  };
+}
+
+export type EvidenceEligibilityReasonCode =
+  | "direct_participant_text"
+  | "approved_transcript"
+  | "admin_approved_manual_note"
+  | "audio_requires_transcription"
+  | "transcript_requires_admin_review"
+  | "evidence_rejected_or_needs_retry"
+  | "unsupported_evidence_type";
+
+export type EvidenceEligibilityRecommendedAction =
+  | "ready_for_extraction"
+  | "transcribe_audio"
+  | "admin_review_transcript"
+  | "retry_or_replace_evidence"
+  | "exclude_from_extraction";
+
+export interface RawEvidenceExtractionEligibility {
+  eligible: boolean;
+  reasonCode: EvidenceEligibilityReasonCode;
+  recommendedAction: EvidenceEligibilityRecommendedAction;
+}
+
+export interface EvidenceTrustRepos {
+  rawEvidenceItems: RawEvidenceItemRepository;
+  participantSessions: ParticipantSessionRepository;
+}
+
+export interface TranscriptEvidenceForReviewInput {
+  evidenceItemId?: string;
+  sessionId: string;
+  evidenceType: Extract<RawEvidenceType, "speech_to_text_transcript_raw" | "meeting_transcript_uploaded">;
+  rawContent: string;
+  sourceChannel: ParticipationMode;
+  language: string;
+  capturedAt?: string;
+  capturedBy?: "admin" | "provider" | "system";
+  originalFileName?: string | null;
+  providerJobId?: string | null;
+  notes?: string;
+}
+
+export interface EvidenceTrustOptions {
+  now?: () => string;
+  evidenceItemIdFactory?: (source?: RawEvidenceItem) => string;
+  language?: string;
+}
+
+export type TranscriptReviewResult =
+  | {
+      ok: true;
+      evidenceItem: RawEvidenceItem;
+      participantSession: ParticipantSession | null;
+    }
+  | {
+      ok: false;
+      error: string;
+    };
+
+export interface ApproveTranscriptEvidenceInput {
+  evidenceItemId: string;
+  repos: EvidenceTrustRepos;
+  editedTranscript?: string;
+  language?: string;
+  notes?: string;
+  options?: EvidenceTrustOptions;
+}
+
+export interface EvidenceReadinessSummary {
+  hasRawEvidence: boolean;
+  hasEligibleEvidence: boolean;
+  hasAudioAwaitingTranscript: boolean;
+  hasTranscriptPendingReview: boolean;
+  hasRejectedEvidence: boolean;
+  recommendedSessionState: ParticipantSession["sessionState"];
+  recommendedFirstNarrativeStatus: ParticipantSession["firstNarrativeStatus"];
+  recommendedExtractionStatus: ParticipantSession["extractionStatus"];
+}
+
+const immediateEligibleEvidenceTypes: readonly RawEvidenceType[] = [
+  "participant_text_narrative",
+  "telegram_message",
+  "email_reply",
+  "participant_clarification_answer",
+  "participant_boundary_or_unknown_response",
+];
+
+const transcriptEvidenceTypes: readonly RawEvidenceType[] = [
+  "speech_to_text_transcript_raw",
+  "meeting_transcript_uploaded",
+  "speech_to_text_transcript_approved",
+];
+
+function trustNow(options?: EvidenceTrustOptions): string {
+  return options?.now?.() ?? new Date().toISOString();
+}
+
+function trustEvidenceItemId(source?: RawEvidenceItem, options?: EvidenceTrustOptions): string {
+  return options?.evidenceItemIdFactory?.(source) ?? `raw_evidence_${crypto.randomUUID()}`;
+}
+
+function isApprovedTrustStatus(item: RawEvidenceItem): boolean {
+  return item.trustStatus === "admin_approved" || item.trustStatus === "admin_edited";
+}
+
+function isTranscriptEvidence(item: RawEvidenceItem): boolean {
+  return transcriptEvidenceTypes.includes(item.evidenceType);
+}
+
+export function getRawEvidenceExtractionEligibility(
+  evidenceItem: RawEvidenceItem,
+): RawEvidenceExtractionEligibility {
+  if (evidenceItem.trustStatus === "rejected_or_needs_retry") {
+    return {
+      eligible: false,
+      reasonCode: "evidence_rejected_or_needs_retry",
+      recommendedAction: "retry_or_replace_evidence",
+    };
+  }
+  if (immediateEligibleEvidenceTypes.includes(evidenceItem.evidenceType)) {
+    return {
+      eligible: true,
+      reasonCode: "direct_participant_text",
+      recommendedAction: "ready_for_extraction",
+    };
+  }
+  if (evidenceItem.evidenceType === "audio_recording_uploaded") {
+    return {
+      eligible: false,
+      reasonCode: "audio_requires_transcription",
+      recommendedAction: "transcribe_audio",
+    };
+  }
+  if (isTranscriptEvidence(evidenceItem)) {
+    if (isApprovedTrustStatus(evidenceItem)) {
+      return {
+        eligible: true,
+        reasonCode: "approved_transcript",
+        recommendedAction: "ready_for_extraction",
+      };
+    }
+    return {
+      eligible: false,
+      reasonCode: "transcript_requires_admin_review",
+      recommendedAction: "admin_review_transcript",
+    };
+  }
+  if (evidenceItem.evidenceType === "manual_admin_note") {
+    if (isApprovedTrustStatus(evidenceItem)) {
+      return {
+        eligible: true,
+        reasonCode: "admin_approved_manual_note",
+        recommendedAction: "ready_for_extraction",
+      };
+    }
+    return {
+      eligible: false,
+      reasonCode: "transcript_requires_admin_review",
+      recommendedAction: "admin_review_transcript",
+    };
+  }
+  return {
+    eligible: false,
+    reasonCode: "unsupported_evidence_type",
+    recommendedAction: "exclude_from_extraction",
+  };
+}
+
+export function listExtractionEligibleEvidenceForSession(
+  sessionId: string,
+  evidenceRepo: RawEvidenceItemRepository,
+): RawEvidenceItem[] {
+  return evidenceRepo.findBySessionId(sessionId).filter(
+    (item) => getRawEvidenceExtractionEligibility(item).eligible,
+  );
+}
+
+export function createTranscriptEvidenceForReview(
+  input: TranscriptEvidenceForReviewInput,
+  evidenceRepo: RawEvidenceItemRepository,
+  sessionRepo?: ParticipantSessionRepository,
+): RawEvidenceItem {
+  const item: RawEvidenceItem = {
+    evidenceItemId: input.evidenceItemId ?? `raw_evidence_${crypto.randomUUID()}`,
+    sessionId: input.sessionId,
+    evidenceType: input.evidenceType,
+    sourceChannel: input.sourceChannel,
+    rawContent: input.rawContent,
+    language: input.language,
+    capturedAt: input.capturedAt ?? new Date().toISOString(),
+    capturedBy: input.capturedBy ?? (input.providerJobId ? "provider" : "system"),
+    trustStatus: "raw_unreviewed",
+    confidenceScore: 1,
+    originalFileName: input.originalFileName ?? null,
+    providerJobId: input.providerJobId ?? null,
+    linkedClarificationItemId: null,
+    notes: input.notes ?? "Raw transcript evidence pending admin trust review.",
+  };
+  const validation = validateRawEvidenceItem(item);
+  if (!validation.ok) {
+    throw new Error(`Generated RawEvidenceItem failed validation: ${validationMessage(validation.errors)}`);
+  }
+  evidenceRepo.save(item);
+  const session = sessionRepo?.findById(input.sessionId);
+  if (session) {
+    sessionRepo?.save({
+      ...session,
+      sessionState: "transcript_pending_review",
+      firstNarrativeStatus: session.firstNarrativeStatus === "not_received"
+        ? "transcript_pending_review"
+        : session.firstNarrativeStatus,
+      extractionStatus: "blocked_evidence_not_approved",
+      updatedAt: item.capturedAt,
+    });
+  }
+  return item;
+}
+
+function markSessionTranscriptApproved(
+  session: ParticipantSession,
+  evidenceItemId: string,
+  updatedAt: string,
+): ParticipantSession {
+  return {
+    ...session,
+    sessionState: "first_pass_extraction_ready",
+    firstNarrativeStatus: "approved_for_extraction",
+    firstNarrativeEvidenceId: session.firstNarrativeEvidenceId ?? evidenceItemId,
+    extractionStatus: "eligible",
+    rawEvidence: {
+      ...session.rawEvidence,
+      firstNarrativeEvidenceId: session.rawEvidence.firstNarrativeEvidenceId ?? evidenceItemId,
+    },
+    analysisProgress: {
+      ...session.analysisProgress,
+      firstNarrativeStatus: "approved_for_extraction",
+      extractionStatus: "eligible",
+    },
+    updatedAt,
+  };
+}
+
+function markSessionTranscriptRejected(
+  session: ParticipantSession,
+  updatedAt: string,
+): ParticipantSession {
+  return {
+    ...session,
+    firstNarrativeStatus: "rejected_or_needs_retry",
+    extractionStatus: "blocked_evidence_not_approved",
+    analysisProgress: {
+      ...session.analysisProgress,
+      firstNarrativeStatus: "rejected_or_needs_retry",
+      extractionStatus: "blocked_evidence_not_approved",
+    },
+    updatedAt,
+  };
+}
+
+export function approveTranscriptEvidence(
+  evidenceItemIdOrInput: string | ApproveTranscriptEvidenceInput,
+  reposArg?: EvidenceTrustRepos,
+  optionsArg?: EvidenceTrustOptions,
+): TranscriptReviewResult {
+  const input = typeof evidenceItemIdOrInput === "string"
+    ? {
+        evidenceItemId: evidenceItemIdOrInput,
+        repos: reposArg!,
+        options: optionsArg,
+      }
+    : evidenceItemIdOrInput;
+  if (!input.repos) return { ok: false, error: "Evidence trust repositories are required." };
+  const source = input.repos.rawEvidenceItems.findById(input.evidenceItemId);
+  if (!source) return { ok: false, error: "Raw evidence item not found." };
+  if (!isTranscriptEvidence(source)) {
+    return { ok: false, error: "Only transcript-like evidence can be approved through this function." };
+  }
+
+  const now = trustNow(input.options);
+  const evidenceItem = input.editedTranscript !== undefined
+    ? {
+        ...source,
+        evidenceItemId: trustEvidenceItemId(source, input.options),
+        evidenceType: "speech_to_text_transcript_approved" as const,
+        rawContent: input.editedTranscript,
+        language: input.language ?? input.options?.language ?? source.language,
+        trustStatus: "admin_edited" as const,
+        capturedAt: now,
+        notes: input.notes ?? `Admin-edited approved transcript derived from ${source.evidenceItemId}.`,
+      }
+    : input.repos.rawEvidenceItems.updateTrustStatus(source.evidenceItemId, {
+        trustStatus: "admin_approved",
+        confidenceScore: source.confidenceScore,
+        linkedClarificationItemId: source.linkedClarificationItemId,
+        notes: input.notes ?? source.notes,
+      });
+
+  if (!evidenceItem) return { ok: false, error: "Unable to update transcript evidence." };
+  if (input.editedTranscript !== undefined) {
+    const validation = validateRawEvidenceItem(evidenceItem);
+    if (!validation.ok) {
+      return { ok: false, error: `Generated approved transcript failed validation: ${validationMessage(validation.errors)}` };
+    }
+    input.repos.rawEvidenceItems.save(evidenceItem);
+  }
+
+  const session = input.repos.participantSessions.findById(source.sessionId);
+  const updatedSession = session
+    ? markSessionTranscriptApproved(session, evidenceItem.evidenceItemId, now)
+    : null;
+  if (updatedSession) input.repos.participantSessions.save(updatedSession);
+  return {
+    ok: true,
+    evidenceItem,
+    participantSession: updatedSession,
+  };
+}
+
+export function rejectTranscriptEvidence(
+  evidenceItemId: string,
+  repos: EvidenceTrustRepos,
+  reason?: string,
+  options?: EvidenceTrustOptions,
+): TranscriptReviewResult {
+  const source = repos.rawEvidenceItems.findById(evidenceItemId);
+  if (!source) return { ok: false, error: "Raw evidence item not found." };
+  const updated = repos.rawEvidenceItems.updateTrustStatus(evidenceItemId, {
+    trustStatus: "rejected_or_needs_retry",
+    confidenceScore: source.confidenceScore,
+    linkedClarificationItemId: source.linkedClarificationItemId,
+    notes: reason ? `${source.notes} Rejected: ${reason}` : source.notes,
+  });
+  if (!updated) return { ok: false, error: "Unable to reject transcript evidence." };
+  const session = repos.participantSessions.findById(source.sessionId);
+  const updatedSession = session ? markSessionTranscriptRejected(session, trustNow(options)) : null;
+  if (updatedSession) repos.participantSessions.save(updatedSession);
+  return {
+    ok: true,
+    evidenceItem: updated,
+    participantSession: updatedSession,
+  };
+}
+
+export function markEvidenceNeedsRetry(
+  evidenceItemId: string,
+  repos: EvidenceTrustRepos,
+  reason?: string,
+  options?: EvidenceTrustOptions,
+): TranscriptReviewResult {
+  return rejectTranscriptEvidence(evidenceItemId, repos, reason ?? "Evidence needs retry.", options);
+}
+
+export function deriveSessionEvidenceReadiness(
+  session: ParticipantSession,
+  evidenceItems: RawEvidenceItem[],
+): EvidenceReadinessSummary {
+  const items = evidenceItems.filter((item) => item.sessionId === session.sessionId);
+  const hasRawEvidence = items.length > 0;
+  const hasEligibleEvidence = items.some((item) => getRawEvidenceExtractionEligibility(item).eligible);
+  const hasAudioAwaitingTranscript = items.some(
+    (item) => item.evidenceType === "audio_recording_uploaded" && item.trustStatus !== "rejected_or_needs_retry",
+  );
+  const hasTranscriptPendingReview = items.some(
+    (item) => isTranscriptEvidence(item) && !isApprovedTrustStatus(item) && item.trustStatus !== "rejected_or_needs_retry",
+  );
+  const hasRejectedEvidence = items.some((item) => item.trustStatus === "rejected_or_needs_retry");
+  if (hasEligibleEvidence) {
+    return {
+      hasRawEvidence,
+      hasEligibleEvidence,
+      hasAudioAwaitingTranscript,
+      hasTranscriptPendingReview,
+      hasRejectedEvidence,
+      recommendedSessionState: "first_pass_extraction_ready",
+      recommendedFirstNarrativeStatus: "approved_for_extraction",
+      recommendedExtractionStatus: "eligible",
+    };
+  }
+  if (hasTranscriptPendingReview) {
+    return {
+      hasRawEvidence,
+      hasEligibleEvidence,
+      hasAudioAwaitingTranscript,
+      hasTranscriptPendingReview,
+      hasRejectedEvidence,
+      recommendedSessionState: "transcript_pending_review",
+      recommendedFirstNarrativeStatus: "transcript_pending_review",
+      recommendedExtractionStatus: "blocked_evidence_not_approved",
+    };
+  }
+  if (hasAudioAwaitingTranscript) {
+    return {
+      hasRawEvidence,
+      hasEligibleEvidence,
+      hasAudioAwaitingTranscript,
+      hasTranscriptPendingReview,
+      hasRejectedEvidence,
+      recommendedSessionState: "transcript_pending_review",
+      recommendedFirstNarrativeStatus: "received_voice_pending_transcript",
+      recommendedExtractionStatus: "blocked_evidence_not_approved",
+    };
+  }
+  if (hasRejectedEvidence) {
+    return {
+      hasRawEvidence,
+      hasEligibleEvidence,
+      hasAudioAwaitingTranscript,
+      hasTranscriptPendingReview,
+      hasRejectedEvidence,
+      recommendedSessionState: session.sessionState,
+      recommendedFirstNarrativeStatus: "rejected_or_needs_retry",
+      recommendedExtractionStatus: "blocked_evidence_not_approved",
+    };
+  }
+  return {
+    hasRawEvidence,
+    hasEligibleEvidence,
+    hasAudioAwaitingTranscript,
+    hasTranscriptPendingReview,
+    hasRejectedEvidence,
+    recommendedSessionState: session.sessionState,
+    recommendedFirstNarrativeStatus: session.firstNarrativeStatus,
+    recommendedExtractionStatus: session.extractionStatus,
   };
 }
