@@ -1,3 +1,6 @@
+import { existsSync, readFileSync } from "node:fs";
+import { basename, join, resolve } from "node:path";
+
 export type ProviderDiagnosticsStatus =
   | "provider_not_configured"
   | "provider_auth_failed"
@@ -27,10 +30,78 @@ export class GoogleProviderDiagnosticError extends Error {
 }
 
 const DEFAULT_GOOGLE_AI_MODEL = "gemini-3.1-pro-preview";
+let localEnvLoaded = false;
+
+function processEnv(): Record<string, string | undefined> | undefined {
+  try {
+    return ((globalThis as Record<string, unknown>).process as { env: Record<string, string | undefined>; cwd?: () => string } | undefined)?.env;
+  } catch {
+    return undefined;
+  }
+}
+
+function currentWorkingDirectory(): string | undefined {
+  try {
+    return ((globalThis as Record<string, unknown>).process as { cwd?: () => string } | undefined)?.cwd?.();
+  } catch {
+    return undefined;
+  }
+}
+
+function parseEnvValue(value: string): string {
+  const trimmed = value.trim();
+  if ((trimmed.startsWith("\"") && trimmed.endsWith("\"")) || (trimmed.startsWith("'") && trimmed.endsWith("'"))) {
+    return trimmed.slice(1, -1);
+  }
+  const commentIndex = trimmed.indexOf(" #");
+  return commentIndex >= 0 ? trimmed.slice(0, commentIndex).trimEnd() : trimmed;
+}
+
+function loadEnvFile(path: string, env: Record<string, string | undefined>): void {
+  if (!existsSync(path)) return;
+  const body = readFileSync(path, "utf8");
+  for (const rawLine of body.split(/\r?\n/)) {
+    const line = rawLine.trim();
+    if (!line || line.startsWith("#")) continue;
+    const withoutExport = line.startsWith("export ") ? line.slice("export ".length).trimStart() : line;
+    const equals = withoutExport.indexOf("=");
+    if (equals <= 0) continue;
+    const key = withoutExport.slice(0, equals).trim();
+    if (!/^[A-Za-z_][A-Za-z0-9_]*$/.test(key)) continue;
+    if (env[key] !== undefined) continue;
+    env[key] = parseEnvValue(withoutExport.slice(equals + 1));
+  }
+}
+
+function loadLocalEnvFiles(): void {
+  if (localEnvLoaded) return;
+  localEnvLoaded = true;
+  const env = processEnv();
+  if (!env) return;
+
+  const cwd = currentWorkingDirectory();
+  const roots = new Set<string>();
+  if (cwd) {
+    roots.add(cwd);
+    if (basename(cwd) === "admin-web") roots.add(resolve(cwd, "../.."));
+  }
+  if (env.INIT_CWD) roots.add(env.INIT_CWD);
+  if (env.WORKFLOW_REPO_ROOT) roots.add(env.WORKFLOW_REPO_ROOT);
+
+  const files = new Set<string>();
+  if (env.WORKFLOW_ENV_FILE) files.add(env.WORKFLOW_ENV_FILE);
+  for (const root of roots) {
+    files.add(join(root, ".env.local"));
+    files.add(join(root, ".env"));
+  }
+
+  for (const file of files) loadEnvFile(file, env);
+}
 
 export function getEnv(key: string): string | undefined {
+  loadLocalEnvFiles();
   try {
-    return ((globalThis as Record<string, unknown>).process as { env: Record<string, string | undefined> } | undefined)?.env?.[key];
+    return processEnv()?.[key];
   } catch {
     return undefined;
   }

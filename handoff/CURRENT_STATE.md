@@ -21,6 +21,12 @@ Pass 4 proof commands passed:
 - API proof for candidate acceptance, contact edit, optional preferred-channel gap, and `approved_with_contact_gaps`
 - in-app browser proof for targeting plan overview, AI recommendation packet surface, candidate review, contact profiles, question-hint seed preview, final review, boundary confirmations, and Pass 4 PromptSpec workspace
 
+Pass 4 provider follow-up:
+
+- Pass 3 Patch 3.5 and Patch 4 handoff records proved `provider_success` but did not preserve the exact command/env-loading path used to make the local Google key visible to the Next runtime.
+- Pass 4 now reuses the same shared Google provider resolver and provider registry path as Pass 3, including `GOOGLE_AI_API_KEY`, optional `GOOGLE_AI_MODEL`, and default `gemini-3.1-pro-preview`.
+- The shared resolver has a documented local proof convention: load process env first, then `WORKFLOW_ENV_FILE`, then ignored `.env.local` / `.env` files in the app cwd or repo root; provider diagnostics expose key presence and model only, never key values.
+
 Pass 4 adds:
 
 - `packages/targeting-rollout` as the bounded Pass 4 domain package
