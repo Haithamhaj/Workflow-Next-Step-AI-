@@ -14,7 +14,7 @@ function guidanceLines(input: {
     "Please describe what really happens in practice, including the usual flow, exceptions, handoffs, tools, and decisions you notice.",
     "The order does not need to be perfect. Start wherever it is easiest, and include details that seem practical or important.",
     "It is okay to be uncertain. If something is not your responsibility, is handled by another team, or is outside your visibility, say that clearly.",
-    "Text input is available now. Voice input is not enabled in this version.",
+    "You can write your answer or upload an audio recording. Audio will be saved for later transcript review.",
   ];
 }
 

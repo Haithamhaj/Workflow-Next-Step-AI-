@@ -708,6 +708,7 @@ export function unlinkTelegramIdentityBinding(
 export type WebSessionNarrativeErrorCode =
   | SessionAccessTokenErrorCode
   | "empty_narrative"
+  | "missing_audio_artifact"
   | "narrative_already_submitted"
   | "invalid_raw_evidence"
   | "invalid_participant_session";
@@ -836,6 +837,106 @@ export function submitWebSessionFirstNarrative(
       ...resolved.participantSession.analysisProgress,
       firstNarrativeStatus: "received_text",
       extractionStatus: "eligible",
+    },
+    updatedAt: capturedAt,
+  };
+  const sessionValidation = validateParticipantSession(updatedSession);
+  if (!sessionValidation.ok) {
+    return narrativeError("invalid_participant_session", `Updated ParticipantSession failed validation: ${validationMessage(sessionValidation.errors)}`, {
+      participantSession: resolved.participantSession,
+    });
+  }
+
+  repos.rawEvidenceItems.save(evidenceItem);
+  repos.participantSessions.save(updatedSession);
+  return {
+    ok: true,
+    participantSession: updatedSession,
+    rawEvidenceItem: evidenceItem,
+  };
+}
+
+export function submitWebSessionFirstNarrativeVoice(
+  raw: string,
+  input: {
+    artifactRef: string;
+    originalFileName: string;
+  },
+  repos: WebSessionNarrativeRepos,
+  options?: WebSessionNarrativeOptions,
+): WebSessionNarrativeResult {
+  const artifactRef = input.artifactRef.trim();
+  const originalFileName = input.originalFileName.trim();
+  if (!artifactRef) {
+    return narrativeError("missing_audio_artifact", "Voice upload requires a stored audio artifact reference.");
+  }
+
+  const resolved = resolveSessionAccessToken(raw, repos.sessionAccessTokens, repos.participantSessions, options);
+  if (!resolved.ok) {
+    return { ok: false, errors: resolved.errors };
+  }
+  if (resolved.token.channelType !== "web_session_chatbot") {
+    return narrativeError("channel_type_mismatch", "Session access token is not a web session token.", {
+      participantSession: resolved.participantSession,
+    });
+  }
+
+  const existingEvidenceItemId =
+    resolved.participantSession.firstNarrativeEvidenceId ??
+    resolved.participantSession.rawEvidence.firstNarrativeEvidenceId;
+  if (existingEvidenceItemId) {
+    return narrativeError(
+      "narrative_already_submitted",
+      "First narrative has already been submitted for this participant session.",
+      {
+        participantSession: resolved.participantSession,
+        existingEvidenceItemId,
+      },
+    );
+  }
+
+  const capturedAt = tokenNow(options);
+  const evidenceItem: RawEvidenceItem = {
+    evidenceItemId: evidenceItemIdFor(resolved.participantSession, options),
+    sessionId: resolved.participantSession.sessionId,
+    evidenceType: "audio_recording_uploaded",
+    sourceChannel: "web_session_chatbot",
+    artifactRef,
+    language: resolved.participantSession.languagePreference,
+    capturedAt,
+    capturedBy: "participant",
+    trustStatus: "raw_unreviewed",
+    confidenceScore: 1,
+    originalFileName: originalFileName || "participant-voice-upload",
+    providerJobId: null,
+    linkedClarificationItemId: null,
+    notes: "Captured as the participant's first voice narrative through the web session path; transcript processing has not run.",
+  };
+  const evidenceValidation = validateRawEvidenceItem(evidenceItem);
+  if (!evidenceValidation.ok) {
+    return narrativeError("invalid_raw_evidence", `Generated RawEvidenceItem failed validation: ${validationMessage(evidenceValidation.errors)}`, {
+      participantSession: resolved.participantSession,
+    });
+  }
+
+  const rawEvidenceItems = [...resolved.participantSession.rawEvidenceItems, evidenceItem];
+  const rawEvidenceSectionItems = [...resolved.participantSession.rawEvidence.rawEvidenceItems, evidenceItem];
+  const updatedSession: ParticipantSession = {
+    ...resolved.participantSession,
+    sessionState: "transcript_pending_review",
+    rawEvidenceItems,
+    firstNarrativeStatus: "received_voice_pending_transcript",
+    firstNarrativeEvidenceId: evidenceItem.evidenceItemId,
+    extractionStatus: "blocked_evidence_not_approved",
+    rawEvidence: {
+      ...resolved.participantSession.rawEvidence,
+      rawEvidenceItems: rawEvidenceSectionItems,
+      firstNarrativeEvidenceId: evidenceItem.evidenceItemId,
+    },
+    analysisProgress: {
+      ...resolved.participantSession.analysisProgress,
+      firstNarrativeStatus: "received_voice_pending_transcript",
+      extractionStatus: "blocked_evidence_not_approved",
     },
     updatedAt: capturedAt,
   };

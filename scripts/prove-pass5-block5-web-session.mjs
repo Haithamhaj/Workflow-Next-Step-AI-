@@ -13,6 +13,7 @@ import {
   resolveSessionAccessToken,
   revokeSessionAccessToken,
   submitWebSessionFirstNarrative,
+  submitWebSessionFirstNarrativeVoice,
 } from "../packages/participant-sessions/dist/index.js";
 
 const dbPath = join(tmpdir(), "workflow-pass5-block5-web-session.sqlite");
@@ -190,5 +191,68 @@ assert.equal(reloadedEvidence.length, 1);
 assert.equal(reloadedEvidence[0]?.rawContent, narrativeText);
 assert.equal(reloaded.firstPassExtractionOutputs.findBySessionId(session.sessionId).length, 0);
 assert.equal(reloaded.clarificationCandidates.findBySessionId(session.sessionId).length, 0);
+
+const voiceSession = participantSession("participant-session-web-voice");
+repos.participantSessions.save(voiceSession);
+const voiceToken = createWebSessionAccessToken(voiceSession, repos.sessionAccessTokens, options());
+assert.equal(voiceToken.ok, true);
+const voiceSubmission = submitWebSessionFirstNarrativeVoice(
+  voiceToken.rawToken,
+  {
+    artifactRef: "file:data/participant-session-audio/proof-voice.webm",
+    originalFileName: "proof-voice.webm",
+  },
+  {
+    sessionAccessTokens: repos.sessionAccessTokens,
+    participantSessions: repos.participantSessions,
+    rawEvidenceItems: repos.rawEvidenceItems,
+  },
+  options(),
+);
+assert.equal(voiceSubmission.ok, true);
+assert.equal(voiceSubmission.rawEvidenceItem.evidenceType, "audio_recording_uploaded");
+assert.equal(voiceSubmission.rawEvidenceItem.sourceChannel, "web_session_chatbot");
+assert.equal(voiceSubmission.rawEvidenceItem.artifactRef, "file:data/participant-session-audio/proof-voice.webm");
+assert.equal(voiceSubmission.rawEvidenceItem.rawContent, undefined);
+assert.equal(voiceSubmission.rawEvidenceItem.originalFileName, "proof-voice.webm");
+assert.equal(voiceSubmission.rawEvidenceItem.providerJobId, null);
+assert.equal(voiceSubmission.rawEvidenceItem.capturedBy, "participant");
+assert.equal(validateRawEvidenceItem(voiceSubmission.rawEvidenceItem).ok, true);
+assert.equal(voiceSubmission.participantSession.sessionState, "transcript_pending_review");
+assert.equal(voiceSubmission.participantSession.firstNarrativeStatus, "received_voice_pending_transcript");
+assert.equal(voiceSubmission.participantSession.firstNarrativeEvidenceId, voiceSubmission.rawEvidenceItem.evidenceItemId);
+assert.equal(voiceSubmission.participantSession.extractionStatus, "blocked_evidence_not_approved");
+assert.equal(repos.firstPassExtractionOutputs.findBySessionId(voiceSession.sessionId).length, 0);
+assert.equal(repos.clarificationCandidates.findBySessionId(voiceSession.sessionId).length, 0);
+
+const duplicateVoice = submitWebSessionFirstNarrativeVoice(
+  voiceToken.rawToken,
+  {
+    artifactRef: "file:data/participant-session-audio/replacement.webm",
+    originalFileName: "replacement.webm",
+  },
+  {
+    sessionAccessTokens: repos.sessionAccessTokens,
+    participantSessions: repos.participantSessions,
+    rawEvidenceItems: repos.rawEvidenceItems,
+  },
+  options(),
+);
+assert.equal(duplicateVoice.ok, false);
+assert.equal(duplicateVoice.errors[0]?.code, "narrative_already_submitted");
+assert.equal(repos.rawEvidenceItems.findBySessionId(voiceSession.sessionId).length, 1);
+assert.equal(
+  repos.rawEvidenceItems.findById(voiceSubmission.rawEvidenceItem.evidenceItemId)?.artifactRef,
+  "file:data/participant-session-audio/proof-voice.webm",
+);
+
+const reloadedVoice = createSQLiteIntakeRepositories(dbPath);
+const reloadedVoiceSession = reloadedVoice.participantSessions.findById(voiceSession.sessionId);
+assert.equal(reloadedVoiceSession?.sessionState, "transcript_pending_review");
+assert.equal(reloadedVoiceSession?.firstNarrativeStatus, "received_voice_pending_transcript");
+assert.equal(reloadedVoiceSession?.extractionStatus, "blocked_evidence_not_approved");
+assert.equal(reloadedVoice.rawEvidenceItems.findBySessionId(voiceSession.sessionId)[0]?.artifactRef, "file:data/participant-session-audio/proof-voice.webm");
+assert.equal(reloadedVoice.firstPassExtractionOutputs.findBySessionId(voiceSession.sessionId).length, 0);
+assert.equal(reloadedVoice.clarificationCandidates.findBySessionId(voiceSession.sessionId).length, 0);
 
 console.log("Pass 5 Block 5 web session proof passed.");
