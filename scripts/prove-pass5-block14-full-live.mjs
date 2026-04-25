@@ -269,7 +269,18 @@ assert.equal(extractionResult.ok, true, extractionResult.ok ? "" : JSON.stringif
 assert.equal(validateFirstPassExtractionOutput(extractionResult.createdExtraction).ok, true);
 assert.ok(extractionResult.createdExtraction.basisEvidenceItemIds.includes("evidence-web-narrative"));
 assert.ok(extractionResult.createdExtraction.sourceCoverageSummary.includes("fullContentProcessed=true"));
-assert.ok(extractionResult.createdExtraction.unmappedContentItems.length > 0, "Live extraction must preserve unclear content as unmapped.");
+const governedNoDropRouteCount = [
+  extractionResult.createdExtraction.unmappedContentItems.length,
+  extractionResult.createdExtraction.extractionDefects.length,
+  extractionResult.createdExtraction.evidenceDisputes.length,
+  extractionResult.createdExtraction.extractedUnknowns.length,
+  extractionResult.createdExtraction.boundarySignals.length,
+  extractionResult.createdExtraction.clarificationCandidates.length,
+].reduce((sum, count) => sum + count, 0);
+assert.ok(
+  governedNoDropRouteCount > 0,
+  "Live extraction must preserve unclear content through an approved governed route.",
+);
 const extractedItems = [
   ...extractionResult.createdExtraction.extractedActors,
   ...extractionResult.createdExtraction.extractedSteps,
