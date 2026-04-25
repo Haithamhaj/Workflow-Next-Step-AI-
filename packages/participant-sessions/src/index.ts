@@ -955,3 +955,380 @@ export function submitWebSessionFirstNarrativeVoice(
     rawEvidenceItem: evidenceItem,
   };
 }
+
+export type TelegramUpdatesMode = "polling" | "webhook";
+
+export type TelegramAdapterErrorCode =
+  | SessionAccessTokenErrorCode
+  | "telegram_config_missing"
+  | "telegram_start_token_missing"
+  | "telegram_message_text_missing"
+  | "telegram_user_missing"
+  | "telegram_binding_conflict"
+  | "unbound_telegram_user"
+  | "narrative_already_submitted"
+  | "invalid_raw_evidence"
+  | "invalid_participant_session";
+
+export interface TelegramAdapterError {
+  code: TelegramAdapterErrorCode;
+  message: string;
+}
+
+export type TelegramConfigResult =
+  | {
+      ok: true;
+      configured: true;
+      botUsername: string;
+      updatesMode: TelegramUpdatesMode;
+      publicAppUrl: string | null;
+      webhookSecretConfigured: boolean;
+      tokenConfigured: true;
+    }
+  | {
+      ok: false;
+      configured: false;
+      missingKeys: string[];
+      errors: TelegramAdapterError[];
+      tokenConfigured: boolean;
+    };
+
+export interface TelegramAdapterRepos extends TelegramBindingRepos {
+  rawEvidenceItems: RawEvidenceItemRepository;
+}
+
+export interface TelegramAdapterOptions extends TelegramBindingOptions {
+  botUsername?: string;
+  evidenceItemIdFactory?: (session: ParticipantSession) => string;
+}
+
+export interface TelegramUserIdentity {
+  id: number | string;
+  username?: string;
+  first_name?: string;
+  last_name?: string;
+  language_code?: string;
+}
+
+export interface TelegramChatIdentity {
+  id: number | string;
+}
+
+export interface TelegramMessageInput {
+  message?: {
+    text?: string;
+    chat?: TelegramChatIdentity;
+    from?: TelegramUserIdentity;
+  };
+  text?: string;
+  chat?: TelegramChatIdentity;
+  from?: TelegramUserIdentity;
+}
+
+export type TelegramDeepLinkResult =
+  | {
+      ok: true;
+      deepLink: string;
+      rawToken: string;
+      token: SessionAccessToken;
+    }
+  | {
+      ok: false;
+      errors: TelegramAdapterError[];
+    };
+
+export type TelegramStartCommandResult =
+  | {
+      ok: true;
+      participantSession: ParticipantSession;
+      binding: TelegramIdentityBinding;
+      token: SessionAccessToken;
+      guidanceMessage: string;
+    }
+  | {
+      ok: false;
+      errors: TelegramAdapterError[];
+      guidanceMessage?: string;
+    };
+
+export type TelegramTextMessageResult =
+  | {
+      ok: true;
+      participantSession: ParticipantSession;
+      binding: TelegramIdentityBinding;
+      rawEvidenceItem: RawEvidenceItem;
+      replyMessage: string;
+    }
+  | {
+      ok: false;
+      errors: TelegramAdapterError[];
+      replyMessage?: string;
+      existingEvidenceItemId?: string;
+    };
+
+function telegramError(code: TelegramAdapterErrorCode, message: string): { ok: false; errors: TelegramAdapterError[] } {
+  return { ok: false, errors: [{ code, message }] };
+}
+
+export function getTelegramConfig(env: Record<string, string | undefined> = process.env): TelegramConfigResult {
+  const missingKeys: string[] = [];
+  if (!env.TELEGRAM_BOT_TOKEN) missingKeys.push("TELEGRAM_BOT_TOKEN");
+  if (!env.TELEGRAM_BOT_USERNAME) missingKeys.push("TELEGRAM_BOT_USERNAME");
+  if (!env.TELEGRAM_UPDATES_MODE) missingKeys.push("TELEGRAM_UPDATES_MODE");
+  const mode = env.TELEGRAM_UPDATES_MODE;
+  if (mode && mode !== "polling" && mode !== "webhook") missingKeys.push("TELEGRAM_UPDATES_MODE");
+  if (missingKeys.length > 0) {
+    return {
+      ok: false,
+      configured: false,
+      missingKeys,
+      tokenConfigured: Boolean(env.TELEGRAM_BOT_TOKEN),
+      errors: [{
+        code: "telegram_config_missing",
+        message: `Telegram configuration is incomplete: ${missingKeys.join(", ")}.`,
+      }],
+    };
+  }
+  return {
+    ok: true,
+    configured: true,
+    botUsername: env.TELEGRAM_BOT_USERNAME!,
+    updatesMode: mode as TelegramUpdatesMode,
+    publicAppUrl: env.PUBLIC_APP_URL ?? null,
+    webhookSecretConfigured: Boolean(env.TELEGRAM_WEBHOOK_SECRET),
+    tokenConfigured: true,
+  };
+}
+
+export function createTelegramDeepLink(
+  session: ParticipantSession,
+  tokenRepo: SessionAccessTokenRepository,
+  options?: TelegramAdapterOptions,
+): TelegramDeepLinkResult {
+  const config = getTelegramConfig();
+  const botUsername = options?.botUsername ?? (config.ok ? config.botUsername : null);
+  if (!botUsername) {
+    return telegramError("telegram_config_missing", "Telegram bot username is required to create a deep link.");
+  }
+  const created = createTelegramPairingToken(session, tokenRepo, options);
+  if (!created.ok) return { ok: false, errors: created.errors };
+  return {
+    ok: true,
+    deepLink: `https://t.me/${encodeURIComponent(botUsername)}?start=${encodeURIComponent(created.rawToken)}`,
+    rawToken: created.rawToken,
+    token: created.token,
+  };
+}
+
+function telegramMessage(input: TelegramMessageInput): NonNullable<TelegramMessageInput["message"]> {
+  return input.message ?? {
+    text: input.text,
+    chat: input.chat,
+    from: input.from,
+  };
+}
+
+function telegramText(input: TelegramMessageInput): string {
+  return telegramMessage(input).text?.trim() ?? "";
+}
+
+function telegramUser(input: TelegramMessageInput): TelegramUserIdentity | null {
+  return telegramMessage(input).from ?? null;
+}
+
+function telegramChat(input: TelegramMessageInput): TelegramChatIdentity | null {
+  return telegramMessage(input).chat ?? null;
+}
+
+function startTokenFrom(input: TelegramMessageInput): string | null {
+  const text = telegramText(input);
+  const match = text.match(/^\/start(?:@\S+)?(?:\s+(.+))?$/);
+  return match?.[1]?.trim() || null;
+}
+
+export function buildTelegramParticipantGuidance(
+  session: ParticipantSession,
+  binding?: TelegramIdentityBinding,
+): string {
+  const greeting = binding?.telegramFirstName
+    ? `Hi ${binding.telegramFirstName}.`
+    : `Hi ${session.participantLabel}.`;
+  return [
+    greeting,
+    `We are asking you about ${session.selectedUseCase} in ${session.selectedDepartment}.`,
+    "Please describe what actually happens in practice. Perfect order is not required.",
+    "If you are unsure, if it is outside your responsibility, or if another team handles part of it, say that clearly.",
+  ].join("\n");
+}
+
+export function handleTelegramStartCommand(
+  updateOrMessage: TelegramMessageInput,
+  repos: TelegramAdapterRepos,
+  options?: TelegramAdapterOptions,
+): TelegramStartCommandResult {
+  const token = startTokenFrom(updateOrMessage);
+  if (!token) return telegramError("telegram_start_token_missing", "Telegram /start command must include a session pairing token.");
+  const user = telegramUser(updateOrMessage);
+  const chat = telegramChat(updateOrMessage);
+  if (!user || !chat) return telegramError("telegram_user_missing", "Telegram /start command is missing user or chat identity.");
+
+  const bound = bindTelegramIdentityToSession(
+    token,
+    {
+      telegramUserId: String(user.id),
+      telegramChatId: String(chat.id),
+      telegramUsername: user.username ?? null,
+      telegramFirstName: user.first_name ?? null,
+      telegramLastName: user.last_name ?? null,
+      telegramLanguageCode: user.language_code ?? null,
+    },
+    repos,
+    options,
+  );
+  if (!bound.ok) return { ok: false, errors: bound.errors };
+
+  const updatedSession: ParticipantSession = {
+    ...bound.participantSession,
+    channelStatus: "telegram_linked",
+    channelAccess: {
+      ...bound.participantSession.channelAccess,
+      channelStatus: "telegram_linked",
+      sessionAccessTokenId: bound.token.accessTokenId,
+      telegramBindingId: bound.binding.bindingId,
+    },
+    updatedAt: tokenNow(options),
+  };
+  const validation = validateParticipantSession(updatedSession);
+  if (!validation.ok) {
+    return telegramError("invalid_participant_session", `Updated ParticipantSession failed validation: ${validationMessage(validation.errors)}`);
+  }
+  repos.participantSessions.save(updatedSession);
+
+  return {
+    ok: true,
+    participantSession: updatedSession,
+    binding: bound.binding,
+    token: bound.token,
+    guidanceMessage: buildTelegramParticipantGuidance(updatedSession, bound.binding),
+  };
+}
+
+function activeBindingForTelegramUser(
+  telegramUserId: string,
+  bindingRepo: TelegramIdentityBindingRepository,
+): TelegramIdentityBinding | null {
+  return bindingRepo.findByTelegramUserId(telegramUserId).find(
+    (binding) => binding.bindingStatus !== "rejected_or_unlinked",
+  ) ?? null;
+}
+
+function telegramEvidenceItemIdFor(session: ParticipantSession, options?: TelegramAdapterOptions): string {
+  return options?.evidenceItemIdFactory?.(session) ?? `raw_evidence_${crypto.randomUUID()}`;
+}
+
+export function handleTelegramTextMessage(
+  updateOrMessage: TelegramMessageInput,
+  repos: TelegramAdapterRepos,
+  options?: TelegramAdapterOptions,
+): TelegramTextMessageResult {
+  const text = telegramText(updateOrMessage);
+  if (!text || text.startsWith("/start")) {
+    return {
+      ...telegramError("telegram_message_text_missing", "Telegram text message is missing participant narrative text."),
+      replyMessage: "Please open your session link first, then send your workflow description here.",
+    };
+  }
+  const user = telegramUser(updateOrMessage);
+  if (!user) {
+    return telegramError("telegram_user_missing", "Telegram message is missing user identity.");
+  }
+  const binding = activeBindingForTelegramUser(String(user.id), repos.telegramIdentityBindings);
+  if (!binding) {
+    return {
+      ...telegramError("unbound_telegram_user", "Telegram user is not bound to a participant session."),
+      replyMessage: "Please start from the session link shared with you before sending your workflow description.",
+    };
+  }
+  const session = repos.participantSessions.findById(binding.participantSessionId);
+  if (!session) {
+    return telegramError("session_not_found", "Participant session linked to Telegram identity was not found.");
+  }
+  const existingEvidenceItemId =
+    session.firstNarrativeEvidenceId ??
+    session.rawEvidence.firstNarrativeEvidenceId;
+  if (existingEvidenceItemId) {
+    return {
+      ok: false,
+      errors: [{
+        code: "narrative_already_submitted",
+        message: "First narrative has already been submitted for this participant session.",
+      }],
+      existingEvidenceItemId,
+      replyMessage: "Your first narrative is already recorded. An admin can reopen the session if another answer is needed.",
+    };
+  }
+
+  const capturedAt = tokenNow(options);
+  const evidenceItem: RawEvidenceItem = {
+    evidenceItemId: telegramEvidenceItemIdFor(session, options),
+    sessionId: session.sessionId,
+    evidenceType: "telegram_message",
+    sourceChannel: "telegram_bot",
+    rawContent: text,
+    language: session.languagePreference || user.language_code || "en",
+    capturedAt,
+    capturedBy: "participant",
+    trustStatus: "raw_unreviewed",
+    confidenceScore: 1,
+    originalFileName: null,
+    providerJobId: null,
+    linkedClarificationItemId: null,
+    notes: "Captured as the participant's first text narrative through the Telegram adapter.",
+  };
+  const evidenceValidation = validateRawEvidenceItem(evidenceItem);
+  if (!evidenceValidation.ok) {
+    return telegramError("invalid_raw_evidence", `Generated RawEvidenceItem failed validation: ${validationMessage(evidenceValidation.errors)}`);
+  }
+
+  const rawEvidenceItems = [...session.rawEvidenceItems, evidenceItem];
+  const rawEvidenceSectionItems = [...session.rawEvidence.rawEvidenceItems, evidenceItem];
+  const updatedSession: ParticipantSession = {
+    ...session,
+    sessionState: "first_narrative_received",
+    channelStatus: "telegram_message_received",
+    rawEvidenceItems,
+    firstNarrativeStatus: "received_text",
+    firstNarrativeEvidenceId: evidenceItem.evidenceItemId,
+    extractionStatus: "eligible",
+    channelAccess: {
+      ...session.channelAccess,
+      channelStatus: "telegram_message_received",
+      telegramBindingId: binding.bindingId,
+    },
+    rawEvidence: {
+      ...session.rawEvidence,
+      rawEvidenceItems: rawEvidenceSectionItems,
+      firstNarrativeEvidenceId: evidenceItem.evidenceItemId,
+    },
+    analysisProgress: {
+      ...session.analysisProgress,
+      firstNarrativeStatus: "received_text",
+      extractionStatus: "eligible",
+    },
+    updatedAt: capturedAt,
+  };
+  const sessionValidation = validateParticipantSession(updatedSession);
+  if (!sessionValidation.ok) {
+    return telegramError("invalid_participant_session", `Updated ParticipantSession failed validation: ${validationMessage(sessionValidation.errors)}`);
+  }
+
+  repos.rawEvidenceItems.save(evidenceItem);
+  repos.participantSessions.save(updatedSession);
+  return {
+    ok: true,
+    participantSession: updatedSession,
+    binding,
+    rawEvidenceItem: evidenceItem,
+    replyMessage: "Thank you. Your workflow description was recorded for review.",
+  };
+}
