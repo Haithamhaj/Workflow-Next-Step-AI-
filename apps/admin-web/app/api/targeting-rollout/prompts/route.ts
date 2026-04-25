@@ -7,7 +7,7 @@ import {
   promotePass4PromptDraft,
   runPass4PromptComparisonTest,
 } from "@workflow/prompts";
-import { GoogleExtractionProvider } from "@workflow/integrations";
+import { providerRegistry } from "@workflow/integrations";
 import type { StructuredPromptSpecBlock } from "@workflow/contracts";
 import { store } from "../../../../lib/store";
 
@@ -67,7 +67,7 @@ export async function POST(request: Request) {
         caseContextUsed: "sample Pass 4 case context",
         activeCompiledPrompt: compilePass4TargetingPromptSpec(active, sampleContext),
         draftCompiledPrompt: compilePass4TargetingPromptSpec(draft, sampleContext),
-        provider: new GoogleExtractionProvider(),
+        provider: providerRegistry.getExtractionProvider("google"),
         adminNote: body.adminNote,
       }, { promptSpecs: store.structuredPromptSpecs, testRuns: store.pass4PromptTestRuns }));
     }
