@@ -42,6 +42,26 @@ import type {
   Pass3PromptTestRun,
   Pass4PromptTestRun,
   TargetingRolloutPlan,
+  BoundarySignal,
+  ClarificationCandidate,
+  EvidenceDispute,
+  FirstPassExtractionOutput,
+  ParticipantSession,
+  ParticipantSessionState,
+  Pass6HandoffCandidate,
+  RawEvidenceItem,
+  SessionAccessToken,
+  SessionAccessTokenStatus,
+  TelegramBindingStatus,
+  TelegramIdentityBinding,
+  SessionNextAction,
+  ChannelStatus,
+  TrustStatus,
+  ClarificationPriority,
+  ClarificationStatus,
+  AdminReviewStatus,
+  Pass6HandoffAdminDecision,
+  EvidenceDisputeAdminDecision,
 } from "@workflow/contracts";
 
 import { mkdirSync } from "node:fs";
@@ -200,6 +220,17 @@ export interface StoredTargetingRolloutPlan extends TargetingRolloutPlan {}
 export interface StoredSourceHierarchyTriageJob extends SourceHierarchyTriageJob {}
 
 export interface StoredSourceHierarchyTriageSuggestion extends SourceHierarchyTriageSuggestion {}
+
+export interface StoredParticipantSession extends ParticipantSession {}
+export interface StoredSessionAccessToken extends SessionAccessToken {}
+export interface StoredTelegramIdentityBinding extends TelegramIdentityBinding {}
+export interface StoredRawEvidenceItem extends RawEvidenceItem {}
+export interface StoredFirstPassExtractionOutput extends FirstPassExtractionOutput {}
+export interface StoredClarificationCandidate extends ClarificationCandidate {}
+export interface StoredBoundarySignal extends BoundarySignal {}
+export interface StoredEvidenceDispute extends EvidenceDispute {}
+export interface StoredSessionNextAction extends SessionNextAction {}
+export interface StoredPass6HandoffCandidate extends Pass6HandoffCandidate {}
 
 // ---------------------------------------------------------------------------
 // Repository interfaces — backend-agnostic
@@ -479,6 +510,145 @@ export interface Pass4PromptTestRunRepository {
   findById(testRunId: string): StoredPass4PromptTestRun | null;
   findByPromptSpecId(promptSpecId: string): StoredPass4PromptTestRun[];
   findAll(): StoredPass4PromptTestRun[];
+}
+
+export interface ParticipantSessionRepository {
+  save(record: StoredParticipantSession): void;
+  findById(sessionId: string): StoredParticipantSession | null;
+  findByCaseId(caseId: string): StoredParticipantSession[];
+  findByTargetingPlanId(targetingPlanId: string): StoredParticipantSession[];
+  findAll(): StoredParticipantSession[];
+  updateSessionStatus(
+    sessionId: string,
+    updates: {
+      sessionState?: ParticipantSessionState;
+      channelStatus?: ChannelStatus;
+      updatedAt: string;
+    },
+  ): StoredParticipantSession | null;
+}
+
+export interface SessionAccessTokenRepository {
+  save(record: StoredSessionAccessToken): void;
+  findById(accessTokenId: string): StoredSessionAccessToken | null;
+  findByTokenHash(tokenHash: string): StoredSessionAccessToken | null;
+  findBySecureTokenRef(secureTokenRef: string): StoredSessionAccessToken | null;
+  findByParticipantSessionId(participantSessionId: string): StoredSessionAccessToken[];
+  findAll(): StoredSessionAccessToken[];
+  updateTokenUsage(
+    accessTokenId: string,
+    updates: {
+      lastUsedAt?: string | null;
+      useCount?: number;
+      tokenStatus?: SessionAccessTokenStatus;
+      revokedAt?: string | null;
+      revokedReason?: string | null;
+    },
+  ): StoredSessionAccessToken | null;
+}
+
+export interface TelegramIdentityBindingRepository {
+  save(record: StoredTelegramIdentityBinding): void;
+  findById(bindingId: string): StoredTelegramIdentityBinding | null;
+  findByParticipantSessionId(participantSessionId: string): StoredTelegramIdentityBinding[];
+  findByTelegramUserId(telegramUserId: string): StoredTelegramIdentityBinding[];
+  findAll(): StoredTelegramIdentityBinding[];
+  updateBindingStatus(
+    bindingId: string,
+    bindingStatus: TelegramBindingStatus,
+    updatedAt: string,
+  ): StoredTelegramIdentityBinding | null;
+}
+
+export interface RawEvidenceItemRepository {
+  save(record: StoredRawEvidenceItem): void;
+  findById(evidenceItemId: string): StoredRawEvidenceItem | null;
+  findBySessionId(sessionId: string): StoredRawEvidenceItem[];
+  findByTrustStatus(trustStatus: TrustStatus): StoredRawEvidenceItem[];
+  findAll(): StoredRawEvidenceItem[];
+  updateTrustStatus(
+    evidenceItemId: string,
+    updates: {
+      trustStatus: TrustStatus;
+      confidenceScore?: number;
+      linkedClarificationItemId?: string | null;
+      notes?: string;
+    },
+  ): StoredRawEvidenceItem | null;
+}
+
+export interface FirstPassExtractionOutputRepository {
+  save(record: StoredFirstPassExtractionOutput): void;
+  findById(extractionId: string): StoredFirstPassExtractionOutput | null;
+  findBySessionId(sessionId: string): StoredFirstPassExtractionOutput[];
+  findAll(): StoredFirstPassExtractionOutput[];
+  updateExtractionStatus(
+    extractionId: string,
+    extractionStatus: StoredFirstPassExtractionOutput["extractionStatus"],
+  ): StoredFirstPassExtractionOutput | null;
+}
+
+export interface ClarificationCandidateRepository {
+  save(record: StoredClarificationCandidate): void;
+  findById(candidateId: string): StoredClarificationCandidate | null;
+  findBySessionId(sessionId: string): StoredClarificationCandidate[];
+  findOpenBySessionId(sessionId: string): StoredClarificationCandidate[];
+  findAll(): StoredClarificationCandidate[];
+  updateReviewState(
+    candidateId: string,
+    updates: {
+      status?: ClarificationStatus;
+      priority?: ClarificationPriority;
+      askNext?: boolean;
+      adminReviewStatus?: AdminReviewStatus;
+      adminInstruction?: string;
+      updatedAt: string;
+    },
+  ): StoredClarificationCandidate | null;
+}
+
+export interface BoundarySignalRepository {
+  save(record: StoredBoundarySignal): void;
+  findById(boundarySignalId: string): StoredBoundarySignal | null;
+  findBySessionId(sessionId: string): StoredBoundarySignal[];
+  findRequiringEscalation(): StoredBoundarySignal[];
+  findAll(): StoredBoundarySignal[];
+}
+
+export interface EvidenceDisputeRepository {
+  save(record: StoredEvidenceDispute): void;
+  findById(disputeId: string): StoredEvidenceDispute | null;
+  findBySessionId(sessionId: string): StoredEvidenceDispute[];
+  findByExtractionId(extractionId: string): StoredEvidenceDispute[];
+  findAll(): StoredEvidenceDispute[];
+  updateAdminDecision(
+    disputeId: string,
+    adminDecision: EvidenceDisputeAdminDecision,
+  ): StoredEvidenceDispute | null;
+}
+
+export interface SessionNextActionRepository {
+  save(record: StoredSessionNextAction): void;
+  findById(nextActionId: string): StoredSessionNextAction | null;
+  findBySessionId(sessionId: string): StoredSessionNextAction[];
+  findCurrentBySessionId(sessionId: string): StoredSessionNextAction | null;
+  findAll(): StoredSessionNextAction[];
+  updateAction(
+    nextActionId: string,
+    updates: Partial<Omit<StoredSessionNextAction, "nextActionId" | "sessionId" | "createdAt">> & { updatedAt: string },
+  ): StoredSessionNextAction | null;
+}
+
+export interface Pass6HandoffCandidateRepository {
+  save(record: StoredPass6HandoffCandidate): void;
+  findById(handoffCandidateId: string): StoredPass6HandoffCandidate | null;
+  findByCaseId(caseId: string): StoredPass6HandoffCandidate[];
+  findBySessionId(sessionId: string): StoredPass6HandoffCandidate[];
+  findAll(): StoredPass6HandoffCandidate[];
+  updateAdminDecision(
+    handoffCandidateId: string,
+    adminDecision: Pass6HandoffAdminDecision,
+  ): StoredPass6HandoffCandidate | null;
 }
 
 // ---------------------------------------------------------------------------
@@ -1346,6 +1516,213 @@ class InMemoryPass4PromptTestRunRepository implements Pass4PromptTestRunReposito
   findAll(): StoredPass4PromptTestRun[] { return Array.from(this.store.values()); }
 }
 
+function cloneRecord<T>(record: T): T {
+  return structuredClone(record);
+}
+
+const inactiveTelegramBindingStatuses: readonly TelegramBindingStatus[] = [
+  "rejected_or_unlinked",
+];
+
+function isActiveTelegramBinding(record: StoredTelegramIdentityBinding): boolean {
+  return !inactiveTelegramBindingStatuses.includes(record.bindingStatus);
+}
+
+class InMemoryParticipantSessionRepository implements ParticipantSessionRepository {
+  private readonly store = new Map<string, StoredParticipantSession>();
+  save(record: StoredParticipantSession): void { this.store.set(record.sessionId, cloneRecord(record)); }
+  findById(sessionId: string): StoredParticipantSession | null { const record = this.store.get(sessionId); return record ? cloneRecord(record) : null; }
+  findByCaseId(caseId: string): StoredParticipantSession[] { return this.findAll().filter((record) => record.caseId === caseId); }
+  findByTargetingPlanId(targetingPlanId: string): StoredParticipantSession[] { return this.findAll().filter((record) => record.targetingPlanId === targetingPlanId); }
+  findAll(): StoredParticipantSession[] { return Array.from(this.store.values()).map((record) => cloneRecord(record)); }
+  updateSessionStatus(sessionId: string, updates: { sessionState?: ParticipantSessionState; channelStatus?: ChannelStatus; updatedAt: string }): StoredParticipantSession | null {
+    const existing = this.store.get(sessionId);
+    if (!existing) return null;
+    const updated = cloneRecord({
+      ...existing,
+      sessionState: updates.sessionState ?? existing.sessionState,
+      channelStatus: updates.channelStatus ?? existing.channelStatus,
+      channelAccess: {
+        ...existing.channelAccess,
+        channelStatus: updates.channelStatus ?? existing.channelAccess.channelStatus,
+      },
+      updatedAt: updates.updatedAt,
+    });
+    this.store.set(sessionId, updated);
+    return cloneRecord(updated);
+  }
+}
+
+class InMemorySessionAccessTokenRepository implements SessionAccessTokenRepository {
+  private readonly store = new Map<string, StoredSessionAccessToken>();
+  save(record: StoredSessionAccessToken): void { this.store.set(record.accessTokenId, cloneRecord(record)); }
+  findById(accessTokenId: string): StoredSessionAccessToken | null { const record = this.store.get(accessTokenId); return record ? cloneRecord(record) : null; }
+  findByTokenHash(tokenHash: string): StoredSessionAccessToken | null { return this.findAll().find((record) => record.tokenHash === tokenHash) ?? null; }
+  findBySecureTokenRef(secureTokenRef: string): StoredSessionAccessToken | null { return this.findAll().find((record) => record.secureTokenRef === secureTokenRef) ?? null; }
+  findByParticipantSessionId(participantSessionId: string): StoredSessionAccessToken[] { return this.findAll().filter((record) => record.participantSessionId === participantSessionId); }
+  findAll(): StoredSessionAccessToken[] { return Array.from(this.store.values()).map((record) => cloneRecord(record)); }
+  updateTokenUsage(accessTokenId: string, updates: { lastUsedAt?: string | null; useCount?: number; tokenStatus?: SessionAccessTokenStatus; revokedAt?: string | null; revokedReason?: string | null }): StoredSessionAccessToken | null {
+    const existing = this.store.get(accessTokenId);
+    if (!existing) return null;
+    const updated = cloneRecord({ ...existing, ...updates });
+    this.store.set(accessTokenId, updated);
+    return cloneRecord(updated);
+  }
+}
+
+class InMemoryTelegramIdentityBindingRepository implements TelegramIdentityBindingRepository {
+  private readonly store = new Map<string, StoredTelegramIdentityBinding>();
+  save(record: StoredTelegramIdentityBinding): void {
+    const activeConflict = Array.from(this.store.values()).find((existing) =>
+      existing.bindingId !== record.bindingId &&
+      existing.participantSessionId === record.participantSessionId &&
+      isActiveTelegramBinding(existing) &&
+      isActiveTelegramBinding(record)
+    );
+    if (activeConflict) {
+      throw new Error(`Active Telegram binding already exists for participant session '${record.participantSessionId}'.`);
+    }
+    this.store.set(record.bindingId, cloneRecord(record));
+  }
+  findById(bindingId: string): StoredTelegramIdentityBinding | null { const record = this.store.get(bindingId); return record ? cloneRecord(record) : null; }
+  findByParticipantSessionId(participantSessionId: string): StoredTelegramIdentityBinding[] { return this.findAll().filter((record) => record.participantSessionId === participantSessionId); }
+  findByTelegramUserId(telegramUserId: string): StoredTelegramIdentityBinding[] { return this.findAll().filter((record) => record.telegramUserId === telegramUserId); }
+  findAll(): StoredTelegramIdentityBinding[] { return Array.from(this.store.values()).map((record) => cloneRecord(record)); }
+  updateBindingStatus(bindingId: string, bindingStatus: TelegramBindingStatus, updatedAt: string): StoredTelegramIdentityBinding | null {
+    const existing = this.store.get(bindingId);
+    if (!existing) return null;
+    const updated = cloneRecord({ ...existing, bindingStatus, updatedAt });
+    this.store.set(bindingId, updated);
+    return cloneRecord(updated);
+  }
+}
+
+class InMemoryRawEvidenceItemRepository implements RawEvidenceItemRepository {
+  private readonly store = new Map<string, StoredRawEvidenceItem>();
+  save(record: StoredRawEvidenceItem): void {
+    const existing = this.store.get(record.evidenceItemId);
+    if (existing) {
+      this.store.set(record.evidenceItemId, cloneRecord({
+        ...existing,
+        trustStatus: record.trustStatus,
+        confidenceScore: record.confidenceScore,
+        linkedClarificationItemId: record.linkedClarificationItemId,
+        notes: record.notes,
+      }));
+      return;
+    }
+    this.store.set(record.evidenceItemId, cloneRecord(record));
+  }
+  findById(evidenceItemId: string): StoredRawEvidenceItem | null { const record = this.store.get(evidenceItemId); return record ? cloneRecord(record) : null; }
+  findBySessionId(sessionId: string): StoredRawEvidenceItem[] { return this.findAll().filter((record) => record.sessionId === sessionId); }
+  findByTrustStatus(trustStatus: TrustStatus): StoredRawEvidenceItem[] { return this.findAll().filter((record) => record.trustStatus === trustStatus); }
+  findAll(): StoredRawEvidenceItem[] { return Array.from(this.store.values()).map((record) => cloneRecord(record)); }
+  updateTrustStatus(evidenceItemId: string, updates: { trustStatus: TrustStatus; confidenceScore?: number; linkedClarificationItemId?: string | null; notes?: string }): StoredRawEvidenceItem | null {
+    const existing = this.store.get(evidenceItemId);
+    if (!existing) return null;
+    const updated = cloneRecord({
+      ...existing,
+      trustStatus: updates.trustStatus,
+      confidenceScore: updates.confidenceScore ?? existing.confidenceScore,
+      linkedClarificationItemId: updates.linkedClarificationItemId ?? existing.linkedClarificationItemId,
+      notes: updates.notes ?? existing.notes,
+    });
+    this.store.set(evidenceItemId, updated);
+    return cloneRecord(updated);
+  }
+}
+
+class InMemoryFirstPassExtractionOutputRepository implements FirstPassExtractionOutputRepository {
+  private readonly store = new Map<string, StoredFirstPassExtractionOutput>();
+  save(record: StoredFirstPassExtractionOutput): void { this.store.set(record.extractionId, cloneRecord(record)); }
+  findById(extractionId: string): StoredFirstPassExtractionOutput | null { const record = this.store.get(extractionId); return record ? cloneRecord(record) : null; }
+  findBySessionId(sessionId: string): StoredFirstPassExtractionOutput[] { return this.findAll().filter((record) => record.sessionId === sessionId); }
+  findAll(): StoredFirstPassExtractionOutput[] { return Array.from(this.store.values()).map((record) => cloneRecord(record)); }
+  updateExtractionStatus(extractionId: string, extractionStatus: StoredFirstPassExtractionOutput["extractionStatus"]): StoredFirstPassExtractionOutput | null {
+    const existing = this.store.get(extractionId);
+    if (!existing) return null;
+    const updated = cloneRecord({ ...existing, extractionStatus });
+    this.store.set(extractionId, updated);
+    return cloneRecord(updated);
+  }
+}
+
+class InMemoryClarificationCandidateRepository implements ClarificationCandidateRepository {
+  private readonly store = new Map<string, StoredClarificationCandidate>();
+  save(record: StoredClarificationCandidate): void { this.store.set(record.candidateId, cloneRecord(record)); }
+  findById(candidateId: string): StoredClarificationCandidate | null { const record = this.store.get(candidateId); return record ? cloneRecord(record) : null; }
+  findBySessionId(sessionId: string): StoredClarificationCandidate[] { return this.findAll().filter((record) => record.sessionId === sessionId); }
+  findOpenBySessionId(sessionId: string): StoredClarificationCandidate[] { return this.findBySessionId(sessionId).filter((record) => record.status === "open" || record.status === "asked" || record.status === "partially_resolved"); }
+  findAll(): StoredClarificationCandidate[] { return Array.from(this.store.values()).map((record) => cloneRecord(record)); }
+  updateReviewState(candidateId: string, updates: { status?: ClarificationStatus; priority?: ClarificationPriority; askNext?: boolean; adminReviewStatus?: AdminReviewStatus; adminInstruction?: string; updatedAt: string }): StoredClarificationCandidate | null {
+    const existing = this.store.get(candidateId);
+    if (!existing) return null;
+    const updated = cloneRecord({ ...existing, ...updates });
+    this.store.set(candidateId, updated);
+    return cloneRecord(updated);
+  }
+}
+
+class InMemoryBoundarySignalRepository implements BoundarySignalRepository {
+  private readonly store = new Map<string, StoredBoundarySignal>();
+  save(record: StoredBoundarySignal): void { this.store.set(record.boundarySignalId, cloneRecord(record)); }
+  findById(boundarySignalId: string): StoredBoundarySignal | null { const record = this.store.get(boundarySignalId); return record ? cloneRecord(record) : null; }
+  findBySessionId(sessionId: string): StoredBoundarySignal[] { return this.findAll().filter((record) => record.sessionId === sessionId); }
+  findRequiringEscalation(): StoredBoundarySignal[] { return this.findAll().filter((record) => record.requiresEscalation); }
+  findAll(): StoredBoundarySignal[] { return Array.from(this.store.values()).map((record) => cloneRecord(record)); }
+}
+
+class InMemoryEvidenceDisputeRepository implements EvidenceDisputeRepository {
+  private readonly store = new Map<string, StoredEvidenceDispute>();
+  save(record: StoredEvidenceDispute): void { this.store.set(record.disputeId, cloneRecord(record)); }
+  findById(disputeId: string): StoredEvidenceDispute | null { const record = this.store.get(disputeId); return record ? cloneRecord(record) : null; }
+  findBySessionId(sessionId: string): StoredEvidenceDispute[] { return this.findAll().filter((record) => record.sessionId === sessionId); }
+  findByExtractionId(extractionId: string): StoredEvidenceDispute[] { return this.findAll().filter((record) => record.extractionId === extractionId); }
+  findAll(): StoredEvidenceDispute[] { return Array.from(this.store.values()).map((record) => cloneRecord(record)); }
+  updateAdminDecision(disputeId: string, adminDecision: EvidenceDisputeAdminDecision): StoredEvidenceDispute | null {
+    const existing = this.store.get(disputeId);
+    if (!existing) return null;
+    const updated = cloneRecord({ ...existing, adminDecision });
+    this.store.set(disputeId, updated);
+    return cloneRecord(updated);
+  }
+}
+
+class InMemorySessionNextActionRepository implements SessionNextActionRepository {
+  private readonly store = new Map<string, StoredSessionNextAction>();
+  save(record: StoredSessionNextAction): void { this.store.set(record.nextActionId, cloneRecord(record)); }
+  findById(nextActionId: string): StoredSessionNextAction | null { const record = this.store.get(nextActionId); return record ? cloneRecord(record) : null; }
+  findBySessionId(sessionId: string): StoredSessionNextAction[] { return this.findAll().filter((record) => record.sessionId === sessionId); }
+  findCurrentBySessionId(sessionId: string): StoredSessionNextAction | null {
+    const priorityRank: Record<ClarificationPriority, number> = { high: 3, medium: 2, low: 1 };
+    return this.findBySessionId(sessionId).sort((a, b) => Number(b.blocking) - Number(a.blocking) || priorityRank[b.priority] - priorityRank[a.priority] || b.createdAt.localeCompare(a.createdAt))[0] ?? null;
+  }
+  findAll(): StoredSessionNextAction[] { return Array.from(this.store.values()).map((record) => cloneRecord(record)); }
+  updateAction(nextActionId: string, updates: Partial<Omit<StoredSessionNextAction, "nextActionId" | "sessionId" | "createdAt">> & { updatedAt: string }): StoredSessionNextAction | null {
+    const existing = this.store.get(nextActionId);
+    if (!existing) return null;
+    const updated = cloneRecord({ ...existing, ...updates });
+    this.store.set(nextActionId, updated);
+    return cloneRecord(updated);
+  }
+}
+
+class InMemoryPass6HandoffCandidateRepository implements Pass6HandoffCandidateRepository {
+  private readonly store = new Map<string, StoredPass6HandoffCandidate>();
+  save(record: StoredPass6HandoffCandidate): void { this.store.set(record.handoffCandidateId, cloneRecord(record)); }
+  findById(handoffCandidateId: string): StoredPass6HandoffCandidate | null { const record = this.store.get(handoffCandidateId); return record ? cloneRecord(record) : null; }
+  findByCaseId(caseId: string): StoredPass6HandoffCandidate[] { return this.findAll().filter((record) => record.caseId === caseId); }
+  findBySessionId(sessionId: string): StoredPass6HandoffCandidate[] { return this.findAll().filter((record) => record.sessionIds.includes(sessionId)); }
+  findAll(): StoredPass6HandoffCandidate[] { return Array.from(this.store.values()).map((record) => cloneRecord(record)); }
+  updateAdminDecision(handoffCandidateId: string, adminDecision: Pass6HandoffAdminDecision): StoredPass6HandoffCandidate | null {
+    const existing = this.store.get(handoffCandidateId);
+    if (!existing) return null;
+    const updated = cloneRecord({ ...existing, adminDecision });
+    this.store.set(handoffCandidateId, updated);
+    return cloneRecord(updated);
+  }
+}
+
 // ---------------------------------------------------------------------------
 // SQLite intake implementations — durable Phase 1 foundation
 // ---------------------------------------------------------------------------
@@ -1544,6 +1921,74 @@ function openIntakeDatabase(dbPath?: string): DatabaseSync {
       capability TEXT NOT NULL,
       payload TEXT NOT NULL
     );
+    CREATE TABLE IF NOT EXISTS participant_sessions (
+      id TEXT PRIMARY KEY,
+      case_id TEXT NOT NULL,
+      targeting_plan_id TEXT NOT NULL,
+      session_state TEXT NOT NULL,
+      channel_status TEXT NOT NULL,
+      payload TEXT NOT NULL
+    );
+    CREATE TABLE IF NOT EXISTS session_access_tokens (
+      id TEXT PRIMARY KEY,
+      participant_session_id TEXT NOT NULL,
+      token_hash TEXT,
+      secure_token_ref TEXT,
+      token_status TEXT NOT NULL,
+      payload TEXT NOT NULL
+    );
+    CREATE TABLE IF NOT EXISTS telegram_identity_bindings (
+      id TEXT PRIMARY KEY,
+      participant_session_id TEXT NOT NULL,
+      telegram_user_id TEXT NOT NULL,
+      binding_status TEXT NOT NULL,
+      payload TEXT NOT NULL
+    );
+    CREATE TABLE IF NOT EXISTS raw_evidence_items (
+      id TEXT PRIMARY KEY,
+      session_id TEXT NOT NULL,
+      trust_status TEXT NOT NULL,
+      payload TEXT NOT NULL
+    );
+    CREATE TABLE IF NOT EXISTS first_pass_extraction_outputs (
+      id TEXT PRIMARY KEY,
+      session_id TEXT NOT NULL,
+      extraction_status TEXT NOT NULL,
+      payload TEXT NOT NULL
+    );
+    CREATE TABLE IF NOT EXISTS clarification_candidates (
+      id TEXT PRIMARY KEY,
+      session_id TEXT NOT NULL,
+      status TEXT NOT NULL,
+      ask_next INTEGER NOT NULL,
+      payload TEXT NOT NULL
+    );
+    CREATE TABLE IF NOT EXISTS boundary_signals (
+      id TEXT PRIMARY KEY,
+      session_id TEXT NOT NULL,
+      requires_escalation INTEGER NOT NULL,
+      payload TEXT NOT NULL
+    );
+    CREATE TABLE IF NOT EXISTS evidence_disputes (
+      id TEXT PRIMARY KEY,
+      session_id TEXT NOT NULL,
+      extraction_id TEXT NOT NULL,
+      admin_decision TEXT NOT NULL,
+      payload TEXT NOT NULL
+    );
+    CREATE TABLE IF NOT EXISTS session_next_actions (
+      id TEXT PRIMARY KEY,
+      session_id TEXT NOT NULL,
+      blocking INTEGER NOT NULL,
+      priority TEXT NOT NULL,
+      payload TEXT NOT NULL
+    );
+    CREATE TABLE IF NOT EXISTS pass6_handoff_candidates (
+      id TEXT PRIMARY KEY,
+      case_id TEXT NOT NULL,
+      admin_decision TEXT NOT NULL,
+      payload TEXT NOT NULL
+    );
     CREATE INDEX IF NOT EXISTS idx_provider_jobs_source_id ON provider_extraction_jobs(source_id);
     CREATE INDEX IF NOT EXISTS idx_provider_jobs_session_id ON provider_extraction_jobs(session_id);
     CREATE INDEX IF NOT EXISTS idx_text_artifacts_source_id ON text_artifacts(source_id);
@@ -1592,6 +2037,27 @@ function openIntakeDatabase(dbPath?: string): DatabaseSync {
     CREATE INDEX IF NOT EXISTS idx_targeting_rollout_plans_state ON targeting_rollout_plans(state);
     CREATE INDEX IF NOT EXISTS idx_pass4_prompt_test_runs_prompt_spec_id ON pass4_prompt_test_runs(prompt_spec_id);
     CREATE INDEX IF NOT EXISTS idx_pass4_prompt_test_runs_capability ON pass4_prompt_test_runs(capability);
+    CREATE INDEX IF NOT EXISTS idx_participant_sessions_case_id ON participant_sessions(case_id);
+    CREATE INDEX IF NOT EXISTS idx_participant_sessions_targeting_plan_id ON participant_sessions(targeting_plan_id);
+    CREATE INDEX IF NOT EXISTS idx_participant_sessions_state ON participant_sessions(session_state);
+    CREATE INDEX IF NOT EXISTS idx_session_access_tokens_participant_session_id ON session_access_tokens(participant_session_id);
+    CREATE UNIQUE INDEX IF NOT EXISTS idx_session_access_tokens_token_hash ON session_access_tokens(token_hash) WHERE token_hash IS NOT NULL;
+    CREATE UNIQUE INDEX IF NOT EXISTS idx_session_access_tokens_secure_ref ON session_access_tokens(secure_token_ref) WHERE secure_token_ref IS NOT NULL;
+    CREATE INDEX IF NOT EXISTS idx_telegram_bindings_participant_session_id ON telegram_identity_bindings(participant_session_id);
+    CREATE INDEX IF NOT EXISTS idx_telegram_bindings_user_id ON telegram_identity_bindings(telegram_user_id);
+    CREATE UNIQUE INDEX IF NOT EXISTS idx_telegram_bindings_one_active_session ON telegram_identity_bindings(participant_session_id)
+      WHERE binding_status != 'rejected_or_unlinked';
+    CREATE INDEX IF NOT EXISTS idx_raw_evidence_session_id ON raw_evidence_items(session_id);
+    CREATE INDEX IF NOT EXISTS idx_raw_evidence_trust_status ON raw_evidence_items(trust_status);
+    CREATE INDEX IF NOT EXISTS idx_first_pass_extractions_session_id ON first_pass_extraction_outputs(session_id);
+    CREATE INDEX IF NOT EXISTS idx_clarification_candidates_session_id ON clarification_candidates(session_id);
+    CREATE INDEX IF NOT EXISTS idx_clarification_candidates_status ON clarification_candidates(status);
+    CREATE INDEX IF NOT EXISTS idx_boundary_signals_session_id ON boundary_signals(session_id);
+    CREATE INDEX IF NOT EXISTS idx_boundary_signals_requires_escalation ON boundary_signals(requires_escalation);
+    CREATE INDEX IF NOT EXISTS idx_evidence_disputes_session_id ON evidence_disputes(session_id);
+    CREATE INDEX IF NOT EXISTS idx_evidence_disputes_extraction_id ON evidence_disputes(extraction_id);
+    CREATE INDEX IF NOT EXISTS idx_session_next_actions_session_id ON session_next_actions(session_id);
+    CREATE INDEX IF NOT EXISTS idx_pass6_handoff_candidates_case_id ON pass6_handoff_candidates(case_id);
   `);
   return db;
 }
@@ -2433,6 +2899,303 @@ export class SQLitePass4PromptTestRunRepository implements Pass4PromptTestRunRep
   }
 }
 
+export class SQLiteParticipantSessionRepository implements ParticipantSessionRepository {
+  private readonly db: DatabaseSync;
+  constructor(dbPath?: string) { this.db = openIntakeDatabase(dbPath); }
+  save(record: StoredParticipantSession): void {
+    this.db.prepare("INSERT INTO participant_sessions (id, case_id, targeting_plan_id, session_state, channel_status, payload) VALUES (?, ?, ?, ?, ?, ?) ON CONFLICT(id) DO UPDATE SET case_id = excluded.case_id, targeting_plan_id = excluded.targeting_plan_id, session_state = excluded.session_state, channel_status = excluded.channel_status, payload = excluded.payload")
+      .run(record.sessionId, record.caseId, record.targetingPlanId, record.sessionState, record.channelStatus, JSON.stringify(record));
+  }
+  findById(sessionId: string): StoredParticipantSession | null {
+    return parseStored<StoredParticipantSession>(this.db.prepare("SELECT payload FROM participant_sessions WHERE id = ?").get(sessionId));
+  }
+  findByCaseId(caseId: string): StoredParticipantSession[] {
+    return parseStoredList<StoredParticipantSession>(this.db.prepare("SELECT payload FROM participant_sessions WHERE case_id = ? ORDER BY id").all(caseId));
+  }
+  findByTargetingPlanId(targetingPlanId: string): StoredParticipantSession[] {
+    return parseStoredList<StoredParticipantSession>(this.db.prepare("SELECT payload FROM participant_sessions WHERE targeting_plan_id = ? ORDER BY id").all(targetingPlanId));
+  }
+  findAll(): StoredParticipantSession[] {
+    return parseStoredList<StoredParticipantSession>(this.db.prepare("SELECT payload FROM participant_sessions ORDER BY id").all());
+  }
+  updateSessionStatus(sessionId: string, updates: { sessionState?: ParticipantSessionState; channelStatus?: ChannelStatus; updatedAt: string }): StoredParticipantSession | null {
+    const existing = this.findById(sessionId);
+    if (!existing) return null;
+    const updated: StoredParticipantSession = {
+      ...existing,
+      sessionState: updates.sessionState ?? existing.sessionState,
+      channelStatus: updates.channelStatus ?? existing.channelStatus,
+      channelAccess: {
+        ...existing.channelAccess,
+        channelStatus: updates.channelStatus ?? existing.channelAccess.channelStatus,
+      },
+      updatedAt: updates.updatedAt,
+    };
+    this.save(updated);
+    return updated;
+  }
+}
+
+export class SQLiteSessionAccessTokenRepository implements SessionAccessTokenRepository {
+  private readonly db: DatabaseSync;
+  constructor(dbPath?: string) { this.db = openIntakeDatabase(dbPath); }
+  save(record: StoredSessionAccessToken): void {
+    this.db.prepare("INSERT INTO session_access_tokens (id, participant_session_id, token_hash, secure_token_ref, token_status, payload) VALUES (?, ?, ?, ?, ?, ?) ON CONFLICT(id) DO UPDATE SET participant_session_id = excluded.participant_session_id, token_hash = excluded.token_hash, secure_token_ref = excluded.secure_token_ref, token_status = excluded.token_status, payload = excluded.payload")
+      .run(record.accessTokenId, record.participantSessionId, record.tokenHash ?? null, record.secureTokenRef ?? null, record.tokenStatus, JSON.stringify(record));
+  }
+  findById(accessTokenId: string): StoredSessionAccessToken | null {
+    return parseStored<StoredSessionAccessToken>(this.db.prepare("SELECT payload FROM session_access_tokens WHERE id = ?").get(accessTokenId));
+  }
+  findByTokenHash(tokenHash: string): StoredSessionAccessToken | null {
+    return parseStored<StoredSessionAccessToken>(this.db.prepare("SELECT payload FROM session_access_tokens WHERE token_hash = ?").get(tokenHash));
+  }
+  findBySecureTokenRef(secureTokenRef: string): StoredSessionAccessToken | null {
+    return parseStored<StoredSessionAccessToken>(this.db.prepare("SELECT payload FROM session_access_tokens WHERE secure_token_ref = ?").get(secureTokenRef));
+  }
+  findByParticipantSessionId(participantSessionId: string): StoredSessionAccessToken[] {
+    return parseStoredList<StoredSessionAccessToken>(this.db.prepare("SELECT payload FROM session_access_tokens WHERE participant_session_id = ? ORDER BY id").all(participantSessionId));
+  }
+  findAll(): StoredSessionAccessToken[] {
+    return parseStoredList<StoredSessionAccessToken>(this.db.prepare("SELECT payload FROM session_access_tokens ORDER BY id").all());
+  }
+  updateTokenUsage(accessTokenId: string, updates: { lastUsedAt?: string | null; useCount?: number; tokenStatus?: SessionAccessTokenStatus; revokedAt?: string | null; revokedReason?: string | null }): StoredSessionAccessToken | null {
+    const existing = this.findById(accessTokenId);
+    if (!existing) return null;
+    const updated = { ...existing, ...updates };
+    this.save(updated);
+    return updated;
+  }
+}
+
+export class SQLiteTelegramIdentityBindingRepository implements TelegramIdentityBindingRepository {
+  private readonly db: DatabaseSync;
+  constructor(dbPath?: string) { this.db = openIntakeDatabase(dbPath); }
+  save(record: StoredTelegramIdentityBinding): void {
+    this.db.prepare("INSERT INTO telegram_identity_bindings (id, participant_session_id, telegram_user_id, binding_status, payload) VALUES (?, ?, ?, ?, ?) ON CONFLICT(id) DO UPDATE SET participant_session_id = excluded.participant_session_id, telegram_user_id = excluded.telegram_user_id, binding_status = excluded.binding_status, payload = excluded.payload")
+      .run(record.bindingId, record.participantSessionId, record.telegramUserId, record.bindingStatus, JSON.stringify(record));
+  }
+  findById(bindingId: string): StoredTelegramIdentityBinding | null {
+    return parseStored<StoredTelegramIdentityBinding>(this.db.prepare("SELECT payload FROM telegram_identity_bindings WHERE id = ?").get(bindingId));
+  }
+  findByParticipantSessionId(participantSessionId: string): StoredTelegramIdentityBinding[] {
+    return parseStoredList<StoredTelegramIdentityBinding>(this.db.prepare("SELECT payload FROM telegram_identity_bindings WHERE participant_session_id = ? ORDER BY id").all(participantSessionId));
+  }
+  findByTelegramUserId(telegramUserId: string): StoredTelegramIdentityBinding[] {
+    return parseStoredList<StoredTelegramIdentityBinding>(this.db.prepare("SELECT payload FROM telegram_identity_bindings WHERE telegram_user_id = ? ORDER BY id").all(telegramUserId));
+  }
+  findAll(): StoredTelegramIdentityBinding[] {
+    return parseStoredList<StoredTelegramIdentityBinding>(this.db.prepare("SELECT payload FROM telegram_identity_bindings ORDER BY id").all());
+  }
+  updateBindingStatus(bindingId: string, bindingStatus: TelegramBindingStatus, updatedAt: string): StoredTelegramIdentityBinding | null {
+    const existing = this.findById(bindingId);
+    if (!existing) return null;
+    const updated = { ...existing, bindingStatus, updatedAt };
+    this.save(updated);
+    return updated;
+  }
+}
+
+export class SQLiteRawEvidenceItemRepository implements RawEvidenceItemRepository {
+  private readonly db: DatabaseSync;
+  constructor(dbPath?: string) { this.db = openIntakeDatabase(dbPath); }
+  save(record: StoredRawEvidenceItem): void {
+    const existing = this.findById(record.evidenceItemId);
+    const toStore = existing ? {
+      ...existing,
+      trustStatus: record.trustStatus,
+      confidenceScore: record.confidenceScore,
+      linkedClarificationItemId: record.linkedClarificationItemId,
+      notes: record.notes,
+    } : record;
+    this.db.prepare("INSERT INTO raw_evidence_items (id, session_id, trust_status, payload) VALUES (?, ?, ?, ?) ON CONFLICT(id) DO UPDATE SET trust_status = excluded.trust_status, payload = excluded.payload")
+      .run(toStore.evidenceItemId, toStore.sessionId, toStore.trustStatus, JSON.stringify(toStore));
+  }
+  findById(evidenceItemId: string): StoredRawEvidenceItem | null {
+    return parseStored<StoredRawEvidenceItem>(this.db.prepare("SELECT payload FROM raw_evidence_items WHERE id = ?").get(evidenceItemId));
+  }
+  findBySessionId(sessionId: string): StoredRawEvidenceItem[] {
+    return parseStoredList<StoredRawEvidenceItem>(this.db.prepare("SELECT payload FROM raw_evidence_items WHERE session_id = ? ORDER BY id").all(sessionId));
+  }
+  findByTrustStatus(trustStatus: TrustStatus): StoredRawEvidenceItem[] {
+    return parseStoredList<StoredRawEvidenceItem>(this.db.prepare("SELECT payload FROM raw_evidence_items WHERE trust_status = ? ORDER BY id").all(trustStatus));
+  }
+  findAll(): StoredRawEvidenceItem[] {
+    return parseStoredList<StoredRawEvidenceItem>(this.db.prepare("SELECT payload FROM raw_evidence_items ORDER BY id").all());
+  }
+  updateTrustStatus(evidenceItemId: string, updates: { trustStatus: TrustStatus; confidenceScore?: number; linkedClarificationItemId?: string | null; notes?: string }): StoredRawEvidenceItem | null {
+    const existing = this.findById(evidenceItemId);
+    if (!existing) return null;
+    const updated = {
+      ...existing,
+      trustStatus: updates.trustStatus,
+      confidenceScore: updates.confidenceScore ?? existing.confidenceScore,
+      linkedClarificationItemId: updates.linkedClarificationItemId ?? existing.linkedClarificationItemId,
+      notes: updates.notes ?? existing.notes,
+    };
+    this.save(updated);
+    return updated;
+  }
+}
+
+export class SQLiteFirstPassExtractionOutputRepository implements FirstPassExtractionOutputRepository {
+  private readonly db: DatabaseSync;
+  constructor(dbPath?: string) { this.db = openIntakeDatabase(dbPath); }
+  save(record: StoredFirstPassExtractionOutput): void {
+    this.db.prepare("INSERT INTO first_pass_extraction_outputs (id, session_id, extraction_status, payload) VALUES (?, ?, ?, ?) ON CONFLICT(id) DO UPDATE SET session_id = excluded.session_id, extraction_status = excluded.extraction_status, payload = excluded.payload")
+      .run(record.extractionId, record.sessionId, record.extractionStatus, JSON.stringify(record));
+  }
+  findById(extractionId: string): StoredFirstPassExtractionOutput | null {
+    return parseStored<StoredFirstPassExtractionOutput>(this.db.prepare("SELECT payload FROM first_pass_extraction_outputs WHERE id = ?").get(extractionId));
+  }
+  findBySessionId(sessionId: string): StoredFirstPassExtractionOutput[] {
+    return parseStoredList<StoredFirstPassExtractionOutput>(this.db.prepare("SELECT payload FROM first_pass_extraction_outputs WHERE session_id = ? ORDER BY id").all(sessionId));
+  }
+  findAll(): StoredFirstPassExtractionOutput[] {
+    return parseStoredList<StoredFirstPassExtractionOutput>(this.db.prepare("SELECT payload FROM first_pass_extraction_outputs ORDER BY id").all());
+  }
+  updateExtractionStatus(extractionId: string, extractionStatus: StoredFirstPassExtractionOutput["extractionStatus"]): StoredFirstPassExtractionOutput | null {
+    const existing = this.findById(extractionId);
+    if (!existing) return null;
+    const updated = { ...existing, extractionStatus };
+    this.save(updated);
+    return updated;
+  }
+}
+
+export class SQLiteClarificationCandidateRepository implements ClarificationCandidateRepository {
+  private readonly db: DatabaseSync;
+  constructor(dbPath?: string) { this.db = openIntakeDatabase(dbPath); }
+  save(record: StoredClarificationCandidate): void {
+    this.db.prepare("INSERT INTO clarification_candidates (id, session_id, status, ask_next, payload) VALUES (?, ?, ?, ?, ?) ON CONFLICT(id) DO UPDATE SET session_id = excluded.session_id, status = excluded.status, ask_next = excluded.ask_next, payload = excluded.payload")
+      .run(record.candidateId, record.sessionId, record.status, record.askNext ? 1 : 0, JSON.stringify(record));
+  }
+  findById(candidateId: string): StoredClarificationCandidate | null {
+    return parseStored<StoredClarificationCandidate>(this.db.prepare("SELECT payload FROM clarification_candidates WHERE id = ?").get(candidateId));
+  }
+  findBySessionId(sessionId: string): StoredClarificationCandidate[] {
+    return parseStoredList<StoredClarificationCandidate>(this.db.prepare("SELECT payload FROM clarification_candidates WHERE session_id = ? ORDER BY id").all(sessionId));
+  }
+  findOpenBySessionId(sessionId: string): StoredClarificationCandidate[] {
+    return parseStoredList<StoredClarificationCandidate>(this.db.prepare("SELECT payload FROM clarification_candidates WHERE session_id = ? AND status IN ('open', 'asked', 'partially_resolved') ORDER BY id").all(sessionId));
+  }
+  findAll(): StoredClarificationCandidate[] {
+    return parseStoredList<StoredClarificationCandidate>(this.db.prepare("SELECT payload FROM clarification_candidates ORDER BY id").all());
+  }
+  updateReviewState(candidateId: string, updates: { status?: ClarificationStatus; priority?: ClarificationPriority; askNext?: boolean; adminReviewStatus?: AdminReviewStatus; adminInstruction?: string; updatedAt: string }): StoredClarificationCandidate | null {
+    const existing = this.findById(candidateId);
+    if (!existing) return null;
+    const updated = { ...existing, ...updates };
+    this.save(updated);
+    return updated;
+  }
+}
+
+export class SQLiteBoundarySignalRepository implements BoundarySignalRepository {
+  private readonly db: DatabaseSync;
+  constructor(dbPath?: string) { this.db = openIntakeDatabase(dbPath); }
+  save(record: StoredBoundarySignal): void {
+    this.db.prepare("INSERT INTO boundary_signals (id, session_id, requires_escalation, payload) VALUES (?, ?, ?, ?) ON CONFLICT(id) DO UPDATE SET session_id = excluded.session_id, requires_escalation = excluded.requires_escalation, payload = excluded.payload")
+      .run(record.boundarySignalId, record.sessionId, record.requiresEscalation ? 1 : 0, JSON.stringify(record));
+  }
+  findById(boundarySignalId: string): StoredBoundarySignal | null {
+    return parseStored<StoredBoundarySignal>(this.db.prepare("SELECT payload FROM boundary_signals WHERE id = ?").get(boundarySignalId));
+  }
+  findBySessionId(sessionId: string): StoredBoundarySignal[] {
+    return parseStoredList<StoredBoundarySignal>(this.db.prepare("SELECT payload FROM boundary_signals WHERE session_id = ? ORDER BY id").all(sessionId));
+  }
+  findRequiringEscalation(): StoredBoundarySignal[] {
+    return parseStoredList<StoredBoundarySignal>(this.db.prepare("SELECT payload FROM boundary_signals WHERE requires_escalation = 1 ORDER BY id").all());
+  }
+  findAll(): StoredBoundarySignal[] {
+    return parseStoredList<StoredBoundarySignal>(this.db.prepare("SELECT payload FROM boundary_signals ORDER BY id").all());
+  }
+}
+
+export class SQLiteEvidenceDisputeRepository implements EvidenceDisputeRepository {
+  private readonly db: DatabaseSync;
+  constructor(dbPath?: string) { this.db = openIntakeDatabase(dbPath); }
+  save(record: StoredEvidenceDispute): void {
+    this.db.prepare("INSERT INTO evidence_disputes (id, session_id, extraction_id, admin_decision, payload) VALUES (?, ?, ?, ?, ?) ON CONFLICT(id) DO UPDATE SET session_id = excluded.session_id, extraction_id = excluded.extraction_id, admin_decision = excluded.admin_decision, payload = excluded.payload")
+      .run(record.disputeId, record.sessionId, record.extractionId, record.adminDecision, JSON.stringify(record));
+  }
+  findById(disputeId: string): StoredEvidenceDispute | null {
+    return parseStored<StoredEvidenceDispute>(this.db.prepare("SELECT payload FROM evidence_disputes WHERE id = ?").get(disputeId));
+  }
+  findBySessionId(sessionId: string): StoredEvidenceDispute[] {
+    return parseStoredList<StoredEvidenceDispute>(this.db.prepare("SELECT payload FROM evidence_disputes WHERE session_id = ? ORDER BY id").all(sessionId));
+  }
+  findByExtractionId(extractionId: string): StoredEvidenceDispute[] {
+    return parseStoredList<StoredEvidenceDispute>(this.db.prepare("SELECT payload FROM evidence_disputes WHERE extraction_id = ? ORDER BY id").all(extractionId));
+  }
+  findAll(): StoredEvidenceDispute[] {
+    return parseStoredList<StoredEvidenceDispute>(this.db.prepare("SELECT payload FROM evidence_disputes ORDER BY id").all());
+  }
+  updateAdminDecision(disputeId: string, adminDecision: EvidenceDisputeAdminDecision): StoredEvidenceDispute | null {
+    const existing = this.findById(disputeId);
+    if (!existing) return null;
+    const updated = { ...existing, adminDecision };
+    this.save(updated);
+    return updated;
+  }
+}
+
+export class SQLiteSessionNextActionRepository implements SessionNextActionRepository {
+  private readonly db: DatabaseSync;
+  constructor(dbPath?: string) { this.db = openIntakeDatabase(dbPath); }
+  save(record: StoredSessionNextAction): void {
+    this.db.prepare("INSERT INTO session_next_actions (id, session_id, blocking, priority, payload) VALUES (?, ?, ?, ?, ?) ON CONFLICT(id) DO UPDATE SET session_id = excluded.session_id, blocking = excluded.blocking, priority = excluded.priority, payload = excluded.payload")
+      .run(record.nextActionId, record.sessionId, record.blocking ? 1 : 0, record.priority, JSON.stringify(record));
+  }
+  findById(nextActionId: string): StoredSessionNextAction | null {
+    return parseStored<StoredSessionNextAction>(this.db.prepare("SELECT payload FROM session_next_actions WHERE id = ?").get(nextActionId));
+  }
+  findBySessionId(sessionId: string): StoredSessionNextAction[] {
+    return parseStoredList<StoredSessionNextAction>(this.db.prepare("SELECT payload FROM session_next_actions WHERE session_id = ? ORDER BY id").all(sessionId));
+  }
+  findCurrentBySessionId(sessionId: string): StoredSessionNextAction | null {
+    const row = this.db.prepare("SELECT payload FROM session_next_actions WHERE session_id = ? ORDER BY blocking DESC, CASE priority WHEN 'high' THEN 3 WHEN 'medium' THEN 2 ELSE 1 END DESC, id DESC LIMIT 1").get(sessionId);
+    return parseStored<StoredSessionNextAction>(row);
+  }
+  findAll(): StoredSessionNextAction[] {
+    return parseStoredList<StoredSessionNextAction>(this.db.prepare("SELECT payload FROM session_next_actions ORDER BY id").all());
+  }
+  updateAction(nextActionId: string, updates: Partial<Omit<StoredSessionNextAction, "nextActionId" | "sessionId" | "createdAt">> & { updatedAt: string }): StoredSessionNextAction | null {
+    const existing = this.findById(nextActionId);
+    if (!existing) return null;
+    const updated = { ...existing, ...updates };
+    this.save(updated);
+    return updated;
+  }
+}
+
+export class SQLitePass6HandoffCandidateRepository implements Pass6HandoffCandidateRepository {
+  private readonly db: DatabaseSync;
+  constructor(dbPath?: string) { this.db = openIntakeDatabase(dbPath); }
+  save(record: StoredPass6HandoffCandidate): void {
+    this.db.prepare("INSERT INTO pass6_handoff_candidates (id, case_id, admin_decision, payload) VALUES (?, ?, ?, ?) ON CONFLICT(id) DO UPDATE SET case_id = excluded.case_id, admin_decision = excluded.admin_decision, payload = excluded.payload")
+      .run(record.handoffCandidateId, record.caseId, record.adminDecision, JSON.stringify(record));
+  }
+  findById(handoffCandidateId: string): StoredPass6HandoffCandidate | null {
+    return parseStored<StoredPass6HandoffCandidate>(this.db.prepare("SELECT payload FROM pass6_handoff_candidates WHERE id = ?").get(handoffCandidateId));
+  }
+  findByCaseId(caseId: string): StoredPass6HandoffCandidate[] {
+    return parseStoredList<StoredPass6HandoffCandidate>(this.db.prepare("SELECT payload FROM pass6_handoff_candidates WHERE case_id = ? ORDER BY id").all(caseId));
+  }
+  findBySessionId(sessionId: string): StoredPass6HandoffCandidate[] {
+    return this.findAll().filter((record) => record.sessionIds.includes(sessionId));
+  }
+  findAll(): StoredPass6HandoffCandidate[] {
+    return parseStoredList<StoredPass6HandoffCandidate>(this.db.prepare("SELECT payload FROM pass6_handoff_candidates ORDER BY id").all());
+  }
+  updateAdminDecision(handoffCandidateId: string, adminDecision: Pass6HandoffAdminDecision): StoredPass6HandoffCandidate | null {
+    const existing = this.findById(handoffCandidateId);
+    if (!existing) return null;
+    const updated = { ...existing, adminDecision };
+    this.save(updated);
+    return updated;
+  }
+}
+
 export function createSQLiteIntakeRepositories(dbPath?: string): {
   intakeSessions: IntakeSessionRepository;
   intakeSources: IntakeSourceRepository;
@@ -2461,6 +3224,16 @@ export function createSQLiteIntakeRepositories(dbPath?: string): {
   pass3PromptTestRuns: Pass3PromptTestRunRepository;
   targetingRolloutPlans: TargetingRolloutPlanRepository;
   pass4PromptTestRuns: Pass4PromptTestRunRepository;
+  participantSessions: ParticipantSessionRepository;
+  sessionAccessTokens: SessionAccessTokenRepository;
+  telegramIdentityBindings: TelegramIdentityBindingRepository;
+  rawEvidenceItems: RawEvidenceItemRepository;
+  firstPassExtractionOutputs: FirstPassExtractionOutputRepository;
+  clarificationCandidates: ClarificationCandidateRepository;
+  boundarySignals: BoundarySignalRepository;
+  evidenceDisputes: EvidenceDisputeRepository;
+  sessionNextActions: SessionNextActionRepository;
+  pass6HandoffCandidates: Pass6HandoffCandidateRepository;
 } {
   return {
     intakeSessions: new SQLiteIntakeSessionRepository(dbPath),
@@ -2490,6 +3263,16 @@ export function createSQLiteIntakeRepositories(dbPath?: string): {
     pass3PromptTestRuns: new SQLitePass3PromptTestRunRepository(dbPath),
     targetingRolloutPlans: new SQLiteTargetingRolloutPlanRepository(dbPath),
     pass4PromptTestRuns: new SQLitePass4PromptTestRunRepository(dbPath),
+    participantSessions: new SQLiteParticipantSessionRepository(dbPath),
+    sessionAccessTokens: new SQLiteSessionAccessTokenRepository(dbPath),
+    telegramIdentityBindings: new SQLiteTelegramIdentityBindingRepository(dbPath),
+    rawEvidenceItems: new SQLiteRawEvidenceItemRepository(dbPath),
+    firstPassExtractionOutputs: new SQLiteFirstPassExtractionOutputRepository(dbPath),
+    clarificationCandidates: new SQLiteClarificationCandidateRepository(dbPath),
+    boundarySignals: new SQLiteBoundarySignalRepository(dbPath),
+    evidenceDisputes: new SQLiteEvidenceDisputeRepository(dbPath),
+    sessionNextActions: new SQLiteSessionNextActionRepository(dbPath),
+    pass6HandoffCandidates: new SQLitePass6HandoffCandidateRepository(dbPath),
   };
 }
 
@@ -2540,6 +3323,16 @@ export interface InMemoryStore {
   pass3PromptTestRuns: Pass3PromptTestRunRepository;
   targetingRolloutPlans: TargetingRolloutPlanRepository;
   pass4PromptTestRuns: Pass4PromptTestRunRepository;
+  participantSessions: ParticipantSessionRepository;
+  sessionAccessTokens: SessionAccessTokenRepository;
+  telegramIdentityBindings: TelegramIdentityBindingRepository;
+  rawEvidenceItems: RawEvidenceItemRepository;
+  firstPassExtractionOutputs: FirstPassExtractionOutputRepository;
+  clarificationCandidates: ClarificationCandidateRepository;
+  boundarySignals: BoundarySignalRepository;
+  evidenceDisputes: EvidenceDisputeRepository;
+  sessionNextActions: SessionNextActionRepository;
+  pass6HandoffCandidates: Pass6HandoffCandidateRepository;
   /** Raw file bytes keyed by sourceId. In-memory only — no persistence. */
   fileStore: Map<string, { bytes: ArrayBuffer; mimeType: string }>;
 }
@@ -2584,6 +3377,16 @@ export function createInMemoryStore(): InMemoryStore {
     pass3PromptTestRuns: new InMemoryPass3PromptTestRunRepository(),
     targetingRolloutPlans: new InMemoryTargetingRolloutPlanRepository(),
     pass4PromptTestRuns: new InMemoryPass4PromptTestRunRepository(),
+    participantSessions: new InMemoryParticipantSessionRepository(),
+    sessionAccessTokens: new InMemorySessionAccessTokenRepository(),
+    telegramIdentityBindings: new InMemoryTelegramIdentityBindingRepository(),
+    rawEvidenceItems: new InMemoryRawEvidenceItemRepository(),
+    firstPassExtractionOutputs: new InMemoryFirstPassExtractionOutputRepository(),
+    clarificationCandidates: new InMemoryClarificationCandidateRepository(),
+    boundarySignals: new InMemoryBoundarySignalRepository(),
+    evidenceDisputes: new InMemoryEvidenceDisputeRepository(),
+    sessionNextActions: new InMemorySessionNextActionRepository(),
+    pass6HandoffCandidates: new InMemoryPass6HandoffCandidateRepository(),
     fileStore: new Map(),
   };
 }
@@ -2618,4 +3421,14 @@ export type {
   Pass4PromptTestRun,
   TargetingRolloutPlan,
   WebsiteCrawlSession,
+  BoundarySignal,
+  ClarificationCandidate,
+  EvidenceDispute,
+  FirstPassExtractionOutput,
+  ParticipantSession,
+  Pass6HandoffCandidate,
+  RawEvidenceItem,
+  SessionAccessToken,
+  TelegramIdentityBinding,
+  SessionNextAction,
 };
