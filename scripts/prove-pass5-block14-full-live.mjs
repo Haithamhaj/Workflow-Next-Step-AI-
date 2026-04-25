@@ -326,7 +326,12 @@ const recheck = await runClarificationAnswerRecheck(webSession.sessionId, answer
   boundarySignalIdFactory: () => "boundary-live-finance-ownership",
 });
 assert.equal(recheck.ok, true, recheck.ok ? "" : JSON.stringify(recheck.errors));
-assert.ok(recheck.value.updatedCandidates.length > 0);
+assert.ok(
+  recheck.value.updatedCandidates.length
+    + recheck.value.createdCandidates.length
+    + recheck.value.createdBoundarySignals.length > 0,
+  "Answer recheck must produce a governed non-no-op outcome.",
+);
 assert.ok(recheck.value.createdBoundarySignals.length > 0, "Answer recheck must create a boundary signal for non-ownership/unknown answer.");
 assert.ok(store.boundarySignals.findBySessionId(webSession.sessionId).some((signal) => signal.shouldStopAskingParticipant));
 

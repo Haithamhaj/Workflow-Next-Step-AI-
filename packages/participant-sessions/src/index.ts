@@ -3581,6 +3581,21 @@ export async function runClarificationAnswerRecheck(
       repos.boundarySignals.save(signal);
       createdBoundarySignals.push(signal);
     }
+    if (candidates.length > 0 && updatedCandidates.length === 0 && createdCandidates.length === 0 && createdBoundarySignals.length === 0) {
+      const failed = {
+        ...queued,
+        status: "failed" as const,
+        provider: result.provider,
+        model: result.model,
+        errorMessage: "schema_validation_failed: answer recheck provider output produced no governed outcome for supplied candidates.",
+        updatedAt: clarificationNow(options),
+      };
+      repos.providerJobs.save(failed);
+      return clarificationFailure(
+        "schema_validation_failed",
+        failed.errorMessage,
+      );
+    }
     const remaining = repos.clarificationCandidates.findBySessionId(sessionId)
       .filter((candidate) => candidate.status === "open" || candidate.status === "partially_resolved" || candidate.status === "asked");
     updateClarificationSessionState(

@@ -14,6 +14,35 @@
 
 **Pass 5 Block 14 FirstPassExtractionOutput contract-alignment hardening added on branch `codex/pass5-block0-1-contracts`; Pass 5 remains not accepted.**
 
+**Pass 5 Block 14 answer-recheck governance hardening added on branch `codex/pass5-block0-1-contracts`; Pass 5 remains not accepted.**
+
+Block 14 answer-recheck governance hardening changed only prompt/output alignment and no-op handling:
+
+- diagnosed the live answer-recheck failure as a prompt/runner contract mismatch
+- `answer_recheck_prompt` instructed the provider to return deprecated `candidateStatusProposals` / `newBoundarySignals`
+- `runClarificationAnswerRecheck` expects `candidateStatusUpdates`, `newClarificationCandidates`, and `boundarySignals`
+- updated the prompt to require explicit candidate outcomes and the runner-owned output keys
+- added a no-silent-no-op guard so a provider output with supplied candidates but no updates, new candidates, or boundary signals fails as `schema_validation_failed`
+- adjusted the Block 14 proof to accept any governed non-no-op answer-recheck outcome instead of requiring `updatedCandidates`
+- proof script added: `scripts/prove-pass5-block14-answer-recheck-governance.mjs`
+
+Answer-recheck hardening proof commands passed:
+
+- `pnpm --filter @workflow/participant-sessions build`
+- `pnpm --filter @workflow/prompts build`
+- `pnpm build:contracts`
+- `node scripts/prove-pass5-block10-clarification.mjs`
+- `node scripts/prove-pass5-block14-answer-recheck-governance.mjs`
+- `pnpm typecheck`
+- `pnpm build`
+
+The post-answer-recheck live acceptance proof still did not pass:
+
+- `node scripts/prove-pass5-block14-full-live.mjs` advanced past answer recheck
+- the new live blocker is the banned-expansion proof: `apps/admin-web/app/participant-sessions/[sessionId]/page.tsx must not introduce common-path formation`
+- the matched string is in explanatory handoff-candidate panel copy at line 275: `not synthesis, evaluation, common-path formation, or workflow truth`
+- Pass 5 must remain open until Block 14 resolves this banned-string proof failure and all required live provider/channel/dashboard/failure proofs pass
+
 Block 14 extraction contract-alignment hardening changed only provider-output governance and prompt/schema guidance:
 
 - added a compact canonical `FirstPassExtractionOutput` skeleton to `first_pass_extraction_prompt`
