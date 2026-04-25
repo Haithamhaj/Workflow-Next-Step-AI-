@@ -21,6 +21,7 @@ export {
   approvedHierarchySnapshotSchema,
   hierarchyReadinessSnapshotSchema,
   promptSpecSchema,
+  pass3PromptTestRunSchema,
   sourceHierarchyTriageJobSchema,
   sourceHierarchyTriageSuggestionSchema,
 } from "./schemas/index.js";
@@ -46,6 +47,7 @@ import {
   approvedHierarchySnapshotSchema,
   hierarchyReadinessSnapshotSchema,
   promptSpecSchema,
+  pass3PromptTestRunSchema,
   sourceHierarchyTriageJobSchema,
   sourceHierarchyTriageSuggestionSchema,
 } from "./schemas/index.js";
@@ -60,7 +62,7 @@ import type { ReviewIssueRecord } from "./types/review-issues.js";
 import type { FinalPackageRecord } from "./types/final-package.js";
 import type { IntakeBucket, IntakeInputType, IntakeSourceStatus, AttachmentScope, CrawlPagePriority, CrawlSessionStatus, ProviderName, AudioMode, HierarchyInputMethod, IntakeSession, IntakeSource, WebsiteCrawlSession, AdminIntakeDecision } from "./types/intake.js";
 import type { ApprovedHierarchySnapshot, HierarchyCorrectionEvent, HierarchyDraftRecord, HierarchyIntakeRecord, HierarchyReadinessSnapshot, SourceHierarchyTriageJob, SourceHierarchyTriageSuggestion } from "./types/hierarchy.js";
-import type { StructuredPromptSpec } from "./types/prompt-spec.js";
+import type { Pass3PromptTestRun, StructuredPromptSpec } from "./types/prompt-spec.js";
 import {
   SessionState,
   PackageState,
@@ -144,6 +146,9 @@ export const validateHierarchyReadinessSnapshot =
 
 export const validateStructuredPromptSpec =
   makeValidator<StructuredPromptSpec>(promptSpecSchema);
+
+export const validatePass3PromptTestRun =
+  makeValidator<Pass3PromptTestRun>(pass3PromptTestRunSchema);
 
 export const validateSourceHierarchyTriageJob =
   makeValidator<SourceHierarchyTriageJob>(sourceHierarchyTriageJobSchema);

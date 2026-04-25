@@ -17,6 +17,7 @@ import hierarchyCorrectionSchema from "./hierarchy-correction.schema.json" with 
 import approvedHierarchySnapshotSchema from "./approved-hierarchy-snapshot.schema.json" with { type: "json" };
 import hierarchyReadinessSnapshotSchema from "./hierarchy-readiness-snapshot.schema.json" with { type: "json" };
 import promptSpecSchema from "./prompt-spec.schema.json" with { type: "json" };
+import pass3PromptTestRunSchema from "./pass3-prompt-test-run.schema.json" with { type: "json" };
 import sourceHierarchyTriageJobSchema from "./source-hierarchy-triage-job.schema.json" with { type: "json" };
 import sourceHierarchyTriageSuggestionSchema from "./source-hierarchy-triage-suggestion.schema.json" with { type: "json" };
 
@@ -40,6 +41,7 @@ export {
   approvedHierarchySnapshotSchema,
   hierarchyReadinessSnapshotSchema,
   promptSpecSchema,
+  pass3PromptTestRunSchema,
   sourceHierarchyTriageJobSchema,
   sourceHierarchyTriageSuggestionSchema,
 };

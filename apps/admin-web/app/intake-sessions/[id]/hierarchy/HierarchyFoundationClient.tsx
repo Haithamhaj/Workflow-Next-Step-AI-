@@ -88,28 +88,56 @@ interface SourceTriageSuggestion {
   model?: string;
 }
 
+type PromptCapability = "hierarchy_draft" | "source_hierarchy_triage";
+
+interface PromptSpecView {
+  promptSpecId: string;
+  linkedModule: string;
+  purpose: string;
+  status: string;
+  version: number;
+  blocks: { blockId: string; label: string; body: string; editable: boolean }[];
+  previousActivePromptSpecId?: string;
+}
+
+interface PromptTestRunView {
+  testRunId: string;
+  promptSpecId: string;
+  promptVersionId: string;
+  capability: PromptCapability;
+  testInput: string;
+  activePromptOutput?: string;
+  draftPromptOutput?: string;
+  provider?: string;
+  model?: string;
+  activePromptVersion: number;
+  draftPromptVersion: number;
+  comparisonSummary: string;
+  boundaryViolationFlags: string[];
+  providerStatus: string;
+  errorMessage?: string;
+  adminNote?: string;
+  createdAt: string;
+}
+
 interface Props {
   sessionId: string;
   initialState: {
     intake?: { pastedText?: string } | null;
-    promptSpec?: {
-      promptSpecId: string;
-      linkedModule: string;
-      purpose: string;
-      status: string;
-      version: number;
-      blocks: { blockId: string; label: string; body: string; editable: boolean }[];
-    };
+    promptSpec?: PromptSpecView;
     compiledPromptPreview?: string;
-    sourceTriagePromptSpec?: {
-      promptSpecId: string;
-      linkedModule: string;
-      purpose: string;
-      status: string;
-      version: number;
-      blocks: { blockId: string; label: string; body: string; editable: boolean }[];
-    };
+    sourceTriagePromptSpec?: PromptSpecView;
     compiledSourceTriagePromptPreview?: string;
+    pass3PromptSpecs?: PromptSpecView[];
+    promptDrafts?: {
+      hierarchyDraftPrompt?: PromptSpecView | null;
+      sourceDraftPrompt?: PromptSpecView | null;
+    };
+    compiledDraftPromptPreviews?: {
+      hierarchy?: string | null;
+      sourceTriage?: string | null;
+    };
+    promptTestRuns?: PromptTestRunView[];
     latestSourceTriageJob?: {
       status: string;
       provider?: string;
@@ -186,6 +214,16 @@ export default function HierarchyFoundationClient({ sessionId, initialState }: P
   const [manualSourceName, setManualSourceName] = useState("");
   const [manualSourceScope, setManualSourceScope] = useState<SourceTriageScope>("unknown_needs_review");
   const [sourceAdminNote, setSourceAdminNote] = useState("");
+  const [promptCapability, setPromptCapability] = useState<PromptCapability>(
+    initialState.promptDrafts?.hierarchyDraftPrompt
+      ? "hierarchy_draft"
+      : initialState.promptDrafts?.sourceDraftPrompt
+        ? "source_hierarchy_triage"
+        : "hierarchy_draft",
+  );
+  const [promptDraftEdit, setPromptDraftEdit] = useState("Draft note: keep outputs reviewable and preserve Pass 3 boundaries.");
+  const [promptTestInput, setPromptTestInput] = useState("Sales Director\nSales Manager\n2 Supervisors\n3 Senior Sales\n2 Sales\n2 Account Managers\n2 Communicators");
+  const [promptAdminNote, setPromptAdminNote] = useState("");
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
 
@@ -222,6 +260,29 @@ export default function HierarchyFoundationClient({ sessionId, initialState }: P
 
   function updateRelationship(index: number, patch: Partial<SecondaryRelationship>) {
     setRelationships((prev) => prev.map((relationship, i) => i === index ? { ...relationship, ...patch } : relationship));
+  }
+
+  const activePromptForCapability = promptCapability === "hierarchy_draft" ? state.promptSpec : state.sourceTriagePromptSpec;
+  const draftPromptForCapability = promptCapability === "hierarchy_draft"
+    ? state.promptDrafts?.hierarchyDraftPrompt
+    : state.promptDrafts?.sourceDraftPrompt;
+  const activeCompiledPromptForCapability = promptCapability === "hierarchy_draft"
+    ? state.compiledPromptPreview
+    : state.compiledSourceTriagePromptPreview;
+  const draftCompiledPromptForCapability = promptCapability === "hierarchy_draft"
+    ? state.compiledDraftPromptPreviews?.hierarchy
+    : state.compiledDraftPromptPreviews?.sourceTriage;
+  const allPromptTestRuns = (state.promptTestRuns ?? []).slice().sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+  const matchingPromptTestRuns = allPromptTestRuns.filter((run) => run.capability === promptCapability);
+  const promptTestRunsForCapability = matchingPromptTestRuns.length ? matchingPromptTestRuns : allPromptTestRuns;
+
+  function savePromptDraft() {
+    const sourcePrompt = draftPromptForCapability ?? activePromptForCapability;
+    const blocks = sourcePrompt?.blocks.map((block, index) => {
+      if (!block.editable || index !== 0) return block;
+      return { ...block, body: `${block.body}\n\n${promptDraftEdit}`.trim() };
+    });
+    void post("save-prompt-draft", { capability: promptCapability, blocks });
   }
 
   return (
@@ -352,6 +413,132 @@ export default function HierarchyFoundationClient({ sessionId, initialState }: P
             ))}
             <h4>Compiled Source Triage Prompt Preview</h4>
             <pre style={{ whiteSpace: "pre-wrap", maxHeight: "360px", overflow: "auto" }}>{state.compiledSourceTriagePromptPreview}</pre>
+          </details>
+        ) : null}
+      </section>
+
+      <section className="card">
+        <h3 style={{ marginTop: 0 }}>Prompt Draft Testing</h3>
+        <p className="muted">Draft saves do not activate prompts. Promotion requires the explicit action below, and previous active versions remain stored for rollback/reference.</p>
+        <div style={{ display: "grid", gap: "8px" }}>
+          <select value={promptCapability} onChange={(event) => setPromptCapability(event.target.value as PromptCapability)} style={inputStyle}>
+            <option value="hierarchy_draft">Hierarchy draft prompt</option>
+            <option value="source_hierarchy_triage">Source-to-hierarchy triage prompt</option>
+          </select>
+          <textarea
+            value={promptDraftEdit}
+            onChange={(event) => setPromptDraftEdit(event.target.value)}
+            rows={3}
+            style={inputStyle}
+            placeholder="Draft section edit note"
+          />
+          <textarea
+            value={promptTestInput}
+            onChange={(event) => setPromptTestInput(event.target.value)}
+            rows={4}
+            style={inputStyle}
+            placeholder="Same input used for active-vs-draft prompt test"
+          />
+          <input
+            value={promptAdminNote}
+            onChange={(event) => setPromptAdminNote(event.target.value)}
+            style={inputStyle}
+            placeholder="Admin note for prompt test or promotion"
+          />
+          <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
+            <button onClick={savePromptDraft}>Create/edit draft prompt</button>
+            <button
+              className="btn-primary"
+              disabled={!draftPromptForCapability}
+              onClick={() => post("run-prompt-test", {
+                capability: promptCapability,
+                draftPromptSpecId: draftPromptForCapability?.promptSpecId,
+                testInput: promptTestInput,
+                adminNote: promptAdminNote || undefined,
+              })}
+            >
+              Run active-vs-draft test
+            </button>
+            <button
+              disabled={!draftPromptForCapability}
+              onClick={() => post("promote-prompt-draft", {
+                draftPromptSpecId: draftPromptForCapability?.promptSpecId,
+                adminNote: promptAdminNote || undefined,
+              })}
+            >
+              Promote draft to active
+            </button>
+          </div>
+        </div>
+        <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) minmax(0, 1fr)", gap: "12px", marginTop: "12px" }}>
+          <div>
+            <h4>Active Prompt</h4>
+            {activePromptForCapability ? (
+              <>
+                <p><code>{activePromptForCapability.promptSpecId}</code> v{activePromptForCapability.version} · {activePromptForCapability.status}</p>
+                {activePromptForCapability.blocks.map((block) => (
+                  <details key={block.blockId}>
+                    <summary>{block.label}</summary>
+                    <pre style={{ whiteSpace: "pre-wrap" }}>{block.body}</pre>
+                  </details>
+                ))}
+                <h4>Compiled Active Prompt Preview</h4>
+                <pre style={{ whiteSpace: "pre-wrap", maxHeight: "280px", overflow: "auto" }}>{activeCompiledPromptForCapability}</pre>
+              </>
+            ) : <p className="muted">No active prompt loaded.</p>}
+          </div>
+          <div>
+            <h4>Draft Prompt</h4>
+            {draftPromptForCapability ? (
+              <>
+                <p><code>{draftPromptForCapability.promptSpecId}</code> v{draftPromptForCapability.version} · {draftPromptForCapability.status}</p>
+                {draftPromptForCapability.blocks.map((block) => (
+                  <details key={block.blockId}>
+                    <summary>{block.label}</summary>
+                    <pre style={{ whiteSpace: "pre-wrap" }}>{block.body}</pre>
+                  </details>
+                ))}
+                <h4>Compiled Draft Prompt Preview</h4>
+                <pre style={{ whiteSpace: "pre-wrap", maxHeight: "280px", overflow: "auto" }}>{draftCompiledPromptForCapability}</pre>
+              </>
+            ) : <p className="muted">No draft prompt saved for this capability.</p>}
+          </div>
+        </div>
+        {promptTestRunsForCapability.length ? (
+          <div style={{ marginTop: "12px", display: "grid", gap: "10px" }}>
+            <h4>Active-vs-Draft Comparison</h4>
+            {promptTestRunsForCapability.slice(0, 3).map((run) => (
+              <div key={run.testRunId} style={{ border: "1px solid var(--border)", borderRadius: "4px", padding: "10px" }}>
+                <p><code>{run.testRunId}</code> · <code>{run.providerStatus}</code> · active v{run.activePromptVersion} vs draft v{run.draftPromptVersion}</p>
+                {run.provider ? <p>Provider: <code>{run.provider}</code> · Model: <code>{run.model}</code></p> : null}
+                {run.errorMessage ? <p style={{ color: "#f99" }}>Failure: {run.errorMessage}</p> : null}
+                <p>{run.comparisonSummary}</p>
+                <p>Boundary flags: <code>{run.boundaryViolationFlags.length ? run.boundaryViolationFlags.join(", ") : "none"}</code></p>
+                <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) minmax(0, 1fr)", gap: "8px" }}>
+                  <div>
+                    <h4>Active Output</h4>
+                    <pre style={{ whiteSpace: "pre-wrap", maxHeight: "220px", overflow: "auto" }}>{run.activePromptOutput ?? "No output persisted."}</pre>
+                  </div>
+                  <div>
+                    <h4>Draft Output</h4>
+                    <pre style={{ whiteSpace: "pre-wrap", maxHeight: "220px", overflow: "auto" }}>{run.draftPromptOutput ?? "No output persisted."}</pre>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : null}
+        {state.pass3PromptSpecs?.length ? (
+          <details style={{ marginTop: "12px" }}>
+            <summary>Prompt version records</summary>
+            <ul>
+              {state.pass3PromptSpecs.map((spec) => (
+                <li key={spec.promptSpecId}>
+                  <code>{spec.promptSpecId}</code> · <code>{spec.linkedModule}</code> · v{spec.version} · <code>{spec.status}</code>
+                  {spec.previousActivePromptSpecId ? <> · previous active <code>{spec.previousActivePromptSpecId}</code></> : null}
+                </li>
+              ))}
+            </ul>
           </details>
         ) : null}
       </section>

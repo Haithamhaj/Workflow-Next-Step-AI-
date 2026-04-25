@@ -17,11 +17,17 @@ import {
 } from "@workflow/hierarchy-intake";
 import { providerRegistry } from "@workflow/integrations";
 import {
+  createOrUpdatePass3PromptDraft,
+  promotePass3PromptDraft,
+  runPass3PromptComparisonTest,
   compileStructuredPromptSpec,
   compilePass3SourceTriagePromptSpec,
   ensureActivePass3HierarchyPromptSpec,
   ensureActivePass3SourceTriagePromptSpec,
+  listPass3PromptSpecs,
+  pass3CapabilityModule,
 } from "@workflow/prompts";
+import type { Pass3PromptCapability, StructuredPromptSpecBlock } from "@workflow/contracts";
 import { store } from "../../../../../lib/store";
 
 export const dynamic = "force-dynamic";
@@ -43,12 +49,25 @@ function payload(sessionId: string) {
   const foundation = getHierarchyFoundationState(sessionId, repos());
   const promptSpec = ensureActivePass3HierarchyPromptSpec(store.structuredPromptSpecs);
   const sourceTriagePromptSpec = ensureActivePass3SourceTriagePromptSpec(store.structuredPromptSpecs);
+  const pass3PromptSpecs = listPass3PromptSpecs(store.structuredPromptSpecs);
+  const hierarchyDraftPrompt = pass3PromptSpecs.find((spec) => spec.linkedModule === pass3CapabilityModule("hierarchy_draft") && spec.status === "draft") ?? null;
+  const sourceDraftPrompt = pass3PromptSpecs.find((spec) => spec.linkedModule === pass3CapabilityModule("source_hierarchy_triage") && spec.status === "draft") ?? null;
   return {
     ...foundation,
     promptSpec,
     compiledPromptPreview: compileStructuredPromptSpec(promptSpec, promptInput(sessionId)),
     sourceTriagePromptSpec,
     compiledSourceTriagePromptPreview: compilePass3SourceTriagePromptSpec(sourceTriagePromptSpec, sourceTriagePromptInput(sessionId)),
+    pass3PromptSpecs,
+    promptTestRuns: store.pass3PromptTestRuns.findAll(),
+    promptDrafts: {
+      hierarchyDraftPrompt,
+      sourceDraftPrompt,
+    },
+    compiledDraftPromptPreviews: {
+      hierarchy: hierarchyDraftPrompt ? compileStructuredPromptSpec(hierarchyDraftPrompt, promptInput(sessionId)) : null,
+      sourceTriage: sourceDraftPrompt ? compilePass3SourceTriagePromptSpec(sourceDraftPrompt, sourceTriagePromptInput(sessionId)) : null,
+    },
   };
 }
 
@@ -193,6 +212,67 @@ export async function POST(
       return NextResponse.json({ ...payload(params.id), sourceTriageSuggestion: suggestion }, { status: 201 });
     }
 
+    if (action === "save-prompt-draft") {
+      const capability = body.capability as Pass3PromptCapability;
+      const blocks = Array.isArray(body.blocks) ? body.blocks as StructuredPromptSpecBlock[] : undefined;
+      const draft = createOrUpdatePass3PromptDraft({
+        capability,
+        blocks,
+        adminNote: typeof body.adminNote === "string" ? body.adminNote : undefined,
+      }, store.structuredPromptSpecs);
+      return NextResponse.json({ ...payload(params.id), promptDraft: draft }, { status: 201 });
+    }
+
+    if (action === "run-prompt-test") {
+      const capability = body.capability as Pass3PromptCapability;
+      const module = pass3CapabilityModule(capability);
+      const draftPromptSpecId = typeof body.draftPromptSpecId === "string"
+        ? body.draftPromptSpecId
+        : store.structuredPromptSpecs.findByLinkedModule(module).find((spec) => spec.status === "draft")?.promptSpecId ?? "";
+      const draft = store.structuredPromptSpecs.findById(draftPromptSpecId);
+      if (!draft) throw new Error("Prompt draft not found for test run.");
+      const active = store.structuredPromptSpecs.findActiveByLinkedModule(module);
+      if (!active) throw new Error("Active prompt not found for test run.");
+      const requestedTestInput = typeof body.testInput === "string" ? body.testInput : "";
+      const hierarchyTestInput = {
+        ...promptInput(params.id),
+        pastedHierarchyText: requestedTestInput || promptInput(params.id).pastedHierarchyText,
+      };
+      const sourceTriageTestInput = {
+        ...sourceTriagePromptInput(params.id),
+        sourcesJson: requestedTestInput || sourceTriagePromptInput(params.id).sourcesJson,
+      };
+      const activeCompiledPrompt = capability === "hierarchy_draft"
+        ? compileStructuredPromptSpec(active, hierarchyTestInput)
+        : compilePass3SourceTriagePromptSpec(active, sourceTriageTestInput);
+      const draftCompiledPrompt = capability === "hierarchy_draft"
+        ? compileStructuredPromptSpec(draft, hierarchyTestInput)
+        : compilePass3SourceTriagePromptSpec(draft, sourceTriageTestInput);
+      const testRun = await runPass3PromptComparisonTest({
+        capability,
+        draftPromptSpecId,
+        caseContextUsed: params.id,
+        testInput: requestedTestInput || (capability === "hierarchy_draft" ? JSON.stringify(promptInput(params.id)) : JSON.stringify(sourceTriagePromptInput(params.id))),
+        activeCompiledPrompt,
+        draftCompiledPrompt,
+        provider: providerRegistry.getExtractionProvider("google"),
+        adminNote: typeof body.adminNote === "string" ? body.adminNote : undefined,
+      }, {
+        promptSpecs: store.structuredPromptSpecs,
+        testRuns: store.pass3PromptTestRuns,
+      });
+      const status = testRun.providerStatus === "provider_success" ? 201 : 424;
+      return NextResponse.json({ ...payload(params.id), promptTestRun: testRun }, { status });
+    }
+
+    if (action === "promote-prompt-draft") {
+      const result = promotePass3PromptDraft({
+        draftPromptSpecId: typeof body.draftPromptSpecId === "string" ? body.draftPromptSpecId : "",
+        adminNote: typeof body.adminNote === "string" ? body.adminNote : undefined,
+      }, store.structuredPromptSpecs);
+      return NextResponse.json({ ...payload(params.id), promotedPrompt: result.active, previousPrompt: result.previous }, { status: 201 });
+    }
+
     if (action === "create-manual-source-link") {
       const sourceId = typeof body.sourceId === "string" ? body.sourceId : "";
       const source = store.intakeSources.findById(sourceId);
@@ -234,6 +314,9 @@ export async function POST(
         "generate-source-triage",
         "update-source-triage",
         "create-manual-source-link",
+        "save-prompt-draft",
+        "run-prompt-test",
+        "promote-prompt-draft",
         "approve-structural-snapshot",
         "calculate-readiness",
       ],

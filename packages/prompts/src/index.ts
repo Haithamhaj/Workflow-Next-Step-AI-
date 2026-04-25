@@ -8,13 +8,17 @@
  */
 
 import {
+  validatePass3PromptTestRun,
   validateStructuredPromptSpec,
   validatePromptRegistration,
+  type Pass3PromptCapability,
+  type Pass3PromptTestRun,
   type PromptRegistration,
   type PromptRole,
   type StructuredPromptSpec,
+  type StructuredPromptSpecBlock,
 } from "@workflow/contracts";
-import type { PromptRecord, PromptRepository, StructuredPromptSpecRepository } from "@workflow/persistence";
+import type { Pass3PromptTestRunRepository, PromptRecord, PromptRepository, StructuredPromptSpecRepository } from "@workflow/persistence";
 
 // ---------------------------------------------------------------------------
 // Re-exports — consumers should not need to double-import contracts
@@ -27,10 +31,20 @@ export type {
   PromptStatus,
   StructuredPromptSpec,
   StructuredPromptSpecBlock,
+  Pass3PromptCapability,
+  Pass3PromptTestRun,
 } from "@workflow/contracts";
 
 export const PASS3_HIERARCHY_PROMPT_MODULE = "pass3.hierarchy.draft" as const;
 export const PASS3_SOURCE_TRIAGE_PROMPT_MODULE = "pass3.source_hierarchy.triage" as const;
+
+function id(prefix: string): string {
+  return `${prefix}_${crypto.randomUUID()}`;
+}
+
+function validationMessage(errors: { message?: string }[]): string {
+  return errors.map((e) => e.message ?? String(e)).join("; ");
+}
 
 // ---------------------------------------------------------------------------
 // registerPrompt
@@ -176,14 +190,20 @@ export function defaultPass3HierarchyPromptSpec(now = new Date().toISOString()):
     updatedAt: now,
     blocks: [
       {
+        blockId: "prompt_metadata",
+        label: "Prompt Metadata",
+        editable: true,
+        body: "Capability: hierarchy_draft. Lifecycle: draft saves are review-only until explicit admin promotion. Previous active versions must remain available for rollback/reference.",
+      },
+      {
         blockId: "role_definition",
         label: "Role Definition",
         editable: true,
         body: "You are a hierarchy drafting assistant. You produce a draft organizational hierarchy for admin review.",
       },
       {
-        blockId: "pass3_mission",
-        label: "Pass 3 Mission",
+        blockId: "mission_or_task_purpose",
+        label: "Mission Or Task Purpose",
         editable: true,
         body: "Use the provided Pass 3 intake/context to draft hierarchy nodes, primary parent links, optional secondary relationships, grouping layers, and uncertainty warnings.",
       },
@@ -194,28 +214,70 @@ export function defaultPass3HierarchyPromptSpec(now = new Date().toISOString()):
         body: "Use only the supplied case id, session id, primary department, selected use case, structured context summary, and pasted/uploaded hierarchy intake text.",
       },
       {
-        blockId: "hierarchy_drafting_rules",
-        label: "Hierarchy Drafting Rules",
+        blockId: "source_and_evidence_rules",
+        label: "Source And Evidence Rules",
+        editable: true,
+        body: "Source references may only be treated as tentative evidence candidates. They are not workflow truth and must not validate responsibilities, KPIs, SOPs, policies, or actual practice.",
+      },
+      {
+        blockId: "operating_instructions",
+        label: "Operating Instructions",
         editable: true,
         body: "Create role-first nodes. Use stable nodeId values. Use primaryParentNodeId only when a primary reporting parent is visible. Use the approved grouping taxonomy exactly. If custom groupLayer is used, include customGroupLabel and optional customGroupReason.",
       },
       {
-        blockId: "uncertainty_rules",
-        label: "Uncertainty Rules",
+        blockId: "domain_terminology_lens",
+        label: "Domain Terminology Lens",
+        editable: true,
+        body: "Interpret titles, layers, queues, shared services, committees, external interfaces, and approval/control roles as hierarchy structure only when the provided intake supports that classification.",
+      },
+      {
+        blockId: "boundaries_and_prohibitions",
+        label: "Boundaries And Prohibitions",
+        editable: true,
+        body: "Do not approve the hierarchy. Do not create participant targeting, rollout order, invitations, participant sessions, workflow analysis, synthesis/evaluation, or package generation. Do not output email, phone, WhatsApp, preferred channel, targeting status, invitation status, or session status fields.",
+      },
+      {
+        blockId: "uncertainty_and_escalation_rules",
+        label: "Uncertainty And Escalation Rules",
         editable: true,
         body: "When a reporting relationship, grouping layer, or secondary relationship is unclear, use unknown values and add a warning. Do not invent missing structure.",
       },
       {
-        blockId: "prohibitions",
-        label: "Prohibitions",
+        blockId: "examples_or_few_shot_cases",
+        label: "Examples Or Few-Shot Cases",
         editable: true,
-        body: "Do not approve the hierarchy. Do not create participant targeting, rollout order, invitations, participant sessions, workflow analysis, synthesis/evaluation, or package generation. Do not treat source claims as workflow truth. Do not output email, phone, WhatsApp, preferred channel, targeting status, invitation status, or session status fields.",
+        body: "Example: a Sales Director over a Sales Manager with Supervisors and Sales roles should produce role-first nodes and visible primaryParentNodeId values only where reporting lines are reasonably inferable.",
       },
       {
-        blockId: "output_schema_contract",
-        label: "Output Schema / Contract",
+        blockId: "admin_discussion_behavior",
+        label: "Admin Discussion Behavior",
+        editable: true,
+        body: "Surface warnings for admin correction. Treat generated hierarchy as editable draft material, never as approved structure.",
+      },
+      {
+        blockId: "evaluation_checklist",
+        label: "Evaluation Checklist",
+        editable: true,
+        body: "Check that output contains no contact fields, no participant targeting, no rollout/session fields, no workflow-analysis claims, and uses only approved taxonomy values.",
+      },
+      {
+        blockId: "test_cases_or_golden_inputs",
+        label: "Test Cases Or Golden Inputs",
+        editable: true,
+        body: "Golden input: Sales Director; Sales Manager; 2 Supervisors; 3 Senior Sales; 2 Sales; 2 Account Managers; 2 Communicators.",
+      },
+      {
+        blockId: "output_contract_or_schema",
+        label: "Output Contract Or Schema",
         editable: true,
         body: "Return JSON only: {\"nodes\":[{\"nodeId\":\"string\",\"roleLabel\":\"string\",\"groupLayer\":\"approved_taxonomy_value\",\"customGroupLabel\":\"optional\",\"customGroupReason\":\"optional\",\"primaryParentNodeId\":\"optional\",\"personName\":\"optional\",\"employeeId\":\"optional\",\"internalIdentifier\":\"optional\",\"occupantOfRole\":\"optional\",\"candidateParticipantFlag\":false,\"personRoleConfidence\":\"high|medium|low|unknown\",\"notes\":\"optional\"}],\"secondaryRelationships\":[{\"relationshipId\":\"string\",\"fromNodeId\":\"string\",\"relatedNodeId\":\"string\",\"relationshipType\":\"approved_secondary_relationship_value\",\"relationshipScope\":\"string\",\"reasonOrNote\":\"string\",\"confidence\":\"high|medium|low|unknown\",\"sourceBasis\":\"pasted_text|uploaded_document|admin_entered|source_evidence_candidate|unknown\"}],\"warnings\":[\"string\"]}.",
+      },
+      {
+        blockId: "version_and_activation_controls",
+        label: "Version And Activation Controls",
+        editable: true,
+        body: "Draft edits must not become active automatically. Activation requires explicit admin promotion after review of compiled prompt preview and active-vs-draft test output.",
       },
     ],
   };
@@ -264,40 +326,94 @@ export function defaultPass3SourceTriagePromptSpec(now = new Date().toISOString(
     updatedAt: now,
     blocks: [
       {
+        blockId: "prompt_metadata",
+        label: "Prompt Metadata",
+        editable: true,
+        body: "Capability: source_hierarchy_triage. Lifecycle: draft saves are review-only until explicit admin promotion. Previous active versions must remain available for rollback/reference.",
+      },
+      {
         blockId: "role_definition",
         label: "Role Definition",
         editable: true,
         body: "You are a Pass 3 source relevance triage assistant. You identify only tentative evidence-candidate links between intake sources and hierarchy scopes/nodes for admin review.",
       },
       {
-        blockId: "mission",
-        label: "Pass 3 Source Triage Mission",
+        blockId: "mission_or_task_purpose",
+        label: "Mission Or Task Purpose",
         editable: true,
         body: "Analyze existing intake sources for hierarchy relevance signals. Suggest candidate links to company-wide context, department-wide context, team/unit, role-specific node, person/occupant, system/queue, approval/control node, external interface, or unknown/needs review.",
       },
       {
-        blockId: "signal_and_scope_rules",
-        label: "Signal And Scope Rules",
+        blockId: "case_context_inputs",
+        label: "Case Context Inputs",
+        editable: true,
+        body: "Use only the supplied case id, session id, primary department, current hierarchy node JSON, and existing intake source JSON.",
+      },
+      {
+        blockId: "source_and_evidence_rules",
+        label: "Source And Evidence Rules",
         editable: true,
         body: "Use only these signalType values: role_name_signal, department_scope_signal, kpi_or_target_signal, responsibility_signal, approval_or_authority_signal, system_or_queue_signal, person_name_signal, cross_functional_signal, external_interface_signal, unclear_scope_signal. Use only these suggestedScope values: company_wide, department_wide, team_or_unit, role_specific, person_or_occupant, system_or_queue, approval_or_control_node, external_interface, unknown_needs_review.",
       },
       {
-        blockId: "evidence_candidate_rules",
-        label: "Evidence Candidate Rules",
+        blockId: "operating_instructions",
+        label: "Operating Instructions",
         editable: true,
         body: "All suggestions are evidence candidates only. Default evidenceStatus to document_claim_only. Set participantValidationNeeded true for KPI/target, responsibility, approval/authority, or unclear practice claims. Ask an adminReviewQuestion that distinguishes documented/formal claims from actual practice.",
       },
       {
-        blockId: "prohibitions",
-        label: "Prohibitions",
+        blockId: "domain_terminology_lens",
+        label: "Domain Terminology Lens",
+        editable: true,
+        body: "Map documents to department, team, role, person/occupant, system/queue, approval/control, or external-interface scopes based on text signals without forcing a narrower scope than the document supports.",
+      },
+      {
+        blockId: "boundaries_and_prohibitions",
+        label: "Boundaries And Prohibitions",
         editable: true,
         body: "Do not treat source claims as workflow truth. Do not validate SOPs, KPIs, policies, responsibilities, or actual practice. Do not create participant targeting, rollout order, invitations, participant sessions, workflow analysis, reference suitability scoring, synthesis/evaluation, or package generation.",
       },
       {
-        blockId: "output_schema_contract",
-        label: "Output Schema / Contract",
+        blockId: "uncertainty_and_escalation_rules",
+        label: "Uncertainty And Escalation Rules",
+        editable: true,
+        body: "When source scope is unclear, use unknown_needs_review and ask a focused adminReviewQuestion. Preserve uncertainty instead of inventing role/person links.",
+      },
+      {
+        blockId: "examples_or_few_shot_cases",
+        label: "Examples Or Few-Shot Cases",
+        editable: true,
+        body: "Example: a KPI sheet requiring 20 sales activities is a kpi_or_target_signal and document_claim_only evidence; it may require participant validation and must not be treated as actual practice.",
+      },
+      {
+        blockId: "admin_discussion_behavior",
+        label: "Admin Discussion Behavior",
+        editable: true,
+        body: "Frame suggestions as reviewable evidence candidates. Ask the admin whether a claim is only formal/documented or also used in practice.",
+      },
+      {
+        blockId: "evaluation_checklist",
+        label: "Evaluation Checklist",
+        editable: true,
+        body: "Check that suggestions do not become workflow truth, do not create participant targeting, and use only approved signal, scope, and evidence-status values.",
+      },
+      {
+        blockId: "test_cases_or_golden_inputs",
+        label: "Test Cases Or Golden Inputs",
+        editable: true,
+        body: "Golden input: a department KPI document, an org-chart title list, and a named approval owner should produce evidence-candidate suggestions with adminReviewQuestion values.",
+      },
+      {
+        blockId: "output_contract_or_schema",
+        label: "Output Contract Or Schema",
         editable: true,
         body: "Return JSON only: {\"suggestions\":[{\"sourceId\":\"string\",\"sourceName\":\"string\",\"suggestedScope\":\"approved_scope_value\",\"linkedNodeId\":\"optional existing nodeId only\",\"linkedScopeLevel\":\"optional approved_scope_value\",\"signalType\":\"approved_signal_type\",\"suggestedReason\":\"string\",\"confidence\":\"high|medium|low|unknown\",\"evidenceStatus\":\"document_claim_only\",\"participantValidationNeeded\":true,\"adminReviewQuestion\":\"string\"}],\"warnings\":[\"string\"]}. Do not include participant_confirmed_later or contradicted_by_reality_later.",
+      },
+      {
+        blockId: "version_and_activation_controls",
+        label: "Version And Activation Controls",
+        editable: true,
+        body: "Draft edits must not become active automatically. Activation requires explicit admin promotion after review of compiled prompt preview and active-vs-draft test output.",
       },
     ],
   };
@@ -330,4 +446,174 @@ export function compilePass3SourceTriagePromptSpec(
   ].join("\n\n");
 
   return `${sections}\n\n## Runtime Source Triage Context\n${context}`;
+}
+
+export function pass3CapabilityModule(capability: Pass3PromptCapability): string {
+  return capability === "hierarchy_draft" ? PASS3_HIERARCHY_PROMPT_MODULE : PASS3_SOURCE_TRIAGE_PROMPT_MODULE;
+}
+
+export function listPass3PromptSpecs(repo: StructuredPromptSpecRepository): StructuredPromptSpec[] {
+  return [
+    ...repo.findByLinkedModule(PASS3_HIERARCHY_PROMPT_MODULE),
+    ...repo.findByLinkedModule(PASS3_SOURCE_TRIAGE_PROMPT_MODULE),
+  ];
+}
+
+export function createOrUpdatePass3PromptDraft(input: {
+  capability: Pass3PromptCapability;
+  blocks?: StructuredPromptSpecBlock[];
+  adminNote?: string;
+}, repo: StructuredPromptSpecRepository): StructuredPromptSpec {
+  const linkedModule = pass3CapabilityModule(input.capability);
+  const active = repo.findActiveByLinkedModule(linkedModule)
+    ?? (input.capability === "hierarchy_draft" ? ensureActivePass3HierarchyPromptSpec(repo) : ensureActivePass3SourceTriagePromptSpec(repo));
+  const timestamp = new Date().toISOString();
+  const draft = repo.findByLinkedModule(linkedModule).find((spec) => spec.status === "draft");
+  const next: StructuredPromptSpec = {
+    ...(draft ?? active),
+    promptSpecId: draft?.promptSpecId ?? `${active.promptSpecId}_draft_${crypto.randomUUID()}`,
+    status: "draft",
+    version: draft?.version ?? active.version + 1,
+    blocks: (input.blocks ?? draft?.blocks ?? active.blocks).map((block) => ({ ...block })),
+    previousActivePromptSpecId: active.promptSpecId,
+    createdAt: draft?.createdAt ?? timestamp,
+    updatedAt: timestamp,
+  };
+  const result = validateStructuredPromptSpec(next);
+  if (!result.ok) throw new Error(`Invalid Pass 3 prompt draft: ${validationMessage(result.errors)}`);
+  repo.save(next);
+  return next;
+}
+
+export function promotePass3PromptDraft(input: {
+  draftPromptSpecId: string;
+  adminNote?: string;
+}, repo: StructuredPromptSpecRepository): { active: StructuredPromptSpec; previous: StructuredPromptSpec } {
+  const draft = repo.findById(input.draftPromptSpecId);
+  if (!draft || draft.status !== "draft") throw new Error("Prompt draft not found or not in draft state.");
+  const active = repo.findActiveByLinkedModule(draft.linkedModule);
+  if (!active) throw new Error("Active prompt not found for draft promotion.");
+  const timestamp = new Date().toISOString();
+  const previous: StructuredPromptSpec = {
+    ...active,
+    status: "previous",
+    updatedAt: timestamp,
+  };
+  const nextActive: StructuredPromptSpec = {
+    ...draft,
+    status: "active",
+    previousActivePromptSpecId: previous.promptSpecId,
+    updatedAt: timestamp,
+  };
+  for (const spec of [previous, nextActive]) {
+    const result = validateStructuredPromptSpec(spec);
+    if (!result.ok) throw new Error(`Invalid prompt promotion record: ${validationMessage(result.errors)}`);
+  }
+  repo.save(previous);
+  repo.save(nextActive);
+  return { active: nextActive, previous };
+}
+
+function boundaryFlags(text: string): string[] {
+  const lower = text.toLowerCase();
+  const flags: string[] = [];
+  for (const phrase of ["participant targeting", "rollout", "invitation", "participant session", "workflow analysis", "package generation"]) {
+    if (lower.includes(phrase)) flags.push(`mentions_${phrase.replaceAll(" ", "_")}`);
+  }
+  return flags;
+}
+
+export async function runPass3PromptComparisonTest(input: {
+  capability: Pass3PromptCapability;
+  draftPromptSpecId: string;
+  caseContextUsed: string;
+  testInput: string;
+  activeCompiledPrompt: string;
+  draftCompiledPrompt: string;
+  provider: null | {
+    readonly name: "google" | "openai";
+    runPromptText(input: { compiledPrompt: string }): Promise<{ text: string; provider: "google" | "openai"; model: string }>;
+  };
+  adminNote?: string;
+}, repos: {
+  promptSpecs: StructuredPromptSpecRepository;
+  testRuns: Pass3PromptTestRunRepository;
+}): Promise<Pass3PromptTestRun> {
+  const draft = repos.promptSpecs.findById(input.draftPromptSpecId);
+  if (!draft || draft.status !== "draft") throw new Error("Prompt draft not found for test run.");
+  const active = repos.promptSpecs.findActiveByLinkedModule(draft.linkedModule);
+  if (!active) throw new Error("Active prompt not found for test run.");
+  const timestamp = new Date().toISOString();
+
+  let run: Pass3PromptTestRun;
+  if (!input.provider) {
+    run = {
+      testRunId: id("pass3_prompt_test"),
+      promptSpecId: active.promptSpecId,
+      promptVersionId: draft.promptSpecId,
+      capability: input.capability,
+      caseContextUsed: input.caseContextUsed,
+      testInput: input.testInput,
+      activePromptVersion: active.version,
+      draftPromptVersion: draft.version,
+      comparisonSummary: "Provider was not configured; no prompt outputs were generated.",
+      boundaryViolationFlags: [],
+      providerStatus: "provider_not_configured",
+      errorMessage: "provider_not_configured: Google AI provider is missing GOOGLE_AI_API_KEY.",
+      adminNote: input.adminNote,
+      createdAt: timestamp,
+    };
+  } else {
+    try {
+      const activeOutput = await input.provider.runPromptText({ compiledPrompt: input.activeCompiledPrompt });
+      const draftOutput = await input.provider.runPromptText({ compiledPrompt: input.draftCompiledPrompt });
+      const flags = [...new Set([...boundaryFlags(activeOutput.text), ...boundaryFlags(draftOutput.text)])];
+      run = {
+        testRunId: id("pass3_prompt_test"),
+        promptSpecId: active.promptSpecId,
+        promptVersionId: draft.promptSpecId,
+        capability: input.capability,
+        caseContextUsed: input.caseContextUsed,
+        testInput: input.testInput,
+        activePromptOutput: activeOutput.text,
+        draftPromptOutput: draftOutput.text,
+        provider: draftOutput.provider,
+        model: draftOutput.model,
+        activePromptVersion: active.version,
+        draftPromptVersion: draft.version,
+        comparisonSummary: `Active output length ${activeOutput.text.length}; draft output length ${draftOutput.text.length}; boundary flags ${flags.length}.`,
+        boundaryViolationFlags: flags,
+        providerStatus: "provider_success",
+        adminNote: input.adminNote,
+        createdAt: timestamp,
+      };
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      const status = message.includes("provider_auth_failed") ? "provider_auth_failed"
+        : message.includes("provider_model_unavailable") ? "provider_model_unavailable"
+          : message.includes("provider_rate_limited") ? "provider_rate_limited"
+            : message.includes("provider_not_configured") ? "provider_not_configured"
+              : "provider_execution_failed";
+      run = {
+        testRunId: id("pass3_prompt_test"),
+        promptSpecId: active.promptSpecId,
+        promptVersionId: draft.promptSpecId,
+        capability: input.capability,
+        caseContextUsed: input.caseContextUsed,
+        testInput: input.testInput,
+        activePromptVersion: active.version,
+        draftPromptVersion: draft.version,
+        comparisonSummary: "Provider execution failed; no fake prompt outputs were generated.",
+        boundaryViolationFlags: [],
+        providerStatus: status,
+        errorMessage: message,
+        adminNote: input.adminNote,
+        createdAt: timestamp,
+      };
+    }
+  }
+  const result = validatePass3PromptTestRun(run);
+  if (!result.ok) throw new Error(`Invalid Pass 3 prompt test run: ${validationMessage(result.errors)}`);
+  repos.testRuns.save(run);
+  return run;
 }

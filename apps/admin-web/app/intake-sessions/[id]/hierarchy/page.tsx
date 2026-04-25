@@ -5,6 +5,8 @@ import {
   compileStructuredPromptSpec,
   ensureActivePass3HierarchyPromptSpec,
   ensureActivePass3SourceTriagePromptSpec,
+  listPass3PromptSpecs,
+  pass3CapabilityModule,
 } from "@workflow/prompts";
 import { store } from "../../../../lib/store";
 import HierarchyFoundationClient from "./HierarchyFoundationClient";
@@ -64,12 +66,25 @@ export default function HierarchyPage({ params }: { params: { id: string } }) {
   });
   const promptSpec = ensureActivePass3HierarchyPromptSpec(store.structuredPromptSpecs);
   const sourceTriagePromptSpec = ensureActivePass3SourceTriagePromptSpec(store.structuredPromptSpecs);
+  const pass3PromptSpecs = listPass3PromptSpecs(store.structuredPromptSpecs);
+  const hierarchyDraftPrompt = pass3PromptSpecs.find((spec) => spec.linkedModule === pass3CapabilityModule("hierarchy_draft") && spec.status === "draft") ?? null;
+  const sourceDraftPrompt = pass3PromptSpecs.find((spec) => spec.linkedModule === pass3CapabilityModule("source_hierarchy_triage") && spec.status === "draft") ?? null;
   const state = {
     ...foundation,
     promptSpec,
     compiledPromptPreview: compileStructuredPromptSpec(promptSpec, promptInput(params.id)),
     sourceTriagePromptSpec,
     compiledSourceTriagePromptPreview: compilePass3SourceTriagePromptSpec(sourceTriagePromptSpec, sourceTriagePromptInput(params.id)),
+    pass3PromptSpecs,
+    promptTestRuns: store.pass3PromptTestRuns.findAll(),
+    promptDrafts: {
+      hierarchyDraftPrompt,
+      sourceDraftPrompt,
+    },
+    compiledDraftPromptPreviews: {
+      hierarchy: hierarchyDraftPrompt ? compileStructuredPromptSpec(hierarchyDraftPrompt, promptInput(params.id)) : null,
+      sourceTriage: sourceDraftPrompt ? compilePass3SourceTriagePromptSpec(sourceDraftPrompt, sourceTriagePromptInput(params.id)) : null,
+    },
   };
 
   return (

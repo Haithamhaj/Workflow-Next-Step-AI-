@@ -1,0 +1,51 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://workflow.local/schemas/pass3-prompt-test-run.json",
+  "title": "Pass3PromptTestRun",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "testRunId",
+    "promptSpecId",
+    "promptVersionId",
+    "capability",
+    "caseContextUsed",
+    "testInput",
+    "activePromptVersion",
+    "draftPromptVersion",
+    "comparisonSummary",
+    "boundaryViolationFlags",
+    "providerStatus",
+    "createdAt"
+  ],
+  "properties": {
+    "testRunId": { "type": "string", "minLength": 1 },
+    "promptSpecId": { "type": "string", "minLength": 1 },
+    "promptVersionId": { "type": "string", "minLength": 1 },
+    "capability": { "type": "string", "enum": ["hierarchy_draft", "source_hierarchy_triage"] },
+    "caseContextUsed": { "type": "string" },
+    "testInput": { "type": "string" },
+    "activePromptOutput": { "type": "string" },
+    "draftPromptOutput": { "type": "string" },
+    "provider": { "type": "string", "enum": ["google", "openai"] },
+    "model": { "type": "string" },
+    "activePromptVersion": { "type": "integer", "minimum": 1 },
+    "draftPromptVersion": { "type": "integer", "minimum": 1 },
+    "comparisonSummary": { "type": "string" },
+    "boundaryViolationFlags": { "type": "array", "items": { "type": "string" } },
+    "providerStatus": {
+      "type": "string",
+      "enum": [
+        "provider_not_configured",
+        "provider_auth_failed",
+        "provider_model_unavailable",
+        "provider_rate_limited",
+        "provider_execution_failed",
+        "provider_success"
+      ]
+    },
+    "errorMessage": { "type": "string" },
+    "adminNote": { "type": "string" },
+    "createdAt": { "type": "string", "minLength": 1 }
+  }
+}

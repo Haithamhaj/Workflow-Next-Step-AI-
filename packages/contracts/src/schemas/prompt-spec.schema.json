@@ -9,7 +9,7 @@
     "promptSpecId": { "type": "string", "minLength": 1 },
     "linkedModule": { "type": "string", "minLength": 1 },
     "purpose": { "type": "string", "minLength": 1 },
-    "status": { "type": "string", "enum": ["draft", "active", "archived"] },
+    "status": { "type": "string", "enum": ["draft", "active", "previous", "archived"] },
     "version": { "type": "integer", "minimum": 1 },
     "blocks": {
       "type": "array",

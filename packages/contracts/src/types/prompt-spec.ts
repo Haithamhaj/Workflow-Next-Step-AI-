@@ -3,7 +3,7 @@
  * Patch 1 stores shape only; no provider-backed prompt execution is claimed.
  */
 
-export type PromptSpecStatus = "draft" | "active" | "archived";
+export type PromptSpecStatus = "draft" | "active" | "previous" | "archived";
 
 export interface StructuredPromptSpecBlock {
   blockId: string;
@@ -24,4 +24,33 @@ export interface StructuredPromptSpec {
   previousActivePromptSpecId?: string;
   createdAt: string;
   updatedAt: string;
+}
+
+export type Pass3PromptCapability = "hierarchy_draft" | "source_hierarchy_triage";
+
+export interface Pass3PromptTestRun {
+  testRunId: string;
+  promptSpecId: string;
+  promptVersionId: string;
+  capability: Pass3PromptCapability;
+  caseContextUsed: string;
+  testInput: string;
+  activePromptOutput?: string;
+  draftPromptOutput?: string;
+  provider?: "google" | "openai";
+  model?: string;
+  activePromptVersion: number;
+  draftPromptVersion: number;
+  comparisonSummary: string;
+  boundaryViolationFlags: string[];
+  providerStatus:
+    | "provider_not_configured"
+    | "provider_auth_failed"
+    | "provider_model_unavailable"
+    | "provider_rate_limited"
+    | "provider_execution_failed"
+    | "provider_success";
+  errorMessage?: string;
+  adminNote?: string;
+  createdAt: string;
 }

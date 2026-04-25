@@ -87,4 +87,8 @@ export class OpenAIExtractionProvider implements ExtractionProvider {
   async generateSourceHierarchyTriage(): Promise<SourceHierarchyTriageGenerationResult> {
     throw new Error("OpenAI source-to-hierarchy triage is not wired in Pass 3 Patch 3.");
   }
+
+  async runPromptText(): Promise<{ text: string; provider: "openai"; model: string }> {
+    throw new Error("OpenAI prompt testing is not wired in Pass 3 Patch 4.");
+  }
 }

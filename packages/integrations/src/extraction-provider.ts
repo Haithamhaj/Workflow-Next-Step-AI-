@@ -91,4 +91,9 @@ export interface ExtractionProvider {
   generateSourceHierarchyTriage(input: {
     compiledPrompt: string;
   }): Promise<SourceHierarchyTriageGenerationResult>;
+
+  /** Execute a visible compiled prompt for Pass 3 prompt draft testing. */
+  runPromptText(input: {
+    compiledPrompt: string;
+  }): Promise<{ text: string; provider: ProviderName; model: string }>;
 }

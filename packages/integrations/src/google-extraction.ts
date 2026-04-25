@@ -508,4 +508,22 @@ ${input.rawText.slice(0, 8000)}`;
       rawText,
     };
   }
+
+  async runPromptText(input: {
+    compiledPrompt: string;
+  }): Promise<{ text: string; provider: ProviderName; model: string }> {
+    const modelName = resolveGoogleAIProviderConfig().resolvedModel;
+    try {
+      const client = new GoogleGenerativeAI(getGoogleAIKeyOrThrow());
+      const model = client.getGenerativeModel({ model: modelName });
+      const result = await model.generateContent([{ text: input.compiledPrompt }]);
+      return {
+        text: result.response.text(),
+        provider: "google",
+        model: modelName,
+      };
+    } catch (error) {
+      throw classifyGoogleProviderError(error);
+    }
+  }
 }
