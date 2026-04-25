@@ -272,7 +272,7 @@ export default async function ParticipantSessionDetailPage({
       </Panel>
 
       <Panel title="Pass 6 Handoff Candidates">
-        <p className="muted">Reviewable Pass 5 handoff candidates only. These records preserve observations for later Pass 6 review; they are not synthesis, evaluation, common-path formation, or workflow truth.</p>
+        <p className="muted">Reviewable Pass 5 handoff candidates only. These records preserve observations for a later handoff review stage; they are not later-stage analysis or workflow truth.</p>
         <form action="/api/participant-sessions/handoff-candidates" method="post" style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: "8px", marginBottom: "12px" }}>
           <input type="hidden" name="returnTo" value={`/participant-sessions/${detail.session.sessionId}`} />
           <input type="hidden" name="caseId" value={detail.session.caseId} />

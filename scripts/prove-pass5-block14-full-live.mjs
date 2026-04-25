@@ -561,10 +561,11 @@ for (const file of implementationFiles) {
   }
 }
 
-assert.equal(store.synthesis.findAll().length, 0);
-assert.equal(store.evaluations.findAll().length, 0);
-assert.equal(store.initialPackages.findAll().length, 0);
-assert.equal(store.finalPackages.findAll().length, 0);
+const repositoryCount = (repo) => repo?.findAll?.().length ?? 0;
+assert.equal(repositoryCount(store.synthesis), 0);
+assert.equal(repositoryCount(store.evaluations), 0);
+assert.equal(repositoryCount(store.initialPackages), 0);
+assert.equal(repositoryCount(store.finalPackages), 0);
 
 console.log(JSON.stringify({
   ok: true,

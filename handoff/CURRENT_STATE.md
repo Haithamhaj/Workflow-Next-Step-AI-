@@ -2,6 +2,73 @@
 
 **Accepted baseline: Pass 9 (Package Preview + Release Decision Surface), merged to `main` 2026-04-23, commit `41a8232`.**
 
+**Pass 5 — Participant Session Outreach / Narrative-First Clarification is accepted and closed on branch `codex/pass5-block0-1-contracts`.**
+
+Final Pass 5 status: `pass5_participant_session_outreach_accepted`
+
+Final Pass 5 acceptance commit: this closure commit.
+
+Block 14 final acceptance proof passed after narrow banned-wording/proof-surface cleanup:
+
+- removed banned later-stage wording from the active participant-session handoff-candidate panel copy
+- preserved the UI meaning with Pass-5-safe wording: handoff candidates preserve observations for a later handoff review stage and are not later-stage analysis or workflow truth
+- adjusted the Block 14 no-record proof to treat absent non-Pass-5 repository handles in the SQLite Pass 5 proof store as zero records instead of throwing
+- restored `structured SequenceMap` wording in the extraction prompt guide so the Block 8 prompt-family regression proof remains compatible
+
+Final Block 14 live proof passed:
+
+- `node --check scripts/prove-pass5-block14-full-live.mjs`
+- `node scripts/prove-pass5-block14-full-live.mjs`
+
+Final Block 14 live proof result:
+
+- real provider configured: Google `gemini-3.1-pro-preview`
+- `participant_guidance_prompt`: succeeded
+- `first_pass_extraction_prompt`: succeeded
+- `clarification_formulation_prompt`: succeeded
+- `answer_recheck_prompt`: succeeded
+- `admin_assistant_prompt`: succeeded
+- `evidence_interpretation_prompt`: not required by the current code path
+- Web token/session/narrative path passed
+- voice/audio raw evidence and transcript trust proof passed
+- provider failure fallback proof passed
+- Telegram missing-config fallback proof passed
+- dashboard/source assertion proof passed
+- Pass 6 handoff-candidate visibility proof passed
+- banned-expansion proof passed
+
+Final Pass 5 proof stack passed:
+
+- `pnpm build:contracts`
+- `node scripts/prove-pass5-block1-contracts.mjs`
+- `node scripts/prove-pass5-block2-persistence.mjs`
+- `node scripts/prove-pass5-block3-session-creation.mjs`
+- `node scripts/prove-pass5-block4-channel-access.mjs`
+- `node scripts/prove-pass5-block5-web-session.mjs`
+- `node scripts/prove-pass5-block6-telegram-adapter.mjs`
+- `node scripts/prove-pass5-block6b-language-guidance.mjs`
+- `node scripts/prove-pass5-block7-evidence-trust.mjs`
+- `node scripts/prove-pass5-block8-prompt-family.mjs`
+- `node scripts/prove-pass5-block9-first-pass-extraction.mjs`
+- `node scripts/prove-pass5-block10-clarification.mjs`
+- `node scripts/prove-pass5-block11-admin-dashboard.mjs`
+- `node scripts/prove-pass5-block12-admin-assistant.mjs`
+- `node scripts/prove-pass5-block13-handoff-candidates.mjs`
+- `pnpm build`
+- `pnpm typecheck` after `pnpm build` regenerated `.next/types`
+
+Acceptance boundary:
+
+- no Pass 6 synthesis/evaluation implemented
+- no common-path formation implementation
+- no final workflow reconstruction implementation
+- no package generation implemented
+- no WhatsApp API implemented
+- no fake provider success
+- no fake channel success
+
+Earlier Block 14 “not accepted” entries below are retained as historical failed-attempt notes and are superseded by the final accepted status above.
+
 **Pass 5 Block 12 — Admin Assistant / Section Copilot implemented on branch `codex/pass5-block0-1-contracts`.**
 
 **Pass 5 Block 13 — Pass 6 Handoff Candidates implemented on branch `codex/pass5-block0-1-contracts`.**
