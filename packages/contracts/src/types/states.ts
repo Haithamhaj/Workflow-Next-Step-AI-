@@ -48,6 +48,28 @@ export const SessionState = {
 
 export type SessionState = (typeof SessionState)[keyof typeof SessionState];
 
+// Pass 5 Block 1 participant-session lifecycle refinement.
+// This is intentionally separate from the accepted §28.9 SessionState baseline
+// above, which still backs the existing sessions-clarification transition flow.
+export const ParticipantSessionState = {
+  SessionPrepared: "session_prepared",
+  BlockedContactGap: "blocked_contact_gap",
+  AwaitingFirstNarrative: "awaiting_first_narrative",
+  FirstNarrativeReceived: "first_narrative_received",
+  TranscriptPendingReview: "transcript_pending_review",
+  FirstPassExtractionReady: "first_pass_extraction_ready",
+  ClarificationNeeded: "clarification_needed",
+  ClarificationInProgress: "clarification_in_progress",
+  ParticipantBoundaryOrUnknownRecorded:
+    "participant_boundary_or_unknown_recorded",
+  ReadyForLaterSynthesisHandoff: "ready_for_later_synthesis_handoff",
+  SessionPausedByAdmin: "session_paused_by_admin",
+  SessionClosedNoResponse: "session_closed_no_response",
+} as const;
+
+export type ParticipantSessionState =
+  (typeof ParticipantSessionState)[keyof typeof ParticipantSessionState];
+
 // §28.11
 export const PackageState = {
   NotStarted: "not_started",

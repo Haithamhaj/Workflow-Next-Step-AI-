@@ -13,3 +13,4 @@ export * from "./structured-context.js";
 export * from "./hierarchy.js";
 export * from "./prompt-spec.js";
 export * from "./targeting-rollout.js";
+export * from "./participant-session.js";

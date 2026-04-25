@@ -23,6 +23,32 @@ import sourceHierarchyTriageSuggestionSchema from "./source-hierarchy-triage-sug
 import targetingRolloutPlanSchema from "./targeting-rollout-plan.schema.json" with { type: "json" };
 import targetingRecommendationPacketSchema from "./targeting-recommendation-packet.schema.json" with { type: "json" };
 import pass4PromptTestRunSchema from "./pass4-prompt-test-run.schema.json" with { type: "json" };
+import participantSessionSchema from "./participant-session.schema.json" with { type: "json" };
+
+function pass5Schema(title: string, definitionName: string) {
+  return {
+    $schema: "http://json-schema.org/draft-07/schema#",
+    title,
+    $ref: `#/definitions/${definitionName}`,
+    definitions: participantSessionSchema.definitions,
+  };
+}
+
+const sessionContextSchema = pass5Schema("SessionContext", "sessionContext");
+const channelAccessSchema = pass5Schema("ChannelAccess", "channelAccess");
+const rawEvidenceItemSchema = pass5Schema("RawEvidenceItem", "rawEvidenceItem");
+const analysisProgressSchema = pass5Schema("AnalysisProgress", "analysisProgress");
+const sessionAccessTokenSchema = pass5Schema("SessionAccessToken", "sessionAccessToken");
+const telegramIdentityBindingSchema = pass5Schema("TelegramIdentityBinding", "telegramIdentityBinding");
+const sessionNextActionSchema = pass5Schema("SessionNextAction", "sessionNextAction");
+const firstPassExtractionOutputSchema = pass5Schema("FirstPassExtractionOutput", "firstPassExtractionOutput");
+const extractedItemSchema = pass5Schema("ExtractedItem", "extractedItem");
+const unmappedContentItemSchema = pass5Schema("UnmappedContentItem", "unmappedContentItem");
+const extractionDefectSchema = pass5Schema("ExtractionDefect", "extractionDefect");
+const evidenceDisputeSchema = pass5Schema("EvidenceDispute", "evidenceDispute");
+const clarificationCandidateSchema = pass5Schema("ClarificationCandidate", "clarificationCandidate");
+const boundarySignalSchema = pass5Schema("BoundarySignal", "boundarySignal");
+const pass6HandoffCandidateSchema = pass5Schema("Pass6HandoffCandidate", "pass6HandoffCandidate");
 
 export {
   caseConfigurationSchema,
@@ -50,4 +76,20 @@ export {
   targetingRolloutPlanSchema,
   targetingRecommendationPacketSchema,
   pass4PromptTestRunSchema,
+  participantSessionSchema,
+  sessionContextSchema,
+  channelAccessSchema,
+  rawEvidenceItemSchema,
+  analysisProgressSchema,
+  sessionAccessTokenSchema,
+  telegramIdentityBindingSchema,
+  sessionNextActionSchema,
+  firstPassExtractionOutputSchema,
+  extractedItemSchema,
+  unmappedContentItemSchema,
+  extractionDefectSchema,
+  evidenceDisputeSchema,
+  clarificationCandidateSchema,
+  boundarySignalSchema,
+  pass6HandoffCandidateSchema,
 };

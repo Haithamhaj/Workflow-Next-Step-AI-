@@ -27,6 +27,22 @@ export {
   targetingRolloutPlanSchema,
   targetingRecommendationPacketSchema,
   pass4PromptTestRunSchema,
+  participantSessionSchema,
+  sessionContextSchema,
+  channelAccessSchema,
+  rawEvidenceItemSchema,
+  analysisProgressSchema,
+  sessionAccessTokenSchema,
+  telegramIdentityBindingSchema,
+  sessionNextActionSchema,
+  firstPassExtractionOutputSchema,
+  extractedItemSchema,
+  unmappedContentItemSchema,
+  extractionDefectSchema,
+  evidenceDisputeSchema,
+  clarificationCandidateSchema,
+  boundarySignalSchema,
+  pass6HandoffCandidateSchema,
 } from "./schemas/index.js";
 
 import { makeValidator } from "./validate.js";
@@ -56,6 +72,22 @@ import {
   targetingRolloutPlanSchema,
   targetingRecommendationPacketSchema,
   pass4PromptTestRunSchema,
+  participantSessionSchema,
+  sessionContextSchema,
+  channelAccessSchema,
+  rawEvidenceItemSchema,
+  analysisProgressSchema,
+  sessionAccessTokenSchema,
+  telegramIdentityBindingSchema,
+  sessionNextActionSchema,
+  firstPassExtractionOutputSchema,
+  extractedItemSchema,
+  unmappedContentItemSchema,
+  extractionDefectSchema,
+  evidenceDisputeSchema,
+  clarificationCandidateSchema,
+  boundarySignalSchema,
+  pass6HandoffCandidateSchema,
 } from "./schemas/index.js";
 import type { CaseConfiguration } from "./types/case-configuration.js";
 import type { SourceRegistration } from "./types/source-registration.js";
@@ -70,8 +102,27 @@ import type { IntakeBucket, IntakeInputType, IntakeSourceStatus, AttachmentScope
 import type { ApprovedHierarchySnapshot, HierarchyCorrectionEvent, HierarchyDraftRecord, HierarchyIntakeRecord, HierarchyReadinessSnapshot, SourceHierarchyTriageJob, SourceHierarchyTriageSuggestion } from "./types/hierarchy.js";
 import type { Pass3PromptTestRun, StructuredPromptSpec } from "./types/prompt-spec.js";
 import type { Pass4PromptTestRun, TargetingRecommendationPacket, TargetingRolloutPlan } from "./types/targeting-rollout.js";
+import type {
+  AnalysisProgress,
+  BoundarySignal,
+  ChannelAccess,
+  ClarificationCandidate,
+  EvidenceDispute,
+  ExtractedItem,
+  ExtractionDefect,
+  FirstPassExtractionOutput,
+  ParticipantSession,
+  Pass6HandoffCandidate,
+  RawEvidenceItem,
+  SessionAccessToken,
+  SessionContext,
+  SessionNextAction,
+  TelegramIdentityBinding,
+  UnmappedContentItem,
+} from "./types/participant-session.js";
 import {
   SessionState,
+  ParticipantSessionState,
   PackageState,
   ReviewState,
   ReleaseState,
@@ -108,6 +159,12 @@ export const validateSessionState = makeValidator<SessionState>({
   type: "string",
   enum: Object.values(SessionState),
 });
+
+export const validateParticipantSessionState =
+  makeValidator<ParticipantSessionState>({
+    type: "string",
+    enum: Object.values(ParticipantSessionState),
+  });
 
 export const validatePackageState = makeValidator<PackageState>({
   type: "string",
@@ -171,3 +228,51 @@ export const validateTargetingRecommendationPacket =
 
 export const validatePass4PromptTestRun =
   makeValidator<Pass4PromptTestRun>(pass4PromptTestRunSchema);
+
+export const validateParticipantSession =
+  makeValidator<ParticipantSession>(participantSessionSchema);
+
+export const validateSessionContext =
+  makeValidator<SessionContext>(sessionContextSchema);
+
+export const validateChannelAccess =
+  makeValidator<ChannelAccess>(channelAccessSchema);
+
+export const validateRawEvidenceItem =
+  makeValidator<RawEvidenceItem>(rawEvidenceItemSchema);
+
+export const validateAnalysisProgress =
+  makeValidator<AnalysisProgress>(analysisProgressSchema);
+
+export const validateSessionAccessToken =
+  makeValidator<SessionAccessToken>(sessionAccessTokenSchema);
+
+export const validateTelegramIdentityBinding =
+  makeValidator<TelegramIdentityBinding>(telegramIdentityBindingSchema);
+
+export const validateSessionNextAction =
+  makeValidator<SessionNextAction>(sessionNextActionSchema);
+
+export const validateFirstPassExtractionOutput =
+  makeValidator<FirstPassExtractionOutput>(firstPassExtractionOutputSchema);
+
+export const validateExtractedItem =
+  makeValidator<ExtractedItem>(extractedItemSchema);
+
+export const validateUnmappedContentItem =
+  makeValidator<UnmappedContentItem>(unmappedContentItemSchema);
+
+export const validateExtractionDefect =
+  makeValidator<ExtractionDefect>(extractionDefectSchema);
+
+export const validateEvidenceDispute =
+  makeValidator<EvidenceDispute>(evidenceDisputeSchema);
+
+export const validateClarificationCandidate =
+  makeValidator<ClarificationCandidate>(clarificationCandidateSchema);
+
+export const validateBoundarySignal =
+  makeValidator<BoundarySignal>(boundarySignalSchema);
+
+export const validatePass6HandoffCandidate =
+  makeValidator<Pass6HandoffCandidate>(pass6HandoffCandidateSchema);
