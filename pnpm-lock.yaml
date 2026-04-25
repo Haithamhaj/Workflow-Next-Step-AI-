@@ -53,6 +53,9 @@ importers:
       '@workflow/synthesis-evaluation':
         specifier: workspace:*
         version: link:../../packages/synthesis-evaluation
+      '@workflow/targeting-rollout':
+        specifier: workspace:*
+        version: link:../../packages/targeting-rollout
       next:
         specifier: 14.2.5
         version: 14.2.5(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
@@ -255,6 +258,22 @@ importers:
       '@workflow/persistence':
         specifier: workspace:*
         version: link:../persistence
+    devDependencies:
+      typescript:
+        specifier: ^5.4.5
+        version: 5.9.3
+
+  packages/targeting-rollout:
+    dependencies:
+      '@workflow/contracts':
+        specifier: workspace:*
+        version: link:../contracts
+      '@workflow/persistence':
+        specifier: workspace:*
+        version: link:../persistence
+      '@workflow/prompts':
+        specifier: workspace:*
+        version: link:../prompts
     devDependencies:
       typescript:
         specifier: ^5.4.5

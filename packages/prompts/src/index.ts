@@ -9,8 +9,11 @@
 
 import {
   validatePass3PromptTestRun,
+  validatePass4PromptTestRun,
   validateStructuredPromptSpec,
   validatePromptRegistration,
+  type Pass4PromptCapability,
+  type Pass4PromptTestRun,
   type Pass3PromptCapability,
   type Pass3PromptTestRun,
   type PromptRegistration,
@@ -19,6 +22,7 @@ import {
   type StructuredPromptSpecBlock,
 } from "@workflow/contracts";
 import type { Pass3PromptTestRunRepository, PromptRecord, PromptRepository, StructuredPromptSpecRepository } from "@workflow/persistence";
+import type { Pass4PromptTestRunRepository } from "@workflow/persistence";
 
 // ---------------------------------------------------------------------------
 // Re-exports — consumers should not need to double-import contracts
@@ -33,10 +37,13 @@ export type {
   StructuredPromptSpecBlock,
   Pass3PromptCapability,
   Pass3PromptTestRun,
+  Pass4PromptCapability,
+  Pass4PromptTestRun,
 } from "@workflow/contracts";
 
 export const PASS3_HIERARCHY_PROMPT_MODULE = "pass3.hierarchy.draft" as const;
 export const PASS3_SOURCE_TRIAGE_PROMPT_MODULE = "pass3.source_hierarchy.triage" as const;
+export const PASS4_TARGETING_ROLLOUT_PROMPT_MODULE = "pass4.targeting_rollout.packet" as const;
 
 function id(prefix: string): string {
   return `${prefix}_${crypto.randomUUID()}`;
@@ -450,6 +457,209 @@ export function compilePass3SourceTriagePromptSpec(
 
 export function pass3CapabilityModule(capability: Pass3PromptCapability): string {
   return capability === "hierarchy_draft" ? PASS3_HIERARCHY_PROMPT_MODULE : PASS3_SOURCE_TRIAGE_PROMPT_MODULE;
+}
+
+export interface Pass4TargetingPromptInput {
+  caseId: string;
+  sessionId: string;
+  selectedDepartment: string;
+  selectedUseCase: string;
+  approvedHierarchySnapshotJson: string;
+  hierarchyReadinessSnapshotJson: string;
+  sourceSignalsJson: string;
+}
+
+export function defaultPass4TargetingPromptSpec(now = new Date().toISOString()): StructuredPromptSpec {
+  const labels: Array<[string, string, string]> = [
+    ["role_definition", "Role Definition", "You are a participant-targeting and source-signal planning assistant. Your job is to help the admin identify which people, roles, or external decision/clarification sources should be considered for later participant outreach based on the approved hierarchy, selected department, selected use case, and approved/tentative source signals. You may suggest targeting candidates, rollout order, targeting reasons, validation needs, and non-final question-hint seeds. You must not send invitations, create sessions, prepare participant-facing questions, validate workflow reality, or treat document claims as operational truth. Admin approval is required for all targeting decisions."],
+    ["pass4_mission", "Pass 4 Mission", "Generate one unified Targeting Recommendation Packet for admin review. The packet answers who should be considered later, why, candidate type, rollout stage, contact readiness, source signals, and later Pass 5 hint seeds."],
+    ["case_context_inputs", "Case Context Inputs", "Use only the supplied case id, session id, selected department, selected use case, approved hierarchy snapshot, readiness snapshot, and source signals."],
+    ["targeting_scope_rules", "Targeting Scope Rules", "Suggest candidates only for later outreach planning. Do not create invitations, sessions, responses, synthesis, evaluation, or packages."],
+    ["source_signal_interpretation_rules", "Source-Signal Interpretation Rules", "Documents may influence targeting as source signals when they mention roles, responsibilities, KPIs, approvals, thresholds, handoffs, systems, queues, people, process stages, or exception handling. Documents are not workflow truth."],
+    ["participant_candidate_classification_rules", "Participant Candidate Classification Rules", "Classify as core_participant for frontline/operational roles inside scope, enrichment_participant for supervisors/managers/oversight inside scope, or external_decision_or_clarification_source only for specific outside dependencies."],
+    ["external_decision_source_rules", "External Decision / Clarification Source Rules", "External sources are not default first-round workflow narrators. Include only with a specific decision, approval, handoff, dependency, or missing clarification rationale."],
+    ["question_hint_seed_rules", "Question-Hint Seed Rules", "Create analytical Pass 5 hint seeds only. They are not participant-facing questions and must not be sent directly. Preserve trigger conditions and do-not-ask-if-covered guidance."],
+    ["contact_channel_readiness_rules", "Contact / Channel Readiness Metadata Rules", "Assess contact readiness from available person-light fields and document signals without sending outreach. preferredChannel is optional; multiple channels without preferred selection should be marked preferred_channel_not_selected without blocking approval by default."],
+    ["bottom_up_rollout_order_rules", "Bottom-Up Rollout Order Rules", "Prefer bottom-up rollout: core operational roles first, enrichment/oversight after, external decision or clarification sources only when needed."],
+    ["admin_override_rules", "Admin Override and Approval Rules", "All candidates require admin review. Admin may accept, reject, change target type, change rollout order, mark contact missing, or add notes."],
+    ["evidence_boundary_rules", "Evidence / Source Truth Boundary Rules", "Source signals can raise or lower priority and identify validation needs; they must never validate workflow reality."],
+    ["uncertainty_rules", "Uncertainty and Manual Fallback Rules", "Expose uncertainty. If provider execution fails, no fake output should be produced; manual fallback remains available."],
+    ["prohibitions", "Prohibitions", "Do not send WhatsApp, Telegram, SMS, or email. Do not generate invitation links. Do not create participant sessions. Do not collect responses. Do not perform workflow analysis."],
+    ["output_contract", "Output Contract / Schema", "Return JSON only with: suggestedTargetCandidates[], targetGroups[], rolloutOrderSuggestion[], sourceSignalsUsed[], questionHintSeeds[], contactChannelReadinessNotes[], adminReviewFlags[], boundaryWarnings[], confidenceSummary. Use only approved target type, decision, contact status, and hint status values."],
+    ["admin_discussion_behavior", "Admin Discussion Behavior", "Frame everything as recommendation material for admin review, not final targeting decisions."],
+    ["evaluation_checklist", "Evaluation Checklist", "Check no outreach, no invitations, no sessions, no responses, no workflow analysis, no document-as-truth claim, and no participant-facing questions."],
+    ["test_cases", "Test Cases / Golden Inputs", "Golden input: approved Sales hierarchy with frontline sales, supervisors, sales manager, KPI source, approval policy source. Expected: frontline core candidates first, manager enrichment, policy owner external only if approval dependency is explicit."],
+    ["compiled_prompt_preview", "Compiled Prompt Preview", "The admin UI must show the compiled prompt with runtime case context before generation or test runs."],
+    ["draft_active_controls", "Draft / Active / Previous / Rollback Controls", "Draft edits must not become active automatically. Promotion requires explicit admin action and note; previous active versions remain available for rollback reference."],
+  ];
+  return {
+    promptSpecId: "promptspec_pass4_targeting_rollout_v1",
+    linkedModule: PASS4_TARGETING_ROLLOUT_PROMPT_MODULE,
+    purpose: "Generate a Pass 4 Targeting Recommendation Packet for admin-reviewed participant targeting and rollout planning.",
+    status: "active",
+    version: 1,
+    inputContractRef: "ApprovedHierarchySnapshot + HierarchyReadinessSnapshot + source signals",
+    outputContractRef: "TargetingRecommendationPacket",
+    createdAt: now,
+    updatedAt: now,
+    blocks: labels.map(([blockId, label, body]) => ({ blockId, label, body, editable: true })),
+  };
+}
+
+export function ensureActivePass4TargetingPromptSpec(repo: StructuredPromptSpecRepository): StructuredPromptSpec {
+  const existing = repo.findActiveByLinkedModule(PASS4_TARGETING_ROLLOUT_PROMPT_MODULE);
+  if (existing) return existing;
+  const spec = defaultPass4TargetingPromptSpec();
+  const result = validateStructuredPromptSpec(spec);
+  if (!result.ok) throw new Error(`Invalid default Pass 4 PromptSpec: ${validationMessage(result.errors)}`);
+  repo.save(spec);
+  return spec;
+}
+
+export function compilePass4TargetingPromptSpec(spec: StructuredPromptSpec, input: Pass4TargetingPromptInput): string {
+  const sections = spec.blocks.map((block) => `## ${block.label}\n${block.body}`).join("\n\n");
+  const context = [
+    `caseId: ${input.caseId}`,
+    `sessionId: ${input.sessionId}`,
+    `selectedDepartment: ${input.selectedDepartment}`,
+    `selectedUseCase: ${input.selectedUseCase}`,
+    `approvedHierarchySnapshotJson:\n${input.approvedHierarchySnapshotJson}`,
+    `hierarchyReadinessSnapshotJson:\n${input.hierarchyReadinessSnapshotJson}`,
+    `sourceSignalsJson:\n${input.sourceSignalsJson}`,
+  ].join("\n\n");
+  return `${sections}\n\n## Runtime Pass 4 Case Context\n${context}`;
+}
+
+export function listPass4PromptSpecs(repo: StructuredPromptSpecRepository): StructuredPromptSpec[] {
+  return repo.findByLinkedModule(PASS4_TARGETING_ROLLOUT_PROMPT_MODULE);
+}
+
+export function createOrUpdatePass4PromptDraft(input: {
+  blocks?: StructuredPromptSpecBlock[];
+  adminNote?: string;
+}, repo: StructuredPromptSpecRepository): StructuredPromptSpec {
+  const active = repo.findActiveByLinkedModule(PASS4_TARGETING_ROLLOUT_PROMPT_MODULE) ?? ensureActivePass4TargetingPromptSpec(repo);
+  const timestamp = new Date().toISOString();
+  const draft = repo.findByLinkedModule(PASS4_TARGETING_ROLLOUT_PROMPT_MODULE).find((spec) => spec.status === "draft");
+  const next: StructuredPromptSpec = {
+    ...(draft ?? active),
+    promptSpecId: draft?.promptSpecId ?? `${active.promptSpecId}_draft_${crypto.randomUUID()}`,
+    status: "draft",
+    version: draft?.version ?? active.version + 1,
+    blocks: (input.blocks ?? draft?.blocks ?? active.blocks).map((block) => ({ ...block })),
+    previousActivePromptSpecId: active.promptSpecId,
+    createdAt: draft?.createdAt ?? timestamp,
+    updatedAt: timestamp,
+  };
+  const result = validateStructuredPromptSpec(next);
+  if (!result.ok) throw new Error(`Invalid Pass 4 prompt draft: ${validationMessage(result.errors)}`);
+  repo.save(next);
+  return next;
+}
+
+export function promotePass4PromptDraft(input: {
+  draftPromptSpecId: string;
+  adminNote?: string;
+}, repo: StructuredPromptSpecRepository): { active: StructuredPromptSpec; previous: StructuredPromptSpec } {
+  const draft = repo.findById(input.draftPromptSpecId);
+  if (!draft || draft.status !== "draft") throw new Error("Prompt draft not found or not in draft state.");
+  const active = repo.findActiveByLinkedModule(PASS4_TARGETING_ROLLOUT_PROMPT_MODULE);
+  if (!active) throw new Error("Active Pass 4 prompt not found for draft promotion.");
+  const timestamp = new Date().toISOString();
+  const previous: StructuredPromptSpec = { ...active, status: "previous", updatedAt: timestamp };
+  const nextActive: StructuredPromptSpec = { ...draft, status: "active", previousActivePromptSpecId: previous.promptSpecId, updatedAt: timestamp };
+  repo.save(previous);
+  repo.save(nextActive);
+  return { active: nextActive, previous };
+}
+
+export async function runPass4PromptComparisonTest(input: {
+  draftPromptSpecId: string;
+  caseContextUsed: string;
+  activeCompiledPrompt: string;
+  draftCompiledPrompt: string;
+  provider: null | {
+    readonly name: "google" | "openai";
+    runPromptText(input: { compiledPrompt: string }): Promise<{ text: string; provider: "google" | "openai"; model: string }>;
+  };
+  adminNote?: string;
+}, repos: {
+  promptSpecs: StructuredPromptSpecRepository;
+  testRuns: Pass4PromptTestRunRepository;
+}): Promise<Pass4PromptTestRun> {
+  const draft = repos.promptSpecs.findById(input.draftPromptSpecId);
+  if (!draft || draft.status !== "draft") throw new Error("Pass 4 prompt draft not found for test run.");
+  const active = repos.promptSpecs.findActiveByLinkedModule(PASS4_TARGETING_ROLLOUT_PROMPT_MODULE);
+  if (!active) throw new Error("Active Pass 4 prompt not found for test run.");
+  const timestamp = new Date().toISOString();
+  let run: Pass4PromptTestRun;
+  if (!input.provider) {
+    run = {
+      testRunId: id("pass4_prompt_test"),
+      promptSpecId: active.promptSpecId,
+      promptVersionId: draft.promptSpecId,
+      capability: "targeting_recommendation_packet",
+      caseContextUsed: input.caseContextUsed,
+      activePromptVersion: active.version,
+      draftPromptVersion: draft.version,
+      comparisonSummary: "Provider was not configured; no prompt outputs were generated.",
+      boundaryViolationFlags: [],
+      providerStatus: "provider_not_configured",
+      errorMessage: "provider_not_configured: provider unavailable for Pass 4 prompt test.",
+      adminNote: input.adminNote,
+      createdAt: timestamp,
+    };
+  } else {
+    try {
+      const activeOutput = await input.provider.runPromptText({ compiledPrompt: input.activeCompiledPrompt });
+      const draftOutput = await input.provider.runPromptText({ compiledPrompt: input.draftCompiledPrompt });
+      const flags = [...new Set([...boundaryFlags(activeOutput.text), ...boundaryFlags(draftOutput.text)])];
+      run = {
+        testRunId: id("pass4_prompt_test"),
+        promptSpecId: active.promptSpecId,
+        promptVersionId: draft.promptSpecId,
+        capability: "targeting_recommendation_packet",
+        caseContextUsed: input.caseContextUsed,
+        activePromptOutput: activeOutput.text,
+        draftPromptOutput: draftOutput.text,
+        provider: draftOutput.provider,
+        model: draftOutput.model,
+        activePromptVersion: active.version,
+        draftPromptVersion: draft.version,
+        comparisonSummary: `Active output length ${activeOutput.text.length}; draft output length ${draftOutput.text.length}; boundary flags ${flags.length}.`,
+        boundaryViolationFlags: flags,
+        providerStatus: "provider_success",
+        adminNote: input.adminNote,
+        createdAt: timestamp,
+      };
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      const status = message.includes("provider_auth_failed") ? "provider_auth_failed"
+        : message.includes("provider_model_unavailable") ? "provider_model_unavailable"
+          : message.includes("provider_rate_limited") ? "provider_rate_limited"
+            : message.includes("provider_not_configured") ? "provider_not_configured"
+              : "provider_execution_failed";
+      run = {
+        testRunId: id("pass4_prompt_test"),
+        promptSpecId: active.promptSpecId,
+        promptVersionId: draft.promptSpecId,
+        capability: "targeting_recommendation_packet",
+        caseContextUsed: input.caseContextUsed,
+        activePromptVersion: active.version,
+        draftPromptVersion: draft.version,
+        comparisonSummary: "Provider execution failed; no fake Pass 4 prompt outputs were generated.",
+        boundaryViolationFlags: [],
+        providerStatus: status,
+        errorMessage: message,
+        adminNote: input.adminNote,
+        createdAt: timestamp,
+      };
+    }
+  }
+  const result = validatePass4PromptTestRun(run);
+  if (!result.ok) throw new Error(`Invalid Pass 4 prompt test run: ${validationMessage(result.errors)}`);
+  repos.testRuns.save(run);
+  return run;
 }
 
 export function listPass3PromptSpecs(repo: StructuredPromptSpecRepository): StructuredPromptSpec[] {

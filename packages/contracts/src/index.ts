@@ -24,6 +24,9 @@ export {
   pass3PromptTestRunSchema,
   sourceHierarchyTriageJobSchema,
   sourceHierarchyTriageSuggestionSchema,
+  targetingRolloutPlanSchema,
+  targetingRecommendationPacketSchema,
+  pass4PromptTestRunSchema,
 } from "./schemas/index.js";
 
 import { makeValidator } from "./validate.js";
@@ -50,6 +53,9 @@ import {
   pass3PromptTestRunSchema,
   sourceHierarchyTriageJobSchema,
   sourceHierarchyTriageSuggestionSchema,
+  targetingRolloutPlanSchema,
+  targetingRecommendationPacketSchema,
+  pass4PromptTestRunSchema,
 } from "./schemas/index.js";
 import type { CaseConfiguration } from "./types/case-configuration.js";
 import type { SourceRegistration } from "./types/source-registration.js";
@@ -63,6 +69,7 @@ import type { FinalPackageRecord } from "./types/final-package.js";
 import type { IntakeBucket, IntakeInputType, IntakeSourceStatus, AttachmentScope, CrawlPagePriority, CrawlSessionStatus, ProviderName, AudioMode, HierarchyInputMethod, IntakeSession, IntakeSource, WebsiteCrawlSession, AdminIntakeDecision } from "./types/intake.js";
 import type { ApprovedHierarchySnapshot, HierarchyCorrectionEvent, HierarchyDraftRecord, HierarchyIntakeRecord, HierarchyReadinessSnapshot, SourceHierarchyTriageJob, SourceHierarchyTriageSuggestion } from "./types/hierarchy.js";
 import type { Pass3PromptTestRun, StructuredPromptSpec } from "./types/prompt-spec.js";
+import type { Pass4PromptTestRun, TargetingRecommendationPacket, TargetingRolloutPlan } from "./types/targeting-rollout.js";
 import {
   SessionState,
   PackageState,
@@ -155,3 +162,12 @@ export const validateSourceHierarchyTriageJob =
 
 export const validateSourceHierarchyTriageSuggestion =
   makeValidator<SourceHierarchyTriageSuggestion>(sourceHierarchyTriageSuggestionSchema);
+
+export const validateTargetingRolloutPlan =
+  makeValidator<TargetingRolloutPlan>(targetingRolloutPlanSchema);
+
+export const validateTargetingRecommendationPacket =
+  makeValidator<TargetingRecommendationPacket>(targetingRecommendationPacketSchema);
+
+export const validatePass4PromptTestRun =
+  makeValidator<Pass4PromptTestRun>(pass4PromptTestRunSchema);

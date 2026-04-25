@@ -1,0 +1,53 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "TargetingRecommendationPacket",
+  "type": "object",
+  "additionalProperties": true,
+  "required": [
+    "packetId",
+    "caseId",
+    "selectedDepartment",
+    "selectedUseCase",
+    "basisHierarchySnapshotId",
+    "basisReadinessSnapshotId",
+    "generatedByPromptVersionId",
+    "generatedAt",
+    "suggestedTargetCandidates",
+    "targetGroups",
+    "rolloutOrderSuggestion",
+    "sourceSignalsUsed",
+    "questionHintSeeds",
+    "contactChannelReadinessNotes",
+    "adminReviewFlags",
+    "boundaryWarnings",
+    "confidenceSummary",
+    "manualFallbackAvailable",
+    "adminDecisionStatus"
+  ],
+  "properties": {
+    "packetId": { "type": "string", "minLength": 1 },
+    "caseId": { "type": "string", "minLength": 1 },
+    "selectedDepartment": { "type": "string" },
+    "selectedUseCase": { "type": "string" },
+    "basisHierarchySnapshotId": { "type": "string" },
+    "basisReadinessSnapshotId": { "type": "string" },
+    "generatedByPromptVersionId": { "type": "string" },
+    "providerJobId": { "type": "string" },
+    "providerExecutionRef": { "type": "string" },
+    "generatedAt": { "type": "string" },
+    "suggestedTargetCandidates": { "type": "array" },
+    "targetGroups": { "type": "array" },
+    "rolloutOrderSuggestion": { "type": "array" },
+    "sourceSignalsUsed": { "type": "array" },
+    "questionHintSeeds": { "type": "array" },
+    "contactChannelReadinessNotes": { "type": "array", "items": { "type": "string" } },
+    "adminReviewFlags": { "type": "array", "items": { "type": "string" } },
+    "boundaryWarnings": { "type": "array", "items": { "type": "string" } },
+    "confidenceSummary": { "type": "string" },
+    "manualFallbackAvailable": { "type": "boolean", "const": true },
+    "adminDecisionStatus": {
+      "type": "string",
+      "enum": ["pending_review", "approved", "approved_with_edits", "rejected", "superseded"]
+    }
+  }
+}

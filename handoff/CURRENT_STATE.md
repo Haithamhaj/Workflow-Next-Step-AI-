@@ -2,6 +2,46 @@
 
 **Accepted baseline: Pass 9 (Package Preview + Release Decision Surface), merged to `main` 2026-04-23, commit `41a8232`.**
 
+**Pass 4 — Participant Targeting / Rollout Planning is implemented locally on branch `codex/pass4-targeting-rollout`.**
+
+Pass 4 status: `pass4_targeting_rollout_implemented_pending_acceptance`
+
+Pass 4 proof branch: `codex/pass4-targeting-rollout`
+
+Pass 4 proof DB: `/tmp/workflow-pass4-proof.sqlite`
+
+Pass 4 proof commands passed:
+
+- `pnpm build:contracts`
+- `pnpm typecheck`
+- `pnpm build`
+- seeded approved Pass 3 hierarchy/readiness snapshot for `case_pass4_proof`
+- API proof for create/load targeting rollout plan
+- API proof for provider failure persistence/manual fallback
+- API proof for candidate acceptance, contact edit, optional preferred-channel gap, and `approved_with_contact_gaps`
+- in-app browser proof for targeting plan overview, AI recommendation packet surface, candidate review, contact profiles, question-hint seed preview, final review, boundary confirmations, and Pass 4 PromptSpec workspace
+
+Pass 4 adds:
+
+- `packages/targeting-rollout` as the bounded Pass 4 domain package
+- `TargetingRolloutPlan` and `TargetingRecommendationPacket` contracts/schemas/validators
+- durable `TargetingRolloutPlanRepository` and Pass 4 prompt test-run repository
+- provider-backed Targeting Recommendation Packet path through the existing integration provider interface
+- visible provider failure state with manual fallback
+- Pass 4 PromptSpec with required sections, compiled preview, draft/active/previous lifecycle, promotion, and comparison-test support
+- admin UI at `/targeting-rollout` and `/targeting-rollout/[id]`
+- prompt workspace at `/targeting-rollout/prompts`
+
+Pass 4 boundaries preserved:
+
+- no outreach sent
+- no invitations created
+- no participant sessions created
+- no participant responses collected
+- no workflow analysis performed
+- source signals remain targeting/planning signals only, not workflow truth
+- question-hint seeds are stored only as later Pass 5 support hints, not participant-facing questions
+
 **Pass 3 — Hierarchy Intake & Approval is accepted locally on branch `codex/pass3-final-closure`.**
 
 Final Pass 3 status: `pass3_hierarchy_intake_approval_accepted`
@@ -10,9 +50,7 @@ Final Pass 3 closure base: `f16e1cf1d8a0b742d911a5d7468388fa3355d20e`
 
 Final Pass 3 closure commit: the commit containing this handoff update on `codex/pass3-final-closure`.
 
-Next slice: **Pass 4 — Participant Targeting / Rollout Planning**
-
-Pass 4 has not been implemented.
+Next slice after Pass 4 acceptance: **Pass 5 — Participant Session Outreach / Narrative-First Clarification**.
 
 Final closure proofs passed:
 

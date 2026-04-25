@@ -20,6 +20,9 @@ import promptSpecSchema from "./prompt-spec.schema.json" with { type: "json" };
 import pass3PromptTestRunSchema from "./pass3-prompt-test-run.schema.json" with { type: "json" };
 import sourceHierarchyTriageJobSchema from "./source-hierarchy-triage-job.schema.json" with { type: "json" };
 import sourceHierarchyTriageSuggestionSchema from "./source-hierarchy-triage-suggestion.schema.json" with { type: "json" };
+import targetingRolloutPlanSchema from "./targeting-rollout-plan.schema.json" with { type: "json" };
+import targetingRecommendationPacketSchema from "./targeting-recommendation-packet.schema.json" with { type: "json" };
+import pass4PromptTestRunSchema from "./pass4-prompt-test-run.schema.json" with { type: "json" };
 
 export {
   caseConfigurationSchema,
@@ -44,4 +47,7 @@ export {
   pass3PromptTestRunSchema,
   sourceHierarchyTriageJobSchema,
   sourceHierarchyTriageSuggestionSchema,
+  targetingRolloutPlanSchema,
+  targetingRecommendationPacketSchema,
+  pass4PromptTestRunSchema,
 };

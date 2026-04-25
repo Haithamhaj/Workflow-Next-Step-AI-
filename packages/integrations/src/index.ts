@@ -1,6 +1,6 @@
 export const INTEGRATIONS_PACKAGE = "@workflow/integrations" as const;
 export { generateEvaluationInterpretation } from "./evaluation-interpretation.js";
-export type { ExtractionInput, ExtractionProvider, ExtractionResult, ClassificationResult, ContextTransformResult, HierarchyDraftGenerationResult, SourceHierarchyTriageGenerationResult } from "./extraction-provider.js";
+export type { ExtractionInput, ExtractionProvider, ExtractionResult, ClassificationResult, ContextTransformResult, HierarchyDraftGenerationResult, SourceHierarchyTriageGenerationResult, TargetingRecommendationGenerationResult } from "./extraction-provider.js";
 export { GoogleExtractionProvider } from "./google-extraction.js";
 export { OpenAIExtractionProvider } from "./openai-extraction.js";
 export type { CrawlProvider, DiscoveredPage, CrawlPageResult } from "./crawl-provider.js";

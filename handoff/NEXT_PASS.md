@@ -1,10 +1,10 @@
-# Next Slice — Pass 4: Participant Targeting / Rollout Planning
+# Next Slice — Pass 5: Participant Session Outreach / Narrative-First Clarification
 
 ## Current status
 
-Pass 3 — Hierarchy Intake & Approval is accepted.
+Pass 4 — Participant Targeting / Rollout Planning is implemented locally and pending acceptance.
 
-Completion label: `pass3_hierarchy_intake_approval_accepted`
+Completion label after acceptance: `pass4_targeting_rollout_accepted`
 
 Accepted Pass 3 patch chain:
 
@@ -15,19 +15,31 @@ Accepted Pass 3 patch chain:
 - Patch 4 — Prompt draft testing and activation controls: `c54052f3f0ae2b9fc8c18a8f1e117be3910f97a4`
 - Patch 4.5 — Visual hierarchy workbench: `f16e1cf1d8a0b742d911a5d7468388fa3355d20e`
 
+## Accepted Pass 4 surface
+
+- `packages/targeting-rollout` owns Pass 4 planning/domain logic.
+- `TargetingRolloutPlan` is the main persisted object and embeds packet summary, candidates, admin decisions, contact profiles, source signals, question-hint seeds, rollout order, final review, state, approval metadata, and boundary confirmations.
+- Pass 4 consumes approved Pass 3 hierarchy/readiness snapshots and blocks when readiness is missing.
+- Provider-backed packet generation uses the existing integration provider interface; failures are persisted visibly with manual fallback.
+- Admin can accept/reject/edit candidates, edit contact profiles, dismiss hint seeds, and approve as `approved_ready_for_outreach` or `approved_with_contact_gaps`.
+- Preferred channel remains optional; multiple channels without a preferred channel create `preferred_channel_not_selected` but do not automatically block approval.
+- PromptSpec governance exists at `/targeting-rollout/prompts`.
+
 ## Next separate build slice
 
-**Pass 4 — Participant Targeting / Rollout Planning**
+**Pass 5 — Participant Session Outreach / Narrative-First Clarification**
 
-Pass 4 begins after accepted Pass 3. It must consume the approved hierarchy/readiness outputs without reopening Pass 3.
+Pass 5 begins after accepted Pass 4. It must consume approved Pass 4 targeting/rollout plans without reopening Pass 2, Pass 3, or Pass 4.
 
 ## Boundaries preserved
 
 - Pass 3 creates hierarchy intake, AI draft hierarchy, admin correction, source-to-hierarchy evidence candidates, prompt draft testing, structural approval snapshots, readiness snapshots, and visual hierarchy inspectability.
-- Pass 3 readiness status is `ready_for_participant_targeting_planning`.
-- Pass 3 readiness does not create participant targeting, rollout order, invitations, participant sessions, workflow analysis, synthesis/evaluation, or package generation.
+- Pass 4 creates admin-reviewed participant targeting and rollout planning only.
+- Pass 4 approved states are `approved_ready_for_outreach` and `approved_with_contact_gaps`.
+- Pass 4 does not send outreach, create invitations, create participant sessions, collect participant responses, perform workflow analysis, synthesis/evaluation, or package generation.
 - Source-to-hierarchy links remain evidence candidates only; they are not workflow truth.
 - Admin hierarchy approval remains structural approval only; it does not validate KPIs, SOPs, policies, responsibilities, source claims, or actual operational practice.
+- Pass 4 question-hint seeds are analytical Pass 5 inputs only. Pass 5 must remain narrative-first: participant first narrative, extraction of covered items, unresolved hint check, then optional targeted clarification only if still relevant.
 
 ## Runtime notes preserved
 
@@ -38,8 +50,10 @@ Pass 4 begins after accepted Pass 3. It must consume the approved hierarchy/read
 
 ## Do not start without operator approval
 
-- Do not start participant targeting until explicitly approved.
-- Do not create rollout order, invitations, participant sessions, workflow analysis, synthesis/evaluation, or package generation as part of Pass 3 closure.
+- Do not start participant outreach or session creation until explicitly approved.
+- Do not send WhatsApp, Telegram, SMS, or email as part of Pass 4.
+- Do not generate active invitation links as part of Pass 4.
+- Do not treat Pass 4 question-hint seeds as participant-facing questions.
 
 ## Hard rules
 

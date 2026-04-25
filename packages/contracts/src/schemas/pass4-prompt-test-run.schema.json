@@ -1,0 +1,42 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Pass4PromptTestRun",
+  "type": "object",
+  "additionalProperties": true,
+  "required": [
+    "testRunId",
+    "promptSpecId",
+    "promptVersionId",
+    "capability",
+    "caseContextUsed",
+    "activePromptVersion",
+    "draftPromptVersion",
+    "comparisonSummary",
+    "boundaryViolationFlags",
+    "providerStatus",
+    "createdAt"
+  ],
+  "properties": {
+    "testRunId": { "type": "string", "minLength": 1 },
+    "promptSpecId": { "type": "string", "minLength": 1 },
+    "promptVersionId": { "type": "string", "minLength": 1 },
+    "capability": { "type": "string", "enum": ["targeting_recommendation_packet"] },
+    "caseContextUsed": { "type": "string" },
+    "activePromptVersion": { "type": "number" },
+    "draftPromptVersion": { "type": "number" },
+    "comparisonSummary": { "type": "string" },
+    "boundaryViolationFlags": { "type": "array", "items": { "type": "string" } },
+    "providerStatus": {
+      "type": "string",
+      "enum": [
+        "provider_not_configured",
+        "provider_auth_failed",
+        "provider_model_unavailable",
+        "provider_rate_limited",
+        "provider_execution_failed",
+        "provider_success"
+      ]
+    },
+    "createdAt": { "type": "string" }
+  }
+}

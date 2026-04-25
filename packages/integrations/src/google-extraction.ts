@@ -18,6 +18,13 @@ import type {
   SourceHierarchyEvidenceStatus,
   SourceHierarchySignalType,
   SourceHierarchySuggestedScope,
+  TargetCandidate,
+  TargetGroup,
+  TargetingSourceSignal,
+  QuestionHintSeed,
+  RolloutStage,
+  TargetType,
+  ContactDataStatus,
   StructuredContext,
 } from "@workflow/contracts";
 import type {
@@ -28,6 +35,7 @@ import type {
   ContextTransformResult,
   HierarchyDraftGenerationResult,
   SourceHierarchyTriageGenerationResult,
+  TargetingRecommendationGenerationResult,
 } from "./extraction-provider.js";
 import { classifyGoogleProviderError, getEnv, getGoogleAIKeyOrThrow, resolveGoogleAIProviderConfig } from "./google-config.js";
 
@@ -174,6 +182,16 @@ const SOURCE_TRIAGE_EVIDENCE_STATUSES: SourceHierarchyEvidenceStatus[] = [
   "rejected_by_admin",
   "scope_changed_by_admin",
 ];
+const TARGET_TYPES: TargetType[] = ["core_participant", "enrichment_participant", "external_decision_or_clarification_source"];
+const CONTACT_STATUSES: ContactDataStatus[] = [
+  "not_entered",
+  "partial",
+  "ready_for_later_outreach",
+  "missing_required_contact_method",
+  "multiple_channels_available",
+  "preferred_channel_not_selected",
+  "blocked_for_later_outreach",
+];
 
 function normalizeSourceRole(value: unknown): IntakeSourceRole {
   return typeof value === "string" && INTAKE_SOURCE_ROLES.includes(value as IntakeSourceRole)
@@ -225,6 +243,22 @@ function normalizeTriageEvidenceStatus(value: unknown): SourceHierarchyEvidenceS
   return typeof value === "string" && SOURCE_TRIAGE_EVIDENCE_STATUSES.includes(value as SourceHierarchyEvidenceStatus)
     ? value as SourceHierarchyEvidenceStatus
     : "document_claim_only";
+}
+
+function normalizeTargetType(value: unknown): TargetType {
+  return typeof value === "string" && TARGET_TYPES.includes(value as TargetType)
+    ? value as TargetType
+    : "core_participant";
+}
+
+function normalizeContactStatus(value: unknown): ContactDataStatus {
+  return typeof value === "string" && CONTACT_STATUSES.includes(value as ContactDataStatus)
+    ? value as ContactDataStatus
+    : "not_entered";
+}
+
+function stringArray(value: unknown): string[] {
+  return Array.isArray(value) ? value.flatMap((item) => cleanString(item) ? [cleanString(item)!] : []) : [];
 }
 
 export class GoogleExtractionProvider implements ExtractionProvider {
@@ -525,5 +559,127 @@ ${input.rawText.slice(0, 8000)}`;
     } catch (error) {
       throw classifyGoogleProviderError(error);
     }
+  }
+
+  async generateTargetingRecommendationPacket(input: {
+    compiledPrompt: string;
+  }): Promise<TargetingRecommendationGenerationResult> {
+    const modelName = resolveGoogleAIProviderConfig().resolvedModel;
+    let rawText: string;
+    try {
+      const client = new GoogleGenerativeAI(getGoogleAIKeyOrThrow());
+      const model = client.getGenerativeModel({
+        model: modelName,
+        generationConfig: {
+          responseMimeType: "application/json",
+        },
+      });
+      const result = await model.generateContent([{ text: input.compiledPrompt }]);
+      rawText = result.response.text();
+    } catch (error) {
+      throw classifyGoogleProviderError(error);
+    }
+
+    let parsed: Record<string, unknown>;
+    try {
+      parsed = JSON.parse(rawText) as Record<string, unknown>;
+    } catch (error) {
+      throw classifyGoogleProviderError(error);
+    }
+
+    const suggestedTargetCandidates: TargetCandidate[] = (Array.isArray(parsed.suggestedTargetCandidates) ? parsed.suggestedTargetCandidates : []).map((raw, index) => {
+      const item = raw && typeof raw === "object" ? raw as Record<string, unknown> : {};
+      const targetType = normalizeTargetType(item.targetType);
+      return {
+        candidateId: cleanString(item.candidateId) ?? `ai_target_candidate_${index + 1}`,
+        targetType,
+        linkedHierarchyNodeId: cleanString(item.linkedHierarchyNodeId),
+        roleLabel: cleanString(item.roleLabel),
+        personLabel: cleanString(item.personLabel),
+        suggestedReason: cleanString(item.suggestedReason) ?? "Provider suggested this candidate for admin review.",
+        expectedWorkflowVisibility: cleanString(item.expectedWorkflowVisibility) ?? "Visibility requires admin confirmation.",
+        sourceSignals: stringArray(item.sourceSignals),
+        participantValidationNeeded: typeof item.participantValidationNeeded === "boolean" ? item.participantValidationNeeded : true,
+        suggestedRolloutStage: typeof item.suggestedRolloutStage === "number" ? item.suggestedRolloutStage : targetType === "core_participant" ? 1 : targetType === "enrichment_participant" ? 2 : 3,
+        contactChannelReadinessStatus: normalizeContactStatus(item.contactChannelReadinessStatus),
+        confidence: normalizeConfidence(item.confidence),
+        adminDecision: "pending",
+        adminNote: cleanString(item.adminNote),
+      };
+    });
+
+    const targetGroups: TargetGroup[] = (Array.isArray(parsed.targetGroups) ? parsed.targetGroups : []).map((raw, index) => {
+      const item = raw && typeof raw === "object" ? raw as Record<string, unknown> : {};
+      return {
+        groupId: cleanString(item.groupId) ?? `ai_target_group_${index + 1}`,
+        label: cleanString(item.label) ?? `Target group ${index + 1}`,
+        targetType: normalizeTargetType(item.targetType),
+        candidateIds: stringArray(item.candidateIds),
+        rationale: cleanString(item.rationale) ?? "Provider grouped these candidates for admin review.",
+      };
+    });
+
+    const rolloutOrderSuggestion: RolloutStage[] = (Array.isArray(parsed.rolloutOrderSuggestion) ? parsed.rolloutOrderSuggestion : []).map((raw, index) => {
+      const item = raw && typeof raw === "object" ? raw as Record<string, unknown> : {};
+      return {
+        stageId: cleanString(item.stageId) ?? `ai_rollout_stage_${index + 1}`,
+        stageNumber: typeof item.stageNumber === "number" ? item.stageNumber : index + 1,
+        label: cleanString(item.label) ?? `Stage ${index + 1}`,
+        candidateIds: stringArray(item.candidateIds),
+        rationale: cleanString(item.rationale) ?? "Provider suggested this stage for admin review.",
+      };
+    });
+
+    const sourceSignalsUsed: TargetingSourceSignal[] = (Array.isArray(parsed.sourceSignalsUsed) ? parsed.sourceSignalsUsed : []).map((raw, index) => {
+      const item = raw && typeof raw === "object" ? raw as Record<string, unknown> : {};
+      return {
+        signalId: cleanString(item.signalId) ?? `ai_source_signal_${index + 1}`,
+        sourceId: cleanString(item.sourceId) ?? "unknown_source",
+        sourceName: cleanString(item.sourceName) ?? "Unknown source",
+        linkedHierarchyNodeId: cleanString(item.linkedHierarchyNodeId),
+        signalType: cleanString(item.signalType) ?? "unclear_scope_signal",
+        documentSignal: cleanString(item.documentSignal) ?? "",
+        suggestedRelevance: cleanString(item.suggestedRelevance) ?? "Possible targeting signal; admin review required.",
+        participantValidationNeeded: typeof item.participantValidationNeeded === "boolean" ? item.participantValidationNeeded : true,
+        confidence: normalizeConfidence(item.confidence),
+        adminNote: cleanString(item.adminNote),
+      };
+    });
+
+    const questionHintSeeds: QuestionHintSeed[] = (Array.isArray(parsed.questionHintSeeds) ? parsed.questionHintSeeds : []).map((raw, index) => {
+      const item = raw && typeof raw === "object" ? raw as Record<string, unknown> : {};
+      return {
+        hintId: cleanString(item.hintId) ?? `ai_question_hint_${index + 1}`,
+        sourceId: cleanString(item.sourceId) ?? "unknown_source",
+        sourceName: cleanString(item.sourceName) ?? "Unknown source",
+        linkedTargetCandidateId: cleanString(item.linkedTargetCandidateId),
+        linkedHierarchyNodeId: cleanString(item.linkedHierarchyNodeId),
+        documentSignal: cleanString(item.documentSignal) ?? "",
+        whyItMayMatter: cleanString(item.whyItMayMatter) ?? "May matter later only if unresolved after the participant's initial narrative.",
+        suggestedLaterQuestionTheme: cleanString(item.suggestedLaterQuestionTheme) ?? "Later clarification theme",
+        triggerConditionForPass5: cleanString(item.triggerConditionForPass5) ?? "Only after the participant's first narrative leaves this unresolved.",
+        doNotAskIfAlreadyCovered: cleanString(item.doNotAskIfAlreadyCovered) ?? "Do not ask if the participant already covered it.",
+        participantValidationNeeded: typeof item.participantValidationNeeded === "boolean" ? item.participantValidationNeeded : true,
+        status: "active",
+        adminNote: cleanString(item.adminNote),
+      };
+    });
+
+    return {
+      packet: {
+        suggestedTargetCandidates,
+        targetGroups,
+        rolloutOrderSuggestion,
+        sourceSignalsUsed,
+        questionHintSeeds,
+        contactChannelReadinessNotes: stringArray(parsed.contactChannelReadinessNotes),
+        adminReviewFlags: stringArray(parsed.adminReviewFlags),
+        boundaryWarnings: stringArray(parsed.boundaryWarnings),
+        confidenceSummary: cleanString(parsed.confidenceSummary) ?? "Provider generated targeting recommendations; admin approval is required.",
+      },
+      provider: "google",
+      model: modelName,
+      rawText,
+    };
   }
 }

@@ -1,0 +1,199 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "TargetingRolloutPlan",
+  "type": "object",
+  "additionalProperties": true,
+  "required": [
+    "planId",
+    "caseId",
+    "sessionId",
+    "selectedDepartment",
+    "selectedUseCase",
+    "basisHierarchySnapshotId",
+    "basisReadinessSnapshotId",
+    "state",
+    "targetCandidates",
+    "participantContactProfiles",
+    "sourceSignalsUsed",
+    "questionHintSeeds",
+    "rolloutOrder",
+    "finalReviewSummary",
+    "finalPlanState",
+    "providerStatus",
+    "approvalMetadata",
+    "boundaryConfirmations",
+    "manualFallbackAvailable",
+    "createdAt",
+    "updatedAt"
+  ],
+  "properties": {
+    "planId": { "type": "string", "minLength": 1 },
+    "caseId": { "type": "string", "minLength": 1 },
+    "sessionId": { "type": "string", "minLength": 1 },
+    "selectedDepartment": { "type": "string" },
+    "selectedUseCase": { "type": "string" },
+    "basisHierarchySnapshotId": { "type": "string", "minLength": 1 },
+    "basisReadinessSnapshotId": { "type": "string", "minLength": 1 },
+    "state": {
+      "type": "string",
+      "enum": [
+        "draft_from_ai_packet",
+        "under_admin_review",
+        "approved_ready_for_outreach",
+        "approved_with_contact_gaps",
+        "needs_rework",
+        "rejected"
+      ]
+    },
+    "targetCandidates": { "type": "array", "items": { "$ref": "#/definitions/targetCandidate" } },
+    "adminCandidateDecisions": { "type": "array", "items": { "$ref": "#/definitions/targetCandidate" } },
+    "participantContactProfiles": { "type": "array", "items": { "$ref": "#/definitions/contactProfile" } },
+    "sourceSignalsUsed": { "type": "array", "items": { "type": "object", "additionalProperties": true } },
+    "questionHintSeeds": { "type": "array", "items": { "$ref": "#/definitions/questionHintSeed" } },
+    "rolloutOrder": { "type": "array", "items": { "type": "object", "additionalProperties": true } },
+    "finalReviewSummary": { "type": "object", "additionalProperties": true },
+    "finalPlanState": { "type": "string" },
+    "providerStatus": { "type": "string" },
+    "providerFailure": { "type": "object", "additionalProperties": true },
+    "approvalMetadata": { "type": "object", "additionalProperties": true },
+    "boundaryConfirmations": {
+      "type": "object",
+      "required": [
+        "noOutreachSent",
+        "noInvitationsCreated",
+        "noParticipantSessionsCreated",
+        "noParticipantResponsesCollected",
+        "noWorkflowAnalysisPerformed"
+      ],
+      "properties": {
+        "noOutreachSent": { "type": "boolean", "const": true },
+        "noInvitationsCreated": { "type": "boolean", "const": true },
+        "noParticipantSessionsCreated": { "type": "boolean", "const": true },
+        "noParticipantResponsesCollected": { "type": "boolean", "const": true },
+        "noWorkflowAnalysisPerformed": { "type": "boolean", "const": true }
+      }
+    },
+    "manualFallbackAvailable": { "type": "boolean" },
+    "createdAt": { "type": "string" },
+    "updatedAt": { "type": "string" }
+  },
+  "definitions": {
+    "targetType": {
+      "type": "string",
+      "enum": [
+        "core_participant",
+        "enrichment_participant",
+        "external_decision_or_clarification_source"
+      ]
+    },
+    "targetCandidate": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": [
+        "candidateId",
+        "targetType",
+        "suggestedReason",
+        "expectedWorkflowVisibility",
+        "sourceSignals",
+        "participantValidationNeeded",
+        "suggestedRolloutStage",
+        "contactChannelReadinessStatus",
+        "confidence",
+        "adminDecision"
+      ],
+      "properties": {
+        "candidateId": { "type": "string", "minLength": 1 },
+        "targetType": { "$ref": "#/definitions/targetType" },
+        "linkedHierarchyNodeId": { "type": "string" },
+        "roleLabel": { "type": "string" },
+        "personLabel": { "type": "string" },
+        "suggestedReason": { "type": "string" },
+        "expectedWorkflowVisibility": { "type": "string" },
+        "sourceSignals": { "type": "array", "items": { "type": "string" } },
+        "participantValidationNeeded": { "type": "boolean" },
+        "suggestedRolloutStage": { "type": "number" },
+        "rolloutOrder": { "type": "number" },
+        "contactChannelReadinessStatus": { "type": "string" },
+        "confidence": { "type": "string" },
+        "adminDecision": { "type": "string", "enum": ["pending", "accepted", "rejected", "edited"] },
+        "adminNote": { "type": "string" }
+      }
+    },
+    "contactProfile": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": [
+        "participantId",
+        "displayName",
+        "roleLabel",
+        "targetType",
+        "availableChannels",
+        "contactDataSource",
+        "contactDataStatus",
+        "lastContactDataUpdatedAt",
+        "lastContactDataUpdatedBy"
+      ],
+      "properties": {
+        "participantId": { "type": "string", "minLength": 1 },
+        "linkedTargetCandidateId": { "type": "string" },
+        "displayName": { "type": "string" },
+        "linkedHierarchyNodeId": { "type": "string" },
+        "roleLabel": { "type": "string" },
+        "targetType": { "$ref": "#/definitions/targetType" },
+        "employeeId": { "type": "string" },
+        "internalIdentifier": { "type": "string" },
+        "mobileNumber": { "type": "string" },
+        "whatsAppNumber": { "type": "string" },
+        "telegramHandle": { "type": "string" },
+        "telegramUserId": { "type": "string" },
+        "email": { "type": "string" },
+        "availableChannels": {
+          "type": "array",
+          "items": { "type": "string", "enum": ["mobile", "whatsapp", "telegram", "email"] }
+        },
+        "preferredChannel": { "type": "string" },
+        "fallbackChannels": { "type": "array", "items": { "type": "string" } },
+        "channelSelectionReason": { "type": "string" },
+        "contactDataSource": { "type": "object", "additionalProperties": true },
+        "contactDataStatus": { "type": "string" },
+        "lastContactDataUpdatedAt": { "type": "string" },
+        "lastContactDataUpdatedBy": { "type": "string" },
+        "adminNote": { "type": "string" }
+      }
+    },
+    "questionHintSeed": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": [
+        "hintId",
+        "sourceId",
+        "sourceName",
+        "documentSignal",
+        "whyItMayMatter",
+        "suggestedLaterQuestionTheme",
+        "triggerConditionForPass5",
+        "doNotAskIfAlreadyCovered",
+        "participantValidationNeeded",
+        "status"
+      ],
+      "properties": {
+        "hintId": { "type": "string", "minLength": 1 },
+        "sourceId": { "type": "string" },
+        "sourceName": { "type": "string" },
+        "linkedTargetCandidateId": { "type": "string" },
+        "linkedHierarchyNodeId": { "type": "string" },
+        "documentSignal": { "type": "string" },
+        "whyItMayMatter": { "type": "string" },
+        "suggestedLaterQuestionTheme": { "type": "string" },
+        "triggerConditionForPass5": { "type": "string" },
+        "doNotAskIfAlreadyCovered": { "type": "string" },
+        "participantValidationNeeded": { "type": "boolean" },
+        "status": {
+          "type": "string",
+          "enum": ["active", "resolved_by_initial_narrative", "used_in_followup", "dismissed_by_admin"]
+        },
+        "adminNote": { "type": "string" }
+      }
+    }
+  }
+}

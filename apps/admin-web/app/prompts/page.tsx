@@ -76,6 +76,9 @@ export default async function PromptsPage() {
       <Link href="/prompts/new" className="btn-primary" style={{ display: "inline-block", marginBottom: "24px" }}>
         + Register Prompt
       </Link>
+      <p>
+        <Link href="/targeting-rollout/prompts">Pass 4 Targeting Rollout PromptSpec</Link>
+      </p>
 
       {prompts.length === 0 ? (
         <p style={{ color: "#666", fontStyle: "italic" }}>No prompts registered yet.</p>

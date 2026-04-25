@@ -40,6 +40,8 @@ import type {
   SourceHierarchyTriageSuggestion,
   StructuredPromptSpec,
   Pass3PromptTestRun,
+  Pass4PromptTestRun,
+  TargetingRolloutPlan,
 } from "@workflow/contracts";
 
 import { mkdirSync } from "node:fs";
@@ -192,6 +194,8 @@ export interface StoredHierarchyReadinessSnapshot extends HierarchyReadinessSnap
 
 export interface StoredStructuredPromptSpec extends StructuredPromptSpec {}
 export interface StoredPass3PromptTestRun extends Pass3PromptTestRun {}
+export interface StoredPass4PromptTestRun extends Pass4PromptTestRun {}
+export interface StoredTargetingRolloutPlan extends TargetingRolloutPlan {}
 
 export interface StoredSourceHierarchyTriageJob extends SourceHierarchyTriageJob {}
 
@@ -460,6 +464,21 @@ export interface Pass3PromptTestRunRepository {
   findById(testRunId: string): StoredPass3PromptTestRun | null;
   findByPromptSpecId(promptSpecId: string): StoredPass3PromptTestRun[];
   findAll(): StoredPass3PromptTestRun[];
+}
+
+export interface TargetingRolloutPlanRepository {
+  save(record: StoredTargetingRolloutPlan): void;
+  findById(planId: string): StoredTargetingRolloutPlan | null;
+  findByCaseId(caseId: string): StoredTargetingRolloutPlan[];
+  findBySessionId(sessionId: string): StoredTargetingRolloutPlan | null;
+  findAll(): StoredTargetingRolloutPlan[];
+}
+
+export interface Pass4PromptTestRunRepository {
+  save(record: StoredPass4PromptTestRun): void;
+  findById(testRunId: string): StoredPass4PromptTestRun | null;
+  findByPromptSpecId(promptSpecId: string): StoredPass4PromptTestRun[];
+  findAll(): StoredPass4PromptTestRun[];
 }
 
 // ---------------------------------------------------------------------------
@@ -1307,6 +1326,26 @@ class InMemoryPass3PromptTestRunRepository implements Pass3PromptTestRunReposito
   findAll(): StoredPass3PromptTestRun[] { return Array.from(this.store.values()); }
 }
 
+class InMemoryTargetingRolloutPlanRepository implements TargetingRolloutPlanRepository {
+  private readonly store = new Map<string, StoredTargetingRolloutPlan>();
+  save(record: StoredTargetingRolloutPlan): void { this.store.set(record.planId, structuredClone(record)); }
+  findById(planId: string): StoredTargetingRolloutPlan | null { return this.store.get(planId) ?? null; }
+  findByCaseId(caseId: string): StoredTargetingRolloutPlan[] { return Array.from(this.store.values()).filter((record) => record.caseId === caseId); }
+  findBySessionId(sessionId: string): StoredTargetingRolloutPlan | null {
+    const records = Array.from(this.store.values()).filter((record) => record.sessionId === sessionId);
+    return records[records.length - 1] ?? null;
+  }
+  findAll(): StoredTargetingRolloutPlan[] { return Array.from(this.store.values()); }
+}
+
+class InMemoryPass4PromptTestRunRepository implements Pass4PromptTestRunRepository {
+  private readonly store = new Map<string, StoredPass4PromptTestRun>();
+  save(record: StoredPass4PromptTestRun): void { this.store.set(record.testRunId, { ...record, boundaryViolationFlags: [...record.boundaryViolationFlags] }); }
+  findById(testRunId: string): StoredPass4PromptTestRun | null { return this.store.get(testRunId) ?? null; }
+  findByPromptSpecId(promptSpecId: string): StoredPass4PromptTestRun[] { return Array.from(this.store.values()).filter((record) => record.promptSpecId === promptSpecId); }
+  findAll(): StoredPass4PromptTestRun[] { return Array.from(this.store.values()); }
+}
+
 // ---------------------------------------------------------------------------
 // SQLite intake implementations — durable Phase 1 foundation
 // ---------------------------------------------------------------------------
@@ -1492,6 +1531,19 @@ function openIntakeDatabase(dbPath?: string): DatabaseSync {
       capability TEXT NOT NULL,
       payload TEXT NOT NULL
     );
+    CREATE TABLE IF NOT EXISTS targeting_rollout_plans (
+      id TEXT PRIMARY KEY,
+      session_id TEXT NOT NULL,
+      case_id TEXT NOT NULL,
+      state TEXT NOT NULL,
+      payload TEXT NOT NULL
+    );
+    CREATE TABLE IF NOT EXISTS pass4_prompt_test_runs (
+      id TEXT PRIMARY KEY,
+      prompt_spec_id TEXT NOT NULL,
+      capability TEXT NOT NULL,
+      payload TEXT NOT NULL
+    );
     CREATE INDEX IF NOT EXISTS idx_provider_jobs_source_id ON provider_extraction_jobs(source_id);
     CREATE INDEX IF NOT EXISTS idx_provider_jobs_session_id ON provider_extraction_jobs(session_id);
     CREATE INDEX IF NOT EXISTS idx_text_artifacts_source_id ON text_artifacts(source_id);
@@ -1535,6 +1587,11 @@ function openIntakeDatabase(dbPath?: string): DatabaseSync {
     CREATE INDEX IF NOT EXISTS idx_source_hierarchy_triage_suggestions_case_id ON source_hierarchy_triage_suggestions(case_id);
     CREATE INDEX IF NOT EXISTS idx_pass3_prompt_test_runs_prompt_spec_id ON pass3_prompt_test_runs(prompt_spec_id);
     CREATE INDEX IF NOT EXISTS idx_pass3_prompt_test_runs_capability ON pass3_prompt_test_runs(capability);
+    CREATE INDEX IF NOT EXISTS idx_targeting_rollout_plans_session_id ON targeting_rollout_plans(session_id);
+    CREATE INDEX IF NOT EXISTS idx_targeting_rollout_plans_case_id ON targeting_rollout_plans(case_id);
+    CREATE INDEX IF NOT EXISTS idx_targeting_rollout_plans_state ON targeting_rollout_plans(state);
+    CREATE INDEX IF NOT EXISTS idx_pass4_prompt_test_runs_prompt_spec_id ON pass4_prompt_test_runs(prompt_spec_id);
+    CREATE INDEX IF NOT EXISTS idx_pass4_prompt_test_runs_capability ON pass4_prompt_test_runs(capability);
   `);
   return db;
 }
@@ -2337,6 +2394,45 @@ export class SQLitePass3PromptTestRunRepository implements Pass3PromptTestRunRep
   }
 }
 
+export class SQLiteTargetingRolloutPlanRepository implements TargetingRolloutPlanRepository {
+  private readonly db: DatabaseSync;
+  constructor(dbPath?: string) { this.db = openIntakeDatabase(dbPath); }
+  save(record: StoredTargetingRolloutPlan): void {
+    this.db.prepare("INSERT INTO targeting_rollout_plans (id, session_id, case_id, state, payload) VALUES (?, ?, ?, ?, ?) ON CONFLICT(id) DO UPDATE SET session_id = excluded.session_id, case_id = excluded.case_id, state = excluded.state, payload = excluded.payload")
+      .run(record.planId, record.sessionId, record.caseId, record.state, JSON.stringify(record));
+  }
+  findById(planId: string): StoredTargetingRolloutPlan | null {
+    return parseStored<StoredTargetingRolloutPlan>(this.db.prepare("SELECT payload FROM targeting_rollout_plans WHERE id = ?").get(planId));
+  }
+  findByCaseId(caseId: string): StoredTargetingRolloutPlan[] {
+    return parseStoredList<StoredTargetingRolloutPlan>(this.db.prepare("SELECT payload FROM targeting_rollout_plans WHERE case_id = ? ORDER BY id").all(caseId));
+  }
+  findBySessionId(sessionId: string): StoredTargetingRolloutPlan | null {
+    return parseStored<StoredTargetingRolloutPlan>(this.db.prepare("SELECT payload FROM targeting_rollout_plans WHERE session_id = ? ORDER BY id DESC LIMIT 1").get(sessionId));
+  }
+  findAll(): StoredTargetingRolloutPlan[] {
+    return parseStoredList<StoredTargetingRolloutPlan>(this.db.prepare("SELECT payload FROM targeting_rollout_plans ORDER BY id").all());
+  }
+}
+
+export class SQLitePass4PromptTestRunRepository implements Pass4PromptTestRunRepository {
+  private readonly db: DatabaseSync;
+  constructor(dbPath?: string) { this.db = openIntakeDatabase(dbPath); }
+  save(record: StoredPass4PromptTestRun): void {
+    this.db.prepare("INSERT INTO pass4_prompt_test_runs (id, prompt_spec_id, capability, payload) VALUES (?, ?, ?, ?) ON CONFLICT(id) DO UPDATE SET prompt_spec_id = excluded.prompt_spec_id, capability = excluded.capability, payload = excluded.payload")
+      .run(record.testRunId, record.promptSpecId, record.capability, JSON.stringify(record));
+  }
+  findById(testRunId: string): StoredPass4PromptTestRun | null {
+    return parseStored<StoredPass4PromptTestRun>(this.db.prepare("SELECT payload FROM pass4_prompt_test_runs WHERE id = ?").get(testRunId));
+  }
+  findByPromptSpecId(promptSpecId: string): StoredPass4PromptTestRun[] {
+    return parseStoredList<StoredPass4PromptTestRun>(this.db.prepare("SELECT payload FROM pass4_prompt_test_runs WHERE prompt_spec_id = ? ORDER BY id").all(promptSpecId));
+  }
+  findAll(): StoredPass4PromptTestRun[] {
+    return parseStoredList<StoredPass4PromptTestRun>(this.db.prepare("SELECT payload FROM pass4_prompt_test_runs ORDER BY id").all());
+  }
+}
+
 export function createSQLiteIntakeRepositories(dbPath?: string): {
   intakeSessions: IntakeSessionRepository;
   intakeSources: IntakeSourceRepository;
@@ -2363,6 +2459,8 @@ export function createSQLiteIntakeRepositories(dbPath?: string): {
   sourceHierarchyTriageJobs: SourceHierarchyTriageJobRepository;
   sourceHierarchyTriageSuggestions: SourceHierarchyTriageSuggestionRepository;
   pass3PromptTestRuns: Pass3PromptTestRunRepository;
+  targetingRolloutPlans: TargetingRolloutPlanRepository;
+  pass4PromptTestRuns: Pass4PromptTestRunRepository;
 } {
   return {
     intakeSessions: new SQLiteIntakeSessionRepository(dbPath),
@@ -2390,6 +2488,8 @@ export function createSQLiteIntakeRepositories(dbPath?: string): {
     sourceHierarchyTriageJobs: new SQLiteSourceHierarchyTriageJobRepository(dbPath),
     sourceHierarchyTriageSuggestions: new SQLiteSourceHierarchyTriageSuggestionRepository(dbPath),
     pass3PromptTestRuns: new SQLitePass3PromptTestRunRepository(dbPath),
+    targetingRolloutPlans: new SQLiteTargetingRolloutPlanRepository(dbPath),
+    pass4PromptTestRuns: new SQLitePass4PromptTestRunRepository(dbPath),
   };
 }
 
@@ -2438,6 +2538,8 @@ export interface InMemoryStore {
   sourceHierarchyTriageJobs: SourceHierarchyTriageJobRepository;
   sourceHierarchyTriageSuggestions: SourceHierarchyTriageSuggestionRepository;
   pass3PromptTestRuns: Pass3PromptTestRunRepository;
+  targetingRolloutPlans: TargetingRolloutPlanRepository;
+  pass4PromptTestRuns: Pass4PromptTestRunRepository;
   /** Raw file bytes keyed by sourceId. In-memory only — no persistence. */
   fileStore: Map<string, { bytes: ArrayBuffer; mimeType: string }>;
 }
@@ -2480,6 +2582,8 @@ export function createInMemoryStore(): InMemoryStore {
     sourceHierarchyTriageJobs: new InMemorySourceHierarchyTriageJobRepository(),
     sourceHierarchyTriageSuggestions: new InMemorySourceHierarchyTriageSuggestionRepository(),
     pass3PromptTestRuns: new InMemoryPass3PromptTestRunRepository(),
+    targetingRolloutPlans: new InMemoryTargetingRolloutPlanRepository(),
+    pass4PromptTestRuns: new InMemoryPass4PromptTestRunRepository(),
     fileStore: new Map(),
   };
 }
@@ -2511,5 +2615,7 @@ export type {
   SourceHierarchyTriageSuggestion,
   StructuredPromptSpec,
   Pass3PromptTestRun,
+  Pass4PromptTestRun,
+  TargetingRolloutPlan,
   WebsiteCrawlSession,
 };

@@ -7,6 +7,7 @@ import type {
   HierarchyNodeRecord,
   HierarchySecondaryRelationship,
   SourceHierarchyTriageSuggestion,
+  TargetingRecommendationPacket,
   ProviderName,
   StructuredContext,
   AttachmentScope,
@@ -48,6 +49,25 @@ export interface SourceHierarchyTriageGenerationResult {
     "triageId" | "triageJobId" | "sessionId" | "caseId" | "adminDecision" | "createdAt" | "updatedAt"
   >[];
   warnings: string[];
+  provider: ProviderName;
+  model: string;
+  rawText: string;
+}
+
+export interface TargetingRecommendationGenerationResult {
+  packet: Omit<
+    TargetingRecommendationPacket,
+    | "packetId"
+    | "caseId"
+    | "selectedDepartment"
+    | "selectedUseCase"
+    | "basisHierarchySnapshotId"
+    | "basisReadinessSnapshotId"
+    | "generatedByPromptVersionId"
+    | "generatedAt"
+    | "adminDecisionStatus"
+    | "manualFallbackAvailable"
+  >;
   provider: ProviderName;
   model: string;
   rawText: string;
@@ -96,4 +116,9 @@ export interface ExtractionProvider {
   runPromptText(input: {
     compiledPrompt: string;
   }): Promise<{ text: string; provider: ProviderName; model: string }>;
+
+  /** Generate a Pass 4 Targeting Recommendation Packet from a visible compiled PromptSpec. */
+  generateTargetingRecommendationPacket?(input: {
+    compiledPrompt: string;
+  }): Promise<TargetingRecommendationGenerationResult>;
 }
