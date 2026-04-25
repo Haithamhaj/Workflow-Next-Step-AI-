@@ -52,6 +52,25 @@ export type TrustStatus =
   | "admin_edited"
   | "rejected_or_needs_retry";
 
+export type FirstNarrativeStatus =
+  | "not_received"
+  | "received_text"
+  | "received_voice_pending_transcript"
+  | "transcript_pending_review"
+  | "approved_for_extraction"
+  | "rejected_or_needs_retry";
+
+export type ExtractionStatus =
+  | "not_started"
+  | "eligible"
+  | "in_progress"
+  | "completed_clean"
+  | "completed_with_unmapped"
+  | "completed_with_defects"
+  | "completed_with_evidence_disputes"
+  | "failed"
+  | "blocked_evidence_not_approved";
+
 export type ConfidenceLevel = "high" | "medium" | "low";
 
 export type CompletenessStatus =
@@ -258,6 +277,14 @@ export type Pass6HandoffCreatedFrom =
   | "admin_entry"
   | "system_rule";
 
+export type SequenceRelationType =
+  | "then"
+  | "conditional"
+  | "parallel"
+  | "optional"
+  | "loop"
+  | "unknown";
+
 export interface EvidenceAnchor {
   evidenceItemId: string;
   quote?: string;
@@ -271,6 +298,30 @@ export interface SourceTextSpan {
   quote?: string;
   startOffset?: number;
   endOffset?: number;
+}
+
+export interface SequenceLink {
+  fromItemId: string;
+  toItemId: string;
+  relationType: SequenceRelationType;
+  condition: string;
+  evidenceAnchors: EvidenceAnchor[];
+  confidenceLevel: ConfidenceLevel;
+}
+
+export interface UnclearTransition {
+  fromItemId: string;
+  toItemId: string;
+  reasonUnclear: string;
+  needsClarification: boolean;
+  suggestedClarificationCandidateId: string | null;
+}
+
+export interface SequenceMap {
+  orderedItemIds: string[];
+  sequenceLinks: SequenceLink[];
+  unclearTransitions: UnclearTransition[];
+  notes: string[];
 }
 
 export interface SessionContext {
@@ -319,8 +370,8 @@ export interface RawEvidence {
 }
 
 export interface AnalysisProgress {
-  firstNarrativeStatus: string;
-  extractionStatus: string;
+  firstNarrativeStatus: FirstNarrativeStatus;
+  extractionStatus: ExtractionStatus;
   clarificationItemIds: string[];
   boundarySignalIds: string[];
   unresolvedItemIds: string[];
@@ -477,10 +528,10 @@ export interface FirstPassExtractionOutput {
   extractionId: string;
   sessionId: string;
   basisEvidenceItemIds: string[];
-  extractionStatus: string;
+  extractionStatus: ExtractionStatus;
   extractedActors: ExtractedItem[];
   extractedSteps: ExtractedItem[];
-  sequenceMap: Record<string, unknown>;
+  sequenceMap: SequenceMap;
   extractedDecisionPoints: ExtractedItem[];
   extractedHandoffs: ExtractedItem[];
   extractedExceptions: ExtractedItem[];
@@ -518,9 +569,9 @@ export interface ParticipantSession {
   rawEvidence: RawEvidence;
   analysisProgress: AnalysisProgress;
   rawEvidenceItems: RawEvidenceItem[];
-  firstNarrativeStatus: string;
+  firstNarrativeStatus: FirstNarrativeStatus;
   firstNarrativeEvidenceId: string | null;
-  extractionStatus: string;
+  extractionStatus: ExtractionStatus;
   clarificationItems: ClarificationCandidate[];
   boundarySignals: BoundarySignal[];
   unresolvedItems: UnmappedContentItem[];

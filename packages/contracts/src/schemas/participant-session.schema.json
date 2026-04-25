@@ -54,9 +54,9 @@
       "type": "array",
       "items": { "$ref": "#/definitions/rawEvidenceItem" }
     },
-    "firstNarrativeStatus": { "type": "string" },
+    "firstNarrativeStatus": { "$ref": "#/definitions/firstNarrativeStatus" },
     "firstNarrativeEvidenceId": { "type": ["string", "null"] },
-    "extractionStatus": { "type": "string" },
+    "extractionStatus": { "$ref": "#/definitions/extractionStatus" },
     "clarificationItems": {
       "type": "array",
       "items": { "$ref": "#/definitions/clarificationCandidate" }
@@ -154,6 +154,31 @@
         "admin_approved",
         "admin_edited",
         "rejected_or_needs_retry"
+      ]
+    },
+    "firstNarrativeStatus": {
+      "type": "string",
+      "enum": [
+        "not_received",
+        "received_text",
+        "received_voice_pending_transcript",
+        "transcript_pending_review",
+        "approved_for_extraction",
+        "rejected_or_needs_retry"
+      ]
+    },
+    "extractionStatus": {
+      "type": "string",
+      "enum": [
+        "not_started",
+        "eligible",
+        "in_progress",
+        "completed_clean",
+        "completed_with_unmapped",
+        "completed_with_defects",
+        "completed_with_evidence_disputes",
+        "failed",
+        "blocked_evidence_not_approved"
       ]
     },
     "confidenceLevel": {
@@ -426,6 +451,10 @@
       "type": "string",
       "enum": ["admin_assistant", "admin_entry", "system_rule"]
     },
+    "sequenceRelationType": {
+      "type": "string",
+      "enum": ["then", "conditional", "parallel", "optional", "loop", "unknown"]
+    },
     "evidenceAnchor": {
       "type": "object",
       "additionalProperties": false,
@@ -457,6 +486,75 @@
           "required": ["quote"]
         }
       ]
+    },
+    "sequenceLink": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "fromItemId",
+        "toItemId",
+        "relationType",
+        "condition",
+        "evidenceAnchors",
+        "confidenceLevel"
+      ],
+      "properties": {
+        "fromItemId": { "type": "string", "minLength": 1 },
+        "toItemId": { "type": "string", "minLength": 1 },
+        "relationType": { "$ref": "#/definitions/sequenceRelationType" },
+        "condition": { "type": "string" },
+        "evidenceAnchors": {
+          "type": "array",
+          "items": { "$ref": "#/definitions/evidenceAnchor" }
+        },
+        "confidenceLevel": { "$ref": "#/definitions/confidenceLevel" }
+      }
+    },
+    "unclearTransition": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "fromItemId",
+        "toItemId",
+        "reasonUnclear",
+        "needsClarification",
+        "suggestedClarificationCandidateId"
+      ],
+      "properties": {
+        "fromItemId": { "type": "string", "minLength": 1 },
+        "toItemId": { "type": "string", "minLength": 1 },
+        "reasonUnclear": { "type": "string" },
+        "needsClarification": { "type": "boolean" },
+        "suggestedClarificationCandidateId": { "type": ["string", "null"] }
+      }
+    },
+    "sequenceMap": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "orderedItemIds",
+        "sequenceLinks",
+        "unclearTransitions",
+        "notes"
+      ],
+      "properties": {
+        "orderedItemIds": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "sequenceLinks": {
+          "type": "array",
+          "items": { "$ref": "#/definitions/sequenceLink" }
+        },
+        "unclearTransitions": {
+          "type": "array",
+          "items": { "$ref": "#/definitions/unclearTransition" }
+        },
+        "notes": {
+          "type": "array",
+          "items": { "type": "string" }
+        }
+      }
     },
     "sessionContext": {
       "type": "object",
@@ -589,8 +687,8 @@
         "nextActionIds"
       ],
       "properties": {
-        "firstNarrativeStatus": { "type": "string" },
-        "extractionStatus": { "type": "string" },
+        "firstNarrativeStatus": { "$ref": "#/definitions/firstNarrativeStatus" },
+        "extractionStatus": { "$ref": "#/definitions/extractionStatus" },
         "clarificationItemIds": {
           "type": "array",
           "items": { "type": "string" }
@@ -1010,7 +1108,7 @@
           "type": "array",
           "items": { "type": "string" }
         },
-        "extractionStatus": { "type": "string" },
+        "extractionStatus": { "$ref": "#/definitions/extractionStatus" },
         "extractedActors": {
           "type": "array",
           "items": { "$ref": "#/definitions/extractedItem" }
@@ -1019,7 +1117,7 @@
           "type": "array",
           "items": { "$ref": "#/definitions/extractedItem" }
         },
-        "sequenceMap": { "type": "object", "additionalProperties": true },
+        "sequenceMap": { "$ref": "#/definitions/sequenceMap" },
         "extractedDecisionPoints": {
           "type": "array",
           "items": { "$ref": "#/definitions/extractedItem" }

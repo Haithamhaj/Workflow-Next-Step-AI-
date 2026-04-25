@@ -4,9 +4,12 @@ import {
   validateBoundarySignal,
   validateClarificationCandidate,
   validateEvidenceDispute,
+  validateExtractionStatus,
   validateFirstPassExtractionOutput,
+  validateFirstNarrativeStatus,
   validateParticipantSession,
   validateRawEvidenceItem,
+  validateSequenceMap,
   validateSessionAccessToken,
   validateExtractedItem,
 } from "../packages/contracts/dist/index.js";
@@ -161,10 +164,32 @@ const validFirstPassExtractionOutput = {
   extractionId: "extraction-1",
   sessionId: "participant-session-1",
   basisEvidenceItemIds: ["evidence-1"],
-  extractionStatus: "draft_ready_for_admin_review",
+  extractionStatus: "completed_with_unmapped",
   extractedActors: [validExtractedItem],
   extractedSteps: [validExtractedItem],
-  sequenceMap: { orderedItemIds: ["item-1"] },
+  sequenceMap: {
+    orderedItemIds: ["item-1"],
+    sequenceLinks: [
+      {
+        fromItemId: "item-1",
+        toItemId: "item-2",
+        relationType: "then",
+        condition: "",
+        evidenceAnchors: [evidenceAnchor],
+        confidenceLevel: "high",
+      },
+    ],
+    unclearTransitions: [
+      {
+        fromItemId: "item-2",
+        toItemId: "item-3",
+        reasonUnclear: "Participant did not describe the next owner.",
+        needsClarification: true,
+        suggestedClarificationCandidateId: "clarification-1",
+      },
+    ],
+    notes: ["Initial participant-level sequence draft."],
+  },
   extractedDecisionPoints: [],
   extractedHandoffs: [],
   extractedExceptions: [],
@@ -222,7 +247,7 @@ const validParticipantSession = {
     firstNarrativeEvidenceId: "evidence-1",
   },
   analysisProgress: {
-    firstNarrativeStatus: "received",
+    firstNarrativeStatus: "received_text",
     extractionStatus: "not_started",
     clarificationItemIds: ["clarification-1"],
     boundarySignalIds: ["boundary-1"],
@@ -230,7 +255,7 @@ const validParticipantSession = {
     nextActionIds: ["next-action-1"],
   },
   rawEvidenceItems: [validRawEvidenceItem],
-  firstNarrativeStatus: "received",
+  firstNarrativeStatus: "received_text",
   firstNarrativeEvidenceId: "evidence-1",
   extractionStatus: "not_started",
   clarificationItems: [validClarificationCandidate],
@@ -255,6 +280,10 @@ expectInvalid("ParticipantSession bad sessionState", validateParticipantSession,
   ...validParticipantSession,
   sessionState: "not_started",
 });
+expectInvalid("ParticipantSession bad firstNarrativeStatus", validateParticipantSession, {
+  ...validParticipantSession,
+  firstNarrativeStatus: "received",
+});
 
 expectValid("RawEvidenceItem", validateRawEvidenceItem, validRawEvidenceItem);
 const rawEvidenceMissingTrust = { ...validRawEvidenceItem };
@@ -262,10 +291,20 @@ delete rawEvidenceMissingTrust.trustStatus;
 expectInvalid("RawEvidenceItem missing trustStatus", validateRawEvidenceItem, rawEvidenceMissingTrust);
 
 expectValid("FirstPassExtractionOutput", validateFirstPassExtractionOutput, validFirstPassExtractionOutput);
+expectInvalid("FirstPassExtractionOutput malformed sequenceMap", validateFirstPassExtractionOutput, {
+  ...validFirstPassExtractionOutput,
+  sequenceMap: { orderedItemIds: ["item-1"] },
+});
 expectInvalid("ExtractedItem ai_extraction without anchor", validateExtractedItem, {
   ...validExtractedItem,
   evidenceAnchors: [],
 });
+
+expectValid("FirstNarrativeStatus", validateFirstNarrativeStatus, "approved_for_extraction");
+expectInvalid("FirstNarrativeStatus bad value", validateFirstNarrativeStatus, "approved");
+expectValid("ExtractionStatus", validateExtractionStatus, "completed_with_evidence_disputes");
+expectInvalid("ExtractionStatus bad value", validateExtractionStatus, "draft_ready_for_admin_review");
+expectValid("SequenceMap", validateSequenceMap, validFirstPassExtractionOutput.sequenceMap);
 
 expectValid("ClarificationCandidate", validateClarificationCandidate, validClarificationCandidate);
 expectValid("BoundarySignal", validateBoundarySignal, validBoundarySignal);

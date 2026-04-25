@@ -38,6 +38,9 @@ const sessionContextSchema = pass5Schema("SessionContext", "sessionContext");
 const channelAccessSchema = pass5Schema("ChannelAccess", "channelAccess");
 const rawEvidenceItemSchema = pass5Schema("RawEvidenceItem", "rawEvidenceItem");
 const analysisProgressSchema = pass5Schema("AnalysisProgress", "analysisProgress");
+const firstNarrativeStatusSchema = pass5Schema("FirstNarrativeStatus", "firstNarrativeStatus");
+const extractionStatusSchema = pass5Schema("ExtractionStatus", "extractionStatus");
+const sequenceMapSchema = pass5Schema("SequenceMap", "sequenceMap");
 const sessionAccessTokenSchema = pass5Schema("SessionAccessToken", "sessionAccessToken");
 const telegramIdentityBindingSchema = pass5Schema("TelegramIdentityBinding", "telegramIdentityBinding");
 const sessionNextActionSchema = pass5Schema("SessionNextAction", "sessionNextAction");
@@ -81,6 +84,9 @@ export {
   channelAccessSchema,
   rawEvidenceItemSchema,
   analysisProgressSchema,
+  firstNarrativeStatusSchema,
+  extractionStatusSchema,
+  sequenceMapSchema,
   sessionAccessTokenSchema,
   telegramIdentityBindingSchema,
   sessionNextActionSchema,

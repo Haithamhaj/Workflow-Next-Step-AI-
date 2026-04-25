@@ -32,6 +32,9 @@ export {
   channelAccessSchema,
   rawEvidenceItemSchema,
   analysisProgressSchema,
+  firstNarrativeStatusSchema,
+  extractionStatusSchema,
+  sequenceMapSchema,
   sessionAccessTokenSchema,
   telegramIdentityBindingSchema,
   sessionNextActionSchema,
@@ -77,6 +80,9 @@ import {
   channelAccessSchema,
   rawEvidenceItemSchema,
   analysisProgressSchema,
+  firstNarrativeStatusSchema,
+  extractionStatusSchema,
+  sequenceMapSchema,
   sessionAccessTokenSchema,
   telegramIdentityBindingSchema,
   sessionNextActionSchema,
@@ -109,11 +115,14 @@ import type {
   ClarificationCandidate,
   EvidenceDispute,
   ExtractedItem,
+  ExtractionStatus,
   ExtractionDefect,
+  FirstNarrativeStatus,
   FirstPassExtractionOutput,
   ParticipantSession,
   Pass6HandoffCandidate,
   RawEvidenceItem,
+  SequenceMap,
   SessionAccessToken,
   SessionContext,
   SessionNextAction,
@@ -243,6 +252,15 @@ export const validateRawEvidenceItem =
 
 export const validateAnalysisProgress =
   makeValidator<AnalysisProgress>(analysisProgressSchema);
+
+export const validateFirstNarrativeStatus =
+  makeValidator<FirstNarrativeStatus>(firstNarrativeStatusSchema);
+
+export const validateExtractionStatus =
+  makeValidator<ExtractionStatus>(extractionStatusSchema);
+
+export const validateSequenceMap =
+  makeValidator<SequenceMap>(sequenceMapSchema);
 
 export const validateSessionAccessToken =
   makeValidator<SessionAccessToken>(sessionAccessTokenSchema);
