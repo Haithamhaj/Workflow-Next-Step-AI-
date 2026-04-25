@@ -5,6 +5,7 @@ import {
 } from "node:crypto";
 import {
   validateParticipantSession,
+  validateRawEvidenceItem,
   validateSessionAccessToken,
   validateTelegramIdentityBinding,
   validateTargetingRolloutPlan,
@@ -14,6 +15,7 @@ import {
   type ParticipantContactProfile,
   type ParticipantSession,
   type ParticipationMode,
+  type RawEvidenceItem,
   type SessionAccessToken,
   type SessionAccessTokenChannelType,
   type SessionAccessTokenStatus,
@@ -25,6 +27,7 @@ import {
 } from "@workflow/contracts";
 import type {
   ParticipantSessionRepository,
+  RawEvidenceItemRepository,
   SessionAccessTokenRepository,
   TelegramIdentityBindingRepository,
 } from "@workflow/persistence";
@@ -700,4 +703,154 @@ export function unlinkTelegramIdentityBinding(
   if (!existing) return tokenError("token_not_found", "Telegram identity binding was not found.");
   const updated = bindingRepo.updateBindingStatus(bindingId, "rejected_or_unlinked", tokenNow(options));
   return updated ? { ok: true, binding: updated } : tokenError("token_not_found", "Telegram identity binding was not found.");
+}
+
+export type WebSessionNarrativeErrorCode =
+  | SessionAccessTokenErrorCode
+  | "empty_narrative"
+  | "narrative_already_submitted"
+  | "invalid_raw_evidence"
+  | "invalid_participant_session";
+
+export interface WebSessionNarrativeError {
+  code: WebSessionNarrativeErrorCode;
+  message: string;
+}
+
+export interface WebSessionNarrativeRepos {
+  sessionAccessTokens: SessionAccessTokenRepository;
+  participantSessions: ParticipantSessionRepository;
+  rawEvidenceItems: RawEvidenceItemRepository;
+}
+
+export interface WebSessionNarrativeOptions extends SessionAccessTokenOptions {
+  evidenceItemIdFactory?: (session: ParticipantSession) => string;
+}
+
+export type WebSessionNarrativeResult =
+  | {
+      ok: true;
+      participantSession: ParticipantSession;
+      rawEvidenceItem: RawEvidenceItem;
+    }
+  | {
+      ok: false;
+      errors: WebSessionNarrativeError[];
+      participantSession?: ParticipantSession;
+      existingEvidenceItemId?: string;
+    };
+
+function narrativeError(
+  code: WebSessionNarrativeErrorCode,
+  message: string,
+  extras?: {
+    participantSession?: ParticipantSession;
+    existingEvidenceItemId?: string;
+  },
+): WebSessionNarrativeResult {
+  return {
+    ok: false,
+    errors: [{ code, message }],
+    ...extras,
+  };
+}
+
+function evidenceItemIdFor(session: ParticipantSession, options?: WebSessionNarrativeOptions): string {
+  return options?.evidenceItemIdFactory?.(session) ?? `raw_evidence_${crypto.randomUUID()}`;
+}
+
+export function submitWebSessionFirstNarrative(
+  raw: string,
+  narrativeText: string,
+  repos: WebSessionNarrativeRepos,
+  options?: WebSessionNarrativeOptions,
+): WebSessionNarrativeResult {
+  const trimmed = narrativeText.trim();
+  if (!trimmed) {
+    return narrativeError("empty_narrative", "First narrative text is required.");
+  }
+
+  const resolved = resolveSessionAccessToken(raw, repos.sessionAccessTokens, repos.participantSessions, options);
+  if (!resolved.ok) {
+    return { ok: false, errors: resolved.errors };
+  }
+  if (resolved.token.channelType !== "web_session_chatbot") {
+    return narrativeError("channel_type_mismatch", "Session access token is not a web session token.", {
+      participantSession: resolved.participantSession,
+    });
+  }
+
+  const existingEvidenceItemId =
+    resolved.participantSession.firstNarrativeEvidenceId ??
+    resolved.participantSession.rawEvidence.firstNarrativeEvidenceId;
+  if (existingEvidenceItemId) {
+    return narrativeError(
+      "narrative_already_submitted",
+      "First narrative has already been submitted for this participant session.",
+      {
+        participantSession: resolved.participantSession,
+        existingEvidenceItemId,
+      },
+    );
+  }
+
+  const capturedAt = tokenNow(options);
+  const evidenceItem: RawEvidenceItem = {
+    evidenceItemId: evidenceItemIdFor(resolved.participantSession, options),
+    sessionId: resolved.participantSession.sessionId,
+    evidenceType: "participant_text_narrative",
+    sourceChannel: "web_session_chatbot",
+    rawContent: trimmed,
+    language: resolved.participantSession.languagePreference,
+    capturedAt,
+    capturedBy: "participant",
+    trustStatus: "raw_unreviewed",
+    confidenceScore: 1,
+    originalFileName: null,
+    providerJobId: null,
+    linkedClarificationItemId: null,
+    notes: "Captured as the participant's first text narrative through the web session path.",
+  };
+  const evidenceValidation = validateRawEvidenceItem(evidenceItem);
+  if (!evidenceValidation.ok) {
+    return narrativeError("invalid_raw_evidence", `Generated RawEvidenceItem failed validation: ${validationMessage(evidenceValidation.errors)}`, {
+      participantSession: resolved.participantSession,
+    });
+  }
+
+  const rawEvidenceItems = [...resolved.participantSession.rawEvidenceItems, evidenceItem];
+  const rawEvidenceSectionItems = [...resolved.participantSession.rawEvidence.rawEvidenceItems, evidenceItem];
+  const updatedSession: ParticipantSession = {
+    ...resolved.participantSession,
+    sessionState: "first_narrative_received",
+    rawEvidenceItems,
+    firstNarrativeStatus: "received_text",
+    firstNarrativeEvidenceId: evidenceItem.evidenceItemId,
+    extractionStatus: "eligible",
+    rawEvidence: {
+      ...resolved.participantSession.rawEvidence,
+      rawEvidenceItems: rawEvidenceSectionItems,
+      firstNarrativeEvidenceId: evidenceItem.evidenceItemId,
+    },
+    analysisProgress: {
+      ...resolved.participantSession.analysisProgress,
+      firstNarrativeStatus: "received_text",
+      extractionStatus: "eligible",
+    },
+    updatedAt: capturedAt,
+  };
+  const sessionValidation = validateParticipantSession(updatedSession);
+  if (!sessionValidation.ok) {
+    return narrativeError("invalid_participant_session", `Updated ParticipantSession failed validation: ${validationMessage(sessionValidation.errors)}`, {
+      participantSession: resolved.participantSession,
+    });
+  }
+
+  repos.rawEvidenceItems.save(evidenceItem);
+  repos.participantSessions.save(updatedSession);
+  return {
+    ok: true,
+    participantSession: updatedSession,
+    rawEvidenceItem: evidenceItem,
+  };
 }

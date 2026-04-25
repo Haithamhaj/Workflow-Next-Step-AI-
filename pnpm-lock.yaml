@@ -35,6 +35,9 @@ importers:
       '@workflow/packages-output':
         specifier: workspace:*
         version: link:../../packages/packages-output
+      '@workflow/participant-sessions':
+        specifier: workspace:*
+        version: link:../../packages/participant-sessions
       '@workflow/persistence':
         specifier: workspace:*
         version: link:../../packages/persistence
