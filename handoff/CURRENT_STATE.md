@@ -12,6 +12,41 @@
 
 **Pass 5 Block 14 nested extraction governance hardening added on branch `codex/pass5-block0-1-contracts`; Pass 5 remains not accepted.**
 
+**Pass 5 Block 14 FirstPassExtractionOutput contract-alignment hardening added on branch `codex/pass5-block0-1-contracts`; Pass 5 remains not accepted.**
+
+Block 14 extraction contract-alignment hardening changed only provider-output governance and prompt/schema guidance:
+
+- added a compact canonical `FirstPassExtractionOutput` skeleton to `first_pass_extraction_prompt`
+- added required extracted item, sequence map, clarification candidate, boundary signal, unmapped content, extraction defect, and evidence dispute field guidance
+- added enum guidance for extraction status, extracted item statuses, sequence relation type, confidence, review state, defect/dispute classifications, and candidate statuses
+- strengthened repair prompt guidance so repairs must preserve existing content, must not invent workflow facts/evidence/anchors/quotes/offsets/owners/thresholds/sequence, and must downgrade or reject unrecoverable malformed clean items
+- added detailed schema validation errors with phase, field path, keyword, expected params, and safe actual-value summary
+- added one governed provider-backed repair attempt for parseable outputs that pass array-shape checks but fail full `FirstPassExtractionOutput` schema validation
+- schema-invalid repair failures now mark the provider job failed and the participant session extraction status failed instead of leaving the job running
+- proof script added: `scripts/prove-pass5-block14-extraction-contract-alignment.mjs`
+
+Contract-alignment hardening proof commands passed:
+
+- `pnpm --filter @workflow/participant-sessions build`
+- `pnpm --filter @workflow/prompts build`
+- `pnpm build:contracts`
+- `node scripts/prove-pass5-block9-first-pass-extraction.mjs`
+- `node scripts/prove-pass5-block14-extraction-governance-hardening.mjs`
+- `node scripts/prove-pass5-block14-nested-extraction-governance.mjs`
+- `node scripts/prove-pass5-block14-extraction-contract-alignment.mjs`
+- `pnpm typecheck`
+- `pnpm build`
+
+The post-contract-alignment live acceptance proof still did not pass:
+
+- `node scripts/prove-pass5-block14-full-live.mjs` reached live Google provider extraction
+- `participant_guidance_prompt` succeeded live with Google `gemini-3.1-pro-preview`
+- `first_pass_extraction_prompt` returned a valid-enough output for schema validation after the contract-alignment hardening
+- the prior schema mismatch class for missing extracted item fields was resolved
+- the new live blocker is the Block 14 no-drop assertion: `Live extraction must preserve unclear content as unmapped.`
+- specifically, `extractionResult.createdExtraction.unmappedContentItems.length` was `0` at `scripts/prove-pass5-block14-full-live.mjs:272`
+- Pass 5 must remain open until Block 14 preserves the intentionally unclear live fixture content as unmapped content and all required live provider/channel/dashboard/failure proofs pass
+
 Block 14 nested extraction governance hardening changed only malformed nested provider-output handling:
 
 - added pre-governance validation for extracted item nested arrays, especially `evidenceAnchors[]` and `relatedItemIds[]`
