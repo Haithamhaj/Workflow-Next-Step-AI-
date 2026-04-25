@@ -2,6 +2,28 @@
 
 **Accepted baseline: Pass 9 (Package Preview + Release Decision Surface), merged to `main` 2026-04-23, commit `41a8232`.**
 
+**Pass 3 — Hierarchy Intake & Approval is accepted locally on branch `codex/pass3-final-closure`.**
+
+Final Pass 3 status: `pass3_hierarchy_intake_approval_accepted`
+
+Final Pass 3 closure base: `f16e1cf1d8a0b742d911a5d7468388fa3355d20e`
+
+Final Pass 3 closure commit: the commit containing this handoff update on `codex/pass3-final-closure`.
+
+Next slice: **Pass 4 — Participant Targeting / Rollout Planning**
+
+Pass 4 has not been implemented.
+
+Final closure proofs passed:
+
+- `pnpm build:contracts`
+- `pnpm typecheck`
+- `pnpm build`
+- fresh SQLite proof DB under `/tmp/workflow-pass3-final-closure.sqlite`
+- provider-failure/manual-fallback proof DB under `/tmp/workflow-pass3-final-closure-failure.sqlite`
+- persistence restart/reload proof using the same SQLite path
+- in-app browser proof for the visual hierarchy workbench
+
 Pass 2 (Intake & Context Build) is active on top of the Pass 9 baseline.
 
 Phase 1 status: `phase_proven`.
