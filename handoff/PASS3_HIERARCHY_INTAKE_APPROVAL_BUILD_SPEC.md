@@ -1277,6 +1277,13 @@ Final verification:
 - no secret values, env files, or test DB files were committed; only safe `.env.example` was committed
 - no prompt testing, participant targeting, rollout, sessions, workflow analysis, synthesis/evaluation, or package generation was added
 
+Canonical provider proof note added during Pass 4 provider follow-up:
+
+- The canonical Workflow AI proof method is the Pass 2-style local env activation from `/Users/haitham/development/Workflow/.env.local` with canonical key `GOOGLE_AI_API_KEY`.
+- Exact provider-status proof command: `cd /Users/haitham/development/Workflow && set -a && source /Users/haitham/development/Workflow/.env.local && set +a && pnpm --filter @workflow/admin-web start -H 127.0.0.1 -p 3113`, followed by `curl -sS http://127.0.0.1:3113/api/provider-status`.
+- Required safe proof result: provider `google`, `keyPresent: true`, `diagnosticsStatus: provider_success`, and resolved model `gemini-3.1-pro-preview` unless `GOOGLE_AI_MODEL` is configured.
+- If a previous proof used `/Users/haitham/development/AI-Coach-Mastery/.env`, that was a historical temporary workaround and is not the canonical Workflow proof method.
+
 Patch 3.5 accepted boundary:
 
 This patch hardened shared provider configuration only. It did not add a new analytical capability or move into prompt testing.
@@ -1753,4 +1760,3 @@ The following remain intentionally deferred beyond Pass 3:
 - product-wide design system refinement
 
 Pass 3 closes with minimum visual inspectability, not final product UX.
-

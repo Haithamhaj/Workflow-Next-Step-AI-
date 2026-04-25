@@ -47,11 +47,13 @@ Pass 5 begins after accepted Pass 4. It must consume approved Pass 4 targeting/r
 - Provider configuration uses `GOOGLE_AI_API_KEY` and optional `GOOGLE_AI_MODEL`.
 - Provider diagnostics expose whether a key is present and the resolved model, never the key value.
 - No secret values are recorded in handoff files.
-- Patch 3.5 and Patch 4 recorded provider-success outcomes but did not record the exact local command or secret-loading path used for those proofs. The reproducible convention going forward is:
-  - put secrets in an ignored local env file, or point `WORKFLOW_ENV_FILE` at one;
-  - start the admin runtime with `WORKFLOW_ENV_FILE=/absolute/path/to/ignored.env WORKFLOW_INTAKE_SQLITE_PATH=/tmp/workflow-provider-proof.sqlite pnpm --filter @workflow/admin-web start -H 127.0.0.1 -p 3144`;
-  - verify with `curl -sS http://127.0.0.1:3144/api/provider-status`.
-- The shared Google resolver loads `GOOGLE_AI_API_KEY` and `GOOGLE_AI_MODEL` from the process env first, then from `WORKFLOW_ENV_FILE`, then from ignored `.env.local` / `.env` files in the app cwd or repo root. It does not log or expose key values.
+- Patch 3.5 and Patch 4 recorded provider-success outcomes but did not record the exact local command or secret-loading path used for those proofs. Canonical Workflow AI proof convention going forward:
+  - canonical ignored env file: `/Users/haitham/development/Workflow/.env.local`;
+  - canonical key: `GOOGLE_AI_API_KEY`;
+  - start the admin runtime with `cd /Users/haitham/development/Workflow && set -a && source /Users/haitham/development/Workflow/.env.local && set +a && pnpm --filter @workflow/admin-web start -H 127.0.0.1 -p 3113`;
+  - verify with `curl -sS http://127.0.0.1:3113/api/provider-status`.
+- `WORKFLOW_ENV_FILE` is an optional override for temporary proof environments only. If Pass 3 ever used another project env file such as `/Users/haitham/development/AI-Coach-Mastery/.env`, record that as a historical temporary workaround, not the canonical Workflow proof method.
+- The shared Google resolver loads `GOOGLE_AI_API_KEY` and `GOOGLE_AI_MODEL` from the process env first, then from `WORKFLOW_ENV_FILE` when explicitly supplied, then from ignored `.env.local` / `.env` files in the app cwd or repo root. It does not log or expose key values.
 - Required safe provider proof fields are `googleAI.provider: google`, `googleAI.keyPresent: true`, `googleAI.diagnosticsStatus: provider_success`, and `googleAI.resolvedModel: gemini-3.1-pro-preview` unless `GOOGLE_AI_MODEL` is intentionally configured.
 
 ## Do not start without operator approval

@@ -25,7 +25,9 @@ Pass 4 provider follow-up:
 
 - Pass 3 Patch 3.5 and Patch 4 handoff records proved `provider_success` but did not preserve the exact command/env-loading path used to make the local Google key visible to the Next runtime.
 - Pass 4 now reuses the same shared Google provider resolver and provider registry path as Pass 3, including `GOOGLE_AI_API_KEY`, optional `GOOGLE_AI_MODEL`, and default `gemini-3.1-pro-preview`.
-- The shared resolver has a documented local proof convention: load process env first, then `WORKFLOW_ENV_FILE`, then ignored `.env.local` / `.env` files in the app cwd or repo root; provider diagnostics expose key presence and model only, never key values.
+- The canonical Workflow AI proof method is the Pass 2-style local env activation: `cd /Users/haitham/development/Workflow`, `set -a`, `source /Users/haitham/development/Workflow/.env.local`, `set +a`, then start admin-web and call `/api/provider-status`.
+- `WORKFLOW_ENV_FILE` remains an optional override for temporary proof environments only. Historical use of another project env file, if any, is not the canonical Workflow proof method.
+- The shared resolver loads process env first and can also read ignored `.env.local` / `.env` files in the app cwd or repo root; provider diagnostics expose key presence and model only, never key values.
 
 Pass 4 adds:
 
