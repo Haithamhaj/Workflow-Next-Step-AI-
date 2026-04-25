@@ -44,10 +44,12 @@ import type {
   ClarificationCandidateRepository,
   EvidenceDisputeRepository,
   FirstPassExtractionOutputRepository,
+  Pass6HandoffCandidateRepository,
   ParticipantSessionRepository,
   ProviderExtractionJobRepository,
   RawEvidenceItemRepository,
   SessionAccessTokenRepository,
+  SessionNextActionRepository,
   StoredProviderExtractionJob,
   StructuredPromptSpecRepository,
   TelegramIdentityBindingRepository,
@@ -3163,4 +3165,667 @@ export function createBoundarySignalFromAnswer(
     });
   }
   return { ok: true, value: signal, warnings: [], errors: [] };
+}
+
+export type AdminAssistantScope = "current_session" | "selected_sessions" | "case_pass5" | "targeted_records";
+
+export type AdminAssistantQueryIntent =
+  | "session_summary"
+  | "evidence_question"
+  | "clarification_status_question"
+  | "boundary_signal_question"
+  | "extraction_defect_question"
+  | "evidence_dispute_question"
+  | "next_action_question"
+  | "cross_session_comparison"
+  | "unresolved_items_question"
+  | "pass6_handoff_candidate_suggestion"
+  | "unsupported";
+
+export interface AdminAssistantStructuredRecord {
+  recordType: string;
+  recordId: string;
+  sessionId?: string;
+  label: string;
+  data: unknown;
+}
+
+export interface AdminAssistantEvidenceSnippet {
+  evidenceItemId: string;
+  sessionId: string;
+  evidenceType: RawEvidenceItem["evidenceType"];
+  sourceChannel: RawEvidenceItem["sourceChannel"];
+  trustStatus: RawEvidenceItem["trustStatus"];
+  capturedAt: string;
+  quote: string;
+}
+
+export interface AdminAssistantRetrievedChunk {
+  chunkId: string;
+  sourceRef: string;
+  text: string;
+}
+
+export interface AdminAssistantExcludedRecordReason {
+  recordType: string;
+  recordId?: string;
+  reason: string;
+}
+
+export interface AdminAssistantContextBundle {
+  questionId: string;
+  caseId: string;
+  scope: AdminAssistantScope;
+  requestedByAdminId: string;
+  queryIntent: AdminAssistantQueryIntent;
+  structuredRecords: AdminAssistantStructuredRecord[];
+  evidenceSnippets: AdminAssistantEvidenceSnippet[];
+  retrievedChunks: AdminAssistantRetrievedChunk[];
+  excludedRecordsReason: AdminAssistantExcludedRecordReason[];
+  dataFreshnessTimestamp: string;
+  permissionScope: "pass5_admin_read_only";
+  promptVersionId: string;
+}
+
+export interface AdminAssistantRoutedActionSuggestion {
+  actionType: string;
+  owningArea:
+    | "clarification_queue"
+    | "transcript_review"
+    | "evidence_review"
+    | "boundary_review"
+    | "session_next_action"
+    | "pass6_handoff_candidate_review"
+    | "manual_review";
+  label: string;
+  reason: string;
+  draftPayload?: unknown;
+  requiresAdminConfirmation: true;
+}
+
+export interface AdminAssistantAnswer {
+  conciseFinding: string;
+  evidenceBasis: string[];
+  confidenceLevel: "high" | "medium" | "low";
+  whatRemainsUncertain: string[];
+  recommendedAdminAction: string | null;
+  routedActionSuggestions: AdminAssistantRoutedActionSuggestion[];
+  references: string[];
+  providerStatus: "not_configured" | "failed" | "succeeded";
+  providerJobId: string;
+  providerOutputText?: string;
+  noMutationPerformed: true;
+}
+
+export interface AdminAssistantQuestionInput {
+  question: string;
+  scope: AdminAssistantScope;
+  caseId?: string;
+  sessionId?: string;
+  selectedSessionIds?: string[];
+  requestedByAdminId?: string;
+}
+
+export interface AdminAssistantRepos {
+  participantSessions: ParticipantSessionRepository;
+  sessionAccessTokens: SessionAccessTokenRepository;
+  telegramIdentityBindings: TelegramIdentityBindingRepository;
+  rawEvidenceItems: RawEvidenceItemRepository;
+  firstPassExtractionOutputs: FirstPassExtractionOutputRepository;
+  clarificationCandidates: ClarificationCandidateRepository;
+  boundarySignals: BoundarySignalRepository;
+  evidenceDisputes: EvidenceDisputeRepository;
+  sessionNextActions: SessionNextActionRepository;
+  pass6HandoffCandidates: Pass6HandoffCandidateRepository;
+  providerJobs: ProviderExtractionJobRepository;
+  promptSpecs: StructuredPromptSpecRepository;
+}
+
+export interface AdminAssistantOptions {
+  now?: () => string;
+  questionIdFactory?: () => string;
+  providerJobIdFactory?: () => string;
+  maxEvidenceSnippets?: number;
+}
+
+export type AdminAssistantResult =
+  | {
+      ok: true;
+      questionId: string;
+      intent: AdminAssistantQueryIntent;
+      contextBundle: AdminAssistantContextBundle;
+      compiledPrompt: string;
+      answer: AdminAssistantAnswer;
+      warnings: string[];
+      errors: [];
+    }
+  | {
+      ok: false;
+      questionId: string;
+      intent: AdminAssistantQueryIntent;
+      contextBundle: AdminAssistantContextBundle | null;
+      compiledPrompt: string | null;
+      answer: AdminAssistantAnswer | null;
+      warnings: string[];
+      errors: { code: "unsupported_intent" | "session_not_found" | "case_not_found" | "provider_execution_failed"; message: string }[];
+    };
+
+function assistantNow(options?: AdminAssistantOptions): string {
+  return options?.now?.() ?? new Date().toISOString();
+}
+
+function assistantQuestionId(options?: AdminAssistantOptions): string {
+  return options?.questionIdFactory?.() ?? `admin_assistant_question_${crypto.randomUUID()}`;
+}
+
+function assistantProviderJobId(options?: AdminAssistantOptions): string {
+  return options?.providerJobIdFactory?.() ?? `pass5_admin_assistant_job_${crypto.randomUUID()}`;
+}
+
+function normalizeQuestion(question: string): string {
+  return question.toLowerCase();
+}
+
+export function classifyAdminAssistantQuestion(question: string): AdminAssistantQueryIntent {
+  const q = normalizeQuestion(question);
+  if (q.includes("compare") || q.includes("across session") || q.includes("between participants")) return "cross_session_comparison";
+  if (q.includes("pass 6") || q.includes("handoff") || q.includes("later synthesis")) return "pass6_handoff_candidate_suggestion";
+  if (q.includes("dispute")) return "evidence_dispute_question";
+  if (q.includes("defect") || q.includes("failed extraction")) return "extraction_defect_question";
+  if (q.includes("boundary") || q.includes("escalat") || q.includes("not responsible") || q.includes("unknown")) return "boundary_signal_question";
+  if (q.includes("clarification") || q.includes("question")) return "clarification_status_question";
+  if (q.includes("next action") || q.includes("what should") || q.includes("what next")) return "next_action_question";
+  if (q.includes("unresolved") || q.includes("unmapped") || q.includes("gap")) return "unresolved_items_question";
+  if (q.includes("evidence") || q.includes("transcript") || q.includes("narrative") || q.includes("said")) return "evidence_question";
+  if (q.includes("summary") || q.includes("summarize") || q.includes("status")) return "session_summary";
+  return "unsupported";
+}
+
+function makeRecord(recordType: string, recordId: string, label: string, data: unknown, sessionId?: string): AdminAssistantStructuredRecord {
+  return { recordType, recordId, label, data, sessionId };
+}
+
+function snippetText(text: string, question: string, maxLength = 360): string {
+  const cleaned = text.replace(/\s+/g, " ").trim();
+  if (cleaned.length <= maxLength) return cleaned;
+  const terms = normalizeQuestion(question).split(/\W+/).filter((term) => term.length > 4);
+  const lower = cleaned.toLowerCase();
+  const index = terms.map((term) => lower.indexOf(term)).find((position) => position >= 0) ?? 0;
+  const start = Math.max(0, index - 80);
+  return `${start > 0 ? "..." : ""}${cleaned.slice(start, start + maxLength)}${start + maxLength < cleaned.length ? "..." : ""}`;
+}
+
+function redactedTokenSummary(token: SessionAccessToken): Record<string, unknown> {
+  return {
+    accessTokenId: token.accessTokenId,
+    participantSessionId: token.participantSessionId,
+    channelType: token.channelType,
+    tokenStatus: token.tokenStatus,
+    expiresAt: token.expiresAt,
+    lastUsedAt: token.lastUsedAt,
+    revokedAt: token.revokedAt,
+    revokedReason: token.revokedReason,
+    useCount: token.useCount,
+    boundChannelIdentityId: token.boundChannelIdentityId,
+    tokenHash: "redacted",
+  };
+}
+
+function summarizeExtraction(output: FirstPassExtractionOutput): Record<string, unknown> {
+  return {
+    extractionId: output.extractionId,
+    sessionId: output.sessionId,
+    extractionStatus: output.extractionStatus,
+    basisEvidenceItemIds: output.basisEvidenceItemIds,
+    extractedActorCount: output.extractedActors.length,
+    extractedStepCount: output.extractedSteps.length,
+    extractedDecisionCount: output.extractedDecisionPoints.length,
+    extractedHandoffCount: output.extractedHandoffs.length,
+    sequenceMap: {
+      orderedItemIds: output.sequenceMap.orderedItemIds,
+      sequenceLinkCount: output.sequenceMap.sequenceLinks.length,
+      unclearTransitionCount: output.sequenceMap.unclearTransitions.length,
+      notes: output.sequenceMap.notes,
+    },
+    unmappedContentItems: output.unmappedContentItems,
+    extractionDefects: output.extractionDefects,
+    evidenceDisputes: output.evidenceDisputes,
+    confidenceNotes: output.confidenceNotes,
+    contradictionNotes: output.contradictionNotes,
+    sourceCoverageSummary: output.sourceCoverageSummary,
+  };
+}
+
+function sessionsForAssistant(input: AdminAssistantQuestionInput, repos: AdminAssistantRepos): {
+  sessions: ParticipantSession[];
+  excluded: AdminAssistantExcludedRecordReason[];
+  caseId: string | null;
+} {
+  const excluded: AdminAssistantExcludedRecordReason[] = [];
+  if (input.scope === "current_session") {
+    const session = input.sessionId ? repos.participantSessions.findById(input.sessionId) : null;
+    return { sessions: session ? [session] : [], excluded, caseId: session?.caseId ?? input.caseId ?? null };
+  }
+  if (input.scope === "selected_sessions") {
+    const selectedIds = new Set(input.selectedSessionIds ?? []);
+    const sessions = [...selectedIds].map((id) => repos.participantSessions.findById(id)).filter((session): session is ParticipantSession => Boolean(session));
+    for (const session of repos.participantSessions.findAll()) {
+      if (!selectedIds.has(session.sessionId)) excluded.push({ recordType: "ParticipantSession", recordId: session.sessionId, reason: "Not included in selected session scope." });
+    }
+    return { sessions, excluded, caseId: sessions[0]?.caseId ?? input.caseId ?? null };
+  }
+  if (input.scope === "case_pass5") {
+    const caseId = input.caseId ?? (input.sessionId ? repos.participantSessions.findById(input.sessionId)?.caseId : undefined);
+    if (!caseId) return { sessions: [], excluded, caseId: null };
+    const sessions = repos.participantSessions.findByCaseId(caseId);
+    for (const session of repos.participantSessions.findAll()) {
+      if (session.caseId !== caseId) excluded.push({ recordType: "ParticipantSession", recordId: session.sessionId, reason: `Different caseId ${session.caseId} excluded from case scope ${caseId}.` });
+    }
+    return { sessions, excluded, caseId };
+  }
+  const sessionIds = new Set(input.selectedSessionIds ?? (input.sessionId ? [input.sessionId] : []));
+  const sessions = [...sessionIds].map((id) => repos.participantSessions.findById(id)).filter((session): session is ParticipantSession => Boolean(session));
+  return { sessions, excluded, caseId: input.caseId ?? sessions[0]?.caseId ?? null };
+}
+
+function shouldIncludeEvidenceSnippet(intent: AdminAssistantQueryIntent, evidence: RawEvidenceItem, question: string): boolean {
+  if (intent === "evidence_question" || intent === "session_summary" || intent === "cross_session_comparison") return true;
+  if (intent === "clarification_status_question") return evidence.evidenceType === "participant_clarification_answer";
+  const raw = evidence.rawContent?.toLowerCase() ?? "";
+  return normalizeQuestion(question).split(/\W+/).some((term) => term.length > 4 && raw.includes(term));
+}
+
+export function buildAdminAssistantContextBundle(
+  input: AdminAssistantQuestionInput,
+  repos: AdminAssistantRepos,
+  options?: AdminAssistantOptions,
+): AdminAssistantContextBundle | null {
+  const intent = classifyAdminAssistantQuestion(input.question);
+  const scoped = sessionsForAssistant(input, repos);
+  if (!scoped.caseId || scoped.sessions.length === 0) return null;
+  const questionId = assistantQuestionId(options);
+  const structuredRecords: AdminAssistantStructuredRecord[] = [];
+  const evidenceSnippets: AdminAssistantEvidenceSnippet[] = [];
+  const retrievedChunks: AdminAssistantRetrievedChunk[] = [];
+  const excludedRecordsReason: AdminAssistantExcludedRecordReason[] = [...scoped.excluded];
+  const maxEvidenceSnippets = options?.maxEvidenceSnippets ?? 8;
+
+  for (const session of scoped.sessions) {
+    structuredRecords.push(makeRecord("ParticipantSession", session.sessionId, session.participantLabel, session, session.sessionId));
+    for (const token of repos.sessionAccessTokens.findByParticipantSessionId(session.sessionId)) {
+      structuredRecords.push(makeRecord("SessionAccessToken", token.accessTokenId, "Redacted access token metadata", redactedTokenSummary(token), session.sessionId));
+    }
+    for (const binding of repos.telegramIdentityBindings.findByParticipantSessionId(session.sessionId)) {
+      structuredRecords.push(makeRecord("TelegramIdentityBinding", binding.bindingId, binding.bindingStatus, binding, session.sessionId));
+    }
+    const evidenceItems = repos.rawEvidenceItems.findBySessionId(session.sessionId);
+    for (const evidence of evidenceItems) {
+      structuredRecords.push(makeRecord("RawEvidenceItem", evidence.evidenceItemId, `${evidence.evidenceType} / ${evidence.trustStatus}`, {
+        evidenceItemId: evidence.evidenceItemId,
+        sessionId: evidence.sessionId,
+        evidenceType: evidence.evidenceType,
+        sourceChannel: evidence.sourceChannel,
+        language: evidence.language,
+        capturedAt: evidence.capturedAt,
+        capturedBy: evidence.capturedBy,
+        trustStatus: evidence.trustStatus,
+        originalFileName: evidence.originalFileName,
+        providerJobId: evidence.providerJobId,
+        linkedClarificationItemId: evidence.linkedClarificationItemId,
+        hasRawContent: Boolean(evidence.rawContent),
+        artifactRef: evidence.artifactRef,
+        notes: evidence.notes,
+      }, session.sessionId));
+      if (evidence.rawContent && evidenceSnippets.length < maxEvidenceSnippets && shouldIncludeEvidenceSnippet(intent, evidence, input.question)) {
+        evidenceSnippets.push({
+          evidenceItemId: evidence.evidenceItemId,
+          sessionId: evidence.sessionId,
+          evidenceType: evidence.evidenceType,
+          sourceChannel: evidence.sourceChannel,
+          trustStatus: evidence.trustStatus,
+          capturedAt: evidence.capturedAt,
+          quote: snippetText(evidence.rawContent, input.question),
+        });
+      }
+      if (evidence.rawContent && evidence.rawContent.length > 1200 && evidenceSnippets.length < maxEvidenceSnippets) {
+        retrievedChunks.push({
+          chunkId: `raw-evidence-snippet:${evidence.evidenceItemId}:0`,
+          sourceRef: evidence.evidenceItemId,
+          text: snippetText(evidence.rawContent, input.question, 600),
+        });
+      }
+    }
+    for (const output of repos.firstPassExtractionOutputs.findBySessionId(session.sessionId)) {
+      structuredRecords.push(makeRecord("FirstPassExtractionOutput", output.extractionId, output.extractionStatus, summarizeExtraction(output), session.sessionId));
+    }
+    for (const candidate of repos.clarificationCandidates.findBySessionId(session.sessionId)) {
+      structuredRecords.push(makeRecord("ClarificationCandidate", candidate.candidateId, `${candidate.status} / ${candidate.priority}`, candidate, session.sessionId));
+    }
+    for (const signal of repos.boundarySignals.findBySessionId(session.sessionId)) {
+      structuredRecords.push(makeRecord("BoundarySignal", signal.boundarySignalId, signal.boundaryType, signal, session.sessionId));
+    }
+    for (const dispute of repos.evidenceDisputes.findBySessionId(session.sessionId)) {
+      structuredRecords.push(makeRecord("EvidenceDispute", dispute.disputeId, dispute.disputeType, dispute, session.sessionId));
+    }
+    for (const action of repos.sessionNextActions.findBySessionId(session.sessionId)) {
+      structuredRecords.push(makeRecord("SessionNextAction", action.nextActionId, action.actionType, action, session.sessionId));
+    }
+    for (const handoff of repos.pass6HandoffCandidates.findBySessionId(session.sessionId)) {
+      structuredRecords.push(makeRecord("Pass6HandoffCandidate", handoff.handoffCandidateId, handoff.candidateType, handoff, session.sessionId));
+    }
+  }
+
+  if (intent === "unsupported") {
+    excludedRecordsReason.push({ recordType: "AdminAssistantQuery", reason: "Unsupported question intent; only bounded Pass 5 operational questions are answered." });
+  }
+
+  return {
+    questionId,
+    caseId: scoped.caseId,
+    scope: input.scope,
+    requestedByAdminId: input.requestedByAdminId ?? "admin_operator",
+    queryIntent: intent,
+    structuredRecords,
+    evidenceSnippets,
+    retrievedChunks,
+    excludedRecordsReason,
+    dataFreshnessTimestamp: assistantNow(options),
+    permissionScope: "pass5_admin_read_only",
+    promptVersionId: "pending_compile",
+  };
+}
+
+function recordIds(records: AdminAssistantStructuredRecord[], type: string): string[] {
+  return records.filter((record) => record.recordType === type).map((record) => record.recordId);
+}
+
+function deriveAssistantRoutedActions(bundle: AdminAssistantContextBundle): AdminAssistantRoutedActionSuggestion[] {
+  const actions: AdminAssistantRoutedActionSuggestion[] = [];
+  const candidateIds = recordIds(bundle.structuredRecords, "ClarificationCandidate");
+  const disputeIds = recordIds(bundle.structuredRecords, "EvidenceDispute");
+  const boundaryIds = recordIds(bundle.structuredRecords, "BoundarySignal");
+  const extractionIds = recordIds(bundle.structuredRecords, "FirstPassExtractionOutput");
+  if (bundle.queryIntent === "clarification_status_question" && candidateIds.length > 0) {
+    actions.push({
+      actionType: "review_clarification_queue",
+      owningArea: "clarification_queue",
+      label: "Review clarification queue",
+      reason: "Open or historical clarification candidates are present in the bounded context.",
+      draftPayload: { candidateIds },
+      requiresAdminConfirmation: true,
+    });
+  }
+  if (bundle.queryIntent === "evidence_dispute_question" && disputeIds.length > 0) {
+    actions.push({
+      actionType: "review_evidence_dispute",
+      owningArea: "evidence_review",
+      label: "Review evidence dispute",
+      reason: "Evidence dispute records require admin review before any later synthesis use.",
+      draftPayload: { disputeIds },
+      requiresAdminConfirmation: true,
+    });
+  }
+  if (bundle.queryIntent === "boundary_signal_question" && boundaryIds.length > 0) {
+    actions.push({
+      actionType: "review_boundary_signal",
+      owningArea: "boundary_review",
+      label: "Review boundary signal",
+      reason: "Boundary signals indicate possible ownership, visibility, or escalation limits.",
+      draftPayload: { boundaryIds },
+      requiresAdminConfirmation: true,
+    });
+  }
+  if (bundle.queryIntent === "pass6_handoff_candidate_suggestion") {
+    actions.push({
+      actionType: "draft_pass6_handoff_candidate",
+      owningArea: "pass6_handoff_candidate_review",
+      label: "Draft later Pass 6 handoff candidate",
+      reason: "This is only a candidate recommendation for later review, not synthesis output.",
+      draftPayload: { extractionIds, sessionIds: recordIds(bundle.structuredRecords, "ParticipantSession") },
+      requiresAdminConfirmation: true,
+    });
+  }
+  if (actions.length === 0) {
+    actions.push({
+      actionType: "manual_review",
+      owningArea: "manual_review",
+      label: "Manual admin review",
+      reason: "No safe direct routed action was inferred from the bounded context.",
+      requiresAdminConfirmation: true,
+    });
+  }
+  return actions;
+}
+
+function buildDeterministicAssistantAnswer(input: {
+  question: string;
+  bundle: AdminAssistantContextBundle;
+  providerStatus: AdminAssistantAnswer["providerStatus"];
+  providerJobId: string;
+  providerOutputText?: string;
+}): AdminAssistantAnswer {
+  const sessionRecords = input.bundle.structuredRecords.filter((record) => record.recordType === "ParticipantSession");
+  const evidenceRefs = input.bundle.evidenceSnippets.map((snippet) => snippet.evidenceItemId);
+  const defectCount = input.bundle.structuredRecords
+    .filter((record) => record.recordType === "FirstPassExtractionOutput")
+    .reduce((sum, record) => {
+      const data = record.data as { extractionDefects?: unknown[] };
+      return sum + (Array.isArray(data.extractionDefects) ? data.extractionDefects.length : 0);
+    }, 0);
+  const disputeCount = recordIds(input.bundle.structuredRecords, "EvidenceDispute").length
+    + input.bundle.structuredRecords
+      .filter((record) => record.recordType === "FirstPassExtractionOutput")
+      .reduce((sum, record) => {
+        const data = record.data as { evidenceDisputes?: unknown[] };
+        return sum + (Array.isArray(data.evidenceDisputes) ? data.evidenceDisputes.length : 0);
+      }, 0);
+  const openCandidates = input.bundle.structuredRecords.filter((record) => {
+    if (record.recordType !== "ClarificationCandidate") return false;
+    const data = record.data as ClarificationCandidate;
+    return data.status === "open" || data.status === "asked" || data.status === "partially_resolved";
+  });
+  const boundaryCount = recordIds(input.bundle.structuredRecords, "BoundarySignal").length;
+  const finding = [
+    `Intent: ${input.bundle.queryIntent}.`,
+    `Scope contains ${sessionRecords.length} participant session(s), ${input.bundle.evidenceSnippets.length} evidence snippet(s), ${openCandidates.length} actionable clarification candidate(s), ${boundaryCount} boundary signal(s), ${defectCount} extraction defect(s), and ${disputeCount} evidence dispute(s).`,
+  ].join(" ");
+  const uncertainty: string[] = [];
+  if (input.bundle.promptVersionId === "provider_not_configured") uncertainty.push("Provider execution was not configured; this is deterministic manual fallback, not AI success.");
+  if (input.bundle.evidenceSnippets.length === 0) uncertainty.push("No raw evidence snippet was included in the bounded context.");
+  if (input.bundle.excludedRecordsReason.length > 0) uncertainty.push("Some records were excluded by scope; inspect excludedRecordsReason in the context bundle.");
+  return {
+    conciseFinding: input.providerOutputText ? `Provider response received for bounded Pass 5 context. Deterministic summary: ${finding}` : finding,
+    evidenceBasis: [
+      ...sessionRecords.map((record) => `${record.recordId}: ${record.label}`),
+      ...evidenceRefs.map((id) => `RawEvidenceItem:${id}`),
+    ],
+    confidenceLevel: input.bundle.evidenceSnippets.length > 0 || sessionRecords.length > 0 ? "medium" : "low",
+    whatRemainsUncertain: uncertainty,
+    recommendedAdminAction: deriveAssistantRoutedActions(input.bundle)[0]?.label ?? "Manual admin review",
+    routedActionSuggestions: deriveAssistantRoutedActions(input.bundle),
+    references: input.bundle.structuredRecords.map((record) => `${record.recordType}:${record.recordId}`),
+    providerStatus: input.providerStatus,
+    providerJobId: input.providerJobId,
+    providerOutputText: input.providerOutputText,
+    noMutationPerformed: true,
+  };
+}
+
+function saveAdminAssistantProviderJob(input: {
+  bundle: AdminAssistantContextBundle;
+  promptVersionId: string;
+  basePromptVersionId: string;
+  outputContractRef?: string;
+  provider: FirstPassExtractionExecutor | null;
+  repos: Pick<AdminAssistantRepos, "providerJobs">;
+  options?: AdminAssistantOptions;
+  status?: StoredProviderExtractionJob["status"];
+  errorMessage?: string;
+  outputRef?: string;
+}): StoredProviderExtractionJob {
+  const timestamp = assistantNow(input.options);
+  const job: StoredProviderExtractionJob = {
+    jobId: assistantProviderJobId(input.options),
+    sourceId: input.bundle.questionId,
+    sessionId: input.bundle.structuredRecords.find((record) => record.sessionId)?.sessionId ?? input.bundle.caseId,
+    caseId: input.bundle.caseId,
+    provider: input.provider?.name ?? "google",
+    jobKind: "pass5_prompt_test",
+    status: input.status ?? "queued",
+    inputType: "manual_note",
+    promptFamily: PASS5_PROMPT_FAMILY,
+    promptName: "admin_assistant_prompt",
+    promptVersionId: input.promptVersionId,
+    basePromptVersionId: input.basePromptVersionId,
+    inputBundleRef: JSON.stringify({
+      questionId: input.bundle.questionId,
+      caseId: input.bundle.caseId,
+      scope: input.bundle.scope,
+      queryIntent: input.bundle.queryIntent,
+      structuredRecordCount: input.bundle.structuredRecords.length,
+      evidenceSnippetCount: input.bundle.evidenceSnippets.length,
+      retrievedChunkCount: input.bundle.retrievedChunks.length,
+    }),
+    outputContractRef: input.outputContractRef,
+    outputRef: input.outputRef,
+    errorMessage: input.errorMessage,
+    createdAt: timestamp,
+    updatedAt: timestamp,
+  };
+  input.repos.providerJobs.save(job);
+  return job;
+}
+
+export async function runAdminAssistantQuestion(
+  input: AdminAssistantQuestionInput,
+  repos: AdminAssistantRepos,
+  executor: FirstPassExtractionExecutor | null,
+  options?: AdminAssistantOptions,
+): Promise<AdminAssistantResult> {
+  const intent = classifyAdminAssistantQuestion(input.question);
+  const emptyQuestionId = assistantQuestionId(options);
+  if (intent === "unsupported") {
+    const bundle = buildAdminAssistantContextBundle(input, repos, { ...options, questionIdFactory: () => emptyQuestionId });
+    return {
+      ok: false,
+      questionId: emptyQuestionId,
+      intent,
+      contextBundle: bundle,
+      compiledPrompt: null,
+      answer: null,
+      warnings: ["Unsupported admin assistant question intent."],
+      errors: [{ code: "unsupported_intent", message: "Unsupported Pass 5 admin assistant question. Use session, evidence, clarification, boundary, defect, dispute, next action, comparison, unresolved item, or later handoff questions." }],
+    };
+  }
+  const bundle = buildAdminAssistantContextBundle(input, repos, { ...options, questionIdFactory: () => emptyQuestionId });
+  if (!bundle) {
+    return {
+      ok: false,
+      questionId: emptyQuestionId,
+      intent,
+      contextBundle: null,
+      compiledPrompt: null,
+      answer: null,
+      warnings: [],
+      errors: [{ code: input.sessionId ? "session_not_found" : "case_not_found", message: "No participant-session records matched the requested assistant scope." }],
+    };
+  }
+  const compiled = compilePass5Prompt("admin_assistant_prompt", {
+    promptName: "admin_assistant_prompt",
+    caseId: bundle.caseId,
+    sessionId: input.sessionId,
+    languagePreference: undefined,
+    evidenceRefs: bundle.evidenceSnippets.map((snippet) => snippet.evidenceItemId),
+    adminInstruction: input.question,
+    rawContent: JSON.stringify(bundle),
+    contentRef: `admin-assistant-context-bundle:${bundle.questionId}`,
+    contextBundleRef: bundle.questionId,
+  }, repos.promptSpecs);
+  const compiledBundle: AdminAssistantContextBundle = {
+    ...bundle,
+    promptVersionId: compiled.promptSpec.promptSpecId,
+  };
+  const queued = saveAdminAssistantProviderJob({
+    bundle: compiledBundle,
+    promptVersionId: compiled.promptSpec.promptSpecId,
+    basePromptVersionId: compiled.basePromptSpec.promptSpecId,
+    outputContractRef: compiled.promptSpec.outputContractRef,
+    provider: executor,
+    repos,
+    options,
+  });
+  if (!executor) {
+    const failed = {
+      ...queued,
+      status: "failed" as const,
+      errorMessage: "provider_not_configured: no provider supplied for Pass 5 admin assistant.",
+      updatedAt: assistantNow(options),
+    };
+    repos.providerJobs.save(failed);
+    const fallbackBundle = { ...compiledBundle, promptVersionId: "provider_not_configured" };
+    return {
+      ok: true,
+      questionId: fallbackBundle.questionId,
+      intent,
+      contextBundle: fallbackBundle,
+      compiledPrompt: compiled.compiledPrompt,
+      answer: buildDeterministicAssistantAnswer({
+        question: input.question,
+        bundle: fallbackBundle,
+        providerStatus: "not_configured",
+        providerJobId: failed.jobId,
+      }),
+      warnings: ["Provider not configured; returned deterministic manual fallback. No mutation performed."],
+      errors: [],
+    };
+  }
+  const running = { ...queued, status: "running" as const, updatedAt: assistantNow(options) };
+  repos.providerJobs.save(running);
+  try {
+    const providerOutput = await executor.runPromptText({ compiledPrompt: compiled.compiledPrompt });
+    const succeeded = {
+      ...running,
+      status: "succeeded" as const,
+      provider: providerOutput.provider,
+      model: providerOutput.model,
+      outputRef: `admin_assistant_output_length:${providerOutput.text.length}`,
+      updatedAt: assistantNow(options),
+    };
+    repos.providerJobs.save(succeeded);
+    return {
+      ok: true,
+      questionId: compiledBundle.questionId,
+      intent,
+      contextBundle: compiledBundle,
+      compiledPrompt: compiled.compiledPrompt,
+      answer: buildDeterministicAssistantAnswer({
+        question: input.question,
+        bundle: compiledBundle,
+        providerStatus: "succeeded",
+        providerJobId: succeeded.jobId,
+        providerOutputText: providerOutput.text,
+      }),
+      warnings: ["Provider output was returned as assistant text only; no records were mutated."],
+      errors: [],
+    };
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    const failed = { ...running, status: "failed" as const, errorMessage: message, updatedAt: assistantNow(options) };
+    repos.providerJobs.save(failed);
+    return {
+      ok: false,
+      questionId: compiledBundle.questionId,
+      intent,
+      contextBundle: compiledBundle,
+      compiledPrompt: compiled.compiledPrompt,
+      answer: buildDeterministicAssistantAnswer({
+        question: input.question,
+        bundle: compiledBundle,
+        providerStatus: "failed",
+        providerJobId: failed.jobId,
+      }),
+      warnings: ["Provider execution failed; deterministic manual fallback is present for inspection only. No mutation performed."],
+      errors: [{ code: "provider_execution_failed", message }],
+    };
+  }
 }

@@ -2,6 +2,50 @@
 
 **Accepted baseline: Pass 9 (Package Preview + Release Decision Surface), merged to `main` 2026-04-23, commit `41a8232`.**
 
+**Pass 5 Block 12 — Admin Assistant / Section Copilot implemented on branch `codex/pass5-block0-1-contracts`.**
+
+Block 12 adds a governed read-only Pass 5 admin assistant:
+
+- domain-layer assistant pipeline in `@workflow/participant-sessions`
+- `AdminAssistantContextBundle` construction with DB-first structured records, targeted evidence snippets, optional retrieved chunks, excluded-record reasons, data freshness, permission scope, and prompt version id
+- supported query intents: session summary, evidence question, clarification status, boundary signal, extraction defect, evidence dispute, next action, cross-session comparison, unresolved items, and Pass 6 handoff candidate suggestion
+- prompt execution path compiles `admin_assistant_prompt` through the existing Pass 5 Prompt Family and records provider jobs
+- provider-not-configured and provider-failure states are visible and not reported as provider success
+- deterministic manual fallback answer includes findings, references, uncertainty, confidence, and routed-action suggestions only
+- session detail dashboard panel `Admin Assistant / Section Copilot`
+- thin API route `/api/participant-sessions/assistant`
+- proof script: `scripts/prove-pass5-block12-admin-assistant.mjs`
+
+Block 12 proof commands passed:
+
+- `pnpm --filter @workflow/participant-sessions build`
+- `pnpm build:contracts`
+- `node scripts/prove-pass5-block1-contracts.mjs`
+- `node scripts/prove-pass5-block2-persistence.mjs`
+- `node scripts/prove-pass5-block3-session-creation.mjs`
+- `node scripts/prove-pass5-block4-channel-access.mjs`
+- `node scripts/prove-pass5-block5-web-session.mjs`
+- `node scripts/prove-pass5-block6-telegram-adapter.mjs`
+- `node scripts/prove-pass5-block6b-language-guidance.mjs`
+- `node scripts/prove-pass5-block7-evidence-trust.mjs`
+- `node scripts/prove-pass5-block8-prompt-family.mjs`
+- `node scripts/prove-pass5-block9-first-pass-extraction.mjs`
+- `node scripts/prove-pass5-block10-clarification.mjs`
+- `node scripts/prove-pass5-block11-admin-dashboard.mjs`
+- `node scripts/prove-pass5-block12-admin-assistant.mjs`
+- `pnpm typecheck`
+- `pnpm build`
+
+Block 12 boundaries preserved:
+
+- no autonomous writes
+- no hidden shadow state
+- no participant-facing send
+- no Pass 6 synthesis/evaluation
+- no package generation
+- no WhatsApp API
+- no final provider-backed extraction proof
+
 **Pass 5 Block 11 — Admin Session Command Dashboard implemented on branch `codex/pass5-block0-1-contracts`.**
 
 Block 11 adds admin-facing Pass 5 operational visibility only:

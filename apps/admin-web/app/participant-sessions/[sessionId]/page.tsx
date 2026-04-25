@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import type { ReactNode } from "react";
-import { selectNextClarificationCandidate } from "@workflow/participant-sessions";
+import { runAdminAssistantQuestion, selectNextClarificationCandidate } from "@workflow/participant-sessions";
 import { composePass5SessionDetail } from "../../../lib/pass5-dashboard";
 import { store } from "../../../lib/store";
 
@@ -36,13 +36,48 @@ function ActionForm({ sessionId, action, children }: { sessionId: string; action
   );
 }
 
-export default function ParticipantSessionDetailPage({ params }: { params: { sessionId: string } }) {
+const assistantRepos = {
+  participantSessions: store.participantSessions,
+  sessionAccessTokens: store.sessionAccessTokens,
+  telegramIdentityBindings: store.telegramIdentityBindings,
+  rawEvidenceItems: store.rawEvidenceItems,
+  firstPassExtractionOutputs: store.firstPassExtractionOutputs,
+  clarificationCandidates: store.clarificationCandidates,
+  boundarySignals: store.boundarySignals,
+  evidenceDisputes: store.evidenceDisputes,
+  sessionNextActions: store.sessionNextActions,
+  pass6HandoffCandidates: store.pass6HandoffCandidates,
+  providerJobs: store.providerJobs,
+  promptSpecs: store.structuredPromptSpecs,
+};
+
+function searchValue(searchParams: Record<string, string | string[] | undefined> | undefined, key: string): string | undefined {
+  const value = searchParams?.[key];
+  return Array.isArray(value) ? value[0] : value;
+}
+
+export default async function ParticipantSessionDetailPage({
+  params,
+  searchParams,
+}: {
+  params: { sessionId: string };
+  searchParams?: Record<string, string | string[] | undefined>;
+}) {
   const detail = composePass5SessionDetail(store, params.sessionId);
   if (!detail) notFound();
   const nextCandidate = selectNextClarificationCandidate(params.sessionId, {
     participantSessions: store.participantSessions,
     clarificationCandidates: store.clarificationCandidates,
   });
+  const assistantQuestion = searchValue(searchParams, "assistantQuestion");
+  const assistantResult = assistantQuestion
+    ? await runAdminAssistantQuestion({
+      question: assistantQuestion,
+      scope: "current_session",
+      sessionId: params.sessionId,
+      requestedByAdminId: "admin_operator",
+    }, assistantRepos, null)
+    : null;
 
   return (
     <>
@@ -193,6 +228,47 @@ export default function ParticipantSessionDetailPage({ params }: { params: { ses
             <p><strong>Interpretation:</strong> {signal.interpretationNote}</p>
           </div>
         ))}
+      </Panel>
+
+      <Panel title="Admin Assistant / Section Copilot">
+        <p className="muted">Read-only Pass 5 copilot. It receives a bounded DB-first context bundle, suggests routed admin actions, and does not mutate records or send participant messages.</p>
+        <form method="get" style={{ display: "grid", gap: "8px", marginBottom: "12px" }}>
+          <input name="assistantQuestion" defaultValue={assistantQuestion ?? ""} placeholder="Ask about this session's evidence, clarification status, boundary signals, disputes, or next action" />
+          <button className="btn-primary" type="submit">Ask assistant</button>
+        </form>
+        {assistantResult ? (
+          <div>
+            <Grid>
+              <Field label="Intent" value={assistantResult.intent} />
+              <Field label="Provider status" value={assistantResult.answer?.providerStatus ?? "not run"} />
+              <Field label="Provider job" value={assistantResult.answer?.providerJobId ?? "—"} mono />
+              <Field label="Context records" value={assistantResult.contextBundle?.structuredRecords.length ?? 0} />
+              <Field label="Evidence snippets" value={assistantResult.contextBundle?.evidenceSnippets.length ?? 0} />
+              <Field label="No mutation performed" value={String(assistantResult.answer?.noMutationPerformed ?? true)} />
+            </Grid>
+            {assistantResult.answer ? (
+              <>
+                <p><strong>Finding:</strong> {assistantResult.answer.conciseFinding}</p>
+                <p><strong>Recommended admin action:</strong> {assistantResult.answer.recommendedAdminAction ?? "Manual review"}</p>
+                <p><strong>Uncertainty:</strong> {assistantResult.answer.whatRemainsUncertain.join(" | ") || "—"}</p>
+                <details><summary>Evidence references and routed actions</summary>
+                  <pre style={{ whiteSpace: "pre-wrap" }}>{JSON.stringify({
+                    evidenceBasis: assistantResult.answer.evidenceBasis,
+                    references: assistantResult.answer.references,
+                    routedActionSuggestions: assistantResult.answer.routedActionSuggestions,
+                    warnings: assistantResult.warnings,
+                    errors: assistantResult.errors,
+                  }, null, 2)}</pre>
+                </details>
+                <details><summary>Context bundle</summary>
+                  <pre style={{ whiteSpace: "pre-wrap" }}>{JSON.stringify(assistantResult.contextBundle, null, 2)}</pre>
+                </details>
+              </>
+            ) : (
+              <p className="muted">{assistantResult.errors[0]?.message ?? "Assistant question was not answered."}</p>
+            )}
+          </div>
+        ) : null}
       </Panel>
     </>
   );
