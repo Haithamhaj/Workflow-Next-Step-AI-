@@ -8,6 +8,57 @@ Final Pass 5 status: `pass5_participant_session_outreach_accepted`
 
 Final Pass 5 acceptance commit: this closure commit.
 
+Post-closure complex operational validation passed for integration readiness:
+
+- scenario name: `P5-COMPLEX-E2E-LOGISTICS-SALES-ONBOARDING-01`
+- provider override used for this validation: OpenAI `gpt-5.4`
+- scenario script: `scripts/prove-pass5-complex-scenario-logistics-onboarding.mjs`
+- seeded approved Pass 4 targeting plan for Logistics / Last Mile, Sales, Client Onboarding
+- created four participant sessions:
+  - Ahmad — Sales Executive — Web session text narrative
+  - Sara — Sales Supervisor — Telegram handler-level binding and message capture
+  - Omar — Finance Coordinator — Web voice artifact plus transcript review/approval path
+  - Lina — Operations Coordinator — admin-entered approved manual note
+- proved Web token resolution and first narrative raw evidence capture
+- proved Telegram pairing/binding and Telegram raw evidence capture
+- proved voice/audio artifact preservation, raw transcript blocking, and approved transcript eligibility
+- proved provider-backed participant guidance, first-pass extraction, clarification formulation, answer recheck, and admin assistant execution with OpenAI `gpt-5.4`
+- proved extraction no-drop preservation through governed routes
+- proved clarification answer recheck produced non-silent governed outcomes
+- proved boundary/visibility signals for Finance-owned sensitive-price threshold uncertainty
+- proved admin assistant used DB-backed context, referenced records, and did not write automatically
+- proved Pass 6 handoff candidate creation as candidate-only, not synthesis
+- proved dashboard source surfaces for summary, session detail, raw evidence, analysis progress, clarification queue, boundary/escalation, admin assistant, and handoff candidates
+- proved banned-boundary checks for no Pass 6 synthesis/evaluation, no common-path formation implementation, no final workflow reconstruction, no package generation, no WhatsApp API, and no fake provider success
+
+Post-closure complex validation commands passed:
+
+- `node scripts/prove-pass5-complex-scenario-logistics-onboarding.mjs`
+- `node scripts/prove-pass5-block14-full-live.mjs` with OpenAI `gpt-5.4`
+- `pnpm build:contracts`
+- `node scripts/prove-pass5-block1-contracts.mjs`
+- `node scripts/prove-pass5-block2-persistence.mjs`
+- `node scripts/prove-pass5-block3-session-creation.mjs`
+- `node scripts/prove-pass5-block4-channel-access.mjs`
+- `node scripts/prove-pass5-block5-web-session.mjs`
+- `node scripts/prove-pass5-block6-telegram-adapter.mjs`
+- `node scripts/prove-pass5-block6b-language-guidance.mjs`
+- `node scripts/prove-pass5-block7-evidence-trust.mjs`
+- `node scripts/prove-pass5-block8-prompt-family.mjs`
+- `node scripts/prove-pass5-block9-first-pass-extraction.mjs`
+- `node scripts/prove-pass5-block10-clarification.mjs`
+- `node scripts/prove-pass5-block11-admin-dashboard.mjs`
+- `node scripts/prove-pass5-block12-admin-assistant.mjs`
+- `node scripts/prove-pass5-block13-handoff-candidates.mjs`
+- `pnpm typecheck`
+- `pnpm build`
+
+Post-closure integration decision:
+
+- Pass 5 remains accepted and closed.
+- Complex scenario validation passed.
+- Pass 5 branch is ready for integration/merge.
+
 Block 14 final acceptance proof passed after narrow banned-wording/proof-surface cleanup:
 
 - removed banned later-stage wording from the active participant-session handoff-candidate panel copy

@@ -1,7 +1,6 @@
 /**
- * OpenAI extraction provider — env-gated stub adapter (§8).
- * Available provider (not default). Returns placeholder results until real SDK is wired.
- * OPENAI_API_KEY must be set for real execution — currently returns honest stub output.
+ * OpenAI extraction provider — env-gated live prompt adapter.
+ * Available provider (not default). OPENAI_API_KEY must be set for real execution.
  */
 
 import type { ProviderName } from "@workflow/contracts";
@@ -13,32 +12,56 @@ import type {
   HierarchyDraftGenerationResult,
   SourceHierarchyTriageGenerationResult,
 } from "./extraction-provider.js";
+import { getEnv } from "./google-config.js";
 
-function isOpenAIKeySet(): boolean {
-  try {
-    const val = ((globalThis as Record<string, unknown>).process as { env: Record<string, string | undefined> } | undefined)?.env?.OPENAI_API_KEY;
-    return typeof val === "string" && val.length > 0;
-  } catch {
-    return false;
-  }
+function openAIKey(): string | null {
+  return getEnv("OPENAI_API_KEY")?.trim() || null;
+}
+
+function openAIModel(): string {
+  return getEnv("OPENAI_MODEL")?.trim() || "gpt-5.4";
+}
+
+function classifyOpenAIError(error: unknown): Error {
+  if (error instanceof Error) return new Error(`openai_provider_execution_failed: ${error.message}`);
+  return new Error(`openai_provider_execution_failed: ${String(error)}`);
+}
+
+function extractResponseText(parsed: unknown): string {
+  const response = parsed as {
+    output_text?: string;
+    output?: {
+      content?: {
+        type?: string;
+        text?: string;
+      }[];
+    }[];
+  };
+  if (typeof response.output_text === "string" && response.output_text.trim()) return response.output_text;
+  const text = response.output
+    ?.flatMap((item) => item.content ?? [])
+    .map((part) => typeof part.text === "string" ? part.text : "")
+    .join("")
+    .trim();
+  if (!text) throw new Error("OpenAI response did not include output text.");
+  return text;
 }
 
 export class OpenAIExtractionProvider implements ExtractionProvider {
   readonly name: ProviderName = "openai";
 
   async extractText(input: { content: string; mimeType?: string }): Promise<ExtractionResult> {
-    if (!isOpenAIKeySet()) {
+    if (!openAIKey()) {
       return {
         text: input.content,
         provider: "openai",
         model: "stub-no-api-key",
       };
     }
-    // TODO: Wire real OpenAI SDK extraction when prioritized
     return {
       text: input.content,
       provider: "openai",
-      model: "stub-pending-real-wiring",
+      model: openAIModel(),
     };
   }
 
@@ -51,8 +74,8 @@ export class OpenAIExtractionProvider implements ExtractionProvider {
         suggestedSourceRole: "general_intake_source",
         suggestedScope: input.bucket === "company" ? "company_level" : "department_level",
         confidenceLevel: "low",
-        shortRationale: isOpenAIKeySet()
-          ? "OpenAI key present but real SDK not yet wired"
+        shortRationale: openAIKey()
+          ? "OpenAI key present; classification path remains deterministic low-confidence fallback"
           : "No OPENAI_API_KEY — stub classification",
       };
   }
@@ -71,12 +94,12 @@ export class OpenAIExtractionProvider implements ExtractionProvider {
         mainDepartment: "",
         visibleRoleFamiliesOrOrgSignals: [],
         keyContextSignalsAndRisks: [],
-        confidenceAndUnknowns: isOpenAIKeySet()
+        confidenceAndUnknowns: openAIKey()
           ? "OpenAI key present but real transform not yet wired"
           : "No OPENAI_API_KEY — stub transform",
       },
       provider: "openai",
-      model: isOpenAIKeySet() ? "stub-pending-real-wiring" : "stub-no-api-key",
+      model: openAIKey() ? openAIModel() : "stub-no-api-key",
     };
   }
 
@@ -88,7 +111,44 @@ export class OpenAIExtractionProvider implements ExtractionProvider {
     throw new Error("OpenAI source-to-hierarchy triage is not wired in Pass 3 Patch 3.");
   }
 
-  async runPromptText(): Promise<{ text: string; provider: "openai"; model: string }> {
-    throw new Error("OpenAI prompt testing is not wired in Pass 3 Patch 4.");
+  async runPromptText(input: { compiledPrompt: string }): Promise<{ text: string; provider: "openai"; model: string }> {
+    const key = openAIKey();
+    if (!key) throw new Error("openai_provider_not_configured: OPENAI_API_KEY is missing.");
+    const model = openAIModel();
+    try {
+      const response = await fetch("https://api.openai.com/v1/responses", {
+        method: "POST",
+        headers: {
+          authorization: `Bearer ${key}`,
+          "content-type": "application/json",
+        },
+        body: JSON.stringify({
+          model,
+          input: input.compiledPrompt,
+        }),
+      });
+      const body = await response.text();
+      if (!response.ok) {
+        let safeMessage = body.slice(0, 500);
+        try {
+          const parsed = JSON.parse(body) as { error?: { type?: string; code?: string; message?: string } };
+          safeMessage = [
+            parsed.error?.type ? `type=${parsed.error.type}` : null,
+            parsed.error?.code ? `code=${parsed.error.code}` : null,
+            parsed.error?.message ? `message=${parsed.error.message}` : null,
+          ].filter(Boolean).join("; ") || safeMessage;
+        } catch {
+          // Keep sanitized body preview.
+        }
+        throw new Error(`OpenAI request failed: HTTP ${response.status} ${response.statusText}; ${safeMessage}`);
+      }
+      return {
+        text: extractResponseText(JSON.parse(body)),
+        provider: "openai",
+        model,
+      };
+    } catch (error) {
+      throw classifyOpenAIError(error);
+    }
   }
 }

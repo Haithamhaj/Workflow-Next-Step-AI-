@@ -7,9 +7,9 @@ import {
   validateTargetingRolloutPlan,
   validateFirstPassExtractionOutput,
 } from "../packages/contracts/dist/index.js";
-import { GoogleExtractionProvider, resolveGoogleAIProviderConfig } from "../packages/integrations/dist/index.js";
 import { createSQLiteIntakeRepositories } from "../packages/persistence/dist/index.js";
 import { createPass5PromptTestJob } from "../packages/prompts/dist/index.js";
+import { resolvePass5LiveProvider } from "./pass5-live-provider.mjs";
 import {
   addAdminClarificationCandidate,
   approveTranscriptEvidence,
@@ -192,11 +192,7 @@ function assistantRepos(store) {
 }
 
 loadEnvFile(join(process.cwd(), ".env.local"));
-const providerConfig = resolveGoogleAIProviderConfig();
-if (!providerConfig.configured) {
-  throw new Error(`PASS5_BLOCK14_BLOCKED: Google provider not configured: ${providerConfig.safeMessage}`);
-}
-const provider = new GoogleExtractionProvider();
+const { provider, providerConfig } = resolvePass5LiveProvider("PASS5_BLOCK14_BLOCKED");
 
 const store = repos();
 const plan = planFixture();
@@ -571,6 +567,7 @@ console.log(JSON.stringify({
   ok: true,
   dbPath,
   provider: {
+    provider: providerConfig.provider,
     configured: providerConfig.configured,
     model: providerConfig.resolvedModel,
   },
