@@ -6,6 +6,49 @@
 
 **Pass 5 Block 13 — Pass 6 Handoff Candidates implemented on branch `codex/pass5-block0-1-contracts`.**
 
+**Pass 5 Block 14 — Full Acceptance Proof Pack attempted on branch `codex/pass5-block0-1-contracts`; Pass 5 is not accepted.**
+
+Block 14 added the full live proof script:
+
+- `scripts/prove-pass5-block14-full-live.mjs`
+
+The deterministic baseline regression commands passed:
+
+- `pnpm build:contracts`
+- `node scripts/prove-pass5-block1-contracts.mjs`
+- `node scripts/prove-pass5-block2-persistence.mjs`
+- `node scripts/prove-pass5-block3-session-creation.mjs`
+- `node scripts/prove-pass5-block4-channel-access.mjs`
+- `node scripts/prove-pass5-block5-web-session.mjs`
+- `node scripts/prove-pass5-block6-telegram-adapter.mjs`
+- `node scripts/prove-pass5-block6b-language-guidance.mjs`
+- `node scripts/prove-pass5-block7-evidence-trust.mjs`
+- `node scripts/prove-pass5-block8-prompt-family.mjs`
+- `node scripts/prove-pass5-block9-first-pass-extraction.mjs`
+- `node scripts/prove-pass5-block10-clarification.mjs`
+- `node scripts/prove-pass5-block11-admin-dashboard.mjs`
+- `node scripts/prove-pass5-block12-admin-assistant.mjs`
+- `node scripts/prove-pass5-block13-handoff-candidates.mjs`
+- `pnpm typecheck`
+- `pnpm build`
+
+The live acceptance proof did not pass:
+
+- `node scripts/prove-pass5-block14-full-live.mjs` failed during real Google provider execution for `participant_guidance_prompt`
+- exact failure: `provider_rate_limited: Google provider rate limit or quota was reached`
+- no deterministic executor was substituted for this live provider proof
+- Pass 5 must remain open until Block 14 is rerun and all required live provider/channel/dashboard/failure proofs pass
+
+Block 14 attempted boundaries preserved:
+
+- no Pass 6 synthesis/evaluation
+- no common-path formation
+- no final workflow reconstruction
+- no package generation
+- no WhatsApp API
+- no fake provider success
+- no fake channel success
+
 Block 13 adds governed Pass 5 handoff-candidate records only:
 
 - domain-layer creation/list/review helpers in `@workflow/participant-sessions`
