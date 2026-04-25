@@ -5,18 +5,31 @@ import {
 } from "node:crypto";
 import {
   validateParticipantSession,
+  validateBoundarySignal,
+  validateClarificationCandidate,
+  validateEvidenceDispute,
+  validateFirstPassExtractionOutput,
   validateRawEvidenceItem,
   validateSessionAccessToken,
   validateTelegramIdentityBinding,
   validateTargetingRolloutPlan,
+  type BoundarySignal,
   type ChannelStatus,
+  type ClarificationCandidate,
   type ContactChannel,
   type ContactDataStatus,
+  type EvidenceAnchor,
+  type EvidenceDispute,
+  type ExtractionDefect,
+  type ExtractedItem,
+  type ExtractionStatus,
+  type FirstPassExtractionOutput,
   type ParticipantContactProfile,
   type ParticipantSession,
   type ParticipationMode,
   type RawEvidenceItem,
   type RawEvidenceType,
+  type SequenceMap,
   type SessionAccessToken,
   type SessionAccessTokenChannelType,
   type SessionAccessTokenStatus,
@@ -27,11 +40,23 @@ import {
   type TelegramIdentityBinding,
 } from "@workflow/contracts";
 import type {
+  BoundarySignalRepository,
+  ClarificationCandidateRepository,
+  EvidenceDisputeRepository,
+  FirstPassExtractionOutputRepository,
   ParticipantSessionRepository,
+  ProviderExtractionJobRepository,
   RawEvidenceItemRepository,
   SessionAccessTokenRepository,
+  StoredProviderExtractionJob,
+  StructuredPromptSpecRepository,
   TelegramIdentityBindingRepository,
 } from "@workflow/persistence";
+import {
+  PASS5_PROMPT_FAMILY,
+  compilePass5Prompt,
+  type Pass5PromptInputBundle,
+} from "@workflow/prompts";
 
 export const PARTICIPANT_SESSIONS_PACKAGE = "@workflow/participant-sessions" as const;
 
@@ -1815,5 +1840,690 @@ export function deriveSessionEvidenceReadiness(
     recommendedSessionState: session.sessionState,
     recommendedFirstNarrativeStatus: session.firstNarrativeStatus,
     recommendedExtractionStatus: session.extractionStatus,
+  };
+}
+
+export type FirstPassExtractionErrorCode =
+  | "session_not_found"
+  | "no_eligible_evidence"
+  | "provider_not_configured"
+  | "provider_execution_failed"
+  | "provider_output_not_json"
+  | "schema_validation_failed"
+  | "evidence_anchor_validation_failed"
+  | "persistence_failed";
+
+export interface FirstPassExtractionRepos {
+  participantSessions: ParticipantSessionRepository;
+  rawEvidenceItems: RawEvidenceItemRepository;
+  firstPassExtractionOutputs: FirstPassExtractionOutputRepository;
+  clarificationCandidates: ClarificationCandidateRepository;
+  boundarySignals: BoundarySignalRepository;
+  evidenceDisputes: EvidenceDisputeRepository;
+  providerJobs: ProviderExtractionJobRepository;
+  promptSpecs: StructuredPromptSpecRepository;
+}
+
+export interface FirstPassExtractionExecutor {
+  readonly name: "google" | "openai";
+  runPromptText(input: { compiledPrompt: string }): Promise<{ text: string; provider: "google" | "openai"; model: string }>;
+}
+
+export interface FirstPassExtractionOptions {
+  now?: () => string;
+  extractionIdFactory?: () => string;
+  providerJobIdFactory?: () => string;
+  defectIdFactory?: () => string;
+  disputeIdFactory?: () => string;
+}
+
+export type FirstPassExtractionRunResult =
+  | {
+      ok: true;
+      sessionId: string;
+      extractionId: string;
+      providerJobId: string;
+      createdExtraction: FirstPassExtractionOutput;
+      createdClarificationCandidates: ClarificationCandidate[];
+      createdBoundarySignals: BoundarySignal[];
+      defects: ExtractionDefect[];
+      evidenceDisputes: EvidenceDispute[];
+      unmappedContentItems: FirstPassExtractionOutput["unmappedContentItems"];
+      warnings: string[];
+      errors: [];
+    }
+  | {
+      ok: false;
+      sessionId: string;
+      extractionId: null;
+      providerJobId: string | null;
+      createdExtraction: null;
+      createdClarificationCandidates: [];
+      createdBoundarySignals: [];
+      defects: ExtractionDefect[];
+      evidenceDisputes: EvidenceDispute[];
+      unmappedContentItems: FirstPassExtractionOutput["unmappedContentItems"];
+      warnings: string[];
+      errors: { code: FirstPassExtractionErrorCode; message: string }[];
+    };
+
+function extractionNow(options?: FirstPassExtractionOptions): string {
+  return options?.now?.() ?? new Date().toISOString();
+}
+
+function extractionId(options?: FirstPassExtractionOptions): string {
+  return options?.extractionIdFactory?.() ?? `first_pass_extraction_${crypto.randomUUID()}`;
+}
+
+function providerJobId(options?: FirstPassExtractionOptions): string {
+  return options?.providerJobIdFactory?.() ?? `pass5_extraction_job_${crypto.randomUUID()}`;
+}
+
+function defectId(options?: FirstPassExtractionOptions): string {
+  return options?.defectIdFactory?.() ?? `extraction_defect_${crypto.randomUUID()}`;
+}
+
+function disputeId(options?: FirstPassExtractionOptions): string {
+  return options?.disputeIdFactory?.() ?? `evidence_dispute_${crypto.randomUUID()}`;
+}
+
+function allExtractedItemSections(output: FirstPassExtractionOutput): Array<{
+  section: string;
+  items: ExtractedItem[];
+}> {
+  return [
+    { section: "extractedActors", items: output.extractedActors },
+    { section: "extractedSteps", items: output.extractedSteps },
+    { section: "extractedDecisionPoints", items: output.extractedDecisionPoints },
+    { section: "extractedHandoffs", items: output.extractedHandoffs },
+    { section: "extractedExceptions", items: output.extractedExceptions },
+    { section: "extractedSystems", items: output.extractedSystems },
+    { section: "extractedControls", items: output.extractedControls },
+    { section: "extractedDependencies", items: output.extractedDependencies },
+    { section: "extractedUnknowns", items: output.extractedUnknowns },
+  ];
+}
+
+function extractionFailure(input: {
+  sessionId: string;
+  providerJobId?: string | null;
+  code: FirstPassExtractionErrorCode;
+  message: string;
+  defects?: ExtractionDefect[];
+  disputes?: EvidenceDispute[];
+  unmapped?: FirstPassExtractionOutput["unmappedContentItems"];
+  warnings?: string[];
+}): FirstPassExtractionRunResult {
+  return {
+    ok: false,
+    sessionId: input.sessionId,
+    extractionId: null,
+    providerJobId: input.providerJobId ?? null,
+    createdExtraction: null,
+    createdClarificationCandidates: [],
+    createdBoundarySignals: [],
+    defects: input.defects ?? [],
+    evidenceDisputes: input.disputes ?? [],
+    unmappedContentItems: input.unmapped ?? [],
+    warnings: input.warnings ?? [],
+    errors: [{ code: input.code, message: input.message }],
+  };
+}
+
+function createExtractionProviderJob(input: {
+  session: ParticipantSession;
+  promptBundle: Pass5PromptInputBundle;
+  provider: FirstPassExtractionExecutor | null;
+  promptVersionId: string;
+  basePromptVersionId: string;
+  outputContractRef?: string;
+  repos: FirstPassExtractionRepos;
+  options?: FirstPassExtractionOptions;
+}): StoredProviderExtractionJob {
+  const timestamp = extractionNow(input.options);
+  const job: StoredProviderExtractionJob = {
+    jobId: providerJobId(input.options),
+    sourceId: input.promptBundle.contentRef ?? input.session.sessionId,
+    sessionId: input.session.sessionId,
+    caseId: input.session.caseId,
+    provider: input.provider?.name ?? "google",
+    jobKind: "pass5_prompt_test",
+    status: "queued",
+    inputType: "manual_note",
+    promptFamily: PASS5_PROMPT_FAMILY,
+    promptName: "first_pass_extraction_prompt",
+    promptVersionId: input.promptVersionId,
+    basePromptVersionId: input.basePromptVersionId,
+    inputBundleRef: JSON.stringify({
+      promptName: input.promptBundle.promptName,
+      caseId: input.promptBundle.caseId,
+      sessionId: input.promptBundle.sessionId,
+      languagePreference: input.promptBundle.languagePreference,
+      evidenceRefs: input.promptBundle.evidenceRefs ?? [],
+      contentRef: input.promptBundle.contentRef,
+      hasRawContent: Boolean(input.promptBundle.rawContent),
+    }),
+    outputContractRef: input.outputContractRef ?? "FirstPassExtractionOutput",
+    createdAt: timestamp,
+    updatedAt: timestamp,
+  };
+  input.repos.providerJobs.save(job);
+  return job;
+}
+
+function saveProviderJob(job: StoredProviderExtractionJob, repos: FirstPassExtractionRepos): StoredProviderExtractionJob {
+  repos.providerJobs.save(job);
+  return job;
+}
+
+function createEvidenceAnchorDefect(input: {
+  item: ExtractedItem;
+  section: string;
+  basisEvidenceItemId: string | null;
+  description: string;
+  options?: FirstPassExtractionOptions;
+}): ExtractionDefect {
+  return {
+    defectId: defectId(input.options),
+    defectType: "missing_evidence_anchor",
+    description: input.description,
+    affectedOutputSection: input.section,
+    affectedItemId: input.item.itemId,
+    basisEvidenceItemId: input.basisEvidenceItemId,
+    severity: "high",
+    recommendedAction: "admin_review",
+    createdAt: extractionNow(input.options),
+  };
+}
+
+function createEvidenceAnchorDispute(input: {
+  session: ParticipantSession;
+  extractionId: string;
+  item: ExtractedItem;
+  anchor: EvidenceAnchor;
+  issue: string;
+  options?: FirstPassExtractionOptions;
+}): EvidenceDispute {
+  return {
+    disputeId: disputeId(input.options),
+    sessionId: input.session.sessionId,
+    extractionId: input.extractionId,
+    affectedItemId: input.item.itemId,
+    aiProposedInterpretation: input.item.description,
+    aiProposedEvidenceAnchor: input.anchor,
+    codeValidationIssue: input.issue,
+    disputeType: "anchor_not_found",
+    severity: "high",
+    recommendedAction: "admin_review",
+    adminDecision: "pending",
+    createdAt: extractionNow(input.options),
+  };
+}
+
+function buildSourceCoverageSummary(input: {
+  evidenceIds: string[];
+  fullContentProcessed: boolean;
+  mappedCount: number;
+  unmappedCount: number;
+  defectCount: number;
+  disputeCount: number;
+  clean: boolean;
+}): string {
+  return [
+    `processedEvidenceItemIds=${input.evidenceIds.join(",")}`,
+    `fullContentProcessed=${input.fullContentProcessed}`,
+    `mappedItemCount=${input.mappedCount}`,
+    `unmappedContentCount=${input.unmappedCount}`,
+    `extractionDefectCount=${input.defectCount}`,
+    `evidenceDisputeCount=${input.disputeCount}`,
+    `reviewSensitivity=${input.clean ? "clean" : "review_sensitive"}`,
+  ].join("; ");
+}
+
+function validateAndGovernExtractionOutput(input: {
+  output: FirstPassExtractionOutput;
+  session: ParticipantSession;
+  eligibleEvidence: RawEvidenceItem[];
+  options?: FirstPassExtractionOptions;
+}): { output: FirstPassExtractionOutput; defects: ExtractionDefect[]; disputes: EvidenceDispute[]; warnings: string[] } {
+  const knownEvidenceIds = new Set(input.eligibleEvidence.map((item) => item.evidenceItemId));
+  const defects = [...input.output.extractionDefects];
+  const disputes = [...input.output.evidenceDisputes];
+  const warnings: string[] = [];
+
+  const retainedSections = allExtractedItemSections(input.output).map(({ section, items }) => {
+    const retained: ExtractedItem[] = [];
+    for (const item of items) {
+      if (item.createdFrom === "ai_extraction" && item.evidenceAnchors.length === 0) {
+        defects.push(createEvidenceAnchorDefect({
+          item,
+          section,
+          basisEvidenceItemId: input.output.basisEvidenceItemIds[0] ?? null,
+          description: `AI-extracted item ${item.itemId} had no evidence anchor and was not accepted as a clean extracted item.`,
+          options: input.options,
+        }));
+        warnings.push(`Removed unsupported AI item without evidence anchor: ${item.itemId}`);
+        continue;
+      }
+      if ((item.createdFrom === "admin_entry" || item.createdFrom === "system_rule")
+        && item.evidenceAnchors.length === 0
+        && (!item.basisNote || item.basisNote.trim().length === 0)) {
+        defects.push(createEvidenceAnchorDefect({
+          item,
+          section,
+          basisEvidenceItemId: null,
+          description: `Non-participant item ${item.itemId} had no evidence anchor and no basis note.`,
+          options: input.options,
+        }));
+        warnings.push(`Removed item without evidence anchor or basis note: ${item.itemId}`);
+        continue;
+      }
+      for (const anchor of item.evidenceAnchors) {
+        if (!knownEvidenceIds.has(anchor.evidenceItemId)) {
+          disputes.push(createEvidenceAnchorDispute({
+            session: input.session,
+            extractionId: input.output.extractionId,
+            item,
+            anchor,
+            issue: `Evidence anchor ${anchor.evidenceItemId} is not an eligible evidence item for this participant session.`,
+            options: input.options,
+          }));
+        }
+      }
+      retained.push(item);
+    }
+    return { section, items: retained };
+  });
+  for (const link of input.output.sequenceMap.sequenceLinks) {
+    for (const anchor of link.evidenceAnchors) {
+      if (!knownEvidenceIds.has(anchor.evidenceItemId)) {
+        disputes.push({
+          disputeId: disputeId(input.options),
+          sessionId: input.session.sessionId,
+          extractionId: input.output.extractionId,
+          affectedItemId: `${link.fromItemId}->${link.toItemId}`,
+          aiProposedInterpretation: `Sequence relation ${link.relationType} from ${link.fromItemId} to ${link.toItemId}.`,
+          aiProposedEvidenceAnchor: anchor,
+          codeValidationIssue: `Sequence evidence anchor ${anchor.evidenceItemId} is not an eligible evidence item for this participant session.`,
+          disputeType: "anchor_not_found",
+          severity: "high",
+          recommendedAction: "admin_review",
+          adminDecision: "pending",
+          createdAt: extractionNow(input.options),
+        });
+      }
+    }
+  }
+
+  const sectionMap = Object.fromEntries(retainedSections.map((entry) => [entry.section, entry.items])) as Record<string, ExtractedItem[]>;
+  const mappedCount = retainedSections.reduce((sum, entry) => sum + entry.items.length, 0);
+  const finalDefects = defects;
+  const finalDisputes = disputes;
+  const clean = input.output.unmappedContentItems.length === 0 && finalDefects.length === 0 && finalDisputes.length === 0;
+  const extractionStatus: ExtractionStatus = finalDisputes.length > 0
+    ? "completed_with_evidence_disputes"
+    : finalDefects.length > 0
+      ? "completed_with_defects"
+      : input.output.unmappedContentItems.length > 0
+        ? "completed_with_unmapped"
+        : "completed_clean";
+  const filteredBasisEvidenceItemIds = input.output.basisEvidenceItemIds.filter((id) => knownEvidenceIds.has(id));
+  const output: FirstPassExtractionOutput = {
+    ...input.output,
+    basisEvidenceItemIds: filteredBasisEvidenceItemIds.length > 0
+      ? filteredBasisEvidenceItemIds
+      : input.eligibleEvidence.map((item) => item.evidenceItemId),
+    extractionStatus,
+    extractedActors: sectionMap.extractedActors ?? [],
+    extractedSteps: sectionMap.extractedSteps ?? [],
+    extractedDecisionPoints: sectionMap.extractedDecisionPoints ?? [],
+    extractedHandoffs: sectionMap.extractedHandoffs ?? [],
+    extractedExceptions: sectionMap.extractedExceptions ?? [],
+    extractedSystems: sectionMap.extractedSystems ?? [],
+    extractedControls: sectionMap.extractedControls ?? [],
+    extractedDependencies: sectionMap.extractedDependencies ?? [],
+    extractedUnknowns: sectionMap.extractedUnknowns ?? [],
+    extractionDefects: finalDefects,
+    evidenceDisputes: finalDisputes,
+    sourceCoverageSummary: buildSourceCoverageSummary({
+      evidenceIds: input.eligibleEvidence.map((item) => item.evidenceItemId),
+      fullContentProcessed: true,
+      mappedCount,
+      unmappedCount: input.output.unmappedContentItems.length,
+      defectCount: finalDefects.length,
+      disputeCount: finalDisputes.length,
+      clean,
+    }),
+  };
+  return { output, defects: finalDefects, disputes: finalDisputes, warnings };
+}
+
+function parseExtractionOutput(text: string): unknown {
+  const trimmed = text.trim();
+  const fenced = /^```(?:json)?\s*([\s\S]*?)\s*```$/i.exec(trimmed);
+  return JSON.parse(fenced ? fenced[1] ?? "" : trimmed);
+}
+
+function buildFirstPassExtractionPromptInput(session: ParticipantSession, eligibleEvidence: RawEvidenceItem[]): Pass5PromptInputBundle {
+  const evidenceText = eligibleEvidence.map((item) => [
+    `EvidenceItemId: ${item.evidenceItemId}`,
+    `EvidenceType: ${item.evidenceType}`,
+    `TrustStatus: ${item.trustStatus}`,
+    `Language: ${item.language}`,
+    `CapturedAt: ${item.capturedAt}`,
+    `RawContent:`,
+    item.rawContent ?? `[artifactRef: ${item.artifactRef ?? "none"}]`,
+  ].join("\n")).join("\n\n---\n\n");
+  return {
+    promptName: "first_pass_extraction_prompt",
+    caseId: session.caseId,
+    sessionId: session.sessionId,
+    languagePreference: session.languagePreference,
+    channel: session.selectedParticipationMode === "telegram_bot" ? "telegram_bot"
+      : session.selectedParticipationMode === "web_session_chatbot" ? "web_session_chatbot"
+        : undefined,
+    participantLabel: session.participantLabel,
+    selectedDepartment: session.selectedDepartment,
+    selectedUseCase: session.selectedUseCase,
+    evidenceRefs: eligibleEvidence.map((item) => item.evidenceItemId),
+    rawContent: [
+      `Participant role/node: ${session.participantRoleOrNodeId}`,
+      "Full eligible participant evidence follows. Process the full content before structuring.",
+      evidenceText,
+    ].join("\n\n"),
+    contentRef: `participant-session:${session.sessionId}:eligible-evidence`,
+  };
+}
+
+function updateSessionAfterExtraction(
+  session: ParticipantSession,
+  extraction: FirstPassExtractionOutput,
+  createdClarificationCandidates: ClarificationCandidate[],
+  createdBoundarySignals: BoundarySignal[],
+  updatedAt: string,
+): ParticipantSession {
+  const sessionState = extraction.clarificationCandidates.length > 0 ? "clarification_needed" : "first_pass_extraction_ready";
+  return {
+    ...session,
+    sessionState,
+    extractionStatus: extraction.extractionStatus,
+    clarificationItems: [...session.clarificationItems, ...createdClarificationCandidates],
+    boundarySignals: [...session.boundarySignals, ...createdBoundarySignals],
+    unresolvedItems: [...session.unresolvedItems, ...extraction.unmappedContentItems],
+    analysisProgress: {
+      ...session.analysisProgress,
+      extractionStatus: extraction.extractionStatus,
+      clarificationItemIds: [
+        ...new Set([
+          ...session.analysisProgress.clarificationItemIds,
+          ...createdClarificationCandidates.map((candidate) => candidate.candidateId),
+        ]),
+      ],
+      boundarySignalIds: [
+        ...new Set([
+          ...session.analysisProgress.boundarySignalIds,
+          ...createdBoundarySignals.map((signal) => signal.boundarySignalId),
+        ]),
+      ],
+      unresolvedItemIds: [
+        ...new Set([
+          ...session.analysisProgress.unresolvedItemIds,
+          ...extraction.unmappedContentItems.map((item) => item.unmappedItemId),
+        ]),
+      ],
+    },
+    updatedAt,
+  };
+}
+
+export async function runFirstPassExtractionForSession(
+  sessionId: string,
+  repos: FirstPassExtractionRepos,
+  providerOrExecutor: FirstPassExtractionExecutor | null,
+  options?: FirstPassExtractionOptions,
+): Promise<FirstPassExtractionRunResult> {
+  const session = repos.participantSessions.findById(sessionId);
+  if (!session) {
+    return extractionFailure({
+      sessionId,
+      code: "session_not_found",
+      message: `ParticipantSession not found: ${sessionId}`,
+    });
+  }
+
+  const eligibleEvidence = listExtractionEligibleEvidenceForSession(sessionId, repos.rawEvidenceItems);
+  if (eligibleEvidence.length === 0) {
+    return extractionFailure({
+      sessionId,
+      code: "no_eligible_evidence",
+      message: "No extraction-eligible raw evidence exists for this participant session.",
+    });
+  }
+
+  const promptBundle = buildFirstPassExtractionPromptInput(session, eligibleEvidence);
+  const compiled = compilePass5Prompt("first_pass_extraction_prompt", promptBundle, repos.promptSpecs);
+  const queuedJob = createExtractionProviderJob({
+    session,
+    promptBundle,
+    provider: providerOrExecutor,
+    promptVersionId: compiled.promptSpec.promptSpecId,
+    basePromptVersionId: compiled.basePromptSpec.promptSpecId,
+    outputContractRef: compiled.promptSpec.outputContractRef,
+    repos,
+    options,
+  });
+
+  if (!providerOrExecutor) {
+    const failed = saveProviderJob({
+      ...queuedJob,
+      status: "failed",
+      errorMessage: "provider_not_configured: no provider was supplied for first-pass extraction.",
+      updatedAt: extractionNow(options),
+    }, repos);
+    return extractionFailure({
+      sessionId,
+      providerJobId: failed.jobId,
+      code: "provider_not_configured",
+      message: failed.errorMessage ?? "provider_not_configured",
+    });
+  }
+
+  const running = saveProviderJob({
+    ...queuedJob,
+    status: "running",
+    updatedAt: extractionNow(options),
+  }, repos);
+
+  let providerText: string;
+  let providerName: "google" | "openai";
+  let model: string;
+  try {
+    const result = await providerOrExecutor.runPromptText({ compiledPrompt: compiled.compiledPrompt });
+    providerText = result.text;
+    providerName = result.provider;
+    model = result.model;
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    const failed = saveProviderJob({
+      ...running,
+      status: "failed",
+      errorMessage: message,
+      updatedAt: extractionNow(options),
+    }, repos);
+    repos.participantSessions.save({
+      ...session,
+      extractionStatus: "failed",
+      analysisProgress: { ...session.analysisProgress, extractionStatus: "failed" },
+      updatedAt: extractionNow(options),
+    });
+    return extractionFailure({
+      sessionId,
+      providerJobId: failed.jobId,
+      code: "provider_execution_failed",
+      message,
+    });
+  }
+
+  let parsed: unknown;
+  try {
+    parsed = parseExtractionOutput(providerText);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    const failed = saveProviderJob({
+      ...running,
+      status: "failed",
+      provider: providerName,
+      model,
+      errorMessage: `provider_output_not_json: ${message}`,
+      updatedAt: extractionNow(options),
+    }, repos);
+    return extractionFailure({
+      sessionId,
+      providerJobId: failed.jobId,
+      code: "provider_output_not_json",
+      message: failed.errorMessage ?? "provider_output_not_json",
+    });
+  }
+
+  const candidateOutput = parsed as FirstPassExtractionOutput;
+  const outputWithIds: FirstPassExtractionOutput = {
+    ...candidateOutput,
+    extractionId: candidateOutput.extractionId || extractionId(options),
+    sessionId: session.sessionId,
+    basisEvidenceItemIds: candidateOutput.basisEvidenceItemIds?.length
+      ? candidateOutput.basisEvidenceItemIds
+      : eligibleEvidence.map((item) => item.evidenceItemId),
+    createdAt: candidateOutput.createdAt || extractionNow(options),
+  };
+  const governed = validateAndGovernExtractionOutput({
+    output: outputWithIds,
+    session,
+    eligibleEvidence,
+    options,
+  });
+  const validation = validateFirstPassExtractionOutput(governed.output);
+  if (!validation.ok) {
+    const failed = saveProviderJob({
+      ...running,
+      status: "failed",
+      provider: providerName,
+      model,
+      errorMessage: `schema_validation_failed: ${validationMessage(validation.errors)}`,
+      updatedAt: extractionNow(options),
+    }, repos);
+    return extractionFailure({
+      sessionId,
+      providerJobId: failed.jobId,
+      code: "schema_validation_failed",
+      message: failed.errorMessage ?? "schema_validation_failed",
+      defects: governed.defects,
+      disputes: governed.disputes,
+      unmapped: governed.output.unmappedContentItems,
+      warnings: governed.warnings,
+    });
+  }
+
+  for (const candidate of governed.output.clarificationCandidates) {
+    const result = validateClarificationCandidate(candidate);
+    if (!result.ok) {
+      return extractionFailure({
+        sessionId,
+        providerJobId: running.jobId,
+        code: "schema_validation_failed",
+        message: `ClarificationCandidate validation failed: ${validationMessage(result.errors)}`,
+        defects: governed.defects,
+        disputes: governed.disputes,
+        unmapped: governed.output.unmappedContentItems,
+        warnings: governed.warnings,
+      });
+    }
+  }
+  for (const signal of governed.output.boundarySignals) {
+    const result = validateBoundarySignal(signal);
+    if (!result.ok) {
+      return extractionFailure({
+        sessionId,
+        providerJobId: running.jobId,
+        code: "schema_validation_failed",
+        message: `BoundarySignal validation failed: ${validationMessage(result.errors)}`,
+        defects: governed.defects,
+        disputes: governed.disputes,
+        unmapped: governed.output.unmappedContentItems,
+        warnings: governed.warnings,
+      });
+    }
+  }
+  for (const dispute of governed.output.evidenceDisputes) {
+    const result = validateEvidenceDispute(dispute);
+    if (!result.ok) {
+      return extractionFailure({
+        sessionId,
+        providerJobId: running.jobId,
+        code: "schema_validation_failed",
+        message: `EvidenceDispute validation failed: ${validationMessage(result.errors)}`,
+        defects: governed.defects,
+        disputes: governed.disputes,
+        unmapped: governed.output.unmappedContentItems,
+        warnings: governed.warnings,
+      });
+    }
+  }
+
+  try {
+    repos.firstPassExtractionOutputs.save(governed.output);
+    for (const candidate of governed.output.clarificationCandidates) repos.clarificationCandidates.save(candidate);
+    for (const signal of governed.output.boundarySignals) repos.boundarySignals.save(signal);
+    for (const dispute of governed.output.evidenceDisputes) repos.evidenceDisputes.save(dispute);
+    repos.participantSessions.save(updateSessionAfterExtraction(
+      session,
+      governed.output,
+      governed.output.clarificationCandidates,
+      governed.output.boundarySignals,
+      extractionNow(options),
+    ));
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    const failed = saveProviderJob({
+      ...running,
+      status: "failed",
+      provider: providerName,
+      model,
+      errorMessage: `persistence_failed: ${message}`,
+      updatedAt: extractionNow(options),
+    }, repos);
+    return extractionFailure({
+      sessionId,
+      providerJobId: failed.jobId,
+      code: "persistence_failed",
+      message: failed.errorMessage ?? "persistence_failed",
+      defects: governed.defects,
+      disputes: governed.disputes,
+      unmapped: governed.output.unmappedContentItems,
+      warnings: governed.warnings,
+    });
+  }
+
+  const succeeded = saveProviderJob({
+    ...running,
+    status: "succeeded",
+    provider: providerName,
+    model,
+    outputRef: governed.output.extractionId,
+    updatedAt: extractionNow(options),
+  }, repos);
+
+  return {
+    ok: true,
+    sessionId,
+    extractionId: governed.output.extractionId,
+    providerJobId: succeeded.jobId,
+    createdExtraction: governed.output,
+    createdClarificationCandidates: governed.output.clarificationCandidates,
+    createdBoundarySignals: governed.output.boundarySignals,
+    defects: governed.defects,
+    evidenceDisputes: governed.disputes,
+    unmappedContentItems: governed.output.unmappedContentItems,
+    warnings: governed.warnings,
+    errors: [],
   };
 }

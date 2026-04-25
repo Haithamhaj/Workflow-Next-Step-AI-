@@ -18,7 +18,8 @@
   },
   "dependencies": {
     "@workflow/contracts": "workspace:*",
-    "@workflow/persistence": "workspace:*"
+    "@workflow/persistence": "workspace:*",
+    "@workflow/prompts": "workspace:*"
   },
   "devDependencies": {
     "@types/node": "^20.12.7",

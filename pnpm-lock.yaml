@@ -181,6 +181,9 @@ importers:
       '@workflow/persistence':
         specifier: workspace:*
         version: link:../persistence
+      '@workflow/prompts':
+        specifier: workspace:*
+        version: link:../prompts
     devDependencies:
       '@types/node':
         specifier: ^20.12.7
