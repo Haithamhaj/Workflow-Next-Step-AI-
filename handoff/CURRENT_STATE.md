@@ -8,6 +8,36 @@
 
 **Pass 5 Block 14 — Full Acceptance Proof Pack attempted on branch `codex/pass5-block0-1-contracts`; Pass 5 is not accepted.**
 
+**Pass 5 Block 14 extraction governance hardening added on branch `codex/pass5-block0-1-contracts`; Pass 5 remains not accepted.**
+
+Block 14 extraction governance hardening changed only the Pass 5 prompt/governance proof layer:
+
+- reinforced `first_pass_extraction_prompt` so required arrays must be present and empty arrays must be returned as `[]`
+- added pre-governance required-array validation before iterating provider output arrays
+- added one provider-backed JSON repair attempt for parseable malformed extraction output
+- malformed repaired output is rejected as `invalid_provider_extraction_output`
+- provider jobs no longer remain `running` for the original missing-array malformed output case
+- proof script added: `scripts/prove-pass5-block14-extraction-governance-hardening.mjs`
+
+Hardening proof commands passed:
+
+- `pnpm --filter @workflow/participant-sessions build`
+- `pnpm --filter @workflow/prompts build`
+- `pnpm build:contracts`
+- `node scripts/prove-pass5-block9-first-pass-extraction.mjs`
+- `node scripts/prove-pass5-block14-extraction-governance-hardening.mjs`
+- `pnpm build`
+- `pnpm typecheck` after `pnpm build` regenerated `.next/types`
+
+The post-hardening live acceptance proof still did not pass:
+
+- `node scripts/prove-pass5-block14-full-live.mjs` reached live Google provider extraction
+- `participant_guidance_prompt` succeeded live with Google `gemini-3.1-pro-preview`
+- `first_pass_extraction_prompt` invoked the repair path; repair job succeeded
+- final governed validation then failed with `invalid_provider_extraction_output: item.evidenceAnchors is not iterable`
+- provider job `provider-job-live-extraction` was persisted as `failed`
+- Pass 5 must remain open until Block 14 handles this next malformed extracted-item shape and all required live provider/channel/dashboard/failure proofs pass
+
 Block 14 added the full live proof script:
 
 - `scripts/prove-pass5-block14-full-live.mjs`
@@ -32,7 +62,7 @@ The deterministic baseline regression commands passed:
 - `pnpm typecheck`
 - `pnpm build`
 
-The live acceptance proof did not pass:
+The initial live acceptance proof did not pass:
 
 - `node scripts/prove-pass5-block14-full-live.mjs` failed during real Google provider execution for `participant_guidance_prompt`
 - exact failure: `provider_rate_limited: Google provider rate limit or quota was reached`

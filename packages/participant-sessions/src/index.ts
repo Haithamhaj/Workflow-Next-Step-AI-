@@ -1858,6 +1858,7 @@ export type FirstPassExtractionErrorCode =
   | "provider_not_configured"
   | "provider_execution_failed"
   | "provider_output_not_json"
+  | "invalid_provider_extraction_output"
   | "schema_validation_failed"
   | "evidence_anchor_validation_failed"
   | "persistence_failed";
@@ -1953,6 +1954,87 @@ function allExtractedItemSections(output: FirstPassExtractionOutput): Array<{
   ];
 }
 
+const REQUIRED_EXTRACTION_ARRAY_FIELDS = [
+  "extractedActors",
+  "extractedSteps",
+  "extractedDecisionPoints",
+  "extractedHandoffs",
+  "extractedExceptions",
+  "extractedSystems",
+  "extractedControls",
+  "extractedDependencies",
+  "extractedUnknowns",
+  "boundarySignals",
+  "clarificationCandidates",
+  "confidenceNotes",
+  "contradictionNotes",
+  "unmappedContentItems",
+  "extractionDefects",
+  "evidenceDisputes",
+] as const;
+
+const REQUIRED_SEQUENCE_MAP_ARRAY_FIELDS = [
+  "orderedItemIds",
+  "sequenceLinks",
+  "unclearTransitions",
+  "notes",
+] as const;
+
+function getRecordValue(record: unknown, field: string): unknown {
+  return record && typeof record === "object" ? (record as Record<string, unknown>)[field] : undefined;
+}
+
+function validateRequiredExtractionArrays(output: unknown): string[] {
+  if (!output || typeof output !== "object" || Array.isArray(output)) {
+    return ["invalid_provider_extraction_output: output must be a JSON object"];
+  }
+  const errors: string[] = [];
+  for (const field of REQUIRED_EXTRACTION_ARRAY_FIELDS) {
+    if (!Array.isArray(getRecordValue(output, field))) {
+      errors.push(`invalid_provider_extraction_output: missing_required_array_field ${field}`);
+    }
+  }
+  const sequenceMap = getRecordValue(output, "sequenceMap");
+  if (!sequenceMap || typeof sequenceMap !== "object" || Array.isArray(sequenceMap)) {
+    errors.push("invalid_provider_extraction_output: missing_required_object_field sequenceMap");
+  } else {
+    for (const field of REQUIRED_SEQUENCE_MAP_ARRAY_FIELDS) {
+      if (!Array.isArray(getRecordValue(sequenceMap, field))) {
+        errors.push(`invalid_provider_extraction_output: missing_required_array_field sequenceMap.${field}`);
+      }
+    }
+  }
+  return errors;
+}
+
+function safeStringifyProviderJson(value: unknown): string {
+  try {
+    return JSON.stringify(value, null, 2);
+  } catch {
+    return String(value);
+  }
+}
+
+function buildExtractionJsonRepairPrompt(input: {
+  originalJson: unknown;
+  validationErrors: string[];
+}): string {
+  return [
+    "You are repairing a provider JSON response for Pass 5 first-pass extraction.",
+    "Repair the JSON to match the required schema. Do not add new workflow facts. Do not invent evidence. Only restore required structure and preserve existing content. Required arrays must be present; use [] only when the original output had no items for that field.",
+    "Return strict corrected JSON only. Do not include markdown fences, prose, comments, or explanations.",
+    "",
+    "Validation errors:",
+    input.validationErrors.map((error) => `- ${error}`).join("\n"),
+    "",
+    "Required contract summary:",
+    "FirstPassExtractionOutput requires extractionId, sessionId, basisEvidenceItemIds[], extractionStatus, extractedActors[], extractedSteps[], sequenceMap { orderedItemIds[], sequenceLinks[], unclearTransitions[], notes[] }, extractedDecisionPoints[], extractedHandoffs[], extractedExceptions[], extractedSystems[], extractedControls[], extractedDependencies[], extractedUnknowns[], boundarySignals[], clarificationCandidates[], confidenceNotes[], contradictionNotes[], sourceCoverageSummary, unmappedContentItems[], extractionDefects[], evidenceDisputes[], and createdAt.",
+    "",
+    "Original provider JSON:",
+    safeStringifyProviderJson(input.originalJson),
+  ].join("\n");
+}
+
 function extractionFailure(input: {
   sessionId: string;
   providerJobId?: string | null;
@@ -2023,6 +2105,19 @@ function createExtractionProviderJob(input: {
 function saveProviderJob(job: StoredProviderExtractionJob, repos: FirstPassExtractionRepos): StoredProviderExtractionJob {
   repos.providerJobs.save(job);
   return job;
+}
+
+function markExtractionSessionFailed(
+  session: ParticipantSession,
+  repos: FirstPassExtractionRepos,
+  options?: FirstPassExtractionOptions,
+): void {
+  repos.participantSessions.save({
+    ...session,
+    extractionStatus: "failed",
+    analysisProgress: { ...session.analysisProgress, extractionStatus: "failed" },
+    updatedAt: extractionNow(options),
+  });
 }
 
 function createEvidenceAnchorDefect(input: {
@@ -2359,12 +2454,7 @@ export async function runFirstPassExtractionForSession(
       errorMessage: message,
       updatedAt: extractionNow(options),
     }, repos);
-    repos.participantSessions.save({
-      ...session,
-      extractionStatus: "failed",
-      analysisProgress: { ...session.analysisProgress, extractionStatus: "failed" },
-      updatedAt: extractionNow(options),
-    });
+    markExtractionSessionFailed(session, repos, options);
     return extractionFailure({
       sessionId,
       providerJobId: failed.jobId,
@@ -2395,7 +2485,7 @@ export async function runFirstPassExtractionForSession(
   }
 
   const candidateOutput = parsed as FirstPassExtractionOutput;
-  const outputWithIds: FirstPassExtractionOutput = {
+  let outputWithIds: FirstPassExtractionOutput = {
     ...candidateOutput,
     extractionId: candidateOutput.extractionId || extractionId(options),
     sessionId: session.sessionId,
@@ -2404,12 +2494,132 @@ export async function runFirstPassExtractionForSession(
       : eligibleEvidence.map((item) => item.evidenceItemId),
     createdAt: candidateOutput.createdAt || extractionNow(options),
   };
-  const governed = validateAndGovernExtractionOutput({
-    output: outputWithIds,
-    session,
-    eligibleEvidence,
-    options,
-  });
+  const initialShapeErrors = validateRequiredExtractionArrays(outputWithIds);
+  if (initialShapeErrors.length > 0) {
+    const repairJob: StoredProviderExtractionJob = {
+      ...running,
+      jobId: `${running.jobId}:repair`,
+      status: "running",
+      provider: providerName,
+      model,
+      inputBundleRef: JSON.stringify({
+        sessionId,
+        promptName: "first_pass_extraction_prompt",
+        repairOfProviderJobId: running.jobId,
+        validationErrors: initialShapeErrors,
+      }),
+      updatedAt: extractionNow(options),
+    };
+    repos.providerJobs.save(repairJob);
+    try {
+      const repairResult = await providerOrExecutor.runPromptText({
+        compiledPrompt: buildExtractionJsonRepairPrompt({
+          originalJson: outputWithIds,
+          validationErrors: initialShapeErrors,
+        }),
+      });
+      const repairedParsed = parseExtractionOutput(repairResult.text) as FirstPassExtractionOutput;
+      const repairedOutput: FirstPassExtractionOutput = {
+        ...repairedParsed,
+        extractionId: repairedParsed.extractionId || outputWithIds.extractionId,
+        sessionId: session.sessionId,
+        basisEvidenceItemIds: repairedParsed.basisEvidenceItemIds?.length
+          ? repairedParsed.basisEvidenceItemIds
+          : outputWithIds.basisEvidenceItemIds,
+        createdAt: repairedParsed.createdAt || outputWithIds.createdAt,
+      };
+      const repairedShapeErrors = validateRequiredExtractionArrays(repairedOutput);
+      if (repairedShapeErrors.length > 0) {
+        const message = `invalid_provider_extraction_output: repair_failed ${repairedShapeErrors.join("; ")}`;
+        saveProviderJob({
+          ...repairJob,
+          status: "failed",
+          provider: repairResult.provider,
+          model: repairResult.model,
+          errorMessage: message,
+          updatedAt: extractionNow(options),
+        }, repos);
+        const failed = saveProviderJob({
+          ...running,
+          status: "failed",
+          provider: providerName,
+          model,
+          errorMessage: message,
+          updatedAt: extractionNow(options),
+        }, repos);
+        markExtractionSessionFailed(session, repos, options);
+        return extractionFailure({
+          sessionId,
+          providerJobId: failed.jobId,
+          code: "invalid_provider_extraction_output",
+          message,
+          warnings: repairedShapeErrors,
+        });
+      }
+      outputWithIds = repairedOutput;
+      saveProviderJob({
+        ...repairJob,
+        status: "succeeded",
+        provider: repairResult.provider,
+        model: repairResult.model,
+        outputRef: `first_pass_extraction_repair_output_length:${repairResult.text.length}`,
+        updatedAt: extractionNow(options),
+      }, repos);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      const errorMessage = `invalid_provider_extraction_output: repair_failed ${message}`;
+      saveProviderJob({
+        ...repairJob,
+        status: "failed",
+        provider: providerName,
+        model,
+        errorMessage,
+        updatedAt: extractionNow(options),
+      }, repos);
+      const failed = saveProviderJob({
+        ...running,
+        status: "failed",
+        provider: providerName,
+        model,
+        errorMessage,
+        updatedAt: extractionNow(options),
+      }, repos);
+      markExtractionSessionFailed(session, repos, options);
+      return extractionFailure({
+        sessionId,
+        providerJobId: failed.jobId,
+        code: "invalid_provider_extraction_output",
+        message: errorMessage,
+        warnings: initialShapeErrors,
+      });
+    }
+  }
+  let governed: { output: FirstPassExtractionOutput; defects: ExtractionDefect[]; disputes: EvidenceDispute[]; warnings: string[] };
+  try {
+    governed = validateAndGovernExtractionOutput({
+      output: outputWithIds,
+      session,
+      eligibleEvidence,
+      options,
+    });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    const failed = saveProviderJob({
+      ...running,
+      status: "failed",
+      provider: providerName,
+      model,
+      errorMessage: `invalid_provider_extraction_output: ${message}`,
+      updatedAt: extractionNow(options),
+    }, repos);
+    markExtractionSessionFailed(session, repos, options);
+    return extractionFailure({
+      sessionId,
+      providerJobId: failed.jobId,
+      code: "invalid_provider_extraction_output",
+      message: failed.errorMessage ?? "invalid_provider_extraction_output",
+    });
+  }
   const validation = validateFirstPassExtractionOutput(governed.output);
   if (!validation.ok) {
     const failed = saveProviderJob({

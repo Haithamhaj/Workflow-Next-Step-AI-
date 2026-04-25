@@ -816,7 +816,7 @@ function pass5CapabilitySpecBlocks(promptName: Pass5CapabilityPromptName, base: 
       ["source_and_evidence_rules", "Every normal AI-extracted item must include evidence anchors. Apply full-content-first analysis. Enforce the no-drop extraction rule through unmappedContentItems, extractionDefects, extractedUnknowns, boundarySignals, clarificationCandidates, or admin review items."],
       ["operating_instructions", "Identify actors, steps, sequence map, decisions, handoffs, exceptions, systems, controls, dependencies, unknowns, boundary signals, confidence notes, contradiction notes, source coverage, unmapped content, defects, and evidence disputes."],
       ["boundaries_and_prohibitions", "Participant-level structured draft only. Do not create final workflow truth. Do not synthesize across participants. Do not evaluate or package."],
-      ["output_contract_or_schema", "Return JSON matching FirstPassExtractionOutput, including structured SequenceMap, evidence anchors, unmappedContentItems, extractionDefects, and evidenceDisputes."],
+      ["output_contract_or_schema", "Return strict JSON only matching FirstPassExtractionOutput, including structured SequenceMap, evidence anchors, unmappedContentItems, extractionDefects, and evidenceDisputes. All required array fields must be present. If there are no items for a required array, return an empty array []. Do not omit required arrays."],
       ["evaluation_checklist", "Check no-drop coverage, evidence anchors, evidence disputes, source coverage summary, and no final synthesis claims."],
     ],
     evidence_interpretation_prompt: [
