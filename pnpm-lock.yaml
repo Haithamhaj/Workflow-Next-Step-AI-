@@ -170,6 +170,19 @@ importers:
         specifier: ^5.4.5
         version: 5.9.3
 
+  packages/participant-sessions:
+    dependencies:
+      '@workflow/contracts':
+        specifier: workspace:*
+        version: link:../contracts
+      '@workflow/persistence':
+        specifier: workspace:*
+        version: link:../persistence
+    devDependencies:
+      typescript:
+        specifier: ^5.4.5
+        version: 5.9.3
+
   packages/persistence:
     dependencies:
       '@workflow/contracts':
