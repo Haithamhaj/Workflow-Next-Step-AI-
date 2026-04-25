@@ -6,6 +6,7 @@ import type {
   FirstNarrativeStatus,
   FirstPassExtractionOutput,
   ParticipantSession,
+  Pass6HandoffCandidate,
   ParticipantSessionState,
   ParticipationMode,
   RawEvidenceItem,
@@ -54,6 +55,10 @@ export interface Pass5DashboardSummary {
   sessionsWithEvidenceDisputes: number;
   sessionsWithUnmappedContent: number;
   readyOrNearReadyForLaterSynthesisHandoff: number;
+  pendingPass6HandoffCandidates: number;
+  acceptedPass6HandoffCandidates: number;
+  dismissedPass6HandoffCandidates: number;
+  needsMoreEvidencePass6HandoffCandidates: number;
 }
 
 export interface Pass5SessionDashboardData {
@@ -68,6 +73,7 @@ export interface Pass5SessionDetailData extends Pass5SessionDashboardRow {
   extractionOutputs: FirstPassExtractionOutput[];
   clarificationCandidates: ClarificationCandidate[];
   boundarySignals: BoundarySignal[];
+  pass6HandoffCandidates: Pass6HandoffCandidate[];
   supportedActions: string[];
 }
 
@@ -162,6 +168,10 @@ export function composePass5Dashboard(store: InMemoryStore, filters: Pass5Dashbo
     sessionsWithEvidenceDisputes: allRows.filter((row) => row.evidenceDisputeCount > 0).length,
     sessionsWithUnmappedContent: allRows.filter((row) => row.unmappedContentCount > 0).length,
     readyOrNearReadyForLaterSynthesisHandoff: allRows.filter((row) => row.session.sessionState === "ready_for_later_synthesis_handoff" || row.session.sessionState === "first_pass_extraction_ready").length,
+    pendingPass6HandoffCandidates: store.pass6HandoffCandidates.findAll().filter((candidate) => candidate.adminDecision === "pending").length,
+    acceptedPass6HandoffCandidates: store.pass6HandoffCandidates.findAll().filter((candidate) => candidate.adminDecision === "accepted_for_pass6").length,
+    dismissedPass6HandoffCandidates: store.pass6HandoffCandidates.findAll().filter((candidate) => candidate.adminDecision === "dismissed").length,
+    needsMoreEvidencePass6HandoffCandidates: store.pass6HandoffCandidates.findAll().filter((candidate) => candidate.adminDecision === "needs_more_evidence").length,
   };
   return { summary, rows };
 }
@@ -178,6 +188,7 @@ export function composePass5SessionDetail(store: InMemoryStore, sessionId: strin
     extractionOutputs: store.firstPassExtractionOutputs.findBySessionId(sessionId),
     clarificationCandidates: store.clarificationCandidates.findBySessionId(sessionId),
     boundarySignals: store.boundarySignals.findBySessionId(sessionId),
+    pass6HandoffCandidates: store.pass6HandoffCandidates.findBySessionId(sessionId),
     supportedActions: [
       "listOpenClarificationCandidates",
       "selectNextClarificationCandidate",

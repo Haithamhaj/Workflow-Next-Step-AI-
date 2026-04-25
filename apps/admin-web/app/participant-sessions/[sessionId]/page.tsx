@@ -270,6 +270,66 @@ export default async function ParticipantSessionDetailPage({
           </div>
         ) : null}
       </Panel>
+
+      <Panel title="Pass 6 Handoff Candidates">
+        <p className="muted">Reviewable Pass 5 handoff candidates only. These records preserve observations for later Pass 6 review; they are not synthesis, evaluation, common-path formation, or workflow truth.</p>
+        <form action="/api/participant-sessions/handoff-candidates" method="post" style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: "8px", marginBottom: "12px" }}>
+          <input type="hidden" name="returnTo" value={`/participant-sessions/${detail.session.sessionId}`} />
+          <input type="hidden" name="caseId" value={detail.session.caseId} />
+          <input type="hidden" name="sessionIds" value={detail.session.sessionId} />
+          <input name="description" placeholder="Admin handoff observation" />
+          <input name="recommendedPass6Use" placeholder="Recommended later Pass 6 review use" />
+          <select name="candidateType" defaultValue="admin_observation">
+            <option value="admin_observation">admin_observation</option>
+            <option value="possible_contradiction">possible_contradiction</option>
+            <option value="possible_gap">possible_gap</option>
+            <option value="repeated_uncertainty">repeated_uncertainty</option>
+            <option value="boundary_pattern">boundary_pattern</option>
+            <option value="evidence_dispute_for_later_review">evidence_dispute_for_later_review</option>
+            <option value="candidate_difference_block">candidate_difference_block</option>
+            <option value="possible_escalation_need">possible_escalation_need</option>
+          </select>
+          <input name="evidenceItemIds" placeholder="Evidence item IDs, comma-separated" />
+          <select name="confidenceLevel" defaultValue="medium">
+            <option value="high">high</option>
+            <option value="medium">medium</option>
+            <option value="low">low</option>
+          </select>
+          <select name="mandatoryOrOptional" defaultValue="optional">
+            <option value="optional">optional</option>
+            <option value="mandatory">mandatory</option>
+          </select>
+          <button className="btn-primary" type="submit">Create admin handoff candidate</button>
+        </form>
+        {detail.pass6HandoffCandidates.length === 0 ? <p className="muted">No Pass 6 handoff candidates linked to this session.</p> : (
+          <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "12px" }}>
+            <thead><tr style={{ textAlign: "left", color: "#8a9099", borderBottom: "1px solid #333" }}>
+              <th style={{ padding: "6px" }}>Candidate</th><th>Type</th><th>Description</th><th>Confidence</th><th>Use</th><th>Required</th><th>Decision</th><th>Evidence refs</th><th>Actions</th>
+            </tr></thead>
+            <tbody>{detail.pass6HandoffCandidates.map((candidate) => (
+              <tr key={candidate.handoffCandidateId} style={{ borderBottom: "1px solid #222" }}>
+                <td style={{ padding: "6px", fontFamily: "monospace" }}>{candidate.handoffCandidateId}</td>
+                <td>{candidate.candidateType}</td>
+                <td>{candidate.description}</td>
+                <td>{candidate.confidenceLevel}</td>
+                <td>{candidate.recommendedPass6Use}</td>
+                <td>{candidate.mandatoryOrOptional}</td>
+                <td>{candidate.adminDecision}</td>
+                <td>{candidate.evidenceRefs.map((ref) => `${ref.evidenceItemId}${ref.note ? ` (${ref.note})` : ""}`).join(", ") || "—"}</td>
+                <td>
+                  {(["accepted_for_pass6", "dismissed", "needs_more_evidence"] as const).map((decision) => (
+                    <form key={decision} action={`/api/participant-sessions/handoff-candidates/${candidate.handoffCandidateId}/decision`} method="post" style={{ display: "inline-flex", margin: "4px 6px 4px 0" }}>
+                      <input type="hidden" name="returnTo" value={`/participant-sessions/${detail.session.sessionId}`} />
+                      <input type="hidden" name="adminDecision" value={decision} />
+                      <button type="submit">{decision}</button>
+                    </form>
+                  ))}
+                </td>
+              </tr>
+            ))}</tbody>
+          </table>
+        )}
+      </Panel>
     </>
   );
 }

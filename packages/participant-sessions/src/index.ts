@@ -9,6 +9,7 @@ import {
   validateClarificationCandidate,
   validateEvidenceDispute,
   validateFirstPassExtractionOutput,
+  validatePass6HandoffCandidate,
   validateRawEvidenceItem,
   validateSessionAccessToken,
   validateTelegramIdentityBinding,
@@ -26,6 +27,10 @@ import {
   type FirstPassExtractionOutput,
   type ParticipantContactProfile,
   type ParticipantSession,
+  type Pass6HandoffAdminDecision,
+  type Pass6HandoffCandidate,
+  type Pass6HandoffCandidateType,
+  type Pass6HandoffCreatedFrom,
   type ParticipationMode,
   type RawEvidenceItem,
   type RawEvidenceType,
@@ -38,6 +43,8 @@ import {
   type TargetingRolloutPlanState,
   type TelegramBindingStatus,
   type TelegramIdentityBinding,
+  type ConfidenceLevel,
+  type MandatoryOrOptional,
 } from "@workflow/contracts";
 import type {
   BoundarySignalRepository,
@@ -3828,4 +3835,206 @@ export async function runAdminAssistantQuestion(
       errors: [{ code: "provider_execution_failed", message }],
     };
   }
+}
+
+export interface Pass6HandoffCandidateRepos {
+  participantSessions: ParticipantSessionRepository;
+  pass6HandoffCandidates: Pass6HandoffCandidateRepository;
+  evidenceDisputes?: EvidenceDisputeRepository;
+  boundarySignals?: BoundarySignalRepository;
+  clarificationCandidates?: ClarificationCandidateRepository;
+  firstPassExtractionOutputs?: FirstPassExtractionOutputRepository;
+}
+
+export interface Pass6HandoffCandidateOptions {
+  now?: () => string;
+  handoffCandidateIdFactory?: () => string;
+}
+
+export interface Pass6HandoffCandidateInput {
+  caseId: string;
+  sessionIds: string[];
+  candidateType: Pass6HandoffCandidateType;
+  description: string;
+  evidenceRefs: EvidenceAnchor[];
+  confidenceLevel?: ConfidenceLevel;
+  recommendedPass6Use: string;
+  mandatoryOrOptional?: MandatoryOrOptional;
+  createdFrom: Pass6HandoffCreatedFrom;
+}
+
+export type Pass6HandoffCandidateResult =
+  | { ok: true; value: Pass6HandoffCandidate; warnings: string[]; errors: [] }
+  | { ok: false; value: null; warnings: string[]; errors: { code: "candidate_not_found" | "source_not_found" | "schema_validation_failed"; message: string }[] };
+
+function handoffNow(options?: Pass6HandoffCandidateOptions): string {
+  return options?.now?.() ?? new Date().toISOString();
+}
+
+function handoffCandidateId(options?: Pass6HandoffCandidateOptions): string {
+  return options?.handoffCandidateIdFactory?.() ?? `pass6_handoff_candidate_${crypto.randomUUID()}`;
+}
+
+function handoffFailure(
+  code: "candidate_not_found" | "source_not_found" | "schema_validation_failed",
+  message: string,
+): Pass6HandoffCandidateResult {
+  return { ok: false, value: null, warnings: [], errors: [{ code, message }] };
+}
+
+function participantLabelsForSessions(sessionIds: string[], repos: Pick<Pass6HandoffCandidateRepos, "participantSessions">): string[] {
+  return sessionIds.map((sessionId) => repos.participantSessions.findById(sessionId)?.participantLabel ?? sessionId);
+}
+
+function savePass6HandoffCandidate(
+  candidate: Pass6HandoffCandidate,
+  repos: Pick<Pass6HandoffCandidateRepos, "pass6HandoffCandidates">,
+): Pass6HandoffCandidateResult {
+  const validation = validatePass6HandoffCandidate(candidate);
+  if (!validation.ok) {
+    return handoffFailure("schema_validation_failed", `Pass6HandoffCandidate validation failed: ${validationMessage(validation.errors)}`);
+  }
+  repos.pass6HandoffCandidates.save(candidate);
+  return { ok: true, value: candidate, warnings: [], errors: [] };
+}
+
+export function listPass6HandoffCandidatesByCase(
+  caseId: string,
+  repos: Pick<Pass6HandoffCandidateRepos, "pass6HandoffCandidates">,
+): Pass6HandoffCandidate[] {
+  return repos.pass6HandoffCandidates.findByCaseId(caseId);
+}
+
+export function listPass6HandoffCandidatesBySession(
+  sessionId: string,
+  repos: Pick<Pass6HandoffCandidateRepos, "pass6HandoffCandidates">,
+): Pass6HandoffCandidate[] {
+  return repos.pass6HandoffCandidates.findBySessionId(sessionId);
+}
+
+export function createPass6HandoffCandidate(
+  input: Pass6HandoffCandidateInput,
+  repos: Pass6HandoffCandidateRepos,
+  options?: Pass6HandoffCandidateOptions,
+): Pass6HandoffCandidateResult {
+  const candidate: Pass6HandoffCandidate = {
+    handoffCandidateId: handoffCandidateId(options),
+    caseId: input.caseId,
+    sessionIds: [...new Set(input.sessionIds)],
+    relatedParticipantLabels: participantLabelsForSessions([...new Set(input.sessionIds)], repos),
+    candidateType: input.candidateType,
+    description: input.description,
+    evidenceRefs: input.evidenceRefs,
+    confidenceLevel: input.confidenceLevel ?? "medium",
+    recommendedPass6Use: input.recommendedPass6Use,
+    mandatoryOrOptional: input.mandatoryOrOptional ?? "optional",
+    adminDecision: "pending",
+    createdFrom: input.createdFrom,
+    createdAt: handoffNow(options),
+  };
+  return savePass6HandoffCandidate(candidate, repos);
+}
+
+export function createPass6HandoffCandidateFromAdminEntry(
+  input: Omit<Pass6HandoffCandidateInput, "createdFrom">,
+  repos: Pass6HandoffCandidateRepos,
+  options?: Pass6HandoffCandidateOptions,
+): Pass6HandoffCandidateResult {
+  return createPass6HandoffCandidate({ ...input, createdFrom: "admin_entry" }, repos, options);
+}
+
+export function createPass6HandoffCandidateFromAssistantRecommendation(
+  input: Omit<Pass6HandoffCandidateInput, "createdFrom">,
+  repos: Pass6HandoffCandidateRepos,
+  options?: Pass6HandoffCandidateOptions,
+): Pass6HandoffCandidateResult {
+  return createPass6HandoffCandidate({ ...input, createdFrom: "admin_assistant" }, repos, options);
+}
+
+export function createPass6HandoffCandidateFromEvidenceDispute(
+  disputeId: string,
+  repos: Pass6HandoffCandidateRepos,
+  options?: Pass6HandoffCandidateOptions,
+): Pass6HandoffCandidateResult {
+  const dispute = repos.evidenceDisputes?.findById(disputeId);
+  if (!dispute) return handoffFailure("source_not_found", `EvidenceDispute not found: ${disputeId}`);
+  const session = repos.participantSessions.findById(dispute.sessionId);
+  const caseId = session?.caseId ?? "unknown_case";
+  return createPass6HandoffCandidate({
+    caseId,
+    sessionIds: [dispute.sessionId],
+    candidateType: "evidence_dispute_for_later_review",
+    description: `Evidence dispute ${dispute.disputeId}: ${dispute.codeValidationIssue}`,
+    evidenceRefs: [{
+      evidenceItemId: dispute.aiProposedEvidenceAnchor.evidenceItemId,
+      quote: dispute.aiProposedEvidenceAnchor.quote,
+      note: `evidenceDisputeId=${dispute.disputeId}; affectedItemId=${dispute.affectedItemId}`,
+    }],
+    confidenceLevel: dispute.severity === "high" || dispute.severity === "blocking" ? "high" : "medium",
+    recommendedPass6Use: "Review before later cross-participant synthesis; do not treat disputed interpretation as final truth.",
+    mandatoryOrOptional: dispute.severity === "high" || dispute.severity === "blocking" ? "mandatory" : "optional",
+    createdFrom: "system_rule",
+  }, repos, options);
+}
+
+export function createPass6HandoffCandidateFromBoundarySignal(
+  boundarySignalId: string,
+  repos: Pass6HandoffCandidateRepos,
+  options?: Pass6HandoffCandidateOptions,
+): Pass6HandoffCandidateResult {
+  const signal = repos.boundarySignals?.findById(boundarySignalId);
+  if (!signal) return handoffFailure("source_not_found", `BoundarySignal not found: ${boundarySignalId}`);
+  const session = repos.participantSessions.findById(signal.sessionId);
+  const candidateType: Pass6HandoffCandidateType = signal.requiresEscalation ? "possible_escalation_need" : "boundary_pattern";
+  return createPass6HandoffCandidate({
+    caseId: session?.caseId ?? "unknown_case",
+    sessionIds: [signal.sessionId],
+    candidateType,
+    description: `Boundary signal ${signal.boundarySignalId}: ${signal.participantStatement}`,
+    evidenceRefs: [{
+      evidenceItemId: signal.linkedEvidenceItemId,
+      note: `boundarySignalId=${signal.boundarySignalId}; boundaryType=${signal.boundaryType}; escalationTarget=${signal.suggestedEscalationTarget}`,
+    }],
+    confidenceLevel: signal.confidenceLevel,
+    recommendedPass6Use: "Preserve participant boundary/ownership signal for later review; do not resolve ownership inside Pass 5.",
+    mandatoryOrOptional: signal.requiresEscalation ? "mandatory" : "optional",
+    createdFrom: "system_rule",
+  }, repos, options);
+}
+
+export function createRepeatedUncertaintyHandoffCandidateForSession(
+  sessionId: string,
+  repos: Pass6HandoffCandidateRepos,
+  options?: Pass6HandoffCandidateOptions,
+): Pass6HandoffCandidateResult {
+  const session = repos.participantSessions.findById(sessionId);
+  if (!session) return handoffFailure("source_not_found", `ParticipantSession not found: ${sessionId}`);
+  const candidates = repos.clarificationCandidates?.findBySessionId(sessionId)
+    .filter((candidate) => candidate.status === "open" || candidate.status === "partially_resolved" || candidate.status === "escalated") ?? [];
+  if (candidates.length < 2) {
+    return handoffFailure("source_not_found", "Repeated uncertainty candidate requires at least two unresolved/partial/escalated clarification candidates.");
+  }
+  return createPass6HandoffCandidate({
+    caseId: session.caseId,
+    sessionIds: [sessionId],
+    candidateType: "repeated_uncertainty",
+    description: `Session ${sessionId} has ${candidates.length} unresolved or partially resolved clarification candidates.`,
+    evidenceRefs: candidates.flatMap((candidate) => candidate.linkedRawEvidenceItemIds.length > 0
+      ? candidate.linkedRawEvidenceItemIds.map((evidenceItemId) => ({ evidenceItemId, note: `clarificationCandidateId=${candidate.candidateId}` }))
+      : [{ evidenceItemId: "missing_evidence_ref", note: `clarificationCandidateId=${candidate.candidateId}; evidence missing or weak` }]),
+    confidenceLevel: "medium",
+    recommendedPass6Use: "Review repeated uncertainty later; this is not a final gap conclusion.",
+    mandatoryOrOptional: "optional",
+    createdFrom: "system_rule",
+  }, repos, options);
+}
+
+export function updatePass6HandoffCandidateAdminDecision(
+  handoffCandidateId: string,
+  adminDecision: Pass6HandoffAdminDecision,
+  repos: Pick<Pass6HandoffCandidateRepos, "pass6HandoffCandidates">,
+): Pass6HandoffCandidateResult {
+  const updated = repos.pass6HandoffCandidates.updateAdminDecision(handoffCandidateId, adminDecision);
+  if (!updated) return handoffFailure("candidate_not_found", `Pass6HandoffCandidate not found: ${handoffCandidateId}`);
+  return { ok: true, value: updated, warnings: [], errors: [] };
 }

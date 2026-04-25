@@ -66,6 +66,8 @@ export default function ParticipantSessionsDashboardPage({
         <SummaryCard label="Boundary/escalation signals" value={`${dashboard.summary.sessionsWithBoundarySignals}/${dashboard.summary.sessionsWithEscalationSignals}`} />
         <SummaryCard label="Defects / disputes / unmapped" value={`${dashboard.summary.sessionsWithExtractionDefects}/${dashboard.summary.sessionsWithEvidenceDisputes}/${dashboard.summary.sessionsWithUnmappedContent}`} />
         <SummaryCard label="Ready or near-ready for later synthesis handoff" value={dashboard.summary.readyOrNearReadyForLaterSynthesisHandoff} />
+        <SummaryCard label="Handoff pending / accepted" value={`${dashboard.summary.pendingPass6HandoffCandidates}/${dashboard.summary.acceptedPass6HandoffCandidates}`} />
+        <SummaryCard label="Handoff dismissed / needs evidence" value={`${dashboard.summary.dismissedPass6HandoffCandidates}/${dashboard.summary.needsMoreEvidencePass6HandoffCandidates}`} />
       </section>
 
       <form method="get" className="card" style={{ display: "grid", gridTemplateColumns: "repeat(4, minmax(0, 1fr))", gap: "10px" }}>

@@ -4,6 +4,53 @@
 
 **Pass 5 Block 12 — Admin Assistant / Section Copilot implemented on branch `codex/pass5-block0-1-contracts`.**
 
+**Pass 5 Block 13 — Pass 6 Handoff Candidates implemented on branch `codex/pass5-block0-1-contracts`.**
+
+Block 13 adds governed Pass 5 handoff-candidate records only:
+
+- domain-layer creation/list/review helpers in `@workflow/participant-sessions`
+- admin-entry handoff candidate creation
+- admin-assistant recommendation conversion only after explicit admin confirmation
+- deterministic system-rule candidate creation from existing evidence disputes, boundary signals, and repeated clarification uncertainty
+- admin review decisions: `accepted_for_pass6`, `dismissed`, and `needs_more_evidence`
+- thin API routes `/api/participant-sessions/handoff-candidates` and `/api/participant-sessions/handoff-candidates/[id]/decision`
+- dashboard summary counts for pending/accepted/dismissed/needs-more-evidence handoff candidates
+- session detail `Pass 6 Handoff Candidates` panel with linked evidence references and review actions
+- proof script: `scripts/prove-pass5-block13-handoff-candidates.mjs`
+
+Block 13 proof commands passed:
+
+- `pnpm build:contracts`
+- `node scripts/prove-pass5-block1-contracts.mjs`
+- `node scripts/prove-pass5-block2-persistence.mjs`
+- `node scripts/prove-pass5-block3-session-creation.mjs`
+- `node scripts/prove-pass5-block4-channel-access.mjs`
+- `node scripts/prove-pass5-block5-web-session.mjs`
+- `node scripts/prove-pass5-block6-telegram-adapter.mjs`
+- `node scripts/prove-pass5-block6b-language-guidance.mjs`
+- `node scripts/prove-pass5-block7-evidence-trust.mjs`
+- `node scripts/prove-pass5-block8-prompt-family.mjs`
+- `node scripts/prove-pass5-block9-first-pass-extraction.mjs`
+- `node scripts/prove-pass5-block10-clarification.mjs`
+- `node scripts/prove-pass5-block11-admin-dashboard.mjs`
+- `node scripts/prove-pass5-block12-admin-assistant.mjs`
+- `node scripts/prove-pass5-block13-handoff-candidates.mjs`
+- `pnpm typecheck`
+- `pnpm build`
+
+Block 13 boundaries preserved:
+
+- no Pass 6 synthesis/evaluation
+- no common-path formation
+- no final workflow reconstruction
+- no package generation
+- no WhatsApp API
+- no final provider-backed extraction proof
+- no automatic assistant writes
+- no hidden shadow state
+
+Pass 5 is not complete after Block 13. Block 14 full live end-to-end test remains required before Pass 5 closure.
+
 Block 12 adds a governed read-only Pass 5 admin assistant:
 
 - domain-layer assistant pipeline in `@workflow/participant-sessions`
