@@ -10,6 +10,39 @@
 
 **Pass 5 Block 14 extraction governance hardening added on branch `codex/pass5-block0-1-contracts`; Pass 5 remains not accepted.**
 
+**Pass 5 Block 14 nested extraction governance hardening added on branch `codex/pass5-block0-1-contracts`; Pass 5 remains not accepted.**
+
+Block 14 nested extraction governance hardening changed only malformed nested provider-output handling:
+
+- added pre-governance validation for extracted item nested arrays, especially `evidenceAnchors[]` and `relatedItemIds[]`
+- added pre-governance validation for `sequenceMap.sequenceLinks[].evidenceAnchors[]`
+- added pre-governance validation for clarification candidate linked-id arrays and boundary signal linked-id arrays
+- reinforced extraction and repair prompt instructions for nested item arrays and evidence-anchor requirements
+- AI-extracted items with empty evidence anchors are downgraded to extraction defects, not accepted as clean extracted items
+- malformed nested output can trigger one provider-backed repair attempt and otherwise fails as governed invalid output
+- proof script added: `scripts/prove-pass5-block14-nested-extraction-governance.mjs`
+
+Nested hardening proof commands passed:
+
+- `pnpm --filter @workflow/participant-sessions build`
+- `pnpm --filter @workflow/prompts build`
+- `pnpm build:contracts`
+- `node scripts/prove-pass5-block9-first-pass-extraction.mjs`
+- `node scripts/prove-pass5-block14-extraction-governance-hardening.mjs`
+- `node scripts/prove-pass5-block14-nested-extraction-governance.mjs`
+- `pnpm build`
+- `pnpm typecheck` after `pnpm build` regenerated `.next/types`
+
+The post-nested-hardening live acceptance proof still did not pass:
+
+- `node scripts/prove-pass5-block14-full-live.mjs` reached live Google provider extraction
+- `participant_guidance_prompt` succeeded live with Google `gemini-3.1-pro-preview`
+- `first_pass_extraction_prompt` invoked the repair path; repair job succeeded
+- the prior nested iterable blocker `item.evidenceAnchors is not iterable` was resolved
+- final schema validation failed because the repaired live provider output still did not match `FirstPassExtractionOutput` nested contracts, including missing extracted item fields such as `label`, `description`, `sourceTextSpan`, `completenessStatus`, `confidenceLevel`, `needsClarification`, `clarificationReason`, `adminReviewStatus`, and `createdFrom`, plus sequence link and candidate schema issues
+- provider job `provider-job-live-extraction` was persisted as `failed`
+- Pass 5 must remain open until Block 14 resolves the live provider extraction schema mismatch and all required live provider/channel/dashboard/failure proofs pass
+
 Block 14 extraction governance hardening changed only the Pass 5 prompt/governance proof layer:
 
 - reinforced `first_pass_extraction_prompt` so required arrays must be present and empty arrays must be returned as `[]`

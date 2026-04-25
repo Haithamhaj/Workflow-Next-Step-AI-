@@ -1980,8 +1980,45 @@ const REQUIRED_SEQUENCE_MAP_ARRAY_FIELDS = [
   "notes",
 ] as const;
 
+const REQUIRED_EXTRACTED_ITEM_ARRAY_FIELDS = [
+  "evidenceAnchors",
+  "relatedItemIds",
+] as const;
+
+const EXTRACTION_ITEM_SECTION_FIELDS = [
+  "extractedActors",
+  "extractedSteps",
+  "extractedDecisionPoints",
+  "extractedHandoffs",
+  "extractedExceptions",
+  "extractedSystems",
+  "extractedControls",
+  "extractedDependencies",
+  "extractedUnknowns",
+] as const;
+
+const REQUIRED_CLARIFICATION_CANDIDATE_ARRAY_FIELDS = [
+  "linkedExtractedItemIds",
+  "linkedUnmappedItemIds",
+  "linkedDefectIds",
+  "linkedRawEvidenceItemIds",
+] as const;
+
+const REQUIRED_BOUNDARY_SIGNAL_ARRAY_FIELDS = [
+  "linkedExtractedItemIds",
+  "linkedClarificationCandidateIds",
+] as const;
+
 function getRecordValue(record: unknown, field: string): unknown {
   return record && typeof record === "object" ? (record as Record<string, unknown>)[field] : undefined;
+}
+
+function recordLabel(record: unknown, fallback: string): string {
+  const value = getRecordValue(record, "itemId")
+    ?? getRecordValue(record, "candidateId")
+    ?? getRecordValue(record, "boundarySignalId")
+    ?? fallback;
+  return typeof value === "string" && value.trim().length > 0 ? value : fallback;
 }
 
 function validateRequiredExtractionArrays(output: unknown): string[] {
@@ -2003,6 +2040,69 @@ function validateRequiredExtractionArrays(output: unknown): string[] {
         errors.push(`invalid_provider_extraction_output: missing_required_array_field sequenceMap.${field}`);
       }
     }
+  }
+  for (const section of EXTRACTION_ITEM_SECTION_FIELDS) {
+    const items = getRecordValue(output, section);
+    if (!Array.isArray(items)) continue;
+    items.forEach((item, index) => {
+      const label = recordLabel(item, `${section}[${index}]`);
+      if (!item || typeof item !== "object" || Array.isArray(item)) {
+        errors.push(`invalid_provider_extraction_output: invalid_extracted_item_shape ${section}[${index}] item_must_be_object`);
+        return;
+      }
+      if (typeof getRecordValue(item, "itemId") !== "string" || (getRecordValue(item, "itemId") as string).trim().length === 0) {
+        errors.push(`invalid_provider_extraction_output: invalid_extracted_item_shape ${label} missing_itemId`);
+      }
+      for (const field of REQUIRED_EXTRACTED_ITEM_ARRAY_FIELDS) {
+        if (!Array.isArray(getRecordValue(item, field))) {
+          const reason = field === "evidenceAnchors" ? "missing_or_invalid_evidenceAnchors" : `missing_or_invalid_${field}`;
+          errors.push(`invalid_provider_extraction_output: invalid_extracted_item_shape ${label} ${reason}`);
+        }
+      }
+    });
+  }
+  const sequenceLinks = getRecordValue(sequenceMap, "sequenceLinks");
+  if (Array.isArray(sequenceLinks)) {
+    sequenceLinks.forEach((link, index) => {
+      const label = `${getRecordValue(link, "fromItemId") ?? "unknown"}->${getRecordValue(link, "toItemId") ?? "unknown"}`;
+      if (!link || typeof link !== "object" || Array.isArray(link)) {
+        errors.push(`invalid_provider_extraction_output: invalid_sequence_link_shape sequenceLinks[${index}] link_must_be_object`);
+        return;
+      }
+      if (!Array.isArray(getRecordValue(link, "evidenceAnchors"))) {
+        errors.push(`invalid_provider_extraction_output: invalid_sequence_link_shape ${label} missing_or_invalid_evidenceAnchors`);
+      }
+    });
+  }
+  const clarificationCandidates = getRecordValue(output, "clarificationCandidates");
+  if (Array.isArray(clarificationCandidates)) {
+    clarificationCandidates.forEach((candidate, index) => {
+      const label = recordLabel(candidate, `clarificationCandidates[${index}]`);
+      if (!candidate || typeof candidate !== "object" || Array.isArray(candidate)) {
+        errors.push(`invalid_provider_extraction_output: invalid_clarification_candidate_shape clarificationCandidates[${index}] candidate_must_be_object`);
+        return;
+      }
+      for (const field of REQUIRED_CLARIFICATION_CANDIDATE_ARRAY_FIELDS) {
+        if (!Array.isArray(getRecordValue(candidate, field))) {
+          errors.push(`invalid_provider_extraction_output: invalid_clarification_candidate_shape ${label} missing_or_invalid_${field}`);
+        }
+      }
+    });
+  }
+  const boundarySignals = getRecordValue(output, "boundarySignals");
+  if (Array.isArray(boundarySignals)) {
+    boundarySignals.forEach((signal, index) => {
+      const label = recordLabel(signal, `boundarySignals[${index}]`);
+      if (!signal || typeof signal !== "object" || Array.isArray(signal)) {
+        errors.push(`invalid_provider_extraction_output: invalid_boundary_signal_shape boundarySignals[${index}] signal_must_be_object`);
+        return;
+      }
+      for (const field of REQUIRED_BOUNDARY_SIGNAL_ARRAY_FIELDS) {
+        if (!Array.isArray(getRecordValue(signal, field))) {
+          errors.push(`invalid_provider_extraction_output: invalid_boundary_signal_shape ${label} missing_or_invalid_${field}`);
+        }
+      }
+    });
   }
   return errors;
 }
@@ -2029,6 +2129,7 @@ function buildExtractionJsonRepairPrompt(input: {
     "",
     "Required contract summary:",
     "FirstPassExtractionOutput requires extractionId, sessionId, basisEvidenceItemIds[], extractionStatus, extractedActors[], extractedSteps[], sequenceMap { orderedItemIds[], sequenceLinks[], unclearTransitions[], notes[] }, extractedDecisionPoints[], extractedHandoffs[], extractedExceptions[], extractedSystems[], extractedControls[], extractedDependencies[], extractedUnknowns[], boundarySignals[], clarificationCandidates[], confidenceNotes[], contradictionNotes[], sourceCoverageSummary, unmappedContentItems[], extractionDefects[], evidenceDisputes[], and createdAt.",
+    "Nested requirements: every normal extracted item must include evidenceAnchors[] and relatedItemIds[]. AI-extracted items must not omit evidence anchors. If no evidence anchor exists, do not place the content in clean extracted arrays; place it in unmappedContentItems or extractionDefects. Every sequenceLink must include evidenceAnchors[]. Clarification candidates and boundary signals must include their required linked-id arrays. Do not invent quotes, offsets, evidence IDs, or workflow facts.",
     "",
     "Original provider JSON:",
     safeStringifyProviderJson(input.originalJson),
