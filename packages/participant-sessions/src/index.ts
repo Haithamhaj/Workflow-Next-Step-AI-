@@ -2527,3 +2527,640 @@ export async function runFirstPassExtractionForSession(
     errors: [],
   };
 }
+
+export type ClarificationErrorCode =
+  | "session_not_found"
+  | "candidate_not_found"
+  | "no_open_candidates"
+  | "active_question_already_exists"
+  | "candidate_not_ready"
+  | "candidate_already_resolved"
+  | "answer_evidence_not_found"
+  | "provider_not_configured"
+  | "provider_execution_failed"
+  | "provider_output_not_json"
+  | "schema_validation_failed"
+  | "persistence_failed";
+
+export interface ClarificationRepos {
+  participantSessions: ParticipantSessionRepository;
+  rawEvidenceItems: RawEvidenceItemRepository;
+  clarificationCandidates: ClarificationCandidateRepository;
+  boundarySignals: BoundarySignalRepository;
+  providerJobs: ProviderExtractionJobRepository;
+  promptSpecs: StructuredPromptSpecRepository;
+}
+
+export interface ClarificationOptions {
+  now?: () => string;
+  evidenceItemIdFactory?: () => string;
+  candidateIdFactory?: () => string;
+  boundarySignalIdFactory?: () => string;
+  providerJobIdFactory?: () => string;
+}
+
+export type ClarificationResult<T> =
+  | { ok: true; value: T; warnings: string[]; errors: [] }
+  | { ok: false; value: null; warnings: string[]; errors: { code: ClarificationErrorCode; message: string }[] };
+
+export interface ClarificationSelection {
+  candidate: ClarificationCandidate;
+  activeQuestionAlreadyAsked: boolean;
+}
+
+export interface RecordClarificationAnswerInput {
+  sessionId: string;
+  candidateId: string;
+  answerText: string;
+  sourceChannel?: ParticipationMode;
+  language?: string;
+  capturedAt?: string;
+  capturedBy?: "participant" | "admin";
+}
+
+export interface AnswerRecheckStatusUpdate {
+  candidateId: string;
+  status: "resolved" | "partially_resolved" | "open" | "escalated" | "dismissed_by_admin";
+  reason: string;
+}
+
+export interface AnswerRecheckPayload {
+  candidateStatusUpdates: AnswerRecheckStatusUpdate[];
+  newClarificationCandidates?: Partial<ClarificationCandidate>[];
+  boundarySignals?: Partial<BoundarySignal>[];
+}
+
+export interface AnswerRecheckResult {
+  updatedCandidates: ClarificationCandidate[];
+  createdCandidates: ClarificationCandidate[];
+  createdBoundarySignals: BoundarySignal[];
+  providerJobId: string;
+}
+
+export interface AdminClarificationCandidateInput {
+  sessionId: string;
+  questionTheme: string;
+  exactQuestion?: string;
+  instruction?: string;
+  whyItMatters?: string;
+  exampleAnswer?: string;
+  gapType?: ClarificationCandidate["gapType"];
+  priority?: ClarificationCandidate["priority"];
+  askNext?: boolean;
+  linkedRawEvidenceItemIds?: string[];
+  linkedExtractedItemIds?: string[];
+  linkedUnmappedItemIds?: string[];
+  linkedDefectIds?: string[];
+}
+
+function clarificationNow(options?: ClarificationOptions): string {
+  return options?.now?.() ?? new Date().toISOString();
+}
+
+function clarificationProviderJobId(options?: ClarificationOptions): string {
+  return options?.providerJobIdFactory?.() ?? `pass5_clarification_job_${crypto.randomUUID()}`;
+}
+
+function clarificationCandidateId(options?: ClarificationOptions): string {
+  return options?.candidateIdFactory?.() ?? `clarification_candidate_${crypto.randomUUID()}`;
+}
+
+function clarificationEvidenceItemId(options?: ClarificationOptions): string {
+  return options?.evidenceItemIdFactory?.() ?? `raw_evidence_${crypto.randomUUID()}`;
+}
+
+function clarificationBoundarySignalId(options?: ClarificationOptions): string {
+  return options?.boundarySignalIdFactory?.() ?? `boundary_signal_${crypto.randomUUID()}`;
+}
+
+function clarificationFailure<T>(
+  code: ClarificationErrorCode,
+  message: string,
+  warnings: string[] = [],
+): ClarificationResult<T> {
+  return { ok: false, value: null, warnings, errors: [{ code, message }] };
+}
+
+function priorityScore(priority: ClarificationCandidate["priority"]): number {
+  return priority === "high" ? 3 : priority === "medium" ? 2 : 1;
+}
+
+function gapTypeScore(gapType: ClarificationCandidate["gapType"]): number {
+  if (gapType === "contradiction" || gapType === "boundary_or_unknown") return 4;
+  if (gapType === "unclear_sequence" || gapType === "unclear_handoff") return 3;
+  if (gapType === "unclear_actor" || gapType === "unclear_owner") return 2;
+  return 1;
+}
+
+function saveClarificationProviderJob(input: {
+  session: ParticipantSession;
+  promptName: "clarification_formulation_prompt" | "answer_recheck_prompt" | "admin_added_question_prompt";
+  promptVersionId: string;
+  basePromptVersionId: string;
+  outputContractRef?: string;
+  provider: FirstPassExtractionExecutor | null;
+  repos: ClarificationRepos;
+  options?: ClarificationOptions;
+  status?: StoredProviderExtractionJob["status"];
+  errorMessage?: string;
+  outputRef?: string;
+}): StoredProviderExtractionJob {
+  const timestamp = clarificationNow(input.options);
+  const job: StoredProviderExtractionJob = {
+    jobId: clarificationProviderJobId(input.options),
+    sourceId: input.session.sessionId,
+    sessionId: input.session.sessionId,
+    caseId: input.session.caseId,
+    provider: input.provider?.name ?? "google",
+    jobKind: "pass5_prompt_test",
+    status: input.status ?? "queued",
+    inputType: "manual_note",
+    promptFamily: PASS5_PROMPT_FAMILY,
+    promptName: input.promptName,
+    promptVersionId: input.promptVersionId,
+    basePromptVersionId: input.basePromptVersionId,
+    inputBundleRef: `participant-session:${input.session.sessionId}:clarification`,
+    outputContractRef: input.outputContractRef,
+    outputRef: input.outputRef,
+    errorMessage: input.errorMessage,
+    createdAt: timestamp,
+    updatedAt: timestamp,
+  };
+  input.repos.providerJobs.save(job);
+  return job;
+}
+
+function parseJsonObject(text: string): Record<string, unknown> {
+  const parsed = parseExtractionOutput(text);
+  if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) throw new Error("Provider output must be a JSON object.");
+  return parsed as Record<string, unknown>;
+}
+
+function updateClarificationSessionState(
+  sessionId: string,
+  repos: ClarificationRepos,
+  sessionState: ParticipantSession["sessionState"],
+  updatedAt: string,
+): ParticipantSession | null {
+  const session = repos.participantSessions.findById(sessionId);
+  if (!session) return null;
+  const updated: ParticipantSession = { ...session, sessionState, updatedAt };
+  repos.participantSessions.save(updated);
+  return updated;
+}
+
+export function listOpenClarificationCandidates(
+  sessionId: string,
+  repos: Pick<ClarificationRepos, "clarificationCandidates">,
+): ClarificationCandidate[] {
+  return repos.clarificationCandidates.findBySessionId(sessionId)
+    .filter((candidate) => candidate.status === "open" || candidate.status === "partially_resolved");
+}
+
+export function selectNextClarificationCandidate(
+  sessionId: string,
+  repos: Pick<ClarificationRepos, "participantSessions" | "clarificationCandidates">,
+): ClarificationResult<ClarificationSelection> {
+  const session = repos.participantSessions.findById(sessionId);
+  if (!session) return clarificationFailure("session_not_found", `ParticipantSession not found: ${sessionId}`);
+  const candidates = repos.clarificationCandidates.findBySessionId(sessionId);
+  const asked = candidates.find((candidate) => candidate.status === "asked");
+  if (asked) return { ok: true, value: { candidate: asked, activeQuestionAlreadyAsked: true }, warnings: [], errors: [] };
+  const selectable = candidates.filter((candidate) => candidate.status === "open" || candidate.status === "partially_resolved");
+  if (selectable.length === 0) return clarificationFailure("no_open_candidates", "No open clarification candidates are available.");
+  selectable.sort((a, b) => {
+    const askNext = Number(b.askNext) - Number(a.askNext);
+    if (askNext !== 0) return askNext;
+    const priority = priorityScore(b.priority) - priorityScore(a.priority);
+    if (priority !== 0) return priority;
+    const gap = gapTypeScore(b.gapType) - gapTypeScore(a.gapType);
+    if (gap !== 0) return gap;
+    const links = (
+      b.linkedDefectIds.length + b.linkedUnmappedItemIds.length + b.linkedRawEvidenceItemIds.length
+    ) - (
+      a.linkedDefectIds.length + a.linkedUnmappedItemIds.length + a.linkedRawEvidenceItemIds.length
+    );
+    if (links !== 0) return links;
+    return a.createdAt.localeCompare(b.createdAt);
+  });
+  return { ok: true, value: { candidate: selectable[0]!, activeQuestionAlreadyAsked: false }, warnings: [], errors: [] };
+}
+
+export async function formulateClarificationQuestion(
+  candidateId: string,
+  repos: ClarificationRepos,
+  executor: FirstPassExtractionExecutor | null,
+  options?: ClarificationOptions,
+): Promise<ClarificationResult<{ candidate: ClarificationCandidate; providerJobId: string }>> {
+  const candidate = repos.clarificationCandidates.findById(candidateId);
+  if (!candidate) return clarificationFailure("candidate_not_found", `ClarificationCandidate not found: ${candidateId}`);
+  const session = repos.participantSessions.findById(candidate.sessionId);
+  if (!session) return clarificationFailure("session_not_found", `ParticipantSession not found: ${candidate.sessionId}`);
+  const compiled = compilePass5Prompt("clarification_formulation_prompt", {
+    promptName: "clarification_formulation_prompt",
+    caseId: session.caseId,
+    sessionId: session.sessionId,
+    languagePreference: session.languagePreference,
+    participantLabel: session.participantLabel,
+    selectedDepartment: session.selectedDepartment,
+    selectedUseCase: session.selectedUseCase,
+    evidenceRefs: candidate.linkedRawEvidenceItemIds,
+    adminInstruction: JSON.stringify(candidate),
+  }, repos.promptSpecs);
+  const queued = saveClarificationProviderJob({
+    session,
+    promptName: "clarification_formulation_prompt",
+    promptVersionId: compiled.promptSpec.promptSpecId,
+    basePromptVersionId: compiled.basePromptSpec.promptSpecId,
+    outputContractRef: compiled.promptSpec.outputContractRef,
+    provider: executor,
+    repos,
+    options,
+  });
+  if (!executor) {
+    const failed = { ...queued, status: "failed" as const, errorMessage: "provider_not_configured: no provider supplied for clarification formulation.", updatedAt: clarificationNow(options) };
+    repos.providerJobs.save(failed);
+    return clarificationFailure("provider_not_configured", failed.errorMessage, []);
+  }
+  try {
+    const result = await executor.runPromptText({ compiledPrompt: compiled.compiledPrompt });
+    const payload = parseJsonObject(result.text);
+    const updated: ClarificationCandidate = {
+      ...candidate,
+      participantFacingQuestion: String(payload.participantFacingQuestion ?? candidate.participantFacingQuestion),
+      whyItMatters: String(payload.whyItMatters ?? candidate.whyItMatters),
+      exampleAnswer: String(payload.exampleAnswer ?? candidate.exampleAnswer),
+      aiFormulated: true,
+      adminReviewStatus: "review_required",
+      updatedAt: clarificationNow(options),
+    };
+    const validation = validateClarificationCandidate(updated);
+    if (!validation.ok) return clarificationFailure("schema_validation_failed", `ClarificationCandidate validation failed: ${validationMessage(validation.errors)}`);
+    repos.clarificationCandidates.save(updated);
+    const succeeded = { ...queued, status: "succeeded" as const, provider: result.provider, model: result.model, outputRef: updated.candidateId, updatedAt: clarificationNow(options) };
+    repos.providerJobs.save(succeeded);
+    return { ok: true, value: { candidate: updated, providerJobId: succeeded.jobId }, warnings: [], errors: [] };
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    const failed = { ...queued, status: "failed" as const, errorMessage: message, updatedAt: clarificationNow(options) };
+    repos.providerJobs.save(failed);
+    return clarificationFailure(message.includes("JSON") ? "provider_output_not_json" : "provider_execution_failed", message);
+  }
+}
+
+export function markClarificationCandidateAsked(
+  candidateId: string,
+  repos: ClarificationRepos,
+  options?: ClarificationOptions,
+): ClarificationResult<ClarificationCandidate> {
+  const candidate = repos.clarificationCandidates.findById(candidateId);
+  if (!candidate) return clarificationFailure("candidate_not_found", `ClarificationCandidate not found: ${candidateId}`);
+  if (candidate.status === "resolved" || candidate.status === "dismissed_by_admin") {
+    return clarificationFailure("candidate_already_resolved", `Candidate ${candidateId} is not actionable.`);
+  }
+  const active = repos.clarificationCandidates.findBySessionId(candidate.sessionId)
+    .find((other) => other.status === "asked" && other.candidateId !== candidateId);
+  if (active) return clarificationFailure("active_question_already_exists", `Candidate ${active.candidateId} is already asked.`);
+  const updated: ClarificationCandidate = { ...candidate, status: "asked", updatedAt: clarificationNow(options) };
+  repos.clarificationCandidates.save(updated);
+  updateClarificationSessionState(candidate.sessionId, repos, "clarification_in_progress", updated.updatedAt);
+  return { ok: true, value: updated, warnings: [], errors: [] };
+}
+
+export function recordClarificationAnswer(
+  input: RecordClarificationAnswerInput,
+  repos: ClarificationRepos,
+  options?: ClarificationOptions,
+): ClarificationResult<RawEvidenceItem> {
+  const session = repos.participantSessions.findById(input.sessionId);
+  if (!session) return clarificationFailure("session_not_found", `ParticipantSession not found: ${input.sessionId}`);
+  const candidate = repos.clarificationCandidates.findById(input.candidateId);
+  if (!candidate) return clarificationFailure("candidate_not_found", `ClarificationCandidate not found: ${input.candidateId}`);
+  if (candidate.sessionId !== input.sessionId) return clarificationFailure("candidate_not_ready", "Candidate does not belong to the session.");
+  const capturedAt = input.capturedAt ?? clarificationNow(options);
+  const evidenceItem: RawEvidenceItem = {
+    evidenceItemId: clarificationEvidenceItemId(options),
+    sessionId: input.sessionId,
+    evidenceType: "participant_clarification_answer",
+    sourceChannel: input.sourceChannel ?? session.selectedParticipationMode,
+    rawContent: input.answerText,
+    language: input.language ?? session.languagePreference,
+    capturedAt,
+    capturedBy: input.capturedBy ?? "participant",
+    trustStatus: "raw_unreviewed",
+    confidenceScore: 1,
+    originalFileName: null,
+    providerJobId: null,
+    linkedClarificationItemId: candidate.candidateId,
+    notes: `Clarification answer for ${candidate.candidateId}.`,
+  };
+  const validation = validateRawEvidenceItem(evidenceItem);
+  if (!validation.ok) return clarificationFailure("schema_validation_failed", `RawEvidenceItem validation failed: ${validationMessage(validation.errors)}`);
+  repos.rawEvidenceItems.save(evidenceItem);
+  repos.clarificationCandidates.save({ ...candidate, status: "answered", askNext: false, updatedAt: capturedAt });
+  return { ok: true, value: evidenceItem, warnings: [], errors: [] };
+}
+
+function normalizeCandidateStatus(value: unknown): AnswerRecheckStatusUpdate["status"] {
+  return value === "resolved" || value === "partially_resolved" || value === "open" || value === "escalated" || value === "dismissed_by_admin"
+    ? value
+    : "open";
+}
+
+function defaultBoundarySignalFromAnswer(input: {
+  session: ParticipantSession;
+  evidenceItem: RawEvidenceItem;
+  candidate: ClarificationCandidate;
+  partial?: Partial<BoundarySignal>;
+  options?: ClarificationOptions;
+}): BoundarySignal {
+  return {
+    boundarySignalId: input.partial?.boundarySignalId ?? clarificationBoundarySignalId(input.options),
+    sessionId: input.session.sessionId,
+    boundaryType: input.partial?.boundaryType ?? "knowledge_gap",
+    participantStatement: input.partial?.participantStatement ?? input.evidenceItem.rawContent ?? "",
+    linkedEvidenceItemId: input.evidenceItem.evidenceItemId,
+    linkedExtractedItemIds: input.partial?.linkedExtractedItemIds ?? input.candidate.linkedExtractedItemIds,
+    linkedClarificationCandidateIds: input.partial?.linkedClarificationCandidateIds ?? [input.candidate.candidateId],
+    workflowArea: input.partial?.workflowArea ?? "unknown",
+    interpretationNote: input.partial?.interpretationNote ?? "Boundary signal identified during answer recheck.",
+    requiresEscalation: input.partial?.requiresEscalation ?? false,
+    suggestedEscalationTarget: input.partial?.suggestedEscalationTarget ?? "none",
+    participantSuggestedOwner: input.partial?.participantSuggestedOwner ?? null,
+    escalationReason: input.partial?.escalationReason ?? null,
+    shouldStopAskingParticipant: input.partial?.shouldStopAskingParticipant ?? true,
+    confidenceLevel: input.partial?.confidenceLevel ?? "medium",
+    createdAt: input.partial?.createdAt ?? clarificationNow(input.options),
+  };
+}
+
+export async function runClarificationAnswerRecheck(
+  sessionId: string,
+  answerEvidenceId: string,
+  repos: ClarificationRepos,
+  executor: FirstPassExtractionExecutor | null,
+  options?: ClarificationOptions,
+): Promise<ClarificationResult<AnswerRecheckResult>> {
+  const session = repos.participantSessions.findById(sessionId);
+  if (!session) return clarificationFailure("session_not_found", `ParticipantSession not found: ${sessionId}`);
+  const answerEvidence = repos.rawEvidenceItems.findById(answerEvidenceId);
+  if (!answerEvidence) return clarificationFailure("answer_evidence_not_found", `Answer evidence not found: ${answerEvidenceId}`);
+  const candidates = repos.clarificationCandidates.findBySessionId(sessionId).filter((candidate) =>
+    candidate.status === "open"
+    || candidate.status === "asked"
+    || candidate.status === "partially_resolved"
+    || candidate.candidateId === answerEvidence.linkedClarificationItemId
+  );
+  const compiled = compilePass5Prompt("answer_recheck_prompt", {
+    promptName: "answer_recheck_prompt",
+    caseId: session.caseId,
+    sessionId,
+    languagePreference: session.languagePreference,
+    participantLabel: session.participantLabel,
+    selectedDepartment: session.selectedDepartment,
+    selectedUseCase: session.selectedUseCase,
+    evidenceRefs: [answerEvidenceId],
+    rawContent: answerEvidence.rawContent ?? "",
+    adminInstruction: JSON.stringify({ candidates }),
+  }, repos.promptSpecs);
+  const queued = saveClarificationProviderJob({
+    session,
+    promptName: "answer_recheck_prompt",
+    promptVersionId: compiled.promptSpec.promptSpecId,
+    basePromptVersionId: compiled.basePromptSpec.promptSpecId,
+    outputContractRef: compiled.promptSpec.outputContractRef,
+    provider: executor,
+    repos,
+    options,
+  });
+  if (!executor) {
+    const failed = { ...queued, status: "failed" as const, errorMessage: "provider_not_configured: no provider supplied for answer recheck.", updatedAt: clarificationNow(options) };
+    repos.providerJobs.save(failed);
+    return clarificationFailure("provider_not_configured", failed.errorMessage);
+  }
+  try {
+    const result = await executor.runPromptText({ compiledPrompt: compiled.compiledPrompt });
+    const payload = parseJsonObject(result.text) as unknown as AnswerRecheckPayload;
+    const updatedCandidates: ClarificationCandidate[] = [];
+    for (const update of payload.candidateStatusUpdates ?? []) {
+      const candidate = repos.clarificationCandidates.findById(update.candidateId);
+      if (!candidate || candidate.sessionId !== sessionId) continue;
+      const status = normalizeCandidateStatus(update.status);
+      const updated: ClarificationCandidate = {
+        ...candidate,
+        status,
+        askNext: status === "open" || status === "partially_resolved",
+        adminInstruction: update.reason || candidate.adminInstruction,
+        updatedAt: clarificationNow(options),
+      };
+      repos.clarificationCandidates.save(updated);
+      updatedCandidates.push(updated);
+    }
+    const createdCandidates: ClarificationCandidate[] = [];
+    for (const partial of payload.newClarificationCandidates ?? []) {
+      const candidate = buildAdminClarificationCandidate(session, {
+        sessionId,
+        questionTheme: partial.questionTheme ?? "Follow-up clarification",
+        exactQuestion: partial.participantFacingQuestion,
+        whyItMatters: partial.whyItMatters,
+        exampleAnswer: partial.exampleAnswer,
+        gapType: partial.gapType,
+        priority: partial.priority,
+        askNext: partial.askNext,
+        linkedRawEvidenceItemIds: [answerEvidenceId],
+        linkedExtractedItemIds: partial.linkedExtractedItemIds,
+        linkedUnmappedItemIds: partial.linkedUnmappedItemIds,
+        linkedDefectIds: partial.linkedDefectIds,
+      }, "participant_answer_recheck", true, options);
+      repos.clarificationCandidates.save(candidate);
+      createdCandidates.push(candidate);
+    }
+    const activeCandidate = repos.clarificationCandidates.findById(answerEvidence.linkedClarificationItemId ?? "") ?? candidates[0];
+    const createdBoundarySignals: BoundarySignal[] = [];
+    for (const partial of payload.boundarySignals ?? []) {
+      if (!activeCandidate) continue;
+      const signal = defaultBoundarySignalFromAnswer({ session, evidenceItem: answerEvidence, candidate: activeCandidate, partial, options });
+      const validation = validateBoundarySignal(signal);
+      if (!validation.ok) return clarificationFailure("schema_validation_failed", `BoundarySignal validation failed: ${validationMessage(validation.errors)}`);
+      repos.boundarySignals.save(signal);
+      createdBoundarySignals.push(signal);
+    }
+    const remaining = repos.clarificationCandidates.findBySessionId(sessionId)
+      .filter((candidate) => candidate.status === "open" || candidate.status === "partially_resolved" || candidate.status === "asked");
+    updateClarificationSessionState(
+      sessionId,
+      repos,
+      remaining.length > 0 ? "clarification_needed" : "first_pass_extraction_ready",
+      clarificationNow(options),
+    );
+    const succeeded = { ...queued, status: "succeeded" as const, provider: result.provider, model: result.model, outputRef: answerEvidenceId, updatedAt: clarificationNow(options) };
+    repos.providerJobs.save(succeeded);
+    return {
+      ok: true,
+      value: { updatedCandidates, createdCandidates, createdBoundarySignals, providerJobId: succeeded.jobId },
+      warnings: [],
+      errors: [],
+    };
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    const failed = { ...queued, status: "failed" as const, errorMessage: message, updatedAt: clarificationNow(options) };
+    repos.providerJobs.save(failed);
+    return clarificationFailure(message.includes("JSON") ? "provider_output_not_json" : "provider_execution_failed", message);
+  }
+}
+
+function buildAdminClarificationCandidate(
+  session: ParticipantSession,
+  input: AdminClarificationCandidateInput,
+  createdFrom: ClarificationCandidate["createdFrom"],
+  aiFormulated: boolean,
+  options?: ClarificationOptions,
+): ClarificationCandidate {
+  const timestamp = clarificationNow(options);
+  return {
+    candidateId: clarificationCandidateId(options),
+    sessionId: session.sessionId,
+    linkedExtractedItemIds: input.linkedExtractedItemIds ?? [],
+    linkedUnmappedItemIds: input.linkedUnmappedItemIds ?? [],
+    linkedDefectIds: input.linkedDefectIds ?? [],
+    linkedRawEvidenceItemIds: input.linkedRawEvidenceItemIds ?? [],
+    gapType: input.gapType ?? "admin_observed_gap",
+    questionTheme: input.questionTheme,
+    participantFacingQuestion: input.exactQuestion ?? input.instruction ?? input.questionTheme,
+    whyItMatters: input.whyItMatters ?? "This helps clarify the participant-level workflow draft.",
+    exampleAnswer: input.exampleAnswer ?? "A short practical answer is enough.",
+    priority: input.priority ?? "medium",
+    askNext: input.askNext ?? false,
+    status: "open",
+    createdFrom,
+    adminInstruction: input.instruction ?? input.exactQuestion ?? input.questionTheme,
+    aiFormulated,
+    adminReviewStatus: "review_required",
+    createdAt: timestamp,
+    updatedAt: timestamp,
+  };
+}
+
+export async function addAdminClarificationCandidate(
+  input: AdminClarificationCandidateInput,
+  repos: ClarificationRepos,
+  executor?: FirstPassExtractionExecutor | null,
+  options?: ClarificationOptions,
+): Promise<ClarificationResult<ClarificationCandidate>> {
+  const session = repos.participantSessions.findById(input.sessionId);
+  if (!session) return clarificationFailure("session_not_found", `ParticipantSession not found: ${input.sessionId}`);
+  if (input.exactQuestion) {
+    const candidate = buildAdminClarificationCandidate(session, input, "admin_entry", false, options);
+    const validation = validateClarificationCandidate(candidate);
+    if (!validation.ok) return clarificationFailure("schema_validation_failed", `ClarificationCandidate validation failed: ${validationMessage(validation.errors)}`);
+    repos.clarificationCandidates.save(candidate);
+    return { ok: true, value: candidate, warnings: [], errors: [] };
+  }
+  if (!executor) return clarificationFailure("provider_not_configured", "provider_not_configured: no provider supplied for admin-added question formulation.");
+  const compiled = compilePass5Prompt("admin_added_question_prompt", {
+    promptName: "admin_added_question_prompt",
+    caseId: session.caseId,
+    sessionId: session.sessionId,
+    languagePreference: session.languagePreference,
+    participantLabel: session.participantLabel,
+    selectedDepartment: session.selectedDepartment,
+    selectedUseCase: session.selectedUseCase,
+    adminInstruction: input.instruction ?? input.questionTheme,
+  }, repos.promptSpecs);
+  const queued = saveClarificationProviderJob({
+    session,
+    promptName: "admin_added_question_prompt",
+    promptVersionId: compiled.promptSpec.promptSpecId,
+    basePromptVersionId: compiled.basePromptSpec.promptSpecId,
+    outputContractRef: compiled.promptSpec.outputContractRef,
+    provider: executor,
+    repos,
+    options,
+  });
+  try {
+    const result = await executor.runPromptText({ compiledPrompt: compiled.compiledPrompt });
+    const payload = parseJsonObject(result.text);
+    const candidate = buildAdminClarificationCandidate(session, {
+      ...input,
+      exactQuestion: String(payload.participantFacingQuestion ?? input.questionTheme),
+      whyItMatters: String(payload.whyItMatters ?? input.whyItMatters ?? ""),
+      exampleAnswer: String(payload.exampleAnswer ?? input.exampleAnswer ?? ""),
+    }, "admin_entry", true, options);
+    const validation = validateClarificationCandidate(candidate);
+    if (!validation.ok) return clarificationFailure("schema_validation_failed", `ClarificationCandidate validation failed: ${validationMessage(validation.errors)}`);
+    repos.clarificationCandidates.save(candidate);
+    repos.providerJobs.save({ ...queued, status: "succeeded", provider: result.provider, model: result.model, outputRef: candidate.candidateId, updatedAt: clarificationNow(options) });
+    return { ok: true, value: candidate, warnings: [], errors: [] };
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    repos.providerJobs.save({ ...queued, status: "failed", errorMessage: message, updatedAt: clarificationNow(options) });
+    return clarificationFailure(message.includes("JSON") ? "provider_output_not_json" : "provider_execution_failed", message);
+  }
+}
+
+export function dismissClarificationCandidate(
+  candidateId: string,
+  repos: ClarificationRepos,
+  reason?: string,
+  options?: ClarificationOptions,
+): ClarificationResult<ClarificationCandidate> {
+  const candidate = repos.clarificationCandidates.findById(candidateId);
+  if (!candidate) return clarificationFailure("candidate_not_found", `ClarificationCandidate not found: ${candidateId}`);
+  const updated: ClarificationCandidate = {
+    ...candidate,
+    status: "dismissed_by_admin",
+    adminInstruction: reason ?? candidate.adminInstruction,
+    updatedAt: clarificationNow(options),
+  };
+  repos.clarificationCandidates.save(updated);
+  return { ok: true, value: updated, warnings: [], errors: [] };
+}
+
+export function createBoundarySignalFromAnswer(
+  input: {
+    sessionId: string;
+    answerEvidenceId: string;
+    candidateId: string;
+    boundaryType?: BoundarySignal["boundaryType"];
+    participantSuggestedOwner?: string | null;
+    requiresEscalation?: boolean;
+    suggestedEscalationTarget?: BoundarySignal["suggestedEscalationTarget"];
+    escalationReason?: string | null;
+    shouldStopAskingParticipant?: boolean;
+  },
+  repos: ClarificationRepos,
+  options?: ClarificationOptions,
+): ClarificationResult<BoundarySignal> {
+  const session = repos.participantSessions.findById(input.sessionId);
+  if (!session) return clarificationFailure("session_not_found", `ParticipantSession not found: ${input.sessionId}`);
+  const answerEvidence = repos.rawEvidenceItems.findById(input.answerEvidenceId);
+  if (!answerEvidence) return clarificationFailure("answer_evidence_not_found", `Answer evidence not found: ${input.answerEvidenceId}`);
+  const candidate = repos.clarificationCandidates.findById(input.candidateId);
+  if (!candidate) return clarificationFailure("candidate_not_found", `ClarificationCandidate not found: ${input.candidateId}`);
+  const signal = defaultBoundarySignalFromAnswer({
+    session,
+    evidenceItem: answerEvidence,
+    candidate,
+    partial: {
+      boundaryType: input.boundaryType ?? "knowledge_gap",
+      participantSuggestedOwner: input.participantSuggestedOwner ?? null,
+      requiresEscalation: input.requiresEscalation ?? false,
+      suggestedEscalationTarget: input.suggestedEscalationTarget ?? "none",
+      escalationReason: input.escalationReason ?? null,
+      shouldStopAskingParticipant: input.shouldStopAskingParticipant ?? true,
+    },
+    options,
+  });
+  const validation = validateBoundarySignal(signal);
+  if (!validation.ok) return clarificationFailure("schema_validation_failed", `BoundarySignal validation failed: ${validationMessage(validation.errors)}`);
+  repos.boundarySignals.save(signal);
+  if (signal.shouldStopAskingParticipant) {
+    repos.clarificationCandidates.save({
+      ...candidate,
+      status: "escalated",
+      askNext: false,
+      updatedAt: clarificationNow(options),
+    });
+  }
+  return { ok: true, value: signal, warnings: [], errors: [] };
+}
