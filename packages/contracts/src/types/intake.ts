@@ -149,7 +149,8 @@ export type ProviderJobKind =
   | "website_crawl"
   | "manual_note_suggestion"
   | "source_role_suggestion"
-  | "structured_context_generation";
+  | "structured_context_generation"
+  | "pass5_prompt_test";
 
 export interface ProviderExtractionJob {
   jobId: string;
@@ -163,6 +164,12 @@ export interface ProviderExtractionJob {
   model?: string;
   outputRef?: string;
   errorMessage?: string;
+  promptFamily?: string;
+  promptName?: string;
+  promptVersionId?: string;
+  basePromptVersionId?: string;
+  inputBundleRef?: string;
+  outputContractRef?: string;
   createdAt: string;
   updatedAt: string;
 }

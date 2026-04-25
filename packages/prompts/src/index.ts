@@ -21,7 +21,14 @@ import {
   type StructuredPromptSpec,
   type StructuredPromptSpecBlock,
 } from "@workflow/contracts";
-import type { Pass3PromptTestRunRepository, PromptRecord, PromptRepository, StructuredPromptSpecRepository } from "@workflow/persistence";
+import type {
+  Pass3PromptTestRunRepository,
+  PromptRecord,
+  PromptRepository,
+  ProviderExtractionJobRepository,
+  StoredProviderExtractionJob,
+  StructuredPromptSpecRepository,
+} from "@workflow/persistence";
 import type { Pass4PromptTestRunRepository } from "@workflow/persistence";
 
 // ---------------------------------------------------------------------------
@@ -660,6 +667,435 @@ export async function runPass4PromptComparisonTest(input: {
   if (!result.ok) throw new Error(`Invalid Pass 4 prompt test run: ${validationMessage(result.errors)}`);
   repos.testRuns.save(run);
   return run;
+}
+
+export const PASS5_PROMPT_FAMILY = "pass5_participant_session_prompt_family" as const;
+export const PASS5_BASE_GOVERNANCE_PROMPT_MODULE = "pass5.base_governance" as const;
+
+export type Pass5PromptName =
+  | "pass5_base_governance_prompt"
+  | "participant_guidance_prompt"
+  | "first_pass_extraction_prompt"
+  | "evidence_interpretation_prompt"
+  | "clarification_formulation_prompt"
+  | "answer_recheck_prompt"
+  | "admin_added_question_prompt"
+  | "admin_assistant_prompt";
+
+export type Pass5CapabilityPromptName = Exclude<Pass5PromptName, "pass5_base_governance_prompt">;
+
+export interface Pass5PromptInputBundle {
+  promptName: Pass5PromptName;
+  caseId: string;
+  sessionId?: string;
+  languagePreference?: string;
+  channel?: "web_session_chatbot" | "telegram_bot" | "email_link_delivery" | "calendar_meeting" | "manual_meeting_or_admin_entered";
+  participantLabel?: string;
+  selectedDepartment?: string;
+  selectedUseCase?: string;
+  evidenceRefs?: string[];
+  rawContent?: string;
+  contentRef?: string;
+  adminInstruction?: string;
+  contextBundleRef?: string;
+}
+
+export interface CompiledPass5Prompt {
+  promptName: Pass5PromptName;
+  promptSpec: StructuredPromptSpec;
+  basePromptSpec: StructuredPromptSpec;
+  compiledPrompt: string;
+}
+
+export type Pass5PromptTestJobResult =
+  | { ok: true; job: StoredProviderExtractionJob; compiledPrompt: string }
+  | { ok: false; job: StoredProviderExtractionJob; error: string; compiledPrompt: string };
+
+const PASS5_PROMPT_MODULES: Record<Pass5PromptName, string> = {
+  pass5_base_governance_prompt: PASS5_BASE_GOVERNANCE_PROMPT_MODULE,
+  participant_guidance_prompt: "pass5.participant_guidance",
+  first_pass_extraction_prompt: "pass5.first_pass_extraction",
+  evidence_interpretation_prompt: "pass5.evidence_interpretation",
+  clarification_formulation_prompt: "pass5.clarification_formulation",
+  answer_recheck_prompt: "pass5.answer_recheck",
+  admin_added_question_prompt: "pass5.admin_added_question",
+  admin_assistant_prompt: "pass5.admin_assistant",
+};
+
+export const PASS5_CAPABILITY_PROMPT_NAMES: readonly Pass5CapabilityPromptName[] = [
+  "participant_guidance_prompt",
+  "first_pass_extraction_prompt",
+  "evidence_interpretation_prompt",
+  "clarification_formulation_prompt",
+  "answer_recheck_prompt",
+  "admin_added_question_prompt",
+  "admin_assistant_prompt",
+];
+
+const pass5SectionLabels: Record<string, string> = {
+  prompt_metadata: "Prompt Metadata",
+  role_definition: "Role Definition",
+  mission_or_task_purpose: "Mission Or Task Purpose",
+  case_context_inputs: "Case Context Inputs",
+  source_and_evidence_rules: "Source And Evidence Rules",
+  operating_instructions: "Operating Instructions",
+  domain_terminology_lens: "Domain Terminology Lens",
+  boundaries_and_prohibitions: "Boundaries And Prohibitions",
+  uncertainty_and_escalation_rules: "Uncertainty And Escalation Rules",
+  output_contract_or_schema: "Output Contract Or Schema",
+  examples_or_few_shot_cases: "Examples Or Few-Shot Cases",
+  admin_discussion_behavior: "Admin Discussion Behavior",
+  evaluation_checklist: "Evaluation Checklist",
+  test_cases_or_golden_inputs: "Test Cases Or Golden Inputs",
+  compiled_prompt_preview: "Compiled Prompt Preview",
+  version_and_activation_controls: "Version And Activation Controls",
+};
+
+function pass5Blocks(entries: [string, string][]): StructuredPromptSpecBlock[] {
+  return entries.map(([blockId, body]) => ({
+    blockId,
+    label: pass5SectionLabels[blockId] ?? blockId,
+    body,
+    editable: true,
+  }));
+}
+
+function pass5CapabilityPromptMetadata(promptName: Pass5CapabilityPromptName, base: StructuredPromptSpec): string {
+  return [
+    `Prompt family: ${PASS5_PROMPT_FAMILY}.`,
+    `Prompt name: ${promptName}.`,
+    `Base governance prompt version id: ${base.promptSpecId}.`,
+    `Base governance prompt version: ${base.version}.`,
+    "Capability prompts must be compiled with the active base governance prompt before provider execution.",
+  ].join(" ");
+}
+
+export function defaultPass5BaseGovernancePromptSpec(now = new Date().toISOString()): StructuredPromptSpec {
+  return {
+    promptSpecId: "promptspec_pass5_base_governance_v1",
+    linkedModule: PASS5_BASE_GOVERNANCE_PROMPT_MODULE,
+    purpose: "Shared Pass 5 governance rules for participant-session prompt capabilities.",
+    status: "active",
+    version: 1,
+    inputContractRef: "Pass5PromptInputBundle",
+    outputContractRef: "Capability-specific PromptSpec output contract",
+    createdAt: now,
+    updatedAt: now,
+    blocks: pass5Blocks([
+      ["prompt_metadata", `Prompt family: ${PASS5_PROMPT_FAMILY}. Prompt name: pass5_base_governance_prompt. Lifecycle: active base governance must be referenced by every Pass 5 capability prompt.`],
+      ["role_definition", "You are operating inside Pass 5 participant-session analysis. You must preserve participant narrative, uncertainty, and evidence boundaries."],
+      ["mission_or_task_purpose", "Govern all Pass 5 prompt capabilities so they support narrative-first clarification and participant-level draft analysis without creating final workflow truth."],
+      ["source_and_evidence_rules", "Use full participant content first. Extraction must be evidence-anchored. No eligible content may be dropped: unmapped content, extraction defects, unknowns, boundary signals, clarification candidates, or admin review items must preserve it. Evidence disputes must preserve conflicts between AI interpretation and code/schema validation."],
+      ["operating_instructions", "Narrative-first principle: collect what the participant says before forcing structure. Support voice, text, and mixed answers. Ask one question at a time. Do not use compound-question loopholes. Boundary or unknown responses are evidence, not failures. Route actions to the correct later capability instead of mutating hidden state."],
+      ["boundaries_and_prohibitions", "No shadow state. Do not synthesize across participants. Do not evaluate, score, reconstruct final workflow truth, create package output, approve evidence, send participant messages, run channel dispatch, or bypass admin approval boundaries inside prompt output."],
+      ["uncertainty_and_escalation_rules", "Do not pressure participants to guess. Honest uncertainty, lack of visibility, ownership boundaries, refusal, or another-team ownership must be preserved as boundary/unknown evidence and routed for later admin review or escalation."],
+      ["admin_discussion_behavior", "Admin-facing capabilities are read-only by default unless a later governed execution path explicitly routes a proposed action for admin confirmation."],
+      ["evaluation_checklist", "Check narrative-first handling, one-question-at-a-time behavior, no dropped content, evidence anchors, dispute preservation, no hidden state, no final synthesis/evaluation/package generation, and channel-specific boundary compliance."],
+      ["version_and_activation_controls", "Draft edits must not become active automatically. Activation requires explicit admin promotion. Capability prompts must record the base prompt version used at compile/test time."],
+    ]),
+  };
+}
+
+function pass5CapabilitySpecBlocks(promptName: Pass5CapabilityPromptName, base: StructuredPromptSpec): StructuredPromptSpecBlock[] {
+  const common = pass5CapabilityPromptMetadata(promptName, base);
+  const byPrompt: Record<Pass5CapabilityPromptName, [string, string][]> = {
+    participant_guidance_prompt: [
+      ["prompt_metadata", common],
+      ["role_definition", "You generate participant-facing opening guidance for a Pass 5 session."],
+      ["mission_or_task_purpose", "Create clear channel-aware and language-aware guidance for Telegram, Web chatbot, email instruction style, or meeting/interviewer scripts."],
+      ["case_context_inputs", "Use participant label, selected department, selected use case, language preference, and channel. Do not load unrelated database context."],
+      ["operating_instructions", "Explain why the participant is being asked, ask them to describe actual practice, say perfect order is not required, and invite honest unknown/outside-responsibility statements."],
+      ["boundaries_and_prohibitions", "Do not run extraction, clarification, answer recheck, admin assistant behavior, synthesis, evaluation, package generation, or channel dispatch. Do not replace deterministic Web or Telegram runtime guidance in Block 8."],
+      ["output_contract_or_schema", "Return JSON only: {\"guidanceText\":\"string\",\"language\":\"en|ar\",\"channel\":\"telegram|web|email|meeting\",\"safetyNotes\":[\"string\"]}."],
+      ["evaluation_checklist", "Check language awareness, channel fit, participant non-pressure, no AI claims of authority, and no hidden workflow state."],
+    ],
+    first_pass_extraction_prompt: [
+      ["prompt_metadata", common],
+      ["role_definition", "You create participant-level structured draft extraction from approved eligible evidence."],
+      ["mission_or_task_purpose", "Read the full eligible participant content/transcript and output a FirstPassExtractionOutput draft."],
+      ["source_and_evidence_rules", "Every normal AI-extracted item must include evidence anchors. Apply full-content-first analysis. Enforce the no-drop extraction rule through unmappedContentItems, extractionDefects, extractedUnknowns, boundarySignals, clarificationCandidates, or admin review items."],
+      ["operating_instructions", "Identify actors, steps, sequence map, decisions, handoffs, exceptions, systems, controls, dependencies, unknowns, boundary signals, confidence notes, contradiction notes, source coverage, unmapped content, defects, and evidence disputes."],
+      ["boundaries_and_prohibitions", "Participant-level structured draft only. Do not create final workflow truth. Do not synthesize across participants. Do not evaluate or package."],
+      ["output_contract_or_schema", "Return JSON matching FirstPassExtractionOutput, including structured SequenceMap, evidence anchors, unmappedContentItems, extractionDefects, and evidenceDisputes."],
+      ["evaluation_checklist", "Check no-drop coverage, evidence anchors, evidence disputes, source coverage summary, and no final synthesis claims."],
+    ],
+    evidence_interpretation_prompt: [
+      ["prompt_metadata", common],
+      ["role_definition", "You explain semantic support between source text and a proposed extracted item."],
+      ["mission_or_task_purpose", "Assess why a quoted source span supports, weakly supports, or fails to support an extracted item."],
+      ["source_and_evidence_rules", "AI may propose semantic evidence strength, but code validates anchor/schema integrity. If interpretation and code validation disagree, preserve an EvidenceDispute."],
+      ["operating_instructions", "Explain semantic support, quote alignment, possible interpretations, weak support, unsupported inference, and recommended admin action."],
+      ["boundaries_and_prohibitions", "Do not override code validation. Do not accept unsupported items as normal extracted items."],
+      ["output_contract_or_schema", "Return JSON only: {\"semanticSupport\":\"strong|medium|weak|unsupported\",\"interpretation\":\"string\",\"possibleDisputeType\":\"string|null\",\"recommendedAction\":\"admin_review|regenerate_anchor|ask_participant_clarification|downgrade_to_unmapped|reject_item\"}."],
+      ["evaluation_checklist", "Check evidence support, quote fit, no code-validation override, and dispute preservation."],
+    ],
+    clarification_formulation_prompt: [
+      ["prompt_metadata", common],
+      ["role_definition", "You formulate one participant-facing clarification question from a reviewed ClarificationCandidate."],
+      ["mission_or_task_purpose", "Turn a clarification candidate into a clear question with whyItMatters, exampleAnswer, and optional answer mode hint."],
+      ["operating_instructions", "Ask one question at a time. No compound-question loophole. Use plain participant language. Do not pressure guessing; invite unknown, outside-responsibility, or another-team answers."],
+      ["boundaries_and_prohibitions", "Do not ask the next question by yourself. Do not execute clarification queue state changes in Block 8."],
+      ["output_contract_or_schema", "Return JSON only: {\"participantFacingQuestion\":\"string\",\"whyItMatters\":\"string\",\"exampleAnswer\":\"string\",\"answerModeHint\":\"text|voice|either|null\"}."],
+      ["evaluation_checklist", "Check one-question-at-a-time, no compound question, no pressure, and clear why/example fields."],
+    ],
+    answer_recheck_prompt: [
+      ["prompt_metadata", common],
+      ["role_definition", "You review a participant's single clarification answer against open clarification candidates."],
+      ["mission_or_task_purpose", "Propose status updates for later governed execution by checking whether the answer resolves, partially resolves, or fails to resolve open candidates."],
+      ["operating_instructions", "Compare the answer to all supplied open candidates. Preserve unresolved gaps and boundary/unknown responses."],
+      ["boundaries_and_prohibitions", "Do not ask the next question. Do not mutate clarification status. Do not create participant messages."],
+      ["output_contract_or_schema", "Return JSON only: {\"candidateStatusProposals\":[{\"candidateId\":\"string\",\"proposedStatus\":\"resolved|partially_resolved|open|escalated\",\"reason\":\"string\"}],\"newBoundarySignals\":[\"string\"],\"recommendedAdminReview\":true}."],
+      ["evaluation_checklist", "Check that proposals are review-only and no next question or mutation is performed."],
+    ],
+    admin_added_question_prompt: [
+      ["prompt_metadata", common],
+      ["role_definition", "You convert admin instructions into participant-friendly clarification question drafts."],
+      ["mission_or_task_purpose", "Translate an admin's analytical instruction into a safe participant-facing question draft for later admin review."],
+      ["operating_instructions", "Keep one question only. Preserve the admin's intent without exposing internal terms or pressuring the participant."],
+      ["boundaries_and_prohibitions", "Admin review is required before surfacing questions. Do not send messages or mutate queue state."],
+      ["output_contract_or_schema", "Return JSON only: {\"participantFacingQuestion\":\"string\",\"whyItMatters\":\"string\",\"exampleAnswer\":\"string\",\"adminReviewRequired\":true}."],
+      ["evaluation_checklist", "Check participant-friendly wording, one-question rule, admin review required, and no internal jargon."],
+    ],
+    admin_assistant_prompt: [
+      ["prompt_metadata", common],
+      ["role_definition", "You are a read-only Pass 5 admin/operator copilot."],
+      ["mission_or_task_purpose", "Help the admin understand participant-session state using DB-first and retrieval-assisted context bundles later."],
+      ["case_context_inputs", "Use only supplied context bundle references, session summaries, evidence refs, and admin instruction. Do not load entire database context."],
+      ["operating_instructions", "Summarize visible records, identify routed action options, explain risks, and propose admin-review actions without mutating records."],
+      ["boundaries_and_prohibitions", "Read-only by default. Do not approve evidence, send participant messages, mutate session state, run synthesis/evaluation, create package output, or create hidden shadow state."],
+      ["output_contract_or_schema", "Return JSON only: {\"summary\":\"string\",\"routedActionOptions\":[{\"action\":\"string\",\"reason\":\"string\",\"requiresAdminConfirmation\":true}],\"riskNotes\":[\"string\"],\"noMutationPerformed\":true}."],
+      ["evaluation_checklist", "Check read-only behavior, routed action rule, no shadow state, and no synthesis/evaluation/package generation."],
+    ],
+  };
+  return pass5Blocks(byPrompt[promptName]);
+}
+
+export function defaultPass5CapabilityPromptSpec(
+  promptName: Pass5CapabilityPromptName,
+  base: StructuredPromptSpec,
+  now = new Date().toISOString(),
+): StructuredPromptSpec {
+  const outputContractByPrompt: Record<Pass5CapabilityPromptName, string> = {
+    participant_guidance_prompt: "ParticipantGuidanceDraft",
+    first_pass_extraction_prompt: "FirstPassExtractionOutput",
+    evidence_interpretation_prompt: "EvidenceDispute semantic support draft",
+    clarification_formulation_prompt: "ClarificationCandidate participant fields",
+    answer_recheck_prompt: "ClarificationCandidate status proposals",
+    admin_added_question_prompt: "ClarificationCandidate draft requiring admin review",
+    admin_assistant_prompt: "Read-only routed action suggestions",
+  };
+  return {
+    promptSpecId: `promptspec_pass5_${promptName}_v1`,
+    linkedModule: PASS5_PROMPT_MODULES[promptName],
+    purpose: `Pass 5 ${promptName} capability prompt governed by ${base.promptSpecId}.`,
+    status: "active",
+    version: 1,
+    inputContractRef: "Pass5PromptInputBundle",
+    outputContractRef: outputContractByPrompt[promptName],
+    previousActivePromptSpecId: base.promptSpecId,
+    createdAt: now,
+    updatedAt: now,
+    blocks: pass5CapabilitySpecBlocks(promptName, base),
+  };
+}
+
+export function ensureActivePass5BaseGovernancePromptSpec(repo: StructuredPromptSpecRepository): StructuredPromptSpec {
+  const existing = repo.findActiveByLinkedModule(PASS5_BASE_GOVERNANCE_PROMPT_MODULE);
+  if (existing) return existing;
+  const spec = defaultPass5BaseGovernancePromptSpec();
+  const result = validateStructuredPromptSpec(spec);
+  if (!result.ok) throw new Error(`Invalid Pass 5 base governance PromptSpec: ${validationMessage(result.errors)}`);
+  repo.save(spec);
+  return spec;
+}
+
+export function ensureActivePass5PromptSpec(
+  promptName: Pass5PromptName,
+  repo: StructuredPromptSpecRepository,
+): StructuredPromptSpec {
+  if (promptName === "pass5_base_governance_prompt") return ensureActivePass5BaseGovernancePromptSpec(repo);
+  const existing = repo.findActiveByLinkedModule(PASS5_PROMPT_MODULES[promptName]);
+  if (existing) return existing;
+  const base = ensureActivePass5BaseGovernancePromptSpec(repo);
+  const spec = defaultPass5CapabilityPromptSpec(promptName, base);
+  const result = validateStructuredPromptSpec(spec);
+  if (!result.ok) throw new Error(`Invalid Pass 5 ${promptName} PromptSpec: ${validationMessage(result.errors)}`);
+  repo.save(spec);
+  return spec;
+}
+
+export function registerPass5PromptFamily(repo: StructuredPromptSpecRepository): {
+  basePrompt: StructuredPromptSpec;
+  capabilityPrompts: StructuredPromptSpec[];
+} {
+  const basePrompt = ensureActivePass5BaseGovernancePromptSpec(repo);
+  return {
+    basePrompt,
+    capabilityPrompts: PASS5_CAPABILITY_PROMPT_NAMES.map((promptName) => ensureActivePass5PromptSpec(promptName, repo)),
+  };
+}
+
+export function listPass5PromptSpecs(repo: StructuredPromptSpecRepository): StructuredPromptSpec[] {
+  return [
+    ...repo.findByLinkedModule(PASS5_BASE_GOVERNANCE_PROMPT_MODULE),
+    ...PASS5_CAPABILITY_PROMPT_NAMES.flatMap((promptName) => repo.findByLinkedModule(PASS5_PROMPT_MODULES[promptName])),
+  ];
+}
+
+export function getPass5PromptSpec(
+  promptName: Pass5PromptName,
+  repo: StructuredPromptSpecRepository,
+  version?: number,
+): StructuredPromptSpec | null {
+  const specs = repo.findByLinkedModule(PASS5_PROMPT_MODULES[promptName]);
+  if (version !== undefined) return specs.find((spec) => spec.version === version) ?? null;
+  return specs.find((spec) => spec.status === "active") ?? null;
+}
+
+export function compilePass5Prompt(
+  promptName: Pass5PromptName,
+  input: Pass5PromptInputBundle,
+  repo: StructuredPromptSpecRepository,
+): CompiledPass5Prompt {
+  const basePromptSpec = ensureActivePass5BaseGovernancePromptSpec(repo);
+  const promptSpec = ensureActivePass5PromptSpec(promptName, repo);
+  const baseSections = basePromptSpec.blocks.map((block) => `## Base Governance / ${block.label}\n${block.body}`).join("\n\n");
+  const capabilitySections = promptSpec.blocks.map((block) => `## Capability / ${block.label}\n${block.body}`).join("\n\n");
+  const runtimeContext = [
+    `promptName: ${input.promptName}`,
+    `caseId: ${input.caseId}`,
+    `sessionId: ${input.sessionId ?? "not provided"}`,
+    `languagePreference: ${input.languagePreference ?? "en"}`,
+    `channel: ${input.channel ?? "not provided"}`,
+    `participantLabel: ${input.participantLabel ?? "not provided"}`,
+    `selectedDepartment: ${input.selectedDepartment ?? "not provided"}`,
+    `selectedUseCase: ${input.selectedUseCase ?? "not provided"}`,
+    `evidenceRefs: ${(input.evidenceRefs ?? []).join(", ") || "none"}`,
+    `rawContent:\n${input.rawContent ?? "not provided"}`,
+    `contentRef: ${input.contentRef ?? "not provided"}`,
+    `adminInstruction:\n${input.adminInstruction ?? "not provided"}`,
+    `contextBundleRef: ${input.contextBundleRef ?? "not provided"}`,
+  ].join("\n\n");
+  return {
+    promptName,
+    promptSpec,
+    basePromptSpec,
+    compiledPrompt: `${baseSections}\n\n${capabilitySections}\n\n## Runtime Pass 5 Input Bundle\n${runtimeContext}`,
+  };
+}
+
+export async function createPass5PromptTestJob(input: {
+  promptName: Pass5PromptName;
+  inputBundle: Pass5PromptInputBundle;
+  provider: null | {
+    readonly name: "google" | "openai";
+    runPromptText(input: { compiledPrompt: string }): Promise<{ text: string; provider: "google" | "openai"; model: string }>;
+  };
+  repos: {
+    promptSpecs: StructuredPromptSpecRepository;
+    providerJobs: ProviderExtractionJobRepository;
+  };
+  now?: () => string;
+}): Promise<Pass5PromptTestJobResult> {
+  const compiled = compilePass5Prompt(input.promptName, input.inputBundle, input.repos.promptSpecs);
+  const timestamp = input.now?.() ?? new Date().toISOString();
+  const baseJob: StoredProviderExtractionJob = {
+    jobId: id("pass5_prompt_job"),
+    sourceId: input.inputBundle.contentRef ?? input.inputBundle.sessionId ?? "pass5_prompt_test",
+    sessionId: input.inputBundle.sessionId ?? "pass5_prompt_test",
+    caseId: input.inputBundle.caseId,
+    provider: input.provider?.name ?? "google",
+    jobKind: "pass5_prompt_test",
+    status: "queued",
+    inputType: "manual_note",
+    promptFamily: PASS5_PROMPT_FAMILY,
+    promptName: input.promptName,
+    promptVersionId: compiled.promptSpec.promptSpecId,
+    basePromptVersionId: compiled.basePromptSpec.promptSpecId,
+    inputBundleRef: JSON.stringify({
+      promptName: input.inputBundle.promptName,
+      caseId: input.inputBundle.caseId,
+      sessionId: input.inputBundle.sessionId,
+      languagePreference: input.inputBundle.languagePreference,
+      channel: input.inputBundle.channel,
+      evidenceRefs: input.inputBundle.evidenceRefs ?? [],
+      contentRef: input.inputBundle.contentRef,
+      hasRawContent: typeof input.inputBundle.rawContent === "string" && input.inputBundle.rawContent.length > 0,
+    }),
+    outputContractRef: compiled.promptSpec.outputContractRef,
+    createdAt: timestamp,
+    updatedAt: timestamp,
+  };
+  input.repos.providerJobs.save(baseJob);
+  if (!input.provider) {
+    const failed: StoredProviderExtractionJob = {
+      ...baseJob,
+      status: "failed",
+      errorMessage: "provider_not_configured: no provider was supplied for Pass 5 prompt test execution.",
+      updatedAt: input.now?.() ?? new Date().toISOString(),
+    };
+    input.repos.providerJobs.save(failed);
+    return { ok: false, job: failed, error: failed.errorMessage ?? "provider_not_configured", compiledPrompt: compiled.compiledPrompt };
+  }
+  const running: StoredProviderExtractionJob = {
+    ...baseJob,
+    status: "running",
+    updatedAt: input.now?.() ?? new Date().toISOString(),
+  };
+  input.repos.providerJobs.save(running);
+  try {
+    const output = await input.provider.runPromptText({ compiledPrompt: compiled.compiledPrompt });
+    const succeeded: StoredProviderExtractionJob = {
+      ...running,
+      status: "succeeded",
+      provider: output.provider,
+      model: output.model,
+      outputRef: `pass5_prompt_test_output_length:${output.text.length}`,
+      updatedAt: input.now?.() ?? new Date().toISOString(),
+    };
+    input.repos.providerJobs.save(succeeded);
+    return { ok: true, job: succeeded, compiledPrompt: compiled.compiledPrompt };
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    const failed: StoredProviderExtractionJob = {
+      ...running,
+      status: "failed",
+      errorMessage: message,
+      updatedAt: input.now?.() ?? new Date().toISOString(),
+    };
+    input.repos.providerJobs.save(failed);
+    return { ok: false, job: failed, error: message, compiledPrompt: compiled.compiledPrompt };
+  }
+}
+
+export const runPass5PromptTestJob = createPass5PromptTestJob;
+
+export function recordPass5ProviderFailure(input: {
+  promptName: Pass5PromptName;
+  inputBundle: Pass5PromptInputBundle;
+  repos: {
+    promptSpecs: StructuredPromptSpecRepository;
+    providerJobs: ProviderExtractionJobRepository;
+  };
+  errorMessage: string;
+  now?: () => string;
+}): Promise<Pass5PromptTestJobResult> {
+  return createPass5PromptTestJob({
+    promptName: input.promptName,
+    inputBundle: input.inputBundle,
+    provider: null,
+    repos: input.repos,
+    now: input.now,
+  }).then((result) => {
+    if (result.ok) return result;
+    const updated: StoredProviderExtractionJob = {
+      ...result.job,
+      errorMessage: input.errorMessage,
+      updatedAt: input.now?.() ?? new Date().toISOString(),
+    };
+    input.repos.providerJobs.save(updated);
+    return { ...result, job: updated, error: input.errorMessage };
+  });
 }
 
 export function listPass3PromptSpecs(repo: StructuredPromptSpecRepository): StructuredPromptSpec[] {
