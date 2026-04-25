@@ -55,6 +55,8 @@ Pass 5 begins after accepted Pass 4. It must consume approved Pass 4 targeting/r
 - `WORKFLOW_ENV_FILE` is an optional override for temporary proof environments only. If Pass 3 ever used another project env file such as `/Users/haitham/development/AI-Coach-Mastery/.env`, record that as a historical temporary workaround, not the canonical Workflow proof method.
 - The shared Google resolver loads `GOOGLE_AI_API_KEY` and `GOOGLE_AI_MODEL` from the process env first, then from `WORKFLOW_ENV_FILE` when explicitly supplied, then from ignored `.env.local` / `.env` files in the app cwd or repo root. It does not log or expose key values.
 - Required safe provider proof fields are `googleAI.provider: google`, `googleAI.keyPresent: true`, `googleAI.diagnosticsStatus: provider_success`, and `googleAI.resolvedModel: gemini-3.1-pro-preview` unless `GOOGLE_AI_MODEL` is intentionally configured.
+- Future AI-backed passes must run `/api/provider-status` and get `provider_success` with `keyPresent: true` before claiming live provider-backed success. Provider fallback/manual paths may still be proven separately, but they do not satisfy live AI proof.
+- Cross-pass regression result before Pass 4 acceptance: Pass 2, Pass 3, and Pass 4 all used the canonical Workflow `.env.local` method and resolved Google/Gemini through the shared provider configuration. Pass 4 packet proof persisted `targeting_packet_1fb549ec-ff51-4675-afee-9884037ce917` with provider execution ref `google:gemini-3.1-pro-preview` and non-empty candidates/source hints.
 
 ## Do not start without operator approval
 

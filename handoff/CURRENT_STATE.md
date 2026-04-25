@@ -28,6 +28,7 @@ Pass 4 provider follow-up:
 - The canonical Workflow AI proof method is the Pass 2-style local env activation: `cd /Users/haitham/development/Workflow`, `set -a`, `source /Users/haitham/development/Workflow/.env.local`, `set +a`, then start admin-web and call `/api/provider-status`.
 - `WORKFLOW_ENV_FILE` remains an optional override for temporary proof environments only. Historical use of another project env file, if any, is not the canonical Workflow proof method.
 - The shared resolver loads process env first and can also read ignored `.env.local` / `.env` files in the app cwd or repo root; provider diagnostics expose key presence and model only, never key values.
+- Cross-pass Google/Gemini regression proof passed on `/tmp/workflow-cross-pass-provider-proof.sqlite` using canonical Workflow `.env.local`: `/api/provider-status` returned `provider_success`, `keyPresent: true`, and model `gemini-3.1-pro-preview`; Pass 2 manual note structuring and AI structured context succeeded through Google/Gemini; Pass 3 hierarchy draft and source triage succeeded through Google/Gemini; Pass 4 Targeting Recommendation Packet `targeting_packet_1fb549ec-ff51-4675-afee-9884037ce917` persisted with `provider_success`, provider execution ref `google:gemini-3.1-pro-preview`, 5 target candidates, 4 source signals, and 4 question-hint seeds.
 
 Pass 4 adds:
 

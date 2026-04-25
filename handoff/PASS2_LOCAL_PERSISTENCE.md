@@ -25,6 +25,9 @@ This document records local development storage for Pass 2 intake/context proofs
 - Do not commit local SQLite databases, WAL/SHM files, uploaded source files, transcripts, or generated proof artifacts.
 - `data/test-pass2.db` and local proof databases under `/tmp` are proof artifacts only.
 - Secrets may be loaded from `.env.local` for proofs, but proof logs and handoff files must include only environment variable names, never secret values.
+- Canonical Workflow AI proof uses `/Users/haitham/development/Workflow/.env.local` with official `GOOGLE_AI_API_KEY` and optional `GOOGLE_AI_MODEL`.
+- Pass 2, Pass 3, Pass 4, and future AI-backed passes must use the same canonical env method and must verify `/api/provider-status` returns `provider_success` with `keyPresent: true` before claiming live Google/Gemini success.
+- `WORKFLOW_ENV_FILE` is an optional override for temporary proof environments only. Historical use of another project env file, including `/Users/haitham/development/AI-Coach-Mastery/.env`, is not canonical.
 
 ## Source-role vocabulary
 
