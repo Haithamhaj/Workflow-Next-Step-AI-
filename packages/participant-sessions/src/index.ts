@@ -1,5 +1,12 @@
 import {
+  createHash,
+  randomBytes,
+  timingSafeEqual,
+} from "node:crypto";
+import {
   validateParticipantSession,
+  validateSessionAccessToken,
+  validateTelegramIdentityBinding,
   validateTargetingRolloutPlan,
   type ChannelStatus,
   type ContactChannel,
@@ -7,11 +14,20 @@ import {
   type ParticipantContactProfile,
   type ParticipantSession,
   type ParticipationMode,
+  type SessionAccessToken,
+  type SessionAccessTokenChannelType,
+  type SessionAccessTokenStatus,
   type TargetCandidate,
   type TargetingRolloutPlan,
   type TargetingRolloutPlanState,
+  type TelegramBindingStatus,
+  type TelegramIdentityBinding,
 } from "@workflow/contracts";
-import type { ParticipantSessionRepository } from "@workflow/persistence";
+import type {
+  ParticipantSessionRepository,
+  SessionAccessTokenRepository,
+  TelegramIdentityBindingRepository,
+} from "@workflow/persistence";
 
 export const PARTICIPANT_SESSIONS_PACKAGE = "@workflow/participant-sessions" as const;
 
@@ -353,4 +369,335 @@ export function createParticipantSessionsFromTargetingPlan(
     warnings,
     errors,
   } as ParticipantSessionCreationResult;
+}
+
+export type SessionAccessTokenErrorCode =
+  | "token_not_found"
+  | "token_expired"
+  | "token_revoked"
+  | "token_completed"
+  | "token_blocked_review_required"
+  | "session_not_found"
+  | "channel_type_mismatch"
+  | "telegram_binding_conflict"
+  | "invalid_token";
+
+export interface TokenDomainError {
+  code: SessionAccessTokenErrorCode;
+  message: string;
+}
+
+export interface SessionAccessTokenOptions {
+  now?: () => string;
+  tokenTtlMs?: number;
+  tokenFactory?: () => string;
+  accessTokenIdFactory?: () => string;
+}
+
+export interface CreatedSessionAccessToken {
+  ok: true;
+  rawToken: string;
+  token: SessionAccessToken;
+}
+
+export interface FailedSessionAccessToken {
+  ok: false;
+  errors: TokenDomainError[];
+}
+
+export type CreateSessionAccessTokenResult =
+  | CreatedSessionAccessToken
+  | FailedSessionAccessToken;
+
+export interface ResolvedSessionAccessToken {
+  ok: true;
+  token: SessionAccessToken;
+  participantSession: ParticipantSession;
+}
+
+export type ResolveSessionAccessTokenResult =
+  | ResolvedSessionAccessToken
+  | FailedSessionAccessToken;
+
+export interface TelegramIdentityInput {
+  telegramUserId: string;
+  telegramChatId: string;
+  telegramUsername: string | null;
+  telegramFirstName: string | null;
+  telegramLastName: string | null;
+  telegramLanguageCode: string | null;
+  participantConfirmedName?: boolean;
+  adminVerified?: boolean;
+  mismatchRequiresReview?: boolean;
+}
+
+export interface TelegramBindingRepos {
+  sessionAccessTokens: SessionAccessTokenRepository;
+  participantSessions: ParticipantSessionRepository;
+  telegramIdentityBindings: TelegramIdentityBindingRepository;
+}
+
+export interface TelegramBindingOptions extends SessionAccessTokenOptions {
+  bindingIdFactory?: () => string;
+}
+
+export interface TelegramBindingResult {
+  ok: true;
+  token: SessionAccessToken;
+  participantSession: ParticipantSession;
+  binding: TelegramIdentityBinding;
+}
+
+export type BindTelegramIdentityResult =
+  | TelegramBindingResult
+  | FailedSessionAccessToken;
+
+export type TokenLifecycleResult =
+  | { ok: true; token: SessionAccessToken }
+  | FailedSessionAccessToken;
+
+export type TelegramUnlinkResult =
+  | { ok: true; binding: TelegramIdentityBinding }
+  | FailedSessionAccessToken;
+
+function tokenNow(options?: SessionAccessTokenOptions): string {
+  return options?.now?.() ?? new Date().toISOString();
+}
+
+function rawToken(options?: SessionAccessTokenOptions): string {
+  return options?.tokenFactory?.() ?? randomBytes(32).toString("base64url");
+}
+
+function tokenHash(raw: string): string {
+  return createHash("sha256").update(raw).digest("hex");
+}
+
+function safeHashMatches(a: string, b: string): boolean {
+  const left = Buffer.from(a, "hex");
+  const right = Buffer.from(b, "hex");
+  if (left.length !== right.length) return false;
+  return timingSafeEqual(left, right);
+}
+
+function accessTokenId(options?: SessionAccessTokenOptions): string {
+  return options?.accessTokenIdFactory?.() ?? `session_access_token_${crypto.randomUUID()}`;
+}
+
+function expiresAt(options?: SessionAccessTokenOptions): string {
+  const ttl = options?.tokenTtlMs ?? 1000 * 60 * 60 * 24 * 14;
+  return new Date(Date.parse(tokenNow(options)) + ttl).toISOString();
+}
+
+function tokenError(code: SessionAccessTokenErrorCode, message: string): FailedSessionAccessToken {
+  return { ok: false, errors: [{ code, message }] };
+}
+
+function validateStoredToken(token: SessionAccessToken): FailedSessionAccessToken | null {
+  const result = validateSessionAccessToken(token);
+  if (result.ok) return null;
+  return tokenError("invalid_token", `Generated SessionAccessToken failed validation: ${validationMessage(result.errors)}`);
+}
+
+function createAccessTokenForChannel(
+  session: ParticipantSession,
+  tokenRepo: SessionAccessTokenRepository,
+  channelType: SessionAccessTokenChannelType,
+  options?: SessionAccessTokenOptions,
+): CreateSessionAccessTokenResult {
+  const sessionValidation = validateParticipantSession(session);
+  if (!sessionValidation.ok) {
+    return tokenError("session_not_found", `ParticipantSession is invalid: ${validationMessage(sessionValidation.errors)}`);
+  }
+  const raw = rawToken(options);
+  const token: SessionAccessToken = {
+    accessTokenId: accessTokenId(options),
+    tokenHash: tokenHash(raw),
+    participantSessionId: session.sessionId,
+    channelType,
+    tokenStatus: "active",
+    expiresAt: expiresAt(options),
+    createdAt: tokenNow(options),
+    lastUsedAt: null,
+    revokedAt: null,
+    revokedReason: null,
+    useCount: 0,
+    boundChannelIdentityId: null,
+  };
+  const validation = validateStoredToken(token);
+  if (validation) return validation;
+  tokenRepo.save(token);
+  return { ok: true, rawToken: raw, token };
+}
+
+export function createWebSessionAccessToken(
+  session: ParticipantSession,
+  tokenRepo: SessionAccessTokenRepository,
+  options?: SessionAccessTokenOptions,
+): CreateSessionAccessTokenResult {
+  return createAccessTokenForChannel(session, tokenRepo, "web_session_chatbot", options);
+}
+
+export function createTelegramPairingToken(
+  session: ParticipantSession,
+  tokenRepo: SessionAccessTokenRepository,
+  options?: SessionAccessTokenOptions,
+): CreateSessionAccessTokenResult {
+  return createAccessTokenForChannel(session, tokenRepo, "telegram_bot", options);
+}
+
+function findToken(raw: string, tokenRepo: SessionAccessTokenRepository): SessionAccessToken | null {
+  if (!raw) return null;
+  const hash = tokenHash(raw);
+  const direct = tokenRepo.findByTokenHash(hash);
+  if (direct) return direct;
+  return tokenRepo.findAll().find((token) => token.tokenHash && safeHashMatches(token.tokenHash, hash)) ?? null;
+}
+
+function unusableTokenResult(
+  token: SessionAccessToken,
+  tokenRepo: SessionAccessTokenRepository,
+  options?: SessionAccessTokenOptions,
+): FailedSessionAccessToken | null {
+  const nowMs = Date.parse(tokenNow(options));
+  if (Date.parse(token.expiresAt) <= nowMs) {
+    tokenRepo.updateTokenUsage(token.accessTokenId, { tokenStatus: "expired" });
+    return tokenError("token_expired", "Session access token has expired.");
+  }
+  if (token.tokenStatus === "expired") return tokenError("token_expired", "Session access token has expired.");
+  if (token.tokenStatus === "revoked") return tokenError("token_revoked", "Session access token has been revoked.");
+  if (token.tokenStatus === "completed") return tokenError("token_completed", "Session access token is completed.");
+  if (token.tokenStatus === "blocked_review_required") {
+    return tokenError("token_blocked_review_required", "Session access token requires admin review.");
+  }
+  return null;
+}
+
+export function resolveSessionAccessToken(
+  raw: string,
+  tokenRepo: SessionAccessTokenRepository,
+  sessionRepo: ParticipantSessionRepository,
+  options?: SessionAccessTokenOptions,
+): ResolveSessionAccessTokenResult {
+  const token = findToken(raw, tokenRepo);
+  if (!token) return tokenError("token_not_found", "Session access token was not found.");
+  const unusable = unusableTokenResult(token, tokenRepo, options);
+  if (unusable) return unusable;
+  const participantSession = sessionRepo.findById(token.participantSessionId);
+  if (!participantSession) return tokenError("session_not_found", "Participant session linked to token was not found.");
+  const updated = tokenRepo.updateTokenUsage(token.accessTokenId, {
+    lastUsedAt: tokenNow(options),
+    useCount: token.useCount + 1,
+  }) ?? token;
+  return { ok: true, token: updated, participantSession };
+}
+
+export function revokeSessionAccessToken(
+  accessTokenId: string,
+  tokenRepo: SessionAccessTokenRepository,
+  reason: string,
+  options?: SessionAccessTokenOptions,
+): TokenLifecycleResult {
+  const token = tokenRepo.findById(accessTokenId);
+  if (!token) return tokenError("token_not_found", "Session access token was not found.");
+  const updated = tokenRepo.updateTokenUsage(accessTokenId, {
+    tokenStatus: "revoked",
+    revokedAt: tokenNow(options),
+    revokedReason: reason,
+  });
+  return updated ? { ok: true, token: updated } : tokenError("token_not_found", "Session access token was not found.");
+}
+
+export function completeSessionAccessToken(
+  accessTokenId: string,
+  tokenRepo: SessionAccessTokenRepository,
+  options?: SessionAccessTokenOptions,
+): TokenLifecycleResult {
+  const token = tokenRepo.findById(accessTokenId);
+  if (!token) return tokenError("token_not_found", "Session access token was not found.");
+  const updated = tokenRepo.updateTokenUsage(accessTokenId, {
+    tokenStatus: "completed",
+    lastUsedAt: token.lastUsedAt ?? tokenNow(options),
+  });
+  return updated ? { ok: true, token: updated } : tokenError("token_not_found", "Session access token was not found.");
+}
+
+function bindingStatusFor(input: TelegramIdentityInput): TelegramBindingStatus {
+  if (input.mismatchRequiresReview) return "mismatch_requires_review";
+  if (input.adminVerified) return "admin_verified";
+  if (input.participantConfirmedName) return "participant_confirmed_name";
+  return "token_bound_unverified";
+}
+
+function activeBindingForSession(
+  sessionId: string,
+  bindingRepo: TelegramIdentityBindingRepository,
+): TelegramIdentityBinding | null {
+  return bindingRepo.findByParticipantSessionId(sessionId).find(
+    (binding) => binding.bindingStatus !== "rejected_or_unlinked",
+  ) ?? null;
+}
+
+export function bindTelegramIdentityToSession(
+  raw: string,
+  telegramIdentityInput: TelegramIdentityInput,
+  repos: TelegramBindingRepos,
+  options?: TelegramBindingOptions,
+): BindTelegramIdentityResult {
+  const resolved = resolveSessionAccessToken(raw, repos.sessionAccessTokens, repos.participantSessions, options);
+  if (!resolved.ok) return resolved;
+  if (resolved.token.channelType !== "telegram_bot") {
+    return tokenError("channel_type_mismatch", "Session access token is not a Telegram pairing token.");
+  }
+  const existing = activeBindingForSession(resolved.participantSession.sessionId, repos.telegramIdentityBindings);
+  if (existing && existing.telegramUserId !== telegramIdentityInput.telegramUserId) {
+    return tokenError("telegram_binding_conflict", "Participant session already has an active Telegram identity binding.");
+  }
+  const bindingId = existing?.bindingId ?? options?.bindingIdFactory?.() ?? `telegram_binding_${crypto.randomUUID()}`;
+  const binding: TelegramIdentityBinding = {
+    bindingId,
+    participantSessionId: resolved.participantSession.sessionId,
+    accessTokenId: resolved.token.accessTokenId,
+    telegramUserId: telegramIdentityInput.telegramUserId,
+    telegramChatId: telegramIdentityInput.telegramChatId,
+    telegramUsername: telegramIdentityInput.telegramUsername,
+    telegramFirstName: telegramIdentityInput.telegramFirstName,
+    telegramLastName: telegramIdentityInput.telegramLastName,
+    telegramLanguageCode: telegramIdentityInput.telegramLanguageCode,
+    bindingStatus: bindingStatusFor(telegramIdentityInput),
+    createdAt: existing?.createdAt ?? tokenNow(options),
+    updatedAt: tokenNow(options),
+  };
+  const validation = validateTelegramIdentityBinding(binding);
+  if (!validation.ok) {
+    return tokenError("invalid_token", `Generated TelegramIdentityBinding failed validation: ${validationMessage(validation.errors)}`);
+  }
+  try {
+    repos.telegramIdentityBindings.save(binding);
+  } catch (error) {
+    return tokenError("telegram_binding_conflict", error instanceof Error ? error.message : String(error));
+  }
+  const token: SessionAccessToken = {
+    ...resolved.token,
+    tokenStatus: "bound",
+    boundChannelIdentityId: binding.bindingId,
+  };
+  repos.sessionAccessTokens.save(token);
+  return {
+    ok: true,
+    token,
+    participantSession: resolved.participantSession,
+    binding,
+  };
+}
+
+export function unlinkTelegramIdentityBinding(
+  bindingId: string,
+  bindingRepo: TelegramIdentityBindingRepository,
+  _reason?: string,
+  options?: SessionAccessTokenOptions,
+): TelegramUnlinkResult {
+  const existing = bindingRepo.findById(bindingId);
+  if (!existing) return tokenError("token_not_found", "Telegram identity binding was not found.");
+  const updated = bindingRepo.updateBindingStatus(bindingId, "rejected_or_unlinked", tokenNow(options));
+  return updated ? { ok: true, binding: updated } : tokenError("token_not_found", "Telegram identity binding was not found.");
 }
