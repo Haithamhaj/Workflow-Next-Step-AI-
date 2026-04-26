@@ -12,6 +12,7 @@ import {
   validatePass4PromptTestRun,
   validatePass6PromptSpec,
   validatePass6PromptTestCase,
+  validatePass6PromptTestExecutionResult,
   validateStructuredPromptSpec,
   validatePromptRegistration,
   type Pass4PromptCapability,
@@ -20,6 +21,7 @@ import {
   type Pass6PromptSpec,
   type Pass6PromptStructuredSections,
   type Pass6PromptTestCase,
+  type Pass6PromptTestExecutionResult,
   type Pass3PromptCapability,
   type Pass3PromptTestRun,
   type PromptRegistration,
@@ -34,6 +36,7 @@ import type {
   ProviderExtractionJobRepository,
   Pass6PromptSpecRepository,
   Pass6PromptTestCaseRepository,
+  Pass6PromptTestExecutionResultRepository,
   StoredProviderExtractionJob,
   StructuredPromptSpecRepository,
 } from "@workflow/persistence";
@@ -58,6 +61,7 @@ export type {
   Pass6PromptSpec,
   Pass6PromptStructuredSections,
   Pass6PromptTestCase,
+  Pass6PromptTestExecutionResult,
 } from "@workflow/contracts";
 
 export const PASS3_HIERARCHY_PROMPT_MODULE = "pass3.hierarchy.draft" as const;
@@ -1629,4 +1633,289 @@ export function listPass6PromptTestCases(
   repo: Pass6PromptTestCaseRepository,
 ): Pass6PromptTestCase[] {
   return repo.findByPromptSpecId(promptSpecId);
+}
+
+export interface Pass6PromptTextExecutor {
+  readonly name: "openai" | "google";
+  runPromptText(input: { compiledPrompt: string }): Promise<{ text: string; provider: "openai" | "google"; model: string }>;
+}
+
+export interface RunPass6PromptTestInput {
+  promptSpecId: string;
+  testCaseId: string;
+  provider: Pass6PromptTextExecutor | null;
+  providerName?: string;
+  modelName?: string;
+  executionId?: string;
+  configProfileId?: string;
+  policyReferences?: string[];
+  now?: string;
+}
+
+export interface Pass6PromptTestComparison {
+  testCaseId: string;
+  draftResult?: Pass6PromptTestExecutionResult;
+  activeResult?: Pass6PromptTestExecutionResult;
+  status: "comparison_available" | "missing_draft_result" | "missing_active_result" | "missing_both_results";
+  outputChanged: boolean;
+  summary: string;
+}
+
+function emptyCreatedRecords(): Pass6PromptTestExecutionResult["createdRecords"] {
+  return {
+    synthesisInputBundleIds: [],
+    workflowClaimIds: [],
+    workflowReadinessResultIds: [],
+    prePackageGateResultIds: [],
+    initialWorkflowPackageIds: [],
+    workflowGraphRecordIds: [],
+    pass7ReviewCandidateIds: [],
+  };
+}
+
+function fixtureSummary(fixture: Pass6PromptTestCase["inputFixture"]): string {
+  const keys = Object.keys(fixture);
+  const preview = JSON.stringify(fixture).slice(0, 240);
+  return keys.length > 0 ? `keys=${keys.join(", ")}; preview=${preview}` : "empty input fixture";
+}
+
+function classifyPromptTestError(message: string): string {
+  if (message.includes("not_configured") || message.includes("OPENAI_API_KEY") || message.includes("GOOGLE_AI_API_KEY")) return "provider_not_configured";
+  if (message.includes("rate") || message.includes("429")) return "provider_rate_limited";
+  if (message.includes("model")) return "provider_model_unavailable";
+  return "provider_execution_failed";
+}
+
+function promptWithFixture(compiledPrompt: string, testCase: Pass6PromptTestCase): string {
+  return [
+    compiledPrompt,
+    "",
+    "## Prompt Workspace Test Fixture",
+    JSON.stringify(testCase.inputFixture, null, 2),
+    "",
+    "## Expected Output Notes",
+    testCase.expectedOutputNotes,
+    "",
+    "This is a Prompt Workspace test only. Do not create or mutate workflow records.",
+  ].join("\n");
+}
+
+function validatePass6PromptTestExecutionOrThrow(result: Pass6PromptTestExecutionResult): void {
+  const validation = validatePass6PromptTestExecutionResult(result);
+  if (!validation.ok) throw new Error(`Invalid Pass 6 prompt test execution result: ${validationMessage(validation.errors)}`);
+}
+
+export async function runPass6PromptWorkspaceTest(
+  input: RunPass6PromptTestInput,
+  repos: {
+    promptSpecs: Pass6PromptSpecRepository;
+    testCases: Pass6PromptTestCaseRepository;
+    executions: Pass6PromptTestExecutionResultRepository;
+  },
+): Promise<Pass6PromptTestExecutionResult> {
+  const promptSpec = repos.promptSpecs.findById(input.promptSpecId);
+  const testCase = repos.testCases.findById(input.testCaseId);
+  const startedAt = input.now ?? new Date().toISOString();
+  const startedMs = Date.now();
+  const executionId = input.executionId ?? `pass6-prompt-execution-${crypto.randomUUID()}`;
+
+  if (!promptSpec || (promptSpec.status !== "draft" && promptSpec.status !== "active")) {
+    const failed: Pass6PromptTestExecutionResult = {
+      executionId,
+      promptSpecId: input.promptSpecId,
+      promptSpecVersion: "unknown",
+      promptStatusAtRun: "draft",
+      testCaseId: input.testCaseId,
+      providerName: input.providerName ?? "openai",
+      modelName: input.modelName ?? "unknown",
+      startedAt,
+      completedAt: new Date().toISOString(),
+      status: "failed",
+      inputFixtureSummary: "PromptSpec missing or not runnable.",
+      compiledPromptSnapshot: "PromptSpec missing or not runnable.",
+      errorCode: "prompt_spec_not_runnable",
+      errorMessage: "PromptSpec must exist and be in draft or active status for Prompt Workspace test execution.",
+      configProfileId: input.configProfileId,
+      policyReferences: input.policyReferences,
+      createdRecords: emptyCreatedRecords(),
+    };
+    validatePass6PromptTestExecutionOrThrow(failed);
+    repos.executions.save(failed);
+    return failed;
+  }
+
+  if (!testCase || !testCase.inputFixture || Object.keys(testCase.inputFixture).length === 0) {
+    const compiled = compilePass6PromptSpec(promptSpec);
+    const failed: Pass6PromptTestExecutionResult = {
+      executionId,
+      promptSpecId: promptSpec.promptSpecId,
+      promptSpecVersion: promptSpec.version,
+      promptStatusAtRun: promptSpec.status,
+      testCaseId: input.testCaseId,
+      providerName: input.providerName ?? promptSpec.providerPreference?.providerKey ?? "openai",
+      modelName: input.modelName ?? promptSpec.providerPreference?.modelKey ?? "unknown",
+      startedAt,
+      completedAt: new Date().toISOString(),
+      status: "failed",
+      inputFixtureSummary: "missing input fixture",
+      compiledPromptSnapshot: compiled,
+      errorCode: "test_case_missing_input_fixture",
+      errorMessage: "Prompt Workspace test case must exist and include a non-empty inputFixture.",
+      configProfileId: input.configProfileId ?? promptSpec.linkedPolicyConfigId,
+      policyReferences: input.policyReferences,
+      createdRecords: emptyCreatedRecords(),
+    };
+    validatePass6PromptTestExecutionOrThrow(failed);
+    repos.executions.save(failed);
+    return failed;
+  }
+
+  const validation = validatePass6PromptSpec(promptSpec);
+  const compiledPromptSnapshot = promptWithFixture(compilePass6PromptSpec(promptSpec), testCase);
+  if (!validation.ok) {
+    const failed: Pass6PromptTestExecutionResult = {
+      executionId,
+      promptSpecId: promptSpec.promptSpecId,
+      promptSpecVersion: promptSpec.version,
+      promptStatusAtRun: promptSpec.status,
+      testCaseId: testCase.testCaseId,
+      providerName: input.providerName ?? promptSpec.providerPreference?.providerKey ?? "openai",
+      modelName: input.modelName ?? promptSpec.providerPreference?.modelKey ?? "unknown",
+      startedAt,
+      completedAt: new Date().toISOString(),
+      status: "failed",
+      inputFixtureSummary: fixtureSummary(testCase.inputFixture),
+      compiledPromptSnapshot,
+      errorCode: "invalid_prompt_spec",
+      errorMessage: validationMessage(validation.errors),
+      configProfileId: input.configProfileId ?? promptSpec.linkedPolicyConfigId,
+      policyReferences: input.policyReferences,
+      createdRecords: emptyCreatedRecords(),
+    };
+    validatePass6PromptTestExecutionOrThrow(failed);
+    repos.executions.save(failed);
+    return failed;
+  }
+
+  if (!input.provider) {
+    const failed: Pass6PromptTestExecutionResult = {
+      executionId,
+      promptSpecId: promptSpec.promptSpecId,
+      promptSpecVersion: promptSpec.version,
+      promptStatusAtRun: promptSpec.status,
+      testCaseId: testCase.testCaseId,
+      providerName: input.providerName ?? promptSpec.providerPreference?.providerKey ?? "openai",
+      modelName: input.modelName ?? promptSpec.providerPreference?.modelKey ?? "unknown",
+      startedAt,
+      completedAt: new Date().toISOString(),
+      status: "failed",
+      latencyMs: Date.now() - startedMs,
+      inputFixtureSummary: fixtureSummary(testCase.inputFixture),
+      compiledPromptSnapshot,
+      errorCode: "provider_not_configured",
+      errorMessage: "provider_not_configured: no provider configured for Pass 6 Prompt Workspace test execution.",
+      configProfileId: input.configProfileId ?? promptSpec.linkedPolicyConfigId,
+      policyReferences: input.policyReferences,
+      createdRecords: emptyCreatedRecords(),
+    };
+    validatePass6PromptTestExecutionOrThrow(failed);
+    repos.executions.save(failed);
+    return failed;
+  }
+
+  try {
+    const providerResult = await input.provider.runPromptText({ compiledPrompt: compiledPromptSnapshot });
+    const completedAt = new Date().toISOString();
+    const result: Pass6PromptTestExecutionResult = {
+      executionId,
+      promptSpecId: promptSpec.promptSpecId,
+      promptSpecVersion: promptSpec.version,
+      promptStatusAtRun: promptSpec.status,
+      testCaseId: testCase.testCaseId,
+      providerName: providerResult.provider,
+      modelName: providerResult.model,
+      startedAt,
+      completedAt,
+      status: "succeeded",
+      latencyMs: Date.now() - startedMs,
+      inputFixtureSummary: fixtureSummary(testCase.inputFixture),
+      compiledPromptSnapshot,
+      outputText: providerResult.text,
+      configProfileId: input.configProfileId ?? promptSpec.linkedPolicyConfigId,
+      policyReferences: input.policyReferences,
+      createdRecords: emptyCreatedRecords(),
+    };
+    validatePass6PromptTestExecutionOrThrow(result);
+    repos.executions.save(result);
+    return result;
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    const result: Pass6PromptTestExecutionResult = {
+      executionId,
+      promptSpecId: promptSpec.promptSpecId,
+      promptSpecVersion: promptSpec.version,
+      promptStatusAtRun: promptSpec.status,
+      testCaseId: testCase.testCaseId,
+      providerName: input.providerName ?? input.provider.name,
+      modelName: input.modelName ?? promptSpec.providerPreference?.modelKey ?? "unknown",
+      startedAt,
+      completedAt: new Date().toISOString(),
+      status: "failed",
+      latencyMs: Date.now() - startedMs,
+      inputFixtureSummary: fixtureSummary(testCase.inputFixture),
+      compiledPromptSnapshot,
+      errorCode: classifyPromptTestError(message),
+      errorMessage: message,
+      configProfileId: input.configProfileId ?? promptSpec.linkedPolicyConfigId,
+      policyReferences: input.policyReferences,
+      createdRecords: emptyCreatedRecords(),
+    };
+    validatePass6PromptTestExecutionOrThrow(result);
+    repos.executions.save(result);
+    return result;
+  }
+}
+
+export function listPass6PromptTestExecutionResults(
+  promptSpecId: string,
+  repo: Pass6PromptTestExecutionResultRepository,
+): Pass6PromptTestExecutionResult[] {
+  return repo.findByPromptSpecId(promptSpecId);
+}
+
+export function findPass6PromptTestExecutionResult(
+  executionId: string,
+  repo: Pass6PromptTestExecutionResultRepository,
+): Pass6PromptTestExecutionResult | null {
+  return repo.findById(executionId);
+}
+
+export function comparePass6PromptTestExecutions(input: {
+  testCaseId: string;
+  draftPromptSpecId?: string;
+  activePromptSpecId?: string;
+}, repo: Pass6PromptTestExecutionResultRepository): Pass6PromptTestComparison {
+  const results = repo.findByTestCaseId(input.testCaseId);
+  const draftResult = input.draftPromptSpecId
+    ? results.filter((result) => result.promptSpecId === input.draftPromptSpecId).sort((a, b) => b.startedAt.localeCompare(a.startedAt))[0]
+    : undefined;
+  const activeResult = input.activePromptSpecId
+    ? results.filter((result) => result.promptSpecId === input.activePromptSpecId).sort((a, b) => b.startedAt.localeCompare(a.startedAt))[0]
+    : undefined;
+  const outputChanged = Boolean(draftResult && activeResult && (draftResult.outputText ?? draftResult.errorMessage) !== (activeResult.outputText ?? activeResult.errorMessage));
+  const status = draftResult && activeResult ? "comparison_available"
+    : draftResult ? "missing_active_result"
+      : activeResult ? "missing_draft_result"
+        : "missing_both_results";
+  const summary = draftResult && activeResult
+    ? `Draft ${draftResult.status}; active ${activeResult.status}; outputChanged=${outputChanged}`
+    : "Draft-vs-active provider comparison needs both execution results.";
+  return {
+    testCaseId: input.testCaseId,
+    draftResult,
+    activeResult,
+    status,
+    outputChanged,
+    summary,
+  };
 }

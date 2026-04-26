@@ -2,8 +2,10 @@ import {
   comparePass6PromptDraftToActive,
   createDefaultPass6PromptSpecs,
   findPass6PromptSpec,
+  listPass6PromptTestExecutionResults,
   listPass6PromptTestCases,
 } from "@workflow/prompts";
+import { providerRegistry } from "@workflow/integrations";
 import { store } from "../../../../lib/store";
 
 interface Pass6PromptDetailPageProps {
@@ -33,6 +35,9 @@ export default function Pass6PromptDetailPage({ params, searchParams }: Pass6Pro
 
   const comparison = comparePass6PromptDraftToActive(spec.capabilityKey, store.pass6PromptSpecs);
   const testCases = listPass6PromptTestCases(spec.promptSpecId, store.pass6PromptTestCases);
+  const executions = listPass6PromptTestExecutionResults(spec.promptSpecId, store.pass6PromptTestExecutionResults)
+    .sort((a, b) => b.startedAt.localeCompare(a.startedAt));
+  const providerAvailability = providerRegistry.getPromptTextAvailability();
   const canArchive = spec.status !== "active" && spec.status !== "archived";
 
   return (
@@ -127,6 +132,7 @@ export default function Pass6PromptDetailPage({ params, searchParams }: Pass6Pro
               <th>Status</th>
               <th>Enabled</th>
               <th>Updated</th>
+              <th>Run</th>
             </tr>
           </thead>
           <tbody>
@@ -136,6 +142,15 @@ export default function Pass6PromptDetailPage({ params, searchParams }: Pass6Pro
                 <td>{testCase.status}</td>
                 <td>{testCase.enabled ? "yes" : "no"}</td>
                 <td>{testCase.updatedAt}</td>
+                <td>
+                  <form action="/api/pass6/prompts" method="post">
+                    <input type="hidden" name="action" value="run-test" />
+                    <input type="hidden" name="promptSpecId" value={spec.promptSpecId} />
+                    <input type="hidden" name="testCaseId" value={testCase.testCaseId} />
+                    <input type="hidden" name="providerName" value="openai" />
+                    <button type="submit">Run Test</button>
+                  </form>
+                </td>
               </tr>
             ))}
           </tbody>
@@ -168,6 +183,49 @@ export default function Pass6PromptDetailPage({ params, searchParams }: Pass6Pro
           <input type="hidden" name="testCaseStatus" value="enabled" />
           <button type="submit">Create Test Case</button>
         </form>
+      </div>
+
+      <div className="card">
+        <h3>Provider Test Harness</h3>
+        <p><strong>Default Pass 6 text test provider:</strong> {providerRegistry.resolveDefaultPromptTextProvider()}</p>
+        <ul>
+          {providerAvailability.map((provider) => (
+            <li key={provider.name}>{provider.name}: {provider.available ? "available" : "unavailable"} — {provider.reason}</li>
+          ))}
+        </ul>
+        <p className="muted">Prompt Workspace test outputs are inspection records only. They do not become 6A evidence, 6B claims, readiness results, package content, visuals, Copilot state, or Pass 7 candidates.</p>
+      </div>
+
+      <div className="card">
+        <h3>Latest Test Results</h3>
+        <table style={{ width: "100%", borderCollapse: "collapse" }}>
+          <thead>
+            <tr>
+              <th>Execution</th>
+              <th>Test Case</th>
+              <th>Status</th>
+              <th>Provider</th>
+              <th>Model</th>
+              <th>Started</th>
+              <th>Latency</th>
+              <th>Result</th>
+            </tr>
+          </thead>
+          <tbody>
+            {executions.map((execution) => (
+              <tr key={execution.executionId}>
+                <td><a href={`/pass6/prompts/results/${execution.executionId}`}>{execution.executionId}</a></td>
+                <td>{execution.testCaseId}</td>
+                <td>{execution.status}</td>
+                <td>{execution.providerName}</td>
+                <td>{execution.modelName}</td>
+                <td>{execution.startedAt}</td>
+                <td>{execution.latencyMs ?? "n/a"}</td>
+                <td>{execution.status === "succeeded" ? (execution.outputText ?? "output captured") : `${execution.errorCode}: ${execution.errorMessage}`}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
       </div>
 
       <div className="card">

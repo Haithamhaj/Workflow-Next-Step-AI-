@@ -12,6 +12,7 @@ export type Pass6PromptCapabilityKey =
   | "pass6_analysis_copilot";
 
 export type Pass6PromptTestCaseStatus = "draft" | "enabled" | "disabled" | "archived";
+export type Pass6PromptTestExecutionStatus = "succeeded" | "failed";
 
 export interface Pass6PromptProviderPreference {
   providerKey?: string;
@@ -70,4 +71,43 @@ export interface Pass6PromptTestCase {
   enabled: boolean;
   createdAt: string;
   updatedAt: string;
+}
+
+export interface Pass6PromptTokenUsage {
+  inputTokens?: number;
+  outputTokens?: number;
+  totalTokens?: number;
+}
+
+export interface Pass6PromptTestExecutionResult {
+  executionId: string;
+  promptSpecId: string;
+  promptSpecVersion: string;
+  promptStatusAtRun: "draft" | "active";
+  testCaseId: string;
+  providerName: string;
+  modelName: string;
+  startedAt: string;
+  completedAt: string;
+  status: Pass6PromptTestExecutionStatus;
+  latencyMs?: number;
+  inputFixtureSummary: string;
+  compiledPromptSnapshot: string;
+  outputText?: string;
+  outputJson?: Pass6PromptJsonValue;
+  errorCode?: string;
+  errorMessage?: string;
+  tokenUsage?: Pass6PromptTokenUsage;
+  costEstimate?: string;
+  configProfileId?: string;
+  policyReferences?: string[];
+  createdRecords: {
+    synthesisInputBundleIds: string[];
+    workflowClaimIds: string[];
+    workflowReadinessResultIds: string[];
+    prePackageGateResultIds: string[];
+    initialWorkflowPackageIds: string[];
+    workflowGraphRecordIds: string[];
+    pass7ReviewCandidateIds: string[];
+  };
 }

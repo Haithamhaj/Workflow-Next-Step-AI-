@@ -27,7 +27,9 @@ Pass 6 Block 2 — Persistence and Repository Layer is accepted.
 
 Pass 6 Block 3 — Pass 6 Admin Configuration and Policy Control Layer is accepted.
 
-Pass 6 Block 4 — Pass 6 Prompt Workspace / PromptOps Layer is the current completed implementation block pending acceptance.
+Pass 6 Block 4 — Pass 6 Prompt Workspace / PromptOps Layer is accepted.
+
+Pass 6 Block 5 — Provider Execution and Prompt Test Harness Foundation is the current completed implementation block pending acceptance.
 
 Technical Decomposition v4 is the active Pass 6 build map.
 
@@ -90,6 +92,20 @@ Block 4 is Prompt Workspace / PromptOps work only.
 - PromptSpecs do not own scoring weights, method registry truth, readiness thresholds, package eligibility, review/release decisions, locked governance rules, or state transitions.
 - No provider execution, production AI calls, 6A builder, 6B analysis, scoring execution, readiness routing execution, Pre-6C behavior, 6C generation, visual-core integration, Copilot runtime behavior, or Pass 7 mechanics start in Block 4.
 - Next implementation step after acceptance is Block 5 — Provider Execution and Prompt Test Harness Foundation.
+
+## Pass 6 Block 5 Acceptance Gate
+
+Block 5 is provider-backed Prompt Workspace test harness work only.
+
+- Stored Pass 6 PromptSpecs can be tested against stored Prompt Workspace test cases.
+- PromptSpecs are compiled deterministically before execution and the compiled prompt snapshot is stored with each result.
+- Prompt test execution results are persisted with provider/model, prompt version, test case, input fixture summary, output/failure, timing, and runtime metadata fields.
+- Missing provider configuration and provider failures are persisted as visible failed results.
+- OpenAI / GPT is the default Pass 6 text test provider unless explicitly changed later by the operator.
+- Draft-vs-active provider test comparison is available when both execution results exist.
+- Prompt test outputs are inspection records only and do not become 6A evidence, 6B claims, readiness results, Pre-6C inquiries, 6C package content, visual graph data, Copilot state, or Pass 7 candidates.
+- No production 6A/6B provider runs, 6A builder, 6B analysis, scoring execution, readiness routing execution, Pre-6C behavior, 6C generation, visual-core integration, Copilot runtime behavior, or Pass 7 mechanics start in Block 5.
+- Next implementation step after acceptance is Block 6 — 6A SynthesisInputBundle Builder.
 
 ## Active Pass 6 Block Map
 

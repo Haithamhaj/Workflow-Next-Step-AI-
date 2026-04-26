@@ -82,6 +82,7 @@ import type {
   Pass6PromptCapabilityKey,
   Pass6PromptSpec,
   Pass6PromptTestCase,
+  Pass6PromptTestExecutionResult,
 } from "@workflow/contracts";
 
 import { mkdirSync } from "node:fs";
@@ -317,6 +318,7 @@ export interface StoredPass7ReviewCandidate extends Pass7ReviewCandidate {
 export interface StoredPass6ConfigurationProfile extends Pass6ConfigurationProfile {}
 export interface StoredPass6PromptSpec extends Pass6PromptSpec {}
 export interface StoredPass6PromptTestCase extends Pass6PromptTestCase {}
+export interface StoredPass6PromptTestExecutionResult extends Pass6PromptTestExecutionResult {}
 
 // ---------------------------------------------------------------------------
 // Repository interfaces — backend-agnostic
@@ -777,6 +779,13 @@ export interface Pass6PromptSpecRepository
 export interface Pass6PromptTestCaseRepository
   extends Pass6RecordRepository<StoredPass6PromptTestCase> {
   findByPromptSpecId(promptSpecId: string): StoredPass6PromptTestCase[];
+}
+
+export interface Pass6PromptTestExecutionResultRepository
+  extends Pass6RecordRepository<StoredPass6PromptTestExecutionResult> {
+  findByPromptSpecId(promptSpecId: string): StoredPass6PromptTestExecutionResult[];
+  findByTestCaseId(testCaseId: string): StoredPass6PromptTestExecutionResult[];
+  findLatestByPromptSpecId(promptSpecId: string): StoredPass6PromptTestExecutionResult | null;
 }
 
 // ---------------------------------------------------------------------------
@@ -1739,6 +1748,28 @@ class InMemoryPass6PromptTestCaseRepository
 
   findByPromptSpecId(promptSpecId: string): StoredPass6PromptTestCase[] {
     return this.findAll().filter((record) => record.promptSpecId === promptSpecId);
+  }
+}
+
+class InMemoryPass6PromptTestExecutionResultRepository
+  extends InMemoryPass6RecordRepository<StoredPass6PromptTestExecutionResult>
+  implements Pass6PromptTestExecutionResultRepository
+{
+  constructor() {
+    super((record) => record.executionId);
+  }
+
+  findByPromptSpecId(promptSpecId: string): StoredPass6PromptTestExecutionResult[] {
+    return this.findAll().filter((record) => record.promptSpecId === promptSpecId);
+  }
+
+  findByTestCaseId(testCaseId: string): StoredPass6PromptTestExecutionResult[] {
+    return this.findAll().filter((record) => record.testCaseId === testCaseId);
+  }
+
+  findLatestByPromptSpecId(promptSpecId: string): StoredPass6PromptTestExecutionResult | null {
+    return this.findByPromptSpecId(promptSpecId)
+      .sort((a, b) => b.startedAt.localeCompare(a.startedAt))[0] ?? null;
   }
 }
 
@@ -3580,11 +3611,34 @@ export class SQLitePass6PromptTestCaseRepository
   }
 }
 
+export class SQLitePass6PromptTestExecutionResultRepository
+  extends SQLitePass6RecordRepository<StoredPass6PromptTestExecutionResult>
+  implements Pass6PromptTestExecutionResultRepository
+{
+  constructor(dbPath?: string) {
+    super("pass6_prompt_test_execution_result", (record) => record.executionId, () => undefined, dbPath);
+  }
+
+  findByPromptSpecId(promptSpecId: string): StoredPass6PromptTestExecutionResult[] {
+    return this.findAll().filter((record) => record.promptSpecId === promptSpecId);
+  }
+
+  findByTestCaseId(testCaseId: string): StoredPass6PromptTestExecutionResult[] {
+    return this.findAll().filter((record) => record.testCaseId === testCaseId);
+  }
+
+  findLatestByPromptSpecId(promptSpecId: string): StoredPass6PromptTestExecutionResult | null {
+    return this.findByPromptSpecId(promptSpecId)
+      .sort((a, b) => b.startedAt.localeCompare(a.startedAt))[0] ?? null;
+  }
+}
+
 function createSQLitePass6Repositories(dbPath?: string): Pass6PersistenceRepositories {
   return {
     pass6ConfigurationProfiles: new SQLitePass6ConfigurationProfileRepository(dbPath),
     pass6PromptSpecs: new SQLitePass6PromptSpecRepository(dbPath),
     pass6PromptTestCases: new SQLitePass6PromptTestCaseRepository(dbPath),
+    pass6PromptTestExecutionResults: new SQLitePass6PromptTestExecutionResultRepository(dbPath),
     synthesisInputBundles: new SQLitePass6RecordRepository<StoredSynthesisInputBundle>("synthesis_input_bundle", (record) => record.bundleId, pass6CaseId, dbPath),
     workflowUnits: new SQLitePass6RecordRepository<StoredWorkflowUnit>("workflow_unit", (record) => record.unitId, pass6CaseId, dbPath),
     workflowClaims: new SQLitePass6RecordRepository<StoredWorkflowClaim>("workflow_claim", (record) => record.claimId, pass6CaseId, dbPath),
@@ -3608,6 +3662,7 @@ export function createSQLiteIntakeRepositories(dbPath?: string): {
   pass6ConfigurationProfiles: Pass6ConfigurationProfileRepository;
   pass6PromptSpecs: Pass6PromptSpecRepository;
   pass6PromptTestCases: Pass6PromptTestCaseRepository;
+  pass6PromptTestExecutionResults: Pass6PromptTestExecutionResultRepository;
   synthesisInputBundles: SynthesisInputBundleRepository;
   workflowUnits: WorkflowUnitRepository;
   workflowClaims: WorkflowClaimRepository;
@@ -3716,6 +3771,7 @@ export interface Pass6PersistenceRepositories {
   pass6ConfigurationProfiles: Pass6ConfigurationProfileRepository;
   pass6PromptSpecs: Pass6PromptSpecRepository;
   pass6PromptTestCases: Pass6PromptTestCaseRepository;
+  pass6PromptTestExecutionResults: Pass6PromptTestExecutionResultRepository;
   synthesisInputBundles: SynthesisInputBundleRepository;
   workflowUnits: WorkflowUnitRepository;
   workflowClaims: WorkflowClaimRepository;
@@ -3792,6 +3848,7 @@ function createInMemoryPass6Repositories(): Pass6PersistenceRepositories {
     pass6ConfigurationProfiles: new InMemoryPass6ConfigurationProfileRepository(),
     pass6PromptSpecs: new InMemoryPass6PromptSpecRepository(),
     pass6PromptTestCases: new InMemoryPass6PromptTestCaseRepository(),
+    pass6PromptTestExecutionResults: new InMemoryPass6PromptTestExecutionResultRepository(),
     synthesisInputBundles: new InMemoryPass6RecordRepository<StoredSynthesisInputBundle>((record) => record.bundleId, pass6CaseId),
     workflowUnits: new InMemoryPass6RecordRepository<StoredWorkflowUnit>((record) => record.unitId, pass6CaseId),
     workflowClaims: new InMemoryPass6RecordRepository<StoredWorkflowClaim>((record) => record.claimId, pass6CaseId),
@@ -3917,6 +3974,7 @@ export type {
   Pass6PromptCapabilityKey,
   Pass6PromptSpec,
   Pass6PromptTestCase,
+  Pass6PromptTestExecutionResult,
   PrePackageGateResult,
   SynthesisInputBundle,
   TelegramIdentityBinding,

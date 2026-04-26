@@ -68,6 +68,7 @@ export {
   pass6PromptWorkspaceSchema,
   pass6PromptSpecSchema,
   pass6PromptTestCaseSchema,
+  pass6PromptTestExecutionResultSchema,
 } from "./schemas/index.js";
 
 import { makeValidator } from "./validate.js";
@@ -138,6 +139,7 @@ import {
   pass6PromptWorkspaceSchema,
   pass6PromptSpecSchema,
   pass6PromptTestCaseSchema,
+  pass6PromptTestExecutionResultSchema,
 } from "./schemas/index.js";
 import type { CaseConfiguration } from "./types/case-configuration.js";
 import type { SourceRegistration } from "./types/source-registration.js";
@@ -196,6 +198,7 @@ import type { Pass6ConfigurationProfile } from "./types/pass6-configuration.js";
 import type {
   Pass6PromptSpec,
   Pass6PromptTestCase,
+  Pass6PromptTestExecutionResult,
 } from "./types/pass6-prompt-workspace.js";
 import {
   SessionState,
@@ -422,3 +425,6 @@ export const validatePass6PromptSpec =
 
 export const validatePass6PromptTestCase =
   makeValidator<Pass6PromptTestCase>(pass6PromptTestCaseSchema);
+
+export const validatePass6PromptTestExecutionResult =
+  makeValidator<Pass6PromptTestExecutionResult>(pass6PromptTestExecutionResultSchema);

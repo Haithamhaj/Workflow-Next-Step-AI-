@@ -50,6 +50,13 @@ Status: LOCKED | FORMALIZED | IMPL-EXTENSION
 - **Prompt Workspace lifecycle helpers live in `packages/prompts`, not admin-web** — admin-web exposes the Prompt Workspace through thin API and page surfaces; lifecycle, validation, preview, comparison, and test case helper behavior stay in the prompts package while persistence stores supplied records only — LOCKED
 - **Prompt Workspace test cases are offline records until Block 5** — test case fixtures and expected-output notes can be stored and linked to PromptSpecs, but provider-backed test execution and output comparison belong to Provider Execution and Prompt Test Harness Foundation — LOCKED
 
+## Pass 6 Block 5 — Provider Execution and Prompt Test Harness Foundation
+
+- **Provider execution in Block 5 is Prompt Workspace testing only** — the harness can run stored test cases against draft/active PromptSpecs and persist results, but outputs remain inspection artifacts and cannot become 6A evidence, 6B claims, readiness results, Pre-6C inquiries, 6C package content, visual graph data, Copilot state, or Pass 7 candidates — LOCKED
+- **OpenAI / GPT is the default Pass 6 text test provider** — Google remains the direction for STT/OCR and existing accepted Google-backed surfaces, and Gemini/Google text remains configurable through existing provider patterns, but it is not the silent default for Pass 6 text reasoning — LOCKED
+- **Provider failures are first-class persisted results** — missing credentials, provider errors, rate limits, model issues, and runtime failures are stored as failed prompt test execution results with diagnostics; no fake success or placeholder output is allowed — LOCKED
+- **Compiled prompt snapshots are stored for traceability** — every Prompt Workspace execution stores the deterministic compiled prompt plus test fixture context used for the run, so later review can inspect exactly what was sent to the provider — LOCKED
+
 ## contracts
 
 - **Ajv 8 + ajv-formats for JSON Schema validation** — industry standard, fast, supports Draft-07, formats plugin needed for `date-time` and `uri` — LOCKED

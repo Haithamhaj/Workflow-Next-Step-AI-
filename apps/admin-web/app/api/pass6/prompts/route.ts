@@ -7,10 +7,12 @@ import {
   createPass6PromptTestCase,
   listPass6PromptSpecs,
   promotePass6PromptDraft,
+  runPass6PromptWorkspaceTest,
   updatePass6PromptDraftSections,
   type Pass6PromptCapabilityKey,
   type Pass6PromptStructuredSections,
 } from "@workflow/prompts";
+import { providerRegistry } from "@workflow/integrations";
 import { store } from "../../../../lib/store";
 
 interface Pass6PromptRequestBody {
@@ -27,6 +29,8 @@ interface Pass6PromptRequestBody {
   inputFixtureJson?: string;
   expectedOutputNotes?: string;
   testCaseStatus?: "draft" | "enabled" | "disabled" | "archived";
+  providerName?: "openai" | "google";
+  modelName?: string;
 }
 
 function redirectWithError(request: Request, promptSpecId: string | undefined, message: string) {
@@ -99,6 +103,20 @@ export async function POST(request: Request) {
       }, {
         promptSpecs: store.pass6PromptSpecs,
         testCases: store.pass6PromptTestCases,
+      });
+    } else if (body.action === "run-test" && body.promptSpecId && body.testCaseId) {
+      const providerName = body.providerName ?? providerRegistry.resolveDefaultPromptTextProvider();
+      const provider = providerRegistry.getPromptTextProvider(providerName);
+      result = await runPass6PromptWorkspaceTest({
+        promptSpecId: body.promptSpecId,
+        testCaseId: body.testCaseId,
+        provider,
+        providerName,
+        modelName: body.modelName,
+      }, {
+        promptSpecs: store.pass6PromptSpecs,
+        testCases: store.pass6PromptTestCases,
+        executions: store.pass6PromptTestExecutionResults,
       });
     } else {
       return NextResponse.json({ error: "Unsupported Pass 6 prompt action." }, { status: 400 });

@@ -83,6 +83,20 @@ Pass 6 Block 4 adds the admin-visible Prompt Workspace only.
 - Block 4 does not implement provider execution, production AI calls, 6A builder behavior, 6B analysis, scoring execution, readiness routing execution, Pre-6C behavior, 6C package generation, visual-core integration, Copilot runtime behavior, or Pass 7 mechanics.
 - Next implementation step after Block 4 acceptance is Block 5 — Provider Execution and Prompt Test Harness Foundation.
 
+## Pass 6 Block 5 — Provider Execution and Prompt Test Harness Foundation
+
+Pass 6 Block 5 adds provider-backed Prompt Workspace test execution only.
+
+- Added `Pass6PromptTestExecutionResult` contract, schema validation, and exported validator support.
+- Added persistence support for Pass 6 prompt test execution results.
+- Added Pass 6 prompt-text provider resolution using OpenAI / GPT as the default text test provider; Google remains available/configurable through existing integration patterns but is not the silent default for Pass 6 text reasoning.
+- Added Prompt Workspace test harness helpers for deterministic prompt compilation, test-fixture injection, provider execution, persisted success/failure results, and draft-vs-active execution comparison.
+- Added admin API/UI controls to run stored Prompt Workspace test cases, inspect latest results, and inspect result detail including compiled prompt snapshot, provider/model, output/failure, and downstream-created-record boundary evidence.
+- Provider failure and missing provider configuration are persisted as failed results; provider success is never faked.
+- Prompt test outputs remain inspection records only and do not become 6A evidence, 6B claims, readiness results, Pre-6C inquiries, 6C package content, visual graph data, Copilot state, or Pass 7 candidates.
+- Block 5 does not implement production 6A provider runs, production 6B provider runs, 6A builder behavior, 6B analysis, scoring execution, readiness routing execution, Pre-6C behavior, 6C package generation, visual-core integration, Copilot runtime behavior, or Pass 7 mechanics.
+- Next implementation step after Block 5 acceptance is Block 6 — 6A SynthesisInputBundle Builder.
+
 **Pass 5 — Participant Session Outreach / Narrative-First Clarification is accepted, closed, integrated, and archived on `main`.**
 
 Final Pass 5 status: `pass5_participant_session_outreach_accepted`

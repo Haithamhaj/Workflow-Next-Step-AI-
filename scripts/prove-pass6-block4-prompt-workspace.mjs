@@ -114,7 +114,9 @@ assert.equal(archive.ok, true, "non-active PromptSpec can be archived");
 assert.ok(listPass6PromptSpecs(store.pass6PromptSpecs).length >= 9, "PromptSpec list returns workspace records");
 
 const promptPackageSource = readFileSync("packages/prompts/src/index.ts", "utf8");
-const pass6PromptSource = promptPackageSource.slice(promptPackageSource.indexOf("Pass 6 Prompt Workspace / PromptOps"));
+const pass6PromptStart = promptPackageSource.indexOf("Pass 6 Prompt Workspace / PromptOps");
+const pass6PromptEnd = promptPackageSource.indexOf("export interface Pass6PromptTextExecutor");
+const pass6PromptSource = promptPackageSource.slice(pass6PromptStart, pass6PromptEnd);
 const apiSource = readFileSync("apps/admin-web/app/api/pass6/prompts/route.ts", "utf8");
 const listPageSource = readFileSync("apps/admin-web/app/pass6/prompts/page.tsx", "utf8");
 const detailPageSource = readFileSync("apps/admin-web/app/pass6/prompts/[promptSpecId]/page.tsx", "utf8");

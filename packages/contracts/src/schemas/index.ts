@@ -94,6 +94,7 @@ function pass6PromptWorkspaceContractSchema(title: string, definitionName: strin
 
 const pass6PromptSpecSchema = pass6PromptWorkspaceContractSchema("Pass6PromptSpec", "pass6PromptSpec");
 const pass6PromptTestCaseSchema = pass6PromptWorkspaceContractSchema("Pass6PromptTestCase", "pass6PromptTestCase");
+const pass6PromptTestExecutionResultSchema = pass6PromptWorkspaceContractSchema("Pass6PromptTestExecutionResult", "pass6PromptTestExecutionResult");
 
 export {
   caseConfigurationSchema,
@@ -162,4 +163,5 @@ export {
   pass6PromptWorkspaceSchema,
   pass6PromptSpecSchema,
   pass6PromptTestCaseSchema,
+  pass6PromptTestExecutionResultSchema,
 };

@@ -5,10 +5,11 @@
   "description": "Pass 6 Prompt Workspace contracts for PromptSpecs and offline test case records. These records support structured prompt editing, preview, comparison, and lifecycle state only; they do not execute providers or own workflow governance.",
   "type": "object",
   "additionalProperties": false,
-  "required": ["promptSpec", "promptTestCase"],
+  "required": ["promptSpec", "promptTestCase", "promptTestExecutionResult"],
   "properties": {
     "promptSpec": { "$ref": "#/definitions/pass6PromptSpec" },
-    "promptTestCase": { "$ref": "#/definitions/pass6PromptTestCase" }
+    "promptTestCase": { "$ref": "#/definitions/pass6PromptTestCase" },
+    "promptTestExecutionResult": { "$ref": "#/definitions/pass6PromptTestExecutionResult" }
   },
   "definitions": {
     "nonEmptyString": {
@@ -22,6 +23,10 @@
     "testCaseStatus": {
       "type": "string",
       "enum": ["draft", "enabled", "disabled", "archived"]
+    },
+    "executionStatus": {
+      "type": "string",
+      "enum": ["succeeded", "failed"]
     },
     "capabilityKey": {
       "type": "string",
@@ -156,6 +161,83 @@
         "enabled": { "type": "boolean" },
         "createdAt": { "type": "string", "format": "date-time" },
         "updatedAt": { "type": "string", "format": "date-time" }
+      }
+    },
+    "tokenUsage": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "inputTokens": { "type": "integer", "minimum": 0 },
+        "outputTokens": { "type": "integer", "minimum": 0 },
+        "totalTokens": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "createdRecords": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "synthesisInputBundleIds",
+        "workflowClaimIds",
+        "workflowReadinessResultIds",
+        "prePackageGateResultIds",
+        "initialWorkflowPackageIds",
+        "workflowGraphRecordIds",
+        "pass7ReviewCandidateIds"
+      ],
+      "properties": {
+        "synthesisInputBundleIds": { "type": "array", "items": { "$ref": "#/definitions/nonEmptyString" } },
+        "workflowClaimIds": { "type": "array", "items": { "$ref": "#/definitions/nonEmptyString" } },
+        "workflowReadinessResultIds": { "type": "array", "items": { "$ref": "#/definitions/nonEmptyString" } },
+        "prePackageGateResultIds": { "type": "array", "items": { "$ref": "#/definitions/nonEmptyString" } },
+        "initialWorkflowPackageIds": { "type": "array", "items": { "$ref": "#/definitions/nonEmptyString" } },
+        "workflowGraphRecordIds": { "type": "array", "items": { "$ref": "#/definitions/nonEmptyString" } },
+        "pass7ReviewCandidateIds": { "type": "array", "items": { "$ref": "#/definitions/nonEmptyString" } }
+      }
+    },
+    "pass6PromptTestExecutionResult": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "executionId",
+        "promptSpecId",
+        "promptSpecVersion",
+        "promptStatusAtRun",
+        "testCaseId",
+        "providerName",
+        "modelName",
+        "startedAt",
+        "completedAt",
+        "status",
+        "inputFixtureSummary",
+        "compiledPromptSnapshot",
+        "createdRecords"
+      ],
+      "properties": {
+        "executionId": { "$ref": "#/definitions/nonEmptyString" },
+        "promptSpecId": { "$ref": "#/definitions/nonEmptyString" },
+        "promptSpecVersion": { "$ref": "#/definitions/nonEmptyString" },
+        "promptStatusAtRun": { "type": "string", "enum": ["draft", "active"] },
+        "testCaseId": { "$ref": "#/definitions/nonEmptyString" },
+        "providerName": { "$ref": "#/definitions/nonEmptyString" },
+        "modelName": { "$ref": "#/definitions/nonEmptyString" },
+        "startedAt": { "type": "string", "format": "date-time" },
+        "completedAt": { "type": "string", "format": "date-time" },
+        "status": { "$ref": "#/definitions/executionStatus" },
+        "latencyMs": { "type": "integer", "minimum": 0 },
+        "inputFixtureSummary": { "$ref": "#/definitions/nonEmptyString" },
+        "compiledPromptSnapshot": { "$ref": "#/definitions/nonEmptyString" },
+        "outputText": { "type": "string" },
+        "outputJson": { "$ref": "#/definitions/jsonValue" },
+        "errorCode": { "type": "string" },
+        "errorMessage": { "type": "string" },
+        "tokenUsage": { "$ref": "#/definitions/tokenUsage" },
+        "costEstimate": { "type": "string" },
+        "configProfileId": { "type": "string" },
+        "policyReferences": {
+          "type": "array",
+          "items": { "$ref": "#/definitions/nonEmptyString" }
+        },
+        "createdRecords": { "$ref": "#/definitions/createdRecords" }
       }
     }
   }

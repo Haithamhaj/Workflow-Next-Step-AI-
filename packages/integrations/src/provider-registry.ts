@@ -44,6 +44,12 @@ export interface ProviderRegistry {
   getEmbeddingProvider(): EmbeddingProvider | null;
   /** Resolve default provider respecting env gates. */
   resolveDefaultProvider(): ProviderName;
+  /** Check Pass 6 Prompt Workspace text-test provider availability. */
+  getPromptTextAvailability(): ProviderAvailability[];
+  /** Get a text provider for Prompt Workspace tests. Returns null if env-gated out. */
+  getPromptTextProvider(name?: ProviderName): ExtractionProvider | null;
+  /** Resolve Pass 6 text intelligence default provider. */
+  resolveDefaultPromptTextProvider(): ProviderName;
 }
 
 // ---------------------------------------------------------------------------
@@ -167,6 +173,27 @@ export class EnvProviderRegistry implements ProviderRegistry {
   resolveDefaultProvider(): ProviderName {
     // Google is always the default — even as stub
     return "google";
+  }
+
+  getPromptTextAvailability(): ProviderAvailability[] {
+    return this.getExtractionAvailability().map((availability) =>
+      availability.name === "openai"
+        ? {
+            ...availability,
+            reason: availability.available
+              ? "OpenAI configured — default Pass 6 text test provider"
+              : "No OPENAI_API_KEY — default Pass 6 text test provider unavailable",
+          }
+        : availability
+    );
+  }
+
+  getPromptTextProvider(name: ProviderName = this.resolveDefaultPromptTextProvider()): ExtractionProvider | null {
+    return this.getExtractionProvider(name);
+  }
+
+  resolveDefaultPromptTextProvider(): ProviderName {
+    return "openai";
   }
 }
 
