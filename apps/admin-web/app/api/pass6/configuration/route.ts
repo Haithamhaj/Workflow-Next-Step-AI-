@@ -39,6 +39,9 @@ export async function POST(request: Request) {
     const body: Pass6ConfigurationRequestBody = contentType.includes("application/json")
       ? await request.json() as Pass6ConfigurationRequestBody
       : Object.fromEntries((await request.formData()).entries()) as Pass6ConfigurationRequestBody;
+    const rawPoliciesJson = contentType.includes("application/json")
+      ? undefined
+      : (body as Pass6ConfigurationRequestBody & { policiesJson?: string }).policiesJson;
 
     const changedBy = body.changedBy || "admin";
     const changeReason = body.changeReason || "Pass 6 configuration admin action.";
@@ -52,8 +55,20 @@ export async function POST(request: Request) {
       });
       result = savePass6ConfigurationProfile(draft, store.pass6ConfigurationProfiles);
     } else if (body.action === "update-draft" && body.configId) {
+      let policies = body.policies;
+      if (rawPoliciesJson !== undefined) {
+        try {
+          policies = JSON.parse(rawPoliciesJson) as Pass6PolicySet;
+        } catch (error) {
+          return NextResponse.json({
+            error: `Invalid policy JSON: ${error instanceof Error ? error.message : String(error)}`,
+            field: "policiesJson",
+            structured: true,
+          }, { status: 400 });
+        }
+      }
       result = updatePass6ConfigurationDraft(body.configId, {
-        policies: body.policies,
+        policies,
         lockedGovernanceRules: body.lockedGovernanceRules as never,
         changedBy,
         changeReason,

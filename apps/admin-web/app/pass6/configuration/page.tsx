@@ -118,6 +118,28 @@ export default function Pass6ConfigurationPage() {
             <p>Visual markers: {selected.policies.visualMapPolicy.markerPreferences.join(", ")}</p>
           </div>
 
+          {draft ? (
+            <div className="card">
+              <h3>Draft Policy JSON Editor</h3>
+              <p className="muted">Edit allowed policy sections as JSON. Invalid JSON or schema-invalid policy payloads are rejected by the API and the draft is not saved.</p>
+              <form action="/api/pass6/configuration" method="post">
+                <input type="hidden" name="action" value="update-draft" />
+                <input type="hidden" name="configId" value={draft.configId} />
+                <input type="hidden" name="changedBy" value="admin" />
+                <input type="hidden" name="changeReason" value="Update draft policy JSON from admin surface." />
+                <label htmlFor="pass6-policy-json"><strong>Editable policy sections JSON</strong></label>
+                <textarea
+                  id="pass6-policy-json"
+                  name="policiesJson"
+                  rows={28}
+                  style={{ width: "100%", fontFamily: "monospace", marginTop: "8px" }}
+                  defaultValue={JSON.stringify(draft.policies, null, 2)}
+                />
+                <button type="submit">Save Draft Policy JSON</button>
+              </form>
+            </div>
+          ) : null}
+
           <div className="card">
             <h3>Locked Governance Rules</h3>
             <ul>{selected.lockedGovernanceRules.map((rule) => <li key={rule.ruleId}><strong>{rule.label}</strong>: {rule.description}</li>)}</ul>

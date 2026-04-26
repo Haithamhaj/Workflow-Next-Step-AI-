@@ -53,14 +53,35 @@ assert.equal(lockedEdit.ok, false, "locked governance rule edit rejected");
 const editedPolicies = structuredClone(draft.policies);
 editedPolicies.claimScoringPolicy.weights[0].weight = 0.4;
 editedPolicies.claimScoringPolicy.weights[1].weight = 0.2;
+const uiPolicyJson = JSON.stringify(editedPolicies, null, 2);
+assert.deepEqual(JSON.parse(uiPolicyJson), editedPolicies, "admin JSON textarea payload parses");
 const editedDraft = updatePass6ConfigurationDraft(draft.configId, {
-  policies: editedPolicies,
+  policies: JSON.parse(uiPolicyJson),
   changedBy: "admin",
-  changeReason: "Tune scoring weights.",
+  changeReason: "Tune scoring weights through admin JSON editor.",
   now: "2026-04-27T01:05:00.000Z",
 }, repo);
 assert.equal(editedDraft.ok, true, "editable scoring weights persist");
 assert.equal(repo.findById(draft.configId).policies.claimScoringPolicy.weights[0].weight, 0.4);
+assert.equal(
+  repo.findById(draft.configId).changeReason,
+  "Tune scoring weights through admin JSON editor.",
+  "UI/API edit path metadata persists",
+);
+
+assert.throws(
+  () => JSON.parse("{not valid json"),
+  /JSON/,
+  "invalid JSON textarea payload is rejected before save",
+);
+
+const schemaInvalidPolicies = structuredClone(editedPolicies);
+schemaInvalidPolicies.claimScoringPolicy.weights[0].weight = 2;
+const schemaInvalidProfile = {
+  ...repo.findById(draft.configId),
+  policies: schemaInvalidPolicies,
+};
+assert.equal(validatePass6ConfigurationProfile(schemaInvalidProfile).ok, false, "schema-invalid policy payload is rejected");
 
 const promoteOne = promotePass6ConfigurationDraft(draft.configId, {
   changedBy: "admin",
@@ -115,9 +136,14 @@ assert.equal(repo.findById(rollback.draft.configId).status, "archived");
 const apiSource = readFileSync("apps/admin-web/app/api/pass6/configuration/route.ts", "utf8");
 const pageSource = readFileSync("apps/admin-web/app/pass6/configuration/page.tsx", "utf8");
 assert.ok(apiSource.includes("updatePass6ConfigurationDraft"), "API uses package helper for update");
+assert.ok(apiSource.includes("policiesJson"), "API accepts the same policy JSON field used by the admin page");
+assert.ok(apiSource.includes("Invalid policy JSON"), "API returns visible invalid JSON error");
 assert.ok(pageSource.includes("Locked Governance Rules"), "admin page exposes locked governance rules");
 assert.ok(pageSource.includes("Claim Confidence Weights"), "admin page exposes scoring weights");
 assert.ok(pageSource.includes("Active vs Draft"), "admin page exposes comparison panel");
+assert.ok(pageSource.includes("Draft Policy JSON Editor"), "admin page exposes nested policy JSON editor");
+assert.ok(pageSource.includes("name=\"policiesJson\""), "admin page posts policy JSON through form field");
+assert.ok(pageSource.includes("Save Draft Policy JSON"), "admin page exposes save action for draft policy JSON");
 
 const forbiddenRuntimeCalls = [
   "createSynthesisInputBundle",
