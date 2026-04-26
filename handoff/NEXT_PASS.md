@@ -10,13 +10,18 @@ Integration method: fast-forward merge into `main`, conflict-free.
 
 The final archive commit is recorded in `handoff/CURRENT_STATE.md`.
 
+Final Pass 5 archive/reference document:
+
+- `handoff/PASS5_FINAL_ARCHIVE_REFERENCE.md`
+- safe for later Project Resource upload
+
 ## Next Pass
 
 The next pass is not automatically started.
 
 Operator decision is required before beginning any Pass 6 planning or implementation.
 
-If approved later, the next candidate is Pass 6 planning only. Do not implement Pass 6 synthesis/evaluation, common-path formation, final workflow reconstruction, package generation, or WhatsApp API without a new explicit scope.
+If approved later, the next planning step is a Pass 6 readiness/scope gate only. Do not implement Pass 6 synthesis/evaluation, common-path formation, final workflow reconstruction, package generation, or WhatsApp API without a new explicit scope.
 
 ## Provider Direction To Preserve
 

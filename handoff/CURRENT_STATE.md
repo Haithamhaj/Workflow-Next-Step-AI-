@@ -16,6 +16,13 @@ Main integration proof commit before archive update: `b22cdd0`
 
 Pass 5 integration/archive status: `pass5_integrated_and_archived`
 
+Final Pass 5 archive/reference document:
+
+- `handoff/PASS5_FINAL_ARCHIVE_REFERENCE.md`
+- safe to upload later as a Project Resource
+- contains final status, block summary, proof results, provider direction, boundaries, and next-pass guard
+- contains no secrets
+
 Post-merge provider direction:
 
 - OpenAI / GPT is the default text intelligence provider for Pass 5 and next-stage text prompt execution unless the operator explicitly changes it.
