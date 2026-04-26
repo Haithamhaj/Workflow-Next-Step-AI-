@@ -65,6 +65,9 @@ export {
   pass6CopilotContextBundleSchema,
   pass7ReviewCandidateSchema,
   pass6ConfigurationSchema,
+  pass6PromptWorkspaceSchema,
+  pass6PromptSpecSchema,
+  pass6PromptTestCaseSchema,
 } from "./schemas/index.js";
 
 import { makeValidator } from "./validate.js";
@@ -132,6 +135,9 @@ import {
   pass6CopilotContextBundleSchema,
   pass7ReviewCandidateSchema,
   pass6ConfigurationSchema,
+  pass6PromptWorkspaceSchema,
+  pass6PromptSpecSchema,
+  pass6PromptTestCaseSchema,
 } from "./schemas/index.js";
 import type { CaseConfiguration } from "./types/case-configuration.js";
 import type { SourceRegistration } from "./types/source-registration.js";
@@ -187,6 +193,10 @@ import type {
   WorkflowUnit,
 } from "./types/pass6-core.js";
 import type { Pass6ConfigurationProfile } from "./types/pass6-configuration.js";
+import type {
+  Pass6PromptSpec,
+  Pass6PromptTestCase,
+} from "./types/pass6-prompt-workspace.js";
 import {
   SessionState,
   ParticipantSessionState,
@@ -406,3 +416,9 @@ export const validatePass7ReviewCandidate =
 
 export const validatePass6ConfigurationProfile =
   makeValidator<Pass6ConfigurationProfile>(pass6ConfigurationSchema);
+
+export const validatePass6PromptSpec =
+  makeValidator<Pass6PromptSpec>(pass6PromptSpecSchema);
+
+export const validatePass6PromptTestCase =
+  makeValidator<Pass6PromptTestCase>(pass6PromptTestCaseSchema);

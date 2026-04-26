@@ -16,3 +16,4 @@ export * from "./targeting-rollout.js";
 export * from "./participant-session.js";
 export * from "./pass6-core.js";
 export * from "./pass6-configuration.js";
+export * from "./pass6-prompt-workspace.js";

@@ -26,6 +26,7 @@ import pass4PromptTestRunSchema from "./pass4-prompt-test-run.schema.json" with 
 import participantSessionSchema from "./participant-session.schema.json" with { type: "json" };
 import pass6CoreSchema from "./pass6-core.schema.json" with { type: "json" };
 import pass6ConfigurationSchema from "./pass6-configuration.schema.json" with { type: "json" };
+import pass6PromptWorkspaceSchema from "./pass6-prompt-workspace.schema.json" with { type: "json" };
 
 function pass5Schema(title: string, definitionName: string) {
   return {
@@ -81,6 +82,18 @@ const draftOperationalDocumentSchema = pass6Schema("DraftOperationalDocument", "
 const workflowGraphRecordSchema = pass6Schema("WorkflowGraphRecord", "workflowGraphRecord");
 const pass6CopilotContextBundleSchema = pass6Schema("Pass6CopilotContextBundle", "pass6CopilotContextBundle");
 const pass7ReviewCandidateSchema = pass6Schema("Pass7ReviewCandidate", "pass7ReviewCandidate");
+
+function pass6PromptWorkspaceContractSchema(title: string, definitionName: string) {
+  return {
+    $schema: "http://json-schema.org/draft-07/schema#",
+    title,
+    $ref: `#/definitions/${definitionName}`,
+    definitions: pass6PromptWorkspaceSchema.definitions,
+  };
+}
+
+const pass6PromptSpecSchema = pass6PromptWorkspaceContractSchema("Pass6PromptSpec", "pass6PromptSpec");
+const pass6PromptTestCaseSchema = pass6PromptWorkspaceContractSchema("Pass6PromptTestCase", "pass6PromptTestCase");
 
 export {
   caseConfigurationSchema,
@@ -146,4 +159,7 @@ export {
   pass6CopilotContextBundleSchema,
   pass7ReviewCandidateSchema,
   pass6ConfigurationSchema,
+  pass6PromptWorkspaceSchema,
+  pass6PromptSpecSchema,
+  pass6PromptTestCaseSchema,
 };

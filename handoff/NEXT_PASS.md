@@ -25,7 +25,9 @@ Pass 6 Block 1 — Core Contracts and Schema Seams is accepted.
 
 Pass 6 Block 2 — Persistence and Repository Layer is accepted.
 
-Pass 6 Block 3 — Pass 6 Admin Configuration and Policy Control Layer is the current completed implementation block pending acceptance.
+Pass 6 Block 3 — Pass 6 Admin Configuration and Policy Control Layer is accepted.
+
+Pass 6 Block 4 — Pass 6 Prompt Workspace / PromptOps Layer is the current completed implementation block pending acceptance.
 
 Technical Decomposition v4 is the active Pass 6 build map.
 
@@ -74,6 +76,20 @@ Block 3 is admin-visible configuration and policy control only.
 - Admin UI/API surfaces inspect and control configuration only.
 - No 6A builder, 6B analysis, scoring execution, readiness routing execution, Pre-6C behavior, 6C generation, Prompt Workspace, provider execution, visual-core integration, Copilot, or Pass 7 mechanics start in Block 3.
 - Next implementation step after acceptance is Block 4 — Pass 6 Prompt Workspace / PromptOps Layer.
+
+## Pass 6 Block 4 Acceptance Gate
+
+Block 4 is Prompt Workspace / PromptOps work only.
+
+- Pass 6 PromptSpecs are structured, versioned, persisted, and admin-visible.
+- Draft, active, previous, and archived lifecycle states are supported for PromptSpecs.
+- Deterministic compiled prompt preview is available from structured sections.
+- Active-vs-draft comparison is available at structured-section level.
+- Offline Prompt Workspace test case records can be created and linked to PromptSpecs.
+- PromptSpecs may hold provider/model preference references, but no provider execution or production AI calls occur in Block 4.
+- PromptSpecs do not own scoring weights, method registry truth, readiness thresholds, package eligibility, review/release decisions, locked governance rules, or state transitions.
+- No provider execution, production AI calls, 6A builder, 6B analysis, scoring execution, readiness routing execution, Pre-6C behavior, 6C generation, visual-core integration, Copilot runtime behavior, or Pass 7 mechanics start in Block 4.
+- Next implementation step after acceptance is Block 5 — Provider Execution and Prompt Test Harness Foundation.
 
 ## Active Pass 6 Block Map
 

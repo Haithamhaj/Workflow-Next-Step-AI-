@@ -70,6 +70,19 @@ Pass 6 Block 3 adds versioned, admin-visible configuration and policy control on
 - Block 3 does not implement 6A bundle building, 6B analysis, scoring execution, readiness routing execution, Pre-6C gate behavior, 6C package generation, Prompt Workspace, provider execution, visual-core integration, Copilot behavior, or Pass 7 mechanics.
 - Next implementation step after Block 3 acceptance is Block 4 — Pass 6 Prompt Workspace / PromptOps Layer.
 
+## Pass 6 Block 4 — Prompt Workspace / PromptOps Layer
+
+Pass 6 Block 4 adds the admin-visible Prompt Workspace only.
+
+- Added structured `Pass6PromptSpec` and `Pass6PromptTestCase` contracts, schema validation, and exported validator support.
+- Added persistence support for Pass 6 PromptSpecs and offline prompt test case records.
+- Added package-level Prompt Workspace helpers for default draft creation, list/detail lookup, draft section editing, deterministic compiled prompt preview, draft promotion, previous-state handling, archive, clone-to-draft, active-vs-draft comparison, and test case creation.
+- Added minimal admin API and admin surface at `/pass6/prompts`.
+- PromptSpecs can hold provider/model preference references, but Block 4 does not execute providers or run production AI prompts.
+- PromptSpecs do not own scoring weights, method registry truth, readiness thresholds, package eligibility, review/release decisions, locked governance rules, or state transitions.
+- Block 4 does not implement provider execution, production AI calls, 6A builder behavior, 6B analysis, scoring execution, readiness routing execution, Pre-6C behavior, 6C package generation, visual-core integration, Copilot runtime behavior, or Pass 7 mechanics.
+- Next implementation step after Block 4 acceptance is Block 5 — Provider Execution and Prompt Test Harness Foundation.
+
 **Pass 5 — Participant Session Outreach / Narrative-First Clarification is accepted, closed, integrated, and archived on `main`.**
 
 Final Pass 5 status: `pass5_participant_session_outreach_accepted`

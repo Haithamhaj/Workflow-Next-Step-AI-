@@ -49,4 +49,6 @@ export const store: InMemoryStore = globalThis.__workflowStore__ ?? (globalThis.
   sessionNextActions: intakeRepositories.sessionNextActions,
   pass6HandoffCandidates: intakeRepositories.pass6HandoffCandidates,
   pass6ConfigurationProfiles: intakeRepositories.pass6ConfigurationProfiles,
+  pass6PromptSpecs: intakeRepositories.pass6PromptSpecs,
+  pass6PromptTestCases: intakeRepositories.pass6PromptTestCases,
 });

@@ -10,10 +10,16 @@
 import {
   validatePass3PromptTestRun,
   validatePass4PromptTestRun,
+  validatePass6PromptSpec,
+  validatePass6PromptTestCase,
   validateStructuredPromptSpec,
   validatePromptRegistration,
   type Pass4PromptCapability,
   type Pass4PromptTestRun,
+  type Pass6PromptCapabilityKey,
+  type Pass6PromptSpec,
+  type Pass6PromptStructuredSections,
+  type Pass6PromptTestCase,
   type Pass3PromptCapability,
   type Pass3PromptTestRun,
   type PromptRegistration,
@@ -26,6 +32,8 @@ import type {
   PromptRecord,
   PromptRepository,
   ProviderExtractionJobRepository,
+  Pass6PromptSpecRepository,
+  Pass6PromptTestCaseRepository,
   StoredProviderExtractionJob,
   StructuredPromptSpecRepository,
 } from "@workflow/persistence";
@@ -46,6 +54,10 @@ export type {
   Pass3PromptTestRun,
   Pass4PromptCapability,
   Pass4PromptTestRun,
+  Pass6PromptCapabilityKey,
+  Pass6PromptSpec,
+  Pass6PromptStructuredSections,
+  Pass6PromptTestCase,
 } from "@workflow/contracts";
 
 export const PASS3_HIERARCHY_PROMPT_MODULE = "pass3.hierarchy.draft" as const;
@@ -1279,4 +1291,342 @@ export async function runPass3PromptComparisonTest(input: {
   if (!result.ok) throw new Error(`Invalid Pass 3 prompt test run: ${validationMessage(result.errors)}`);
   repos.testRuns.save(run);
   return run;
+}
+
+// ---------------------------------------------------------------------------
+// Pass 6 Prompt Workspace / PromptOps — Block 4 only
+// ---------------------------------------------------------------------------
+
+export const PASS6_PROMPT_CAPABILITY_KEYS: readonly Pass6PromptCapabilityKey[] = [
+  "synthesis",
+  "difference_interpretation",
+  "evaluation",
+  "initial_package_drafting",
+  "admin_explanation",
+  "pre_package_inquiry_generation",
+  "optional_draft_document_generation",
+  "visual_narrative_support",
+  "pass6_analysis_copilot",
+] as const;
+
+export const PASS6_PROMPT_SECTION_KEYS: readonly (keyof Pass6PromptStructuredSections)[] = [
+  "roleDefinition",
+  "missionOrTaskPurpose",
+  "caseContextInputs",
+  "sourceAndEvidenceRules",
+  "methodOrPolicyRules",
+  "outputContract",
+  "boundariesAndProhibitions",
+  "adminReviewNotes",
+  "evaluationChecklist",
+  "examplesOrGoldenCases",
+] as const;
+
+const pass6PromptNames: Record<Pass6PromptCapabilityKey, { name: string; description: string; output: string }> = {
+  synthesis: {
+    name: "Synthesis PromptSpec",
+    description: "Supports later synthesis wording over accepted Pass 5 outputs without building the 6A bundle.",
+    output: "Draft synthesis support notes conforming to later SynthesisInputBundle consumers.",
+  },
+  difference_interpretation: {
+    name: "Difference Interpretation PromptSpec",
+    description: "Supports later explanation of claim/workflow differences without classifying live differences in Block 4.",
+    output: "Draft difference interpretation support text only.",
+  },
+  evaluation: {
+    name: "Evaluation PromptSpec",
+    description: "Supports later 6B evaluation explanation without running scoring or readiness routing.",
+    output: "Draft evaluation explanation support text only.",
+  },
+  initial_package_drafting: {
+    name: "Initial Package Drafting PromptSpec",
+    description: "Supports later 6C drafting style without generating package content in Block 4.",
+    output: "Draft package-writing support text only.",
+  },
+  admin_explanation: {
+    name: "Admin Explanation PromptSpec",
+    description: "Supports later admin-facing explanation of Pass 6 records.",
+    output: "Draft admin explanation support text only.",
+  },
+  pre_package_inquiry_generation: {
+    name: "Pre-Package Inquiry Generation PromptSpec",
+    description: "Supports later clarification question drafting without creating Pre-6C gate behavior.",
+    output: "Draft inquiry support text only.",
+  },
+  optional_draft_document_generation: {
+    name: "Optional Draft Document Generation PromptSpec",
+    description: "Supports later optional operational draft wording without producing release-ready documents.",
+    output: "Draft document support text only.",
+  },
+  visual_narrative_support: {
+    name: "Visual Narrative Support PromptSpec",
+    description: "Supports later visual narration wording without visual-core validation or rendering.",
+    output: "Draft visual narrative support text only.",
+  },
+  pass6_analysis_copilot: {
+    name: "Pass 6 Analysis Copilot PromptSpec",
+    description: "Supports later read-only Copilot behavior without runtime Copilot state changes.",
+    output: "Draft read-only Copilot answer support text only.",
+  },
+};
+
+function pass6PromptSections(capabilityKey: Pass6PromptCapabilityKey): Pass6PromptStructuredSections {
+  const metadata = pass6PromptNames[capabilityKey];
+  return {
+    roleDefinition: `You support Pass 6 ${metadata.name}. You are a drafting and explanation assistant for admin review.`,
+    missionOrTaskPurpose: metadata.description,
+    caseContextInputs: "Use only supplied Pass 6 contract records, accepted Pass 5 references, active admin configuration references, and explicit admin-provided sample context.",
+    sourceAndEvidenceRules: "Document/source claims are signals, not operational truth by default. Do not upgrade unresolved, disputed, defective, or candidate-only items into workflow truth.",
+    methodOrPolicyRules: "Use method and policy references as context only. Prompt wording must not own scoring weights, method registry truth, readiness thresholds, package eligibility, review decisions, or release decisions.",
+    outputContract: metadata.output,
+    boundariesAndProhibitions: "Do not call providers. Do not execute 6A, 6B, Pre-6C, 6C, visual-core, Copilot runtime, or Pass 7 behavior. Do not approve Initial Package by score alone. Do not bypass admin review for material conflicts. Do not make visual renderers own workflow truth.",
+    adminReviewNotes: "Outputs are preview material for admin inspection and later provider tests. Drafts are not sent automatically and are not evidence.",
+    evaluationChecklist: "Check that the prompt respects locked governance, uses only supplied inputs, preserves uncertainty, and keeps review/release decisions outside prompt behavior.",
+    examplesOrGoldenCases: "Example cases may be added as Prompt Workspace test cases. Golden cases are offline fixtures until Block 5 provider execution exists.",
+  };
+}
+
+export function compilePass6PromptSpec(spec: Pass6PromptSpec): string {
+  const lines = [
+    `# ${spec.name}`,
+    `Capability: ${spec.capabilityKey}`,
+    `Version: ${spec.version}`,
+    `Status: ${spec.status}`,
+  ];
+  for (const key of PASS6_PROMPT_SECTION_KEYS) {
+    lines.push("", `## ${key}`, spec.sections[key]);
+  }
+  return lines.join("\n");
+}
+
+function validatePass6PromptSpecOrThrow(spec: Pass6PromptSpec, label: string): void {
+  const result = validatePass6PromptSpec(spec);
+  if (!result.ok) throw new Error(`${label}: ${validationMessage(result.errors)}`);
+}
+
+function validatePass6PromptTestCaseOrThrow(testCase: Pass6PromptTestCase, label: string): void {
+  const result = validatePass6PromptTestCase(testCase);
+  if (!result.ok) throw new Error(`${label}: ${validationMessage(result.errors)}`);
+}
+
+export function defaultPass6PromptSpec(
+  capabilityKey: Pass6PromptCapabilityKey,
+  input: {
+    promptSpecId?: string;
+    version?: string;
+    status?: "draft" | "active";
+    linkedPolicyConfigId?: string;
+    linkedPolicyConfigVersion?: string;
+    now?: string;
+  } = {},
+): Pass6PromptSpec {
+  const timestamp = input.now ?? new Date().toISOString();
+  const metadata = pass6PromptNames[capabilityKey];
+  const spec: Pass6PromptSpec = {
+    promptSpecId: input.promptSpecId ?? `pass6-prompt-${capabilityKey}-draft-v1`,
+    capabilityKey,
+    name: metadata.name,
+    description: metadata.description,
+    version: input.version ?? "v1",
+    status: input.status ?? "draft",
+    providerPreference: {
+      providerKey: "openai",
+      preferenceReason: "Provider preference placeholder only; Block 4 does not execute providers.",
+    },
+    linkedPolicyConfigId: input.linkedPolicyConfigId,
+    linkedPolicyConfigVersion: input.linkedPolicyConfigVersion,
+    sections: pass6PromptSections(capabilityKey),
+    compiledPromptPreview: "",
+    testCaseIds: [],
+    createdAt: timestamp,
+    updatedAt: timestamp,
+  };
+  spec.compiledPromptPreview = compilePass6PromptSpec(spec);
+  validatePass6PromptSpecOrThrow(spec, "Invalid default Pass 6 PromptSpec");
+  return spec;
+}
+
+export function createDefaultPass6PromptSpecs(
+  repo: Pass6PromptSpecRepository,
+  input: {
+    linkedPolicyConfigId?: string;
+    linkedPolicyConfigVersion?: string;
+    now?: string;
+  } = {},
+): Pass6PromptSpec[] {
+  return PASS6_PROMPT_CAPABILITY_KEYS.map((capabilityKey) => {
+    const existing = repo.findByCapability(capabilityKey);
+    if (existing.length > 0) return existing[0]!;
+    const spec = defaultPass6PromptSpec(capabilityKey, input);
+    repo.save(spec);
+    return spec;
+  });
+}
+
+export function listPass6PromptSpecs(repo: Pass6PromptSpecRepository): Pass6PromptSpec[] {
+  return repo.findAll();
+}
+
+export function findPass6PromptSpec(promptSpecId: string, repo: Pass6PromptSpecRepository): Pass6PromptSpec | null {
+  return repo.findById(promptSpecId);
+}
+
+export function updatePass6PromptDraftSections(
+  promptSpecId: string,
+  sections: Pass6PromptStructuredSections,
+  repo: Pass6PromptSpecRepository,
+  input: { now?: string } = {},
+): { ok: true; promptSpec: Pass6PromptSpec } | { ok: false; error: string } {
+  const draft = repo.findById(promptSpecId);
+  if (!draft || draft.status !== "draft") return { ok: false, error: "PromptSpec draft not found or not editable." };
+  const timestamp = input.now ?? new Date().toISOString();
+  const next: Pass6PromptSpec = {
+    ...draft,
+    sections,
+    updatedAt: timestamp,
+  };
+  next.compiledPromptPreview = compilePass6PromptSpec(next);
+  const result = validatePass6PromptSpec(next);
+  if (!result.ok) return { ok: false, error: `Invalid Pass 6 PromptSpec sections: ${validationMessage(result.errors)}` };
+  repo.save(next);
+  return { ok: true, promptSpec: next };
+}
+
+export function clonePass6PromptSpecToDraft(
+  promptSpecId: string,
+  repo: Pass6PromptSpecRepository,
+  input: {
+    newPromptSpecId?: string;
+    now?: string;
+  } = {},
+): { ok: true; draft: Pass6PromptSpec } | { ok: false; error: string } {
+  const source = repo.findById(promptSpecId);
+  if (!source || source.status === "draft") return { ok: false, error: "Source PromptSpec not found or already draft." };
+  const timestamp = input.now ?? new Date().toISOString();
+  const draft: Pass6PromptSpec = {
+    ...source,
+    promptSpecId: input.newPromptSpecId ?? `${source.promptSpecId}-draft-${crypto.randomUUID()}`,
+    status: "draft",
+    version: `${source.version}-draft`,
+    previousActivePromptSpecId: source.status === "active" ? source.promptSpecId : source.previousActivePromptSpecId,
+    basedOnPromptSpecId: source.promptSpecId,
+    archivedReason: undefined,
+    createdAt: timestamp,
+    updatedAt: timestamp,
+  };
+  draft.compiledPromptPreview = compilePass6PromptSpec(draft);
+  validatePass6PromptSpecOrThrow(draft, "Invalid cloned Pass 6 PromptSpec draft");
+  repo.save(draft);
+  return { ok: true, draft };
+}
+
+export function promotePass6PromptDraft(
+  promptSpecId: string,
+  repo: Pass6PromptSpecRepository,
+  input: { now?: string } = {},
+): { ok: true; active: Pass6PromptSpec; previous?: Pass6PromptSpec } | { ok: false; error: string } {
+  const draft = repo.findById(promptSpecId);
+  if (!draft || draft.status !== "draft") return { ok: false, error: "PromptSpec draft not found for promotion." };
+  const validation = validatePass6PromptSpec(draft);
+  if (!validation.ok) return { ok: false, error: `PromptSpec draft is not valid for promotion: ${validationMessage(validation.errors)}` };
+  const timestamp = input.now ?? new Date().toISOString();
+  const existingActive = repo.findActiveByCapability(draft.capabilityKey);
+  const previous = existingActive ? {
+    ...existingActive,
+    status: "previous" as const,
+    updatedAt: timestamp,
+  } : undefined;
+  const active: Pass6PromptSpec = {
+    ...draft,
+    status: "active",
+    previousActivePromptSpecId: previous?.promptSpecId ?? draft.previousActivePromptSpecId,
+    updatedAt: timestamp,
+  };
+  active.compiledPromptPreview = compilePass6PromptSpec(active);
+  if (previous) repo.save(previous);
+  repo.save(active);
+  return { ok: true, active, previous };
+}
+
+export function archivePass6PromptSpec(
+  promptSpecId: string,
+  repo: Pass6PromptSpecRepository,
+  input: { reason?: string; now?: string } = {},
+): { ok: true; promptSpec: Pass6PromptSpec } | { ok: false; error: string } {
+  const spec = repo.findById(promptSpecId);
+  if (!spec) return { ok: false, error: "PromptSpec not found for archive." };
+  if (spec.status === "active") return { ok: false, error: "Active PromptSpec cannot be archived before replacement." };
+  const archived: Pass6PromptSpec = {
+    ...spec,
+    status: "archived",
+    archivedReason: input.reason ?? "Archived from Pass 6 Prompt Workspace.",
+    updatedAt: input.now ?? new Date().toISOString(),
+  };
+  archived.compiledPromptPreview = compilePass6PromptSpec(archived);
+  validatePass6PromptSpecOrThrow(archived, "Invalid archived Pass 6 PromptSpec");
+  repo.save(archived);
+  return { ok: true, promptSpec: archived };
+}
+
+export function comparePass6PromptDraftToActive(
+  capabilityKey: Pass6PromptCapabilityKey,
+  repo: Pass6PromptSpecRepository,
+): {
+  capabilityKey: Pass6PromptCapabilityKey;
+  activePromptSpecId?: string;
+  draftPromptSpecId?: string;
+  changedSections: string[];
+  summary: string;
+} {
+  const active = repo.findActiveByCapability(capabilityKey);
+  const draft = repo.findDraftsByCapability(capabilityKey)[0] ?? null;
+  const changedSections = active && draft
+    ? PASS6_PROMPT_SECTION_KEYS.filter((key) => active.sections[key] !== draft.sections[key])
+    : [];
+  return {
+    capabilityKey,
+    activePromptSpecId: active?.promptSpecId,
+    draftPromptSpecId: draft?.promptSpecId,
+    changedSections,
+    summary: !active && !draft ? "No active or draft PromptSpec exists."
+      : !active ? "Draft exists; no active PromptSpec exists yet."
+        : !draft ? "Active exists; no draft PromptSpec exists."
+          : changedSections.length === 0 ? "Draft and active structured sections match."
+            : `${changedSections.length} structured section(s) changed.`,
+  };
+}
+
+export function createPass6PromptTestCase(
+  input: Omit<Pass6PromptTestCase, "createdAt" | "updatedAt"> & { createdAt?: string; updatedAt?: string },
+  repos: {
+    promptSpecs: Pass6PromptSpecRepository;
+    testCases: Pass6PromptTestCaseRepository;
+  },
+): { ok: true; testCase: Pass6PromptTestCase; promptSpec: Pass6PromptSpec } | { ok: false; error: string } {
+  const promptSpec = repos.promptSpecs.findById(input.promptSpecId);
+  if (!promptSpec) return { ok: false, error: "PromptSpec not found for test case." };
+  const timestamp = input.createdAt ?? new Date().toISOString();
+  const testCase: Pass6PromptTestCase = {
+    ...input,
+    createdAt: timestamp,
+    updatedAt: input.updatedAt ?? timestamp,
+  };
+  const result = validatePass6PromptTestCase(testCase);
+  if (!result.ok) return { ok: false, error: `Invalid Pass 6 prompt test case: ${validationMessage(result.errors)}` };
+  repos.testCases.save(testCase);
+  const updatedPromptSpec: Pass6PromptSpec = {
+    ...promptSpec,
+    testCaseIds: [...new Set([...promptSpec.testCaseIds, testCase.testCaseId])],
+    updatedAt: testCase.updatedAt,
+  };
+  updatedPromptSpec.compiledPromptPreview = compilePass6PromptSpec(updatedPromptSpec);
+  repos.promptSpecs.save(updatedPromptSpec);
+  return { ok: true, testCase, promptSpec: updatedPromptSpec };
+}
+
+export function listPass6PromptTestCases(
+  promptSpecId: string,
+  repo: Pass6PromptTestCaseRepository,
+): Pass6PromptTestCase[] {
+  return repo.findByPromptSpecId(promptSpecId);
 }

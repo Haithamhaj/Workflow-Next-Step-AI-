@@ -79,6 +79,9 @@ import type {
   WorkflowReadinessResult,
   WorkflowUnit,
   Pass6ConfigurationProfile,
+  Pass6PromptCapabilityKey,
+  Pass6PromptSpec,
+  Pass6PromptTestCase,
 } from "@workflow/contracts";
 
 import { mkdirSync } from "node:fs";
@@ -312,6 +315,8 @@ export interface StoredPass7ReviewCandidate extends Pass7ReviewCandidate {
   updatedAt: string;
 }
 export interface StoredPass6ConfigurationProfile extends Pass6ConfigurationProfile {}
+export interface StoredPass6PromptSpec extends Pass6PromptSpec {}
+export interface StoredPass6PromptTestCase extends Pass6PromptTestCase {}
 
 // ---------------------------------------------------------------------------
 // Repository interfaces — backend-agnostic
@@ -760,6 +765,18 @@ export interface Pass6ConfigurationProfileRepository
   extends Pass6RecordRepository<StoredPass6ConfigurationProfile> {
   findActive(scope?: string, scopeRef?: string): StoredPass6ConfigurationProfile | null;
   findDrafts(): StoredPass6ConfigurationProfile[];
+}
+
+export interface Pass6PromptSpecRepository
+  extends Pass6RecordRepository<StoredPass6PromptSpec> {
+  findByCapability(capabilityKey: Pass6PromptCapabilityKey): StoredPass6PromptSpec[];
+  findActiveByCapability(capabilityKey: Pass6PromptCapabilityKey): StoredPass6PromptSpec | null;
+  findDraftsByCapability(capabilityKey: Pass6PromptCapabilityKey): StoredPass6PromptSpec[];
+}
+
+export interface Pass6PromptTestCaseRepository
+  extends Pass6RecordRepository<StoredPass6PromptTestCase> {
+  findByPromptSpecId(promptSpecId: string): StoredPass6PromptTestCase[];
 }
 
 // ---------------------------------------------------------------------------
@@ -1688,6 +1705,40 @@ class InMemoryPass6ConfigurationProfileRepository
 
   findDrafts(): StoredPass6ConfigurationProfile[] {
     return this.findAll().filter((record) => record.status === "draft");
+  }
+}
+
+class InMemoryPass6PromptSpecRepository
+  extends InMemoryPass6RecordRepository<StoredPass6PromptSpec>
+  implements Pass6PromptSpecRepository
+{
+  constructor() {
+    super((record) => record.promptSpecId);
+  }
+
+  findByCapability(capabilityKey: Pass6PromptCapabilityKey): StoredPass6PromptSpec[] {
+    return this.findAll().filter((record) => record.capabilityKey === capabilityKey);
+  }
+
+  findActiveByCapability(capabilityKey: Pass6PromptCapabilityKey): StoredPass6PromptSpec | null {
+    return this.findByCapability(capabilityKey).find((record) => record.status === "active") ?? null;
+  }
+
+  findDraftsByCapability(capabilityKey: Pass6PromptCapabilityKey): StoredPass6PromptSpec[] {
+    return this.findByCapability(capabilityKey).filter((record) => record.status === "draft");
+  }
+}
+
+class InMemoryPass6PromptTestCaseRepository
+  extends InMemoryPass6RecordRepository<StoredPass6PromptTestCase>
+  implements Pass6PromptTestCaseRepository
+{
+  constructor() {
+    super((record) => record.testCaseId);
+  }
+
+  findByPromptSpecId(promptSpecId: string): StoredPass6PromptTestCase[] {
+    return this.findAll().filter((record) => record.promptSpecId === promptSpecId);
   }
 }
 
@@ -3495,9 +3546,45 @@ export class SQLitePass6ConfigurationProfileRepository
   }
 }
 
+export class SQLitePass6PromptSpecRepository
+  extends SQLitePass6RecordRepository<StoredPass6PromptSpec>
+  implements Pass6PromptSpecRepository
+{
+  constructor(dbPath?: string) {
+    super("pass6_prompt_spec", (record) => record.promptSpecId, () => undefined, dbPath);
+  }
+
+  findByCapability(capabilityKey: Pass6PromptCapabilityKey): StoredPass6PromptSpec[] {
+    return this.findAll().filter((record) => record.capabilityKey === capabilityKey);
+  }
+
+  findActiveByCapability(capabilityKey: Pass6PromptCapabilityKey): StoredPass6PromptSpec | null {
+    return this.findByCapability(capabilityKey).find((record) => record.status === "active") ?? null;
+  }
+
+  findDraftsByCapability(capabilityKey: Pass6PromptCapabilityKey): StoredPass6PromptSpec[] {
+    return this.findByCapability(capabilityKey).filter((record) => record.status === "draft");
+  }
+}
+
+export class SQLitePass6PromptTestCaseRepository
+  extends SQLitePass6RecordRepository<StoredPass6PromptTestCase>
+  implements Pass6PromptTestCaseRepository
+{
+  constructor(dbPath?: string) {
+    super("pass6_prompt_test_case", (record) => record.testCaseId, () => undefined, dbPath);
+  }
+
+  findByPromptSpecId(promptSpecId: string): StoredPass6PromptTestCase[] {
+    return this.findAll().filter((record) => record.promptSpecId === promptSpecId);
+  }
+}
+
 function createSQLitePass6Repositories(dbPath?: string): Pass6PersistenceRepositories {
   return {
     pass6ConfigurationProfiles: new SQLitePass6ConfigurationProfileRepository(dbPath),
+    pass6PromptSpecs: new SQLitePass6PromptSpecRepository(dbPath),
+    pass6PromptTestCases: new SQLitePass6PromptTestCaseRepository(dbPath),
     synthesisInputBundles: new SQLitePass6RecordRepository<StoredSynthesisInputBundle>("synthesis_input_bundle", (record) => record.bundleId, pass6CaseId, dbPath),
     workflowUnits: new SQLitePass6RecordRepository<StoredWorkflowUnit>("workflow_unit", (record) => record.unitId, pass6CaseId, dbPath),
     workflowClaims: new SQLitePass6RecordRepository<StoredWorkflowClaim>("workflow_claim", (record) => record.claimId, pass6CaseId, dbPath),
@@ -3519,6 +3606,8 @@ function createSQLitePass6Repositories(dbPath?: string): Pass6PersistenceReposit
 
 export function createSQLiteIntakeRepositories(dbPath?: string): {
   pass6ConfigurationProfiles: Pass6ConfigurationProfileRepository;
+  pass6PromptSpecs: Pass6PromptSpecRepository;
+  pass6PromptTestCases: Pass6PromptTestCaseRepository;
   synthesisInputBundles: SynthesisInputBundleRepository;
   workflowUnits: WorkflowUnitRepository;
   workflowClaims: WorkflowClaimRepository;
@@ -3625,6 +3714,8 @@ export function getDefaultIntakeSqlitePath(): string {
 
 export interface Pass6PersistenceRepositories {
   pass6ConfigurationProfiles: Pass6ConfigurationProfileRepository;
+  pass6PromptSpecs: Pass6PromptSpecRepository;
+  pass6PromptTestCases: Pass6PromptTestCaseRepository;
   synthesisInputBundles: SynthesisInputBundleRepository;
   workflowUnits: WorkflowUnitRepository;
   workflowClaims: WorkflowClaimRepository;
@@ -3699,6 +3790,8 @@ export interface InMemoryStore extends Pass6PersistenceRepositories {
 function createInMemoryPass6Repositories(): Pass6PersistenceRepositories {
   return {
     pass6ConfigurationProfiles: new InMemoryPass6ConfigurationProfileRepository(),
+    pass6PromptSpecs: new InMemoryPass6PromptSpecRepository(),
+    pass6PromptTestCases: new InMemoryPass6PromptTestCaseRepository(),
     synthesisInputBundles: new InMemoryPass6RecordRepository<StoredSynthesisInputBundle>((record) => record.bundleId, pass6CaseId),
     workflowUnits: new InMemoryPass6RecordRepository<StoredWorkflowUnit>((record) => record.unitId, pass6CaseId),
     workflowClaims: new InMemoryPass6RecordRepository<StoredWorkflowClaim>((record) => record.claimId, pass6CaseId),
@@ -3821,6 +3914,9 @@ export type {
   Pass6CopilotContextBundle,
   Pass7ReviewCandidate,
   Pass6ConfigurationProfile,
+  Pass6PromptCapabilityKey,
+  Pass6PromptSpec,
+  Pass6PromptTestCase,
   PrePackageGateResult,
   SynthesisInputBundle,
   TelegramIdentityBinding,

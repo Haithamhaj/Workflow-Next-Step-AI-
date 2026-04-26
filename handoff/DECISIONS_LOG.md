@@ -43,6 +43,13 @@ Status: LOCKED | FORMALIZED | IMPL-EXTENSION
 - **Prompt behavior profile is a reference/config placeholder only in Block 3** — Prompt editing and prompt execution belong to the later Prompt Workspace / PromptOps block, not this configuration block — LOCKED
 - **Configuration helpers own lifecycle rules, not admin-web** — admin-web calls thin API routes backed by `@workflow/synthesis-evaluation` helpers; persistence stores supplied profiles only — LOCKED
 
+## Pass 6 Block 4 — Prompt Workspace / PromptOps Layer
+
+- **Pass 6 PromptSpecs are structured Prompt Workspace records, not provider execution units** — PromptSpecs support lifecycle, editable structured sections, deterministic compiled prompt preview, draft-vs-active comparison, provider/model preference references, and offline test case records; Block 4 never calls providers or runs production AI prompts — LOCKED
+- **Prompt behavior cannot own governance or policy truth** — PromptSpecs may guide wording, extraction support, explanation, drafting style, and later read-only Copilot responses, but they cannot own scoring weights, method registry truth, readiness thresholds, package eligibility, review/release decisions, locked governance rules, or state transitions — LOCKED
+- **Prompt Workspace lifecycle helpers live in `packages/prompts`, not admin-web** — admin-web exposes the Prompt Workspace through thin API and page surfaces; lifecycle, validation, preview, comparison, and test case helper behavior stay in the prompts package while persistence stores supplied records only — LOCKED
+- **Prompt Workspace test cases are offline records until Block 5** — test case fixtures and expected-output notes can be stored and linked to PromptSpecs, but provider-backed test execution and output comparison belong to Provider Execution and Prompt Test Harness Foundation — LOCKED
+
 ## contracts
 
 - **Ajv 8 + ajv-formats for JSON Schema validation** — industry standard, fast, supports Draft-07, formats plugin needed for `date-time` and `uri` — LOCKED

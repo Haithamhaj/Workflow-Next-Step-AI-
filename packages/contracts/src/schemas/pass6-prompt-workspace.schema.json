@@ -1,0 +1,162 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://workflow.local/schemas/pass6-prompt-workspace.json",
+  "title": "Pass6PromptWorkspace",
+  "description": "Pass 6 Prompt Workspace contracts for PromptSpecs and offline test case records. These records support structured prompt editing, preview, comparison, and lifecycle state only; they do not execute providers or own workflow governance.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["promptSpec", "promptTestCase"],
+  "properties": {
+    "promptSpec": { "$ref": "#/definitions/pass6PromptSpec" },
+    "promptTestCase": { "$ref": "#/definitions/pass6PromptTestCase" }
+  },
+  "definitions": {
+    "nonEmptyString": {
+      "type": "string",
+      "minLength": 1
+    },
+    "promptStatus": {
+      "type": "string",
+      "enum": ["draft", "active", "previous", "archived"]
+    },
+    "testCaseStatus": {
+      "type": "string",
+      "enum": ["draft", "enabled", "disabled", "archived"]
+    },
+    "capabilityKey": {
+      "type": "string",
+      "enum": [
+        "synthesis",
+        "difference_interpretation",
+        "evaluation",
+        "initial_package_drafting",
+        "admin_explanation",
+        "pre_package_inquiry_generation",
+        "optional_draft_document_generation",
+        "visual_narrative_support",
+        "pass6_analysis_copilot"
+      ]
+    },
+    "providerPreference": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "providerKey": { "type": "string" },
+        "modelKey": { "type": "string" },
+        "preferenceReason": { "type": "string" }
+      }
+    },
+    "structuredSections": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "roleDefinition",
+        "missionOrTaskPurpose",
+        "caseContextInputs",
+        "sourceAndEvidenceRules",
+        "methodOrPolicyRules",
+        "outputContract",
+        "boundariesAndProhibitions",
+        "adminReviewNotes",
+        "evaluationChecklist",
+        "examplesOrGoldenCases"
+      ],
+      "properties": {
+        "roleDefinition": { "$ref": "#/definitions/nonEmptyString" },
+        "missionOrTaskPurpose": { "$ref": "#/definitions/nonEmptyString" },
+        "caseContextInputs": { "$ref": "#/definitions/nonEmptyString" },
+        "sourceAndEvidenceRules": { "$ref": "#/definitions/nonEmptyString" },
+        "methodOrPolicyRules": { "$ref": "#/definitions/nonEmptyString" },
+        "outputContract": { "$ref": "#/definitions/nonEmptyString" },
+        "boundariesAndProhibitions": { "$ref": "#/definitions/nonEmptyString" },
+        "adminReviewNotes": { "$ref": "#/definitions/nonEmptyString" },
+        "evaluationChecklist": { "$ref": "#/definitions/nonEmptyString" },
+        "examplesOrGoldenCases": { "$ref": "#/definitions/nonEmptyString" }
+      }
+    },
+    "pass6PromptSpec": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "promptSpecId",
+        "capabilityKey",
+        "name",
+        "description",
+        "version",
+        "status",
+        "sections",
+        "compiledPromptPreview",
+        "testCaseIds",
+        "createdAt",
+        "updatedAt"
+      ],
+      "properties": {
+        "promptSpecId": { "$ref": "#/definitions/nonEmptyString" },
+        "capabilityKey": { "$ref": "#/definitions/capabilityKey" },
+        "name": { "$ref": "#/definitions/nonEmptyString" },
+        "description": { "$ref": "#/definitions/nonEmptyString" },
+        "version": { "$ref": "#/definitions/nonEmptyString" },
+        "status": { "$ref": "#/definitions/promptStatus" },
+        "providerPreference": { "$ref": "#/definitions/providerPreference" },
+        "linkedPolicyConfigId": { "type": "string" },
+        "linkedPolicyConfigVersion": { "type": "string" },
+        "sections": { "$ref": "#/definitions/structuredSections" },
+        "compiledPromptPreview": { "$ref": "#/definitions/nonEmptyString" },
+        "testCaseIds": {
+          "type": "array",
+          "items": { "$ref": "#/definitions/nonEmptyString" }
+        },
+        "previousActivePromptSpecId": { "type": "string" },
+        "basedOnPromptSpecId": { "type": "string" },
+        "archivedReason": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      }
+    },
+    "jsonValue": {
+      "anyOf": [
+        { "type": "string" },
+        { "type": "number" },
+        { "type": "boolean" },
+        { "type": "null" },
+        {
+          "type": "array",
+          "items": { "$ref": "#/definitions/jsonValue" }
+        },
+        {
+          "type": "object",
+          "additionalProperties": { "$ref": "#/definitions/jsonValue" }
+        }
+      ]
+    },
+    "pass6PromptTestCase": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "testCaseId",
+        "promptSpecId",
+        "name",
+        "inputFixture",
+        "expectedOutputNotes",
+        "status",
+        "enabled",
+        "createdAt",
+        "updatedAt"
+      ],
+      "properties": {
+        "testCaseId": { "$ref": "#/definitions/nonEmptyString" },
+        "promptSpecId": { "$ref": "#/definitions/nonEmptyString" },
+        "name": { "$ref": "#/definitions/nonEmptyString" },
+        "inputFixture": {
+          "type": "object",
+          "additionalProperties": { "$ref": "#/definitions/jsonValue" }
+        },
+        "expectedOutputNotes": { "$ref": "#/definitions/nonEmptyString" },
+        "status": { "$ref": "#/definitions/testCaseStatus" },
+        "enabled": { "type": "boolean" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      }
+    }
+  }
+}
