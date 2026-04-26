@@ -4294,7 +4294,7 @@ function buildDeterministicAssistantAnswer(input: {
       "I am the read-only Pass 5 Section Copilot.",
       "My mission is to help the admin understand participant sessions, raw evidence, transcript trust, first-pass extraction, clarification queues, answer rechecks, boundary signals, next actions, and later handoff candidates.",
       "I use bounded DB-first context when records are needed and recommend routed admin actions only. This copilot does not mutate records or send participant messages.",
-      "I do not perform Pass 6 synthesis/evaluation, final workflow reconstruction, package generation, or WhatsApp API work.",
+      "I do not perform Pass 6 synthesis/evaluation, final workflow reconstruction, package generation, or unsupported channel expansion work.",
       baseScopeSummary,
     ].join(" ");
   } else if (input.bundle.queryIntent === "pass5_general_discussion") {
