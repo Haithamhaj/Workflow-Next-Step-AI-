@@ -112,6 +112,20 @@ Pass 6 Block 6 adds 6A preparation only.
 - Block 6 does not implement provider calls, 6B claim formation, scoring execution, method registry execution, difference interpretation, workflow assembly, seven-condition evaluation, readiness routing, Pre-6C behavior, 6C package generation, visual-core integration, Copilot runtime behavior, or Pass 7 mechanics.
 - Next implementation step after Block 6 acceptance is Block 7 — 6A Admin Bundle Review Surface.
 
+## Pass 6 Block 7 — 6A Admin Bundle Review Surface
+
+Pass 6 Block 7 adds an admin-visible review surface for prepared 6A bundles only.
+
+- Added thin admin API routes for listing, retrieving, and safely creating `SynthesisInputBundle` review records from eligible accepted Pass 5 outputs.
+- Added admin pages at `/pass6/synthesis-input-bundles` and `/pass6/synthesis-input-bundles/[bundleId]`.
+- The detail surface displays bundle identity, preparation summary, all four folder groups, role/layer context, truth-lens context, risk/open/candidate-only material, and document/source signals.
+- Document/source signals are explicitly displayed as signal-only material and not operational truth.
+- Boundary warning copy states that 6A prepares material only and that no workflow synthesis, readiness evaluation, or package generation has occurred.
+- Bundle creation calls the Block 6 builder and does not mutate Pass 5 source records.
+- Added a focused proof script: `scripts/prove-pass6-block7-bundle-review-surface.mjs`.
+- Block 7 does not implement provider calls, 6B claim formation, scoring execution, method registry execution, difference interpretation, workflow assembly, seven-condition evaluation, readiness routing, Pre-6C behavior, 6C package generation, visual-core integration, Copilot runtime behavior, or Pass 7 mechanics.
+- Next implementation step after Block 7 acceptance is Block 8 — 6B Method Registry and Analysis Policy.
+
 **Pass 5 — Participant Session Outreach / Narrative-First Clarification is accepted, closed, integrated, and archived on `main`.**
 
 Final Pass 5 status: `pass5_participant_session_outreach_accepted`

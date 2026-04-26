@@ -66,6 +66,14 @@ Status: LOCKED | FORMALIZED | IMPL-EXTENSION
 - **Document/source signals remain signals only** — SOP/SLA/policy/KPI/role-document hints can be carried forward for later comparison, but 6A does not treat them as operational truth by default — LOCKED
 - **6A persistence uses the existing SynthesisInputBundle repository only** — persistence stores the prepared bundle when provided; no business logic is added to persistence and no 6B, Pre-6C, 6C, visual, Copilot, or Pass 7 records are created — LOCKED
 
+## Pass 6 Block 7 — 6A Admin Bundle Review Surface
+
+- **The 6A admin surface is inspection-only** — admins can list bundles, view bundle detail, and build a new bundle from eligible accepted Pass 5 outputs, but the surface does not expose approve-as-truth, claim generation, scoring, readiness, package, visual, Copilot, provider, or Pass 7 actions — LOCKED
+- **Bundle creation from the admin surface calls the Block 6 builder and does not mutate Pass 5 records** — creation stores a new `SynthesisInputBundle` review record only when eligible accepted Pass 5 outputs exist; empty/no-eligible cases return a structured error — LOCKED
+- **Risk/open/candidate-only material remains visible but non-final** — unresolved, disputed, defective, unmapped, low-confidence, candidate-only, and admin-review-needed records are shown for review without upgrading them into workflow truth — LOCKED
+- **Document/source signals remain visibly signal-only in the admin surface** — the UI and review detail output explicitly state that document/source signals are not operational truth by default — LOCKED
+- **Boundary warnings are part of the review surface** — detail output states that 6A preparation has occurred and that no workflow synthesis, workflow readiness evaluation, or package generation has occurred — LOCKED
+
 ## contracts
 
 - **Ajv 8 + ajv-formats for JSON Schema validation** — industry standard, fast, supports Draft-07, formats plugin needed for `date-time` and `uri` — LOCKED

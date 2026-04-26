@@ -31,7 +31,9 @@ Pass 6 Block 4 — Pass 6 Prompt Workspace / PromptOps Layer is accepted.
 
 Pass 6 Block 5 — Provider Execution and Prompt Test Harness Foundation is accepted.
 
-Pass 6 Block 6 — 6A SynthesisInputBundle Builder is the current completed implementation block pending acceptance.
+Pass 6 Block 6 — 6A SynthesisInputBundle Builder is accepted.
+
+Pass 6 Block 7 — 6A Admin Bundle Review Surface is the current completed implementation block pending acceptance.
 
 Technical Decomposition v4 is the active Pass 6 build map.
 
@@ -122,6 +124,19 @@ Block 6 is 6A SynthesisInputBundle preparation only.
 - The builder trusts Pass 5 processing status and does not redo extraction, evidence validation, transcript approval, or clarification questions.
 - No provider calls, 6B claim formation, scoring execution, method registry execution, difference interpretation, workflow assembly, seven-condition evaluation, readiness routing, Pre-6C behavior, 6C generation, visual-core integration, Copilot runtime behavior, or Pass 7 mechanics start in Block 6.
 - Next implementation step after acceptance is Block 7 — 6A Admin Bundle Review Surface.
+
+## Pass 6 Block 7 Acceptance Gate
+
+Block 7 is the 6A admin review surface only.
+
+- Admins can list `SynthesisInputBundle` records.
+- Admins can retrieve bundle detail by ID.
+- Admins can build a new bundle from eligible accepted Pass 5 outputs without mutating Pass 5 source records.
+- Bundle detail displays identity, preparation summary, all four approved folders, role/layer context, truth-lens context, risk/open/candidate-only items, and document/source signals.
+- Document/source signals are shown as signals only and not operational truth.
+- Boundary warnings state that 6A preparation has occurred but no workflow synthesis, readiness evaluation, or package generation has occurred.
+- No approve-as-truth, promote-to-synthesis-truth, claim generation, scoring, readiness, package generation, visual, Copilot, provider, or Pass 7 action is exposed in Block 7.
+- Next implementation step after acceptance is Block 8 — 6B Method Registry and Analysis Policy.
 
 ## Active Pass 6 Block Map
 

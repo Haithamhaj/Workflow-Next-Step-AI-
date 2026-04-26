@@ -72,6 +72,7 @@ import type {
   SynthesisInputBundleRepository,
   TargetingRolloutPlanRepository,
   StoredPass6ConfigurationProfile,
+  StoredSynthesisInputBundle,
 } from "@workflow/persistence";
 
 export const SYNTHESIS_EVALUATION_PACKAGE =
@@ -107,6 +108,7 @@ export type {
   SynthesisInputBundleRepository,
   TargetingRolloutPlanRepository,
   StoredPass6ConfigurationProfile,
+  StoredSynthesisInputBundle,
 } from "@workflow/persistence";
 
 export type {
@@ -180,6 +182,46 @@ export interface BuildSynthesisInputBundleError {
 export type BuildSynthesisInputBundleResult =
   | BuildSynthesisInputBundleOk
   | BuildSynthesisInputBundleError;
+
+export interface SynthesisInputBundleReviewSummary {
+  bundleId: string;
+  caseId: string;
+  createdAt: string;
+  sourcePass5SessionIds: string[];
+  sessionCount: number;
+  folderCounts: {
+    analysis_material: number;
+    boundary_role_limit_material: number;
+    gap_risk_no_drop_material: number;
+    document_source_signal_material: number;
+  };
+  openRiskCandidateOnlyCount: number;
+  adminReviewRecommendedBeforeSynthesis: boolean;
+  missingOptionalContextNotes: string[];
+  boundaryWarnings: string[];
+}
+
+export interface SynthesisInputBundleReviewDetail {
+  identity: {
+    bundleId: string;
+    caseId: string;
+    createdAt: string;
+    sourcePass5SessionIds: string[];
+  };
+  preparationSummary: SynthesisInputBundleReviewSummary;
+  folders: Pick<
+    SynthesisInputBundle,
+    | "analysis_material"
+    | "boundary_role_limit_material"
+    | "gap_risk_no_drop_material"
+    | "document_source_signal_material"
+  >;
+  roleLayerContexts: Pass6RoleLayerContext[];
+  truthLensContexts: Pass6TruthLensContext[];
+  riskOpenItems: Pass6PreparedMaterialItem[];
+  documentSourceSignals: Pass6PreparedMaterialItem[];
+  boundaryWarnings: string[];
+}
 
 const ACCEPTED_PASS5_EXTRACTION_STATUSES = new Set([
   "completed_clean",
@@ -800,6 +842,113 @@ export function buildSynthesisInputBundleFromPass5(
   }
 
   return { ok: true, bundle };
+}
+
+function reviewSummaryForBundle(bundle: SynthesisInputBundle): SynthesisInputBundleReviewSummary {
+  const folderCounts = {
+    analysis_material: bundle.analysis_material.length,
+    boundary_role_limit_material: bundle.boundary_role_limit_material.length,
+    gap_risk_no_drop_material: bundle.gap_risk_no_drop_material.length,
+    document_source_signal_material: bundle.document_source_signal_material.length,
+  };
+  const missingOptionalContextNotes = bundle.preparationSummary.summary
+    .split(".")
+    .map((part) => part.trim())
+    .filter((part) => part.toLowerCase().startsWith("missing optional context"));
+  const openRiskCandidateOnlyCount =
+    bundle.gap_risk_no_drop_material.length + bundle.boundary_role_limit_material.length;
+
+  return {
+    bundleId: bundle.bundleId,
+    caseId: bundle.caseId,
+    createdAt: bundle.createdAt,
+    sourcePass5SessionIds: bundle.sourcePass5SessionIds,
+    sessionCount: bundle.sourcePass5SessionIds.length,
+    folderCounts,
+    openRiskCandidateOnlyCount,
+    adminReviewRecommendedBeforeSynthesis:
+      bundle.preparationSummary.preparedBy === "system_with_admin_review" ||
+      openRiskCandidateOnlyCount > 0,
+    missingOptionalContextNotes,
+    boundaryWarnings: [
+      "6A prepares accepted Pass 5 material only.",
+      "No workflow synthesis has occurred.",
+      "No workflow readiness evaluation has occurred.",
+      "No package generation has occurred.",
+      "Risk, disputed, defective, unresolved, low-confidence, and candidate-only material is not workflow truth.",
+      "Document/source signals are signals only and are not operational truth by default.",
+    ],
+  };
+}
+
+export function summarizeSynthesisInputBundleForReview(
+  bundle: SynthesisInputBundle,
+): SynthesisInputBundleReviewSummary {
+  return reviewSummaryForBundle(bundle);
+}
+
+export function getSynthesisInputBundleReviewDetail(
+  bundle: SynthesisInputBundle,
+): SynthesisInputBundleReviewDetail {
+  const preparationSummary = reviewSummaryForBundle(bundle);
+  return {
+    identity: {
+      bundleId: bundle.bundleId,
+      caseId: bundle.caseId,
+      createdAt: bundle.createdAt,
+      sourcePass5SessionIds: bundle.sourcePass5SessionIds,
+    },
+    preparationSummary,
+    folders: {
+      analysis_material: bundle.analysis_material,
+      boundary_role_limit_material: bundle.boundary_role_limit_material,
+      gap_risk_no_drop_material: bundle.gap_risk_no_drop_material,
+      document_source_signal_material: bundle.document_source_signal_material,
+    },
+    roleLayerContexts: bundle.roleLayerContexts,
+    truthLensContexts: bundle.truthLensContexts,
+    riskOpenItems: bundle.gap_risk_no_drop_material,
+    documentSourceSignals: bundle.document_source_signal_material,
+    boundaryWarnings: preparationSummary.boundaryWarnings,
+  };
+}
+
+export function listSynthesisInputBundlesForReview(
+  repo: SynthesisInputBundleRepository,
+): StoredSynthesisInputBundle[] {
+  return repo.findAll().sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+}
+
+export function findSynthesisInputBundleForReview(
+  bundleId: string,
+  repo: SynthesisInputBundleRepository,
+): StoredSynthesisInputBundle | null {
+  return repo.findById(bundleId);
+}
+
+export function createSynthesisInputBundleForAdminReview(
+  input: Omit<BuildSynthesisInputBundleInput, "persist">,
+  repos: BuildSynthesisInputBundleRepositories & { synthesisInputBundles: SynthesisInputBundleRepository },
+): BuildSynthesisInputBundleResult {
+  const result = buildSynthesisInputBundleFromPass5(
+    {
+      ...input,
+      persist: false,
+    },
+    repos,
+  );
+  if (!result.ok) return result;
+  if (result.bundle.sourcePass5SessionIds.length === 0) {
+    return {
+      ok: false,
+      error: `No eligible accepted Pass 5 outputs found for case '${input.caseId}'.`,
+    };
+  }
+  repos.synthesisInputBundles.save({
+    ...result.bundle,
+    updatedAt: input.now ?? result.bundle.createdAt,
+  });
+  return result;
 }
 
 // ---------------------------------------------------------------------------
