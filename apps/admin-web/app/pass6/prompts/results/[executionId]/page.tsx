@@ -63,6 +63,22 @@ export default function Pass6PromptResultDetailPage({ params }: Pass6PromptResul
       </div>
 
       <div className="card">
+        <h3>Provider Metadata</h3>
+        <p><strong>Token usage unavailable:</strong> {result.tokenUsageUnavailable ? "yes" : "no"}</p>
+        {result.tokenUsage ? (
+          <pre style={{ whiteSpace: "pre-wrap" }}>{JSON.stringify(result.tokenUsage, null, 2)}</pre>
+        ) : (
+          <p><strong>Token usage unavailable reason:</strong> {result.tokenUsageUnavailableReason ?? "none"}</p>
+        )}
+        <p><strong>Cost estimate unavailable:</strong> {result.costEstimateUnavailable ? "yes" : "no"}</p>
+        {result.costEstimate ? (
+          <p><strong>Cost estimate:</strong> {result.costEstimate}</p>
+        ) : (
+          <p><strong>Cost estimate unavailable reason:</strong> {result.costEstimateUnavailableReason}</p>
+        )}
+      </div>
+
+      <div className="card">
         <h3>Boundary Record Creation</h3>
         <pre style={{ whiteSpace: "pre-wrap" }}>{JSON.stringify(result.createdRecords, null, 2)}</pre>
       </div>

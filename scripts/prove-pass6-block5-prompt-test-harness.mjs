@@ -83,6 +83,8 @@ const failureResult = await runPass6PromptWorkspaceTest({
 assert.equal(failureResult.status, "failed", "provider failure does not fake success");
 assert.equal(failureResult.errorCode, "provider_rate_limited");
 assert.equal(Boolean(failureResult.outputText), false, "failed provider result has no fake output");
+assert.equal(failureResult.tokenUsageUnavailable, true, "provider failure marks token usage unavailable");
+assert.equal(failureResult.costEstimateUnavailable, true, "provider failure marks cost unavailable");
 
 const successProvider = {
   name: "openai",
@@ -91,6 +93,7 @@ const successProvider = {
       text: "Proof provider output for Prompt Workspace test only.",
       provider: "openai",
       model: "proof-model",
+      usage: { inputTokens: 11, outputTokens: 7, totalTokens: 18 },
     };
   },
 };
@@ -109,6 +112,39 @@ const draftSuccess = await runPass6PromptWorkspaceTest({
 });
 assert.equal(draftSuccess.status, "succeeded", "stored draft PromptSpec can run against stored test case through harness");
 assert.equal(draftSuccess.outputText, "Proof provider output for Prompt Workspace test only.");
+assert.deepEqual(draftSuccess.tokenUsage, { inputTokens: 11, outputTokens: 7, totalTokens: 18 }, "token usage persists when provider returns usage");
+assert.equal(draftSuccess.tokenUsageUnavailable, false, "token usage availability is explicit");
+assert.equal(draftSuccess.costEstimateUnavailable, true, "cost is explicitly unavailable without pricing config");
+assert.equal(draftSuccess.costEstimateUnavailableReason, "pricing_profile_not_configured");
+
+const noUsageProvider = {
+  name: "openai",
+  async runPromptText() {
+    return {
+      text: "No usage metadata from provider.",
+      provider: "openai",
+      model: "proof-model-no-usage",
+    };
+  },
+};
+const noUsageResult = await runPass6PromptWorkspaceTest({
+  executionId: "pass6-block5-exec-no-usage",
+  promptSpecId: draft.promptSpecId,
+  testCaseId: testCase.testCase.testCaseId,
+  provider: noUsageProvider,
+  providerName: "openai",
+  modelName: "proof-model-no-usage",
+  now: "2026-04-27T03:04:30.000Z",
+}, {
+  promptSpecs: store.pass6PromptSpecs,
+  testCases: store.pass6PromptTestCases,
+  executions: store.pass6PromptTestExecutionResults,
+});
+assert.equal(noUsageResult.status, "succeeded", "provider success without usage is still persisted");
+assert.equal(noUsageResult.tokenUsageUnavailable, true, "missing token usage is explicit");
+assert.equal(noUsageResult.tokenUsageUnavailableReason, "provider_did_not_return_usage");
+assert.equal(noUsageResult.costEstimateUnavailable, true);
+assert.equal(noUsageResult.costEstimateUnavailableReason, "pricing_profile_not_configured");
 
 const promoteOne = promotePass6PromptDraft(draft.promptSpecId, store.pass6PromptSpecs, {
   now: "2026-04-27T03:05:00.000Z",
@@ -143,7 +179,7 @@ const draftResult = await runPass6PromptWorkspaceTest({
   provider: {
     name: "openai",
     async runPromptText() {
-      return { text: "Changed draft proof output.", provider: "openai", model: "proof-model" };
+      return { text: "Changed draft proof output.", provider: "openai", model: "proof-model", usage: { inputTokens: 12, outputTokens: 4, totalTokens: 16 } };
     },
   },
   providerName: "openai",
@@ -184,6 +220,9 @@ assert.ok(apiSource.includes("runPass6PromptWorkspaceTest"), "admin API exposes 
 assert.ok(detailSource.includes("Run Test"), "admin detail can run prompt tests");
 assert.ok(detailSource.includes("Latest Test Results"), "admin detail shows latest test results");
 assert.ok(resultDetailSource.includes("Compiled Prompt Snapshot"), "result detail shows compiled prompt snapshot");
+assert.ok(resultDetailSource.includes("Provider Metadata"), "result detail shows provider metadata");
+assert.ok(resultDetailSource.includes("Token usage unavailable"), "result detail displays token usage availability");
+assert.ok(resultDetailSource.includes("Cost estimate unavailable"), "result detail displays cost availability");
 assert.ok(resultDetailSource.includes("Boundary Record Creation"), "result detail shows no downstream record creation");
 
 const forbiddenRuntimeCalls = [
@@ -217,6 +256,15 @@ if (realProvider) {
     executions: store.pass6PromptTestExecutionResults,
   });
   if (realResult.status === "succeeded") {
+    assert.ok(realResult.tokenUsage, "real OpenAI prompt test success captures token usage when returned");
+    assert.equal(realResult.tokenUsageUnavailable, false, "real OpenAI token usage persisted as available");
+    assert.deepEqual(
+      store.pass6PromptTestExecutionResults.findById(realResult.executionId).tokenUsage,
+      realResult.tokenUsage,
+      "real OpenAI token usage appears in stored execution result",
+    );
+    assert.equal(realResult.costEstimateUnavailable, true, "real OpenAI result marks cost unavailable without pricing config");
+    assert.equal(realResult.costEstimateUnavailableReason, "pricing_profile_not_configured");
     console.log("Pass 6 Block 5 real provider success path proved.");
   } else {
     assert.equal(realResult.status, "failed", "real provider failure is persisted visibly");

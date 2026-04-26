@@ -91,6 +91,7 @@ Pass 6 Block 5 adds provider-backed Prompt Workspace test execution only.
 - Added persistence support for Pass 6 prompt test execution results.
 - Added Pass 6 prompt-text provider resolution using OpenAI / GPT as the default text test provider; Google remains available/configurable through existing integration patterns but is not the silent default for Pass 6 text reasoning.
 - Added Prompt Workspace test harness helpers for deterministic prompt compilation, test-fixture injection, provider execution, persisted success/failure results, and draft-vs-active execution comparison.
+- Provider token usage metadata is captured and persisted when returned by the provider; unavailable token usage and cost estimates are represented explicitly with visible reasons.
 - Added admin API/UI controls to run stored Prompt Workspace test cases, inspect latest results, and inspect result detail including compiled prompt snapshot, provider/model, output/failure, and downstream-created-record boundary evidence.
 - Provider failure and missing provider configuration are persisted as failed results; provider success is never faked.
 - Prompt test outputs remain inspection records only and do not become 6A evidence, 6B claims, readiness results, Pre-6C inquiries, 6C package content, visual graph data, Copilot state, or Pass 7 candidates.

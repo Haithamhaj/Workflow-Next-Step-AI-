@@ -98,7 +98,11 @@ export interface Pass6PromptTestExecutionResult {
   errorCode?: string;
   errorMessage?: string;
   tokenUsage?: Pass6PromptTokenUsage;
+  tokenUsageUnavailable: boolean;
+  tokenUsageUnavailableReason?: string;
   costEstimate?: string;
+  costEstimateUnavailable: boolean;
+  costEstimateUnavailableReason?: string;
   configProfileId?: string;
   policyReferences?: string[];
   createdRecords: {

@@ -56,6 +56,7 @@ Status: LOCKED | FORMALIZED | IMPL-EXTENSION
 - **OpenAI / GPT is the default Pass 6 text test provider** — Google remains the direction for STT/OCR and existing accepted Google-backed surfaces, and Gemini/Google text remains configurable through existing provider patterns, but it is not the silent default for Pass 6 text reasoning — LOCKED
 - **Provider failures are first-class persisted results** — missing credentials, provider errors, rate limits, model issues, and runtime failures are stored as failed prompt test execution results with diagnostics; no fake success or placeholder output is allowed — LOCKED
 - **Compiled prompt snapshots are stored for traceability** — every Prompt Workspace execution stores the deterministic compiled prompt plus test fixture context used for the run, so later review can inspect exactly what was sent to the provider — LOCKED
+- **Provider runtime metadata must be explicit** — token usage is captured and persisted when a provider returns it; if usage is missing, the result stores an explicit unavailable flag and reason. Cost estimates are unavailable until an approved pricing profile exists; no hard-coded real-world pricing is used — LOCKED
 
 ## contracts
 

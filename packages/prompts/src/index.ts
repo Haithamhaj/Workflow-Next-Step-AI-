@@ -1637,7 +1637,16 @@ export function listPass6PromptTestCases(
 
 export interface Pass6PromptTextExecutor {
   readonly name: "openai" | "google";
-  runPromptText(input: { compiledPrompt: string }): Promise<{ text: string; provider: "openai" | "google"; model: string }>;
+  runPromptText(input: { compiledPrompt: string }): Promise<{
+    text: string;
+    provider: "openai" | "google";
+    model: string;
+    usage?: {
+      inputTokens?: number;
+      outputTokens?: number;
+      totalTokens?: number;
+    };
+  }>;
 }
 
 export interface RunPass6PromptTestInput {
@@ -1684,6 +1693,52 @@ function classifyPromptTestError(message: string): string {
   if (message.includes("rate") || message.includes("429")) return "provider_rate_limited";
   if (message.includes("model")) return "provider_model_unavailable";
   return "provider_execution_failed";
+}
+
+function costUnavailableReason(): string {
+  return "pricing_profile_not_configured";
+}
+
+function usageFields(providerResult: Awaited<ReturnType<Pass6PromptTextExecutor["runPromptText"]>>): Pick<
+  Pass6PromptTestExecutionResult,
+  "tokenUsage" | "tokenUsageUnavailable" | "tokenUsageUnavailableReason"
+> {
+  const usage = providerResult.usage;
+  if (
+    usage &&
+    (usage.inputTokens !== undefined || usage.outputTokens !== undefined || usage.totalTokens !== undefined)
+  ) {
+    return {
+      tokenUsage: usage,
+      tokenUsageUnavailable: false,
+    };
+  }
+  return {
+    tokenUsageUnavailable: true,
+    tokenUsageUnavailableReason: "provider_did_not_return_usage",
+  };
+}
+
+function unavailableMetadata(reason = "not_applicable_for_failed_execution"): Pick<
+  Pass6PromptTestExecutionResult,
+  "tokenUsageUnavailable" | "tokenUsageUnavailableReason" | "costEstimateUnavailable" | "costEstimateUnavailableReason"
+> {
+  return {
+    tokenUsageUnavailable: true,
+    tokenUsageUnavailableReason: reason,
+    costEstimateUnavailable: true,
+    costEstimateUnavailableReason: costUnavailableReason(),
+  };
+}
+
+function costMetadata(): Pick<
+  Pass6PromptTestExecutionResult,
+  "costEstimateUnavailable" | "costEstimateUnavailableReason"
+> {
+  return {
+    costEstimateUnavailable: true,
+    costEstimateUnavailableReason: costUnavailableReason(),
+  };
 }
 
 function promptWithFixture(compiledPrompt: string, testCase: Pass6PromptTestCase): string {
@@ -1737,6 +1792,7 @@ export async function runPass6PromptWorkspaceTest(
       errorMessage: "PromptSpec must exist and be in draft or active status for Prompt Workspace test execution.",
       configProfileId: input.configProfileId,
       policyReferences: input.policyReferences,
+      ...unavailableMetadata("prompt_spec_not_runnable"),
       createdRecords: emptyCreatedRecords(),
     };
     validatePass6PromptTestExecutionOrThrow(failed);
@@ -1763,6 +1819,7 @@ export async function runPass6PromptWorkspaceTest(
       errorMessage: "Prompt Workspace test case must exist and include a non-empty inputFixture.",
       configProfileId: input.configProfileId ?? promptSpec.linkedPolicyConfigId,
       policyReferences: input.policyReferences,
+      ...unavailableMetadata("test_case_missing_input_fixture"),
       createdRecords: emptyCreatedRecords(),
     };
     validatePass6PromptTestExecutionOrThrow(failed);
@@ -1790,6 +1847,7 @@ export async function runPass6PromptWorkspaceTest(
       errorMessage: validationMessage(validation.errors),
       configProfileId: input.configProfileId ?? promptSpec.linkedPolicyConfigId,
       policyReferences: input.policyReferences,
+      ...unavailableMetadata("invalid_prompt_spec"),
       createdRecords: emptyCreatedRecords(),
     };
     validatePass6PromptTestExecutionOrThrow(failed);
@@ -1816,6 +1874,7 @@ export async function runPass6PromptWorkspaceTest(
       errorMessage: "provider_not_configured: no provider configured for Pass 6 Prompt Workspace test execution.",
       configProfileId: input.configProfileId ?? promptSpec.linkedPolicyConfigId,
       policyReferences: input.policyReferences,
+      ...unavailableMetadata("provider_not_configured"),
       createdRecords: emptyCreatedRecords(),
     };
     validatePass6PromptTestExecutionOrThrow(failed);
@@ -1843,6 +1902,8 @@ export async function runPass6PromptWorkspaceTest(
       outputText: providerResult.text,
       configProfileId: input.configProfileId ?? promptSpec.linkedPolicyConfigId,
       policyReferences: input.policyReferences,
+      ...usageFields(providerResult),
+      ...costMetadata(),
       createdRecords: emptyCreatedRecords(),
     };
     validatePass6PromptTestExecutionOrThrow(result);
@@ -1868,6 +1929,7 @@ export async function runPass6PromptWorkspaceTest(
       errorMessage: message,
       configProfileId: input.configProfileId ?? promptSpec.linkedPolicyConfigId,
       policyReferences: input.policyReferences,
+      ...unavailableMetadata(classifyPromptTestError(message)),
       createdRecords: emptyCreatedRecords(),
     };
     validatePass6PromptTestExecutionOrThrow(result);

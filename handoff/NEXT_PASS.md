@@ -100,6 +100,7 @@ Block 5 is provider-backed Prompt Workspace test harness work only.
 - Stored Pass 6 PromptSpecs can be tested against stored Prompt Workspace test cases.
 - PromptSpecs are compiled deterministically before execution and the compiled prompt snapshot is stored with each result.
 - Prompt test execution results are persisted with provider/model, prompt version, test case, input fixture summary, output/failure, timing, and runtime metadata fields.
+- Token usage is captured and persisted when providers return it; missing token usage and unavailable cost estimates are represented explicitly with visible reasons.
 - Missing provider configuration and provider failures are persisted as visible failed results.
 - OpenAI / GPT is the default Pass 6 text test provider unless explicitly changed later by the operator.
 - Draft-vs-active provider test comparison is available when both execution results exist.

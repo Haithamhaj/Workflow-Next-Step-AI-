@@ -210,6 +210,9 @@
         "status",
         "inputFixtureSummary",
         "compiledPromptSnapshot",
+        "tokenUsageUnavailable",
+        "costEstimateUnavailable",
+        "costEstimateUnavailableReason",
         "createdRecords"
       ],
       "properties": {
@@ -231,7 +234,11 @@
         "errorCode": { "type": "string" },
         "errorMessage": { "type": "string" },
         "tokenUsage": { "$ref": "#/definitions/tokenUsage" },
+        "tokenUsageUnavailable": { "type": "boolean" },
+        "tokenUsageUnavailableReason": { "type": "string" },
         "costEstimate": { "type": "string" },
+        "costEstimateUnavailable": { "type": "boolean" },
+        "costEstimateUnavailableReason": { "$ref": "#/definitions/nonEmptyString" },
         "configProfileId": { "type": "string" },
         "policyReferences": {
           "type": "array",

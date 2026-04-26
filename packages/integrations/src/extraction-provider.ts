@@ -73,6 +73,19 @@ export interface TargetingRecommendationGenerationResult {
   rawText: string;
 }
 
+export interface PromptTextUsage {
+  inputTokens?: number;
+  outputTokens?: number;
+  totalTokens?: number;
+}
+
+export interface PromptTextResult {
+  text: string;
+  provider: ProviderName;
+  model: string;
+  usage?: PromptTextUsage;
+}
+
 export interface ExtractionInput {
   /** Text content (for text/document sources, or fallback label for binary). */
   content: string;
@@ -115,7 +128,7 @@ export interface ExtractionProvider {
   /** Execute a visible compiled prompt for Pass 3 prompt draft testing. */
   runPromptText(input: {
     compiledPrompt: string;
-  }): Promise<{ text: string; provider: ProviderName; model: string }>;
+  }): Promise<PromptTextResult>;
 
   /** Generate a Pass 4 Targeting Recommendation Packet from a visible compiled PromptSpec. */
   generateTargetingRecommendationPacket?(input: {

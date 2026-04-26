@@ -11,6 +11,8 @@ import type {
   ContextTransformResult,
   HierarchyDraftGenerationResult,
   SourceHierarchyTriageGenerationResult,
+  PromptTextResult,
+  PromptTextUsage,
 } from "./extraction-provider.js";
 import { getEnv } from "./google-config.js";
 
@@ -45,6 +47,30 @@ function extractResponseText(parsed: unknown): string {
     .trim();
   if (!text) throw new Error("OpenAI response did not include output text.");
   return text;
+}
+
+function extractOpenAIUsage(parsed: unknown): PromptTextUsage | undefined {
+  const response = parsed as {
+    usage?: {
+      input_tokens?: number;
+      output_tokens?: number;
+      total_tokens?: number;
+      prompt_tokens?: number;
+      completion_tokens?: number;
+    };
+  };
+  const usage = response.usage;
+  if (!usage) return undefined;
+  const inputTokens = usage.input_tokens ?? usage.prompt_tokens;
+  const outputTokens = usage.output_tokens ?? usage.completion_tokens;
+  const totalTokens = usage.total_tokens ??
+    (typeof inputTokens === "number" && typeof outputTokens === "number" ? inputTokens + outputTokens : undefined);
+  if (inputTokens === undefined && outputTokens === undefined && totalTokens === undefined) return undefined;
+  return {
+    inputTokens,
+    outputTokens,
+    totalTokens,
+  };
 }
 
 export class OpenAIExtractionProvider implements ExtractionProvider {
@@ -111,7 +137,7 @@ export class OpenAIExtractionProvider implements ExtractionProvider {
     throw new Error("OpenAI source-to-hierarchy triage is not wired in Pass 3 Patch 3.");
   }
 
-  async runPromptText(input: { compiledPrompt: string }): Promise<{ text: string; provider: "openai"; model: string }> {
+  async runPromptText(input: { compiledPrompt: string }): Promise<PromptTextResult> {
     const key = openAIKey();
     if (!key) throw new Error("openai_provider_not_configured: OPENAI_API_KEY is missing.");
     const model = openAIModel();
@@ -142,10 +168,12 @@ export class OpenAIExtractionProvider implements ExtractionProvider {
         }
         throw new Error(`OpenAI request failed: HTTP ${response.status} ${response.statusText}; ${safeMessage}`);
       }
+      const parsed = JSON.parse(body);
       return {
-        text: extractResponseText(JSON.parse(body)),
+        text: extractResponseText(parsed),
         provider: "openai",
         model,
+        usage: extractOpenAIUsage(parsed),
       };
     } catch (error) {
       throw classifyOpenAIError(error);

@@ -36,6 +36,7 @@ import type {
   HierarchyDraftGenerationResult,
   SourceHierarchyTriageGenerationResult,
   TargetingRecommendationGenerationResult,
+  PromptTextUsage,
 } from "./extraction-provider.js";
 import { classifyGoogleProviderError, getEnv, getGoogleAIKeyOrThrow, resolveGoogleAIProviderConfig } from "./google-config.js";
 
@@ -64,6 +65,29 @@ function isMultimodalMimeType(mimeType: string): boolean {
 function getApiModel(key: string, fallback: string): string {
   const value = getEnv(key);
   return typeof value === "string" && value.length > 0 ? value : fallback;
+}
+
+function extractGoogleUsage(response: {
+  usageMetadata?: {
+    promptTokenCount?: number;
+    candidatesTokenCount?: number;
+    totalTokenCount?: number;
+  };
+}): PromptTextUsage | undefined {
+  const usage = response.usageMetadata;
+  if (!usage) return undefined;
+  if (
+    usage.promptTokenCount === undefined &&
+    usage.candidatesTokenCount === undefined &&
+    usage.totalTokenCount === undefined
+  ) {
+    return undefined;
+  }
+  return {
+    inputTokens: usage.promptTokenCount,
+    outputTokens: usage.candidatesTokenCount,
+    totalTokens: usage.totalTokenCount,
+  };
 }
 
 const STRUCTURED_CONTEXT_SCHEMA: ResponseSchema = {
@@ -545,7 +569,7 @@ ${input.rawText.slice(0, 8000)}`;
 
   async runPromptText(input: {
     compiledPrompt: string;
-  }): Promise<{ text: string; provider: ProviderName; model: string }> {
+  }): Promise<{ text: string; provider: ProviderName; model: string; usage?: PromptTextUsage }> {
     const modelName = resolveGoogleAIProviderConfig().resolvedModel;
     try {
       const client = new GoogleGenerativeAI(getGoogleAIKeyOrThrow());
@@ -555,6 +579,7 @@ ${input.rawText.slice(0, 8000)}`;
         text: result.response.text(),
         provider: "google",
         model: modelName,
+        usage: extractGoogleUsage(result.response),
       };
     } catch (error) {
       throw classifyGoogleProviderError(error);
