@@ -9,7 +9,7 @@ function envValue(key) {
 }
 
 export function resolvePass5LiveProvider(blockedPrefix) {
-  const providerName = (envValue("WORKFLOW_PASS5_PROVIDER") ?? envValue("WORKFLOW_EXTRACTION_PROVIDER") ?? "google").toLowerCase();
+  const providerName = (envValue("WORKFLOW_PASS5_PROVIDER") ?? envValue("WORKFLOW_EXTRACTION_PROVIDER") ?? "openai").toLowerCase();
   if (providerName === "openai") {
     const keyPresent = Boolean(envValue("OPENAI_API_KEY"));
     const model = envValue("OPENAI_MODEL") ?? "gpt-5.4";

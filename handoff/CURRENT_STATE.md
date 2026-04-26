@@ -59,6 +59,15 @@ Post-closure integration decision:
 - Complex scenario validation passed.
 - Pass 5 branch is ready for integration/merge.
 
+Provider direction for integration and next stages:
+
+- OpenAI / GPT is the default provider for Pass 5 text intelligence and prompt execution.
+- This includes participant guidance, first-pass extraction, clarification formulation, answer recheck, Admin Assistant / Section Copilot, and complex scenario validation.
+- Google remains the provider direction for voice / speech-to-text, image, OCR-style capabilities, and earlier Google-backed surfaces where already used.
+- Gemini text provider remains configurable but is not the default for Pass 5 or next-stage text reasoning after the OpenAI `gpt-5.4` proof passed and earlier Gemini live proof attempts encountered provider throttling.
+- Embeddings keep the current existing provider direction unless explicitly changed later.
+- No provider secrets are recorded in handoff files or `.env.example`.
+
 Pre-merge Block 12 Admin Assistant / Section Copilot defect patch completed:
 
 - root cause: the assistant classifier treated broad but valid Pass 5 questions as `unsupported` unless they matched a narrow operational intent keyword
