@@ -2,9 +2,13 @@
 
 ## Current Status
 
-Pass 5 — Participant Session Outreach / Narrative-First Clarification is accepted and closed on branch `codex/pass5-block0-1-contracts`.
+Pass 5 — Participant Session Outreach / Narrative-First Clarification is accepted, closed, integrated into `main`, and archived.
 
-Pass 5 has not yet been integrated into `main` in this handoff file until the merge/archive review records the final main commit.
+Final source branch: `codex/pass5-block0-1-contracts`
+
+Integration method: fast-forward merge into `main`, conflict-free.
+
+The final archive commit is recorded in `handoff/CURRENT_STATE.md`.
 
 ## Next Pass
 

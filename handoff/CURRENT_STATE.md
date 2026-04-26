@@ -2,11 +2,70 @@
 
 **Accepted baseline: Pass 9 (Package Preview + Release Decision Surface), merged to `main` 2026-04-23, commit `41a8232`.**
 
-**Pass 5 — Participant Session Outreach / Narrative-First Clarification is accepted and closed on branch `codex/pass5-block0-1-contracts`.**
+**Pass 5 — Participant Session Outreach / Narrative-First Clarification is accepted, closed, integrated, and archived on `main`.**
 
 Final Pass 5 status: `pass5_participant_session_outreach_accepted`
 
-Final Pass 5 acceptance commit: this closure commit.
+Final Pass 5 source branch: `codex/pass5-block0-1-contracts`
+
+Final accepted source branch commit before integration: `88bb9ab094d536b119095d919d38cf2b73b0014c`
+
+Integration method: fast-forward merge from `codex/pass5-block0-1-contracts` into `main`, conflict-free.
+
+Main integration proof commit before archive update: `b22cdd0`
+
+Pass 5 integration/archive status: `pass5_integrated_and_archived`
+
+Post-merge provider direction:
+
+- OpenAI / GPT is the default text intelligence provider for Pass 5 and next-stage text prompt execution unless the operator explicitly changes it.
+- OpenAI / GPT applies to participant guidance, first-pass extraction, clarification formulation, answer recheck, Admin Assistant / Section Copilot, and complex scenario validation.
+- Google remains the provider direction for voice / speech-to-text, image, OCR-style capabilities, and existing Google-backed surfaces where already accepted.
+- Gemini text execution remains configurable but is not the default for Pass 5 or next-stage text reasoning after OpenAI `gpt-5.4` passed live Block 14 and complex scenario proofs.
+- Embeddings keep the existing provider direction unless explicitly changed later.
+- `.env.local` is not tracked and no provider secrets are recorded in handoff files or `.env.example`.
+
+Post-merge proof on `main` passed:
+
+- `pnpm build:contracts`
+- `node scripts/prove-pass5-block1-contracts.mjs`
+- `node scripts/prove-pass5-block2-persistence.mjs`
+- `node scripts/prove-pass5-block3-session-creation.mjs`
+- `node scripts/prove-pass5-block4-channel-access.mjs`
+- `node scripts/prove-pass5-block5-web-session.mjs`
+- `node scripts/prove-pass5-block6-telegram-adapter.mjs`
+- `node scripts/prove-pass5-block6b-language-guidance.mjs`
+- `node scripts/prove-pass5-block7-evidence-trust.mjs`
+- `node scripts/prove-pass5-block8-prompt-family.mjs`
+- `node scripts/prove-pass5-block9-first-pass-extraction.mjs`
+- `node scripts/prove-pass5-block10-clarification.mjs`
+- `node scripts/prove-pass5-block11-admin-dashboard.mjs`
+- `node scripts/prove-pass5-block12-admin-assistant.mjs`
+- `node scripts/prove-pass5-block12-stage-aware-copilot.mjs`
+- `node scripts/prove-pass5-block13-handoff-candidates.mjs`
+- `node scripts/prove-pass5-block14-full-live.mjs`
+- `node scripts/prove-pass5-complex-scenario-logistics-onboarding.mjs`
+- `pnpm typecheck`
+- `pnpm build`
+
+Post-merge live proof results on `main`:
+
+- Block 14 live proof passed with provider `openai`, model `gpt-5.4`.
+- Complex scenario `P5-COMPLEX-E2E-LOGISTICS-SALES-ONBOARDING-01` passed with provider `openai`, model `gpt-5.4`.
+- Stage-aware Pass 5 Copilot proof passed.
+- JSON / `FirstPassExtractionOutput` contract validation passed through Block 14 and complex scenario governed extraction paths.
+- Banned-expansion proof passed after removing later-stage banned terminology from active Pass 5 implementation surfaces.
+- Secret scan found no tracked `.env.local` and no committed real OpenAI, Google, Gemini, or Telegram token values.
+
+Post-merge boundaries preserved:
+
+- no Pass 6 synthesis/evaluation
+- no common-path formation implementation
+- no final workflow reconstruction implementation
+- no package generation
+- no WhatsApp API implementation
+- no fake provider success
+- no secrets committed
 
 Post-closure complex operational validation passed for integration readiness:
 
