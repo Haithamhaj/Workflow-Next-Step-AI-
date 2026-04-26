@@ -387,19 +387,29 @@
     "conditionAssessmentItem": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["conditionKey", "status", "summary", "basis"],
+      "required": ["status", "rationale", "basis", "blocksInitialPackage"],
       "properties": {
-        "conditionKey": {
-          "type": "string",
-          "enum": ["core_sequence_continuity", "step_to_step_connection", "essential_step_requirements", "decision_rules_thresholds", "handoffs_responsibility", "controls_approvals", "use_case_boundary"]
-        },
         "status": {
           "type": "string",
           "enum": ["clear_enough", "warning", "materially_broken", "unknown", "not_applicable"]
         },
-        "summary": { "$ref": "#/definitions/nonEmptyString" },
+        "rationale": { "$ref": "#/definitions/nonEmptyString" },
         "basis": { "$ref": "#/definitions/sourceBasis" },
-        "blocking": { "type": "boolean" }
+        "blocksInitialPackage": { "type": "boolean" }
+      }
+    },
+    "sevenConditionAssessmentMap": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["core_sequence_continuity", "step_to_step_connection", "essential_step_requirements", "decision_rules_thresholds", "handoffs_responsibility", "controls_approvals", "use_case_boundary"],
+      "properties": {
+        "core_sequence_continuity": { "$ref": "#/definitions/conditionAssessmentItem" },
+        "step_to_step_connection": { "$ref": "#/definitions/conditionAssessmentItem" },
+        "essential_step_requirements": { "$ref": "#/definitions/conditionAssessmentItem" },
+        "decision_rules_thresholds": { "$ref": "#/definitions/conditionAssessmentItem" },
+        "handoffs_responsibility": { "$ref": "#/definitions/conditionAssessmentItem" },
+        "controls_approvals": { "$ref": "#/definitions/conditionAssessmentItem" },
+        "use_case_boundary": { "$ref": "#/definitions/conditionAssessmentItem" }
       }
     },
     "sevenConditionAssessment": {
@@ -410,11 +420,7 @@
         "assessmentId": { "$ref": "#/definitions/nonEmptyString" },
         "caseId": { "$ref": "#/definitions/nonEmptyString" },
         "assembledWorkflowDraftId": { "$ref": "#/definitions/nonEmptyString" },
-        "conditions": {
-          "type": "array",
-          "minItems": 7,
-          "items": { "$ref": "#/definitions/conditionAssessmentItem" }
-        },
+        "conditions": { "$ref": "#/definitions/sevenConditionAssessmentMap" },
         "overallSummary": { "$ref": "#/definitions/nonEmptyString" }
       }
     },

@@ -204,13 +204,12 @@ const sevenConditionAssessment = {
   assessmentId: "assessment-1",
   caseId: "case-1",
   assembledWorkflowDraftId: "draft-1",
-  conditions: conditionKeys.map((conditionKey) => ({
-    conditionKey,
+  conditions: Object.fromEntries(conditionKeys.map((conditionKey) => [conditionKey, {
     status: conditionKey === "decision_rules_thresholds" ? "warning" : "clear_enough",
-    summary: `${conditionKey} assessed for package readiness.`,
+    rationale: `${conditionKey} assessed for package readiness.`,
     basis,
-    blocking: false,
-  })),
+    blocksInitialPackage: false,
+  }])),
   overallSummary: "Workflow is usable with warnings.",
 };
 
@@ -403,6 +402,23 @@ assertInvalid("WorkflowReadinessResult invalid readiness decision", validateWork
   ...workflowReadinessResult,
   readinessDecision: "ready_for_final_package",
 });
+
+const missingConditionAssessment = structuredClone(sevenConditionAssessment);
+delete missingConditionAssessment.conditions.use_case_boundary;
+assertInvalid("SevenConditionAssessment missing required condition key", validateSevenConditionAssessment, missingConditionAssessment);
+
+const extraConditionAssessment = structuredClone(sevenConditionAssessment);
+extraConditionAssessment.conditions.employee_performance = {
+  status: "warning",
+  rationale: "This condition key is outside the Pass 6 readiness contract.",
+  basis,
+  blocksInitialPackage: false,
+};
+assertInvalid("SevenConditionAssessment unknown condition key", validateSevenConditionAssessment, extraConditionAssessment);
+
+const invalidStatusAssessment = structuredClone(sevenConditionAssessment);
+invalidStatusAssessment.conditions.core_sequence_continuity.status = "blocked";
+assertInvalid("SevenConditionAssessment invalid condition status", validateSevenConditionAssessment, invalidStatusAssessment);
 
 assertInvalid("WorkflowGraphRecord invalid visual-core node enum", validateWorkflowGraphRecord, {
   ...workflowGraphRecord,

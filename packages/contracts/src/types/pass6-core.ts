@@ -271,18 +271,22 @@ export type SevenConditionStatus =
   | "not_applicable";
 
 export interface SevenConditionAssessmentItem {
-  conditionKey: SevenConditionKey;
   status: SevenConditionStatus;
-  summary: string;
+  rationale: string;
   basis: Pass6SourceBasis;
-  blocking?: boolean;
+  blocksInitialPackage: boolean;
 }
+
+export type SevenConditionAssessmentMap = Record<
+  SevenConditionKey,
+  SevenConditionAssessmentItem
+>;
 
 export interface SevenConditionAssessment {
   assessmentId: string;
   caseId: string;
   assembledWorkflowDraftId: string;
-  conditions: SevenConditionAssessmentItem[];
+  conditions: SevenConditionAssessmentMap;
   overallSummary: string;
 }
 
