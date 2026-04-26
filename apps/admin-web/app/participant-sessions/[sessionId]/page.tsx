@@ -230,9 +230,10 @@ export default async function ParticipantSessionDetailPage({
         ))}
       </Panel>
 
+      <div id="admin-assistant">
       <Panel title="Admin Assistant / Section Copilot">
         <p className="muted">Read-only Pass 5 copilot. It receives a bounded DB-first context bundle, suggests routed admin actions, and does not mutate records or send participant messages.</p>
-        <form method="get" style={{ display: "grid", gap: "8px", marginBottom: "12px" }}>
+        <form method="get" action={`/participant-sessions/${params.sessionId}#admin-assistant`} style={{ display: "grid", gap: "8px", marginBottom: "12px" }}>
           <input name="assistantQuestion" defaultValue={assistantQuestion ?? ""} placeholder="Ask about this session's evidence, clarification status, boundary signals, disputes, or next action" />
           <button className="btn-primary" type="submit">Ask assistant</button>
         </form>
@@ -270,6 +271,7 @@ export default async function ParticipantSessionDetailPage({
           </div>
         ) : null}
       </Panel>
+      </div>
 
       <Panel title="Pass 6 Handoff Candidates">
         <p className="muted">Reviewable Pass 5 handoff candidates only. These records preserve observations for a later handoff review stage; they are not later-stage analysis or workflow truth.</p>

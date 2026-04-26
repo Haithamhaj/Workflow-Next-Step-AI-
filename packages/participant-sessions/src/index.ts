@@ -3779,6 +3779,11 @@ export function createBoundarySignalFromAnswer(
 export type AdminAssistantScope = "current_session" | "selected_sessions" | "case_pass5" | "targeted_records";
 
 export type AdminAssistantQueryIntent =
+  | "pass5_stage_overview"
+  | "pass5_general_discussion"
+  | "pass5_session_discussion"
+  | "pass5_record_question"
+  | "pass5_status_question"
   | "session_summary"
   | "evidence_question"
   | "clarification_status_question"
@@ -3789,6 +3794,7 @@ export type AdminAssistantQueryIntent =
   | "cross_session_comparison"
   | "unresolved_items_question"
   | "pass6_handoff_candidate_suggestion"
+  | "out_of_scope_request"
   | "unsupported";
 
 export interface AdminAssistantStructuredRecord {
@@ -3937,15 +3943,42 @@ function normalizeQuestion(question: string): string {
 
 export function classifyAdminAssistantQuestion(question: string): AdminAssistantQueryIntent {
   const q = normalizeQuestion(question);
+  const asksForPass6HandoffCandidate = (q.includes("pass 6") || q.includes("later")) && (q.includes("handoff") || q.includes("candidate") || q.includes("review"));
   if (q.includes("compare") || q.includes("across session") || q.includes("between participants")) return "cross_session_comparison";
-  if (q.includes("pass 6") || q.includes("handoff") || q.includes("later synthesis")) return "pass6_handoff_candidate_suggestion";
+  const asksForBannedExecution = (
+    q.includes("run pass 6")
+    || q.includes("perform pass 6")
+    || q.includes("pass 6 synthesis")
+    || q.includes("synthesis/evaluation")
+    || q.includes("final workflow")
+    || q.includes("workflow reconstruction")
+    || q.includes("common path")
+    || q.includes("generate package")
+    || q.includes("create package")
+    || q.includes("final package")
+    || q.includes("client deliverable")
+    || q.includes("whatsapp")
+    || q.includes("send participant")
+    || q.includes("message participant")
+    || q.includes("approve transcript")
+    || q.includes("approve evidence")
+    || q.includes("reject evidence")
+    || q.includes("mutate")
+    || q.includes("write automatically")
+  );
+  if (asksForBannedExecution && !asksForPass6HandoffCandidate) return "out_of_scope_request";
+  if (q.includes("mission") || q.includes("what can you help") || q.includes("what do you do") || q.includes("your scope")) return "pass5_stage_overview";
+  if (q.includes("explain pass 5") || q.includes("this stage") || q.includes("stage 5") || q.includes("pass 5")) return "pass5_general_discussion";
+  if (q.includes("what happened") || q.includes("current session") || q.includes("this session") || q.includes("what did") || q.includes("answers came back")) return "pass5_session_discussion";
+  if (q.includes("unresolved") || q.includes("unmapped") || q.includes("gap") || q.includes("still missing") || q.includes("blocked") || q.includes("missing")) return "unresolved_items_question";
+  if (asksForPass6HandoffCandidate || q.includes("later synthesis")) return "pass6_handoff_candidate_suggestion";
   if (q.includes("dispute")) return "evidence_dispute_question";
   if (q.includes("defect") || q.includes("failed extraction")) return "extraction_defect_question";
   if (q.includes("boundary") || q.includes("escalat") || q.includes("not responsible") || q.includes("unknown")) return "boundary_signal_question";
   if (q.includes("clarification") || q.includes("question")) return "clarification_status_question";
-  if (q.includes("next action") || q.includes("what should") || q.includes("what next")) return "next_action_question";
-  if (q.includes("unresolved") || q.includes("unmapped") || q.includes("gap")) return "unresolved_items_question";
+  if (q.includes("next action") || q.includes("next step") || q.includes("what should") || q.includes("what next")) return "next_action_question";
   if (q.includes("evidence") || q.includes("transcript") || q.includes("narrative") || q.includes("said")) return "evidence_question";
+  if (q.includes("record") || q.includes("status field") || q.includes("raw evidence") || q.includes("extraction produced")) return "pass5_record_question";
   if (q.includes("summary") || q.includes("summarize") || q.includes("status")) return "session_summary";
   return "unsupported";
 }
@@ -4038,7 +4071,16 @@ function sessionsForAssistant(input: AdminAssistantQuestionInput, repos: AdminAs
 }
 
 function shouldIncludeEvidenceSnippet(intent: AdminAssistantQueryIntent, evidence: RawEvidenceItem, question: string): boolean {
-  if (intent === "evidence_question" || intent === "session_summary" || intent === "cross_session_comparison") return true;
+  if (
+    intent === "evidence_question"
+    || intent === "session_summary"
+    || intent === "cross_session_comparison"
+    || intent === "pass5_session_discussion"
+    || intent === "pass5_record_question"
+    || intent === "pass5_status_question"
+    || intent === "unresolved_items_question"
+    || intent === "next_action_question"
+  ) return true;
   if (intent === "clarification_status_question") return evidence.evidenceType === "participant_clarification_answer";
   const raw = evidence.rawContent?.toLowerCase() ?? "";
   return normalizeQuestion(question).split(/\W+/).some((term) => term.length > 4 && raw.includes(term));
@@ -4194,6 +4236,15 @@ function deriveAssistantRoutedActions(bundle: AdminAssistantContextBundle): Admi
       requiresAdminConfirmation: true,
     });
   }
+  if (bundle.queryIntent === "out_of_scope_request") {
+    actions.push({
+      actionType: "manual_review",
+      owningArea: "manual_review",
+      label: "Use a Pass 5-safe route",
+      reason: "The request asks for a later-stage or mutating action. The copilot can explain Pass 5 records and suggest a routed review path only.",
+      requiresAdminConfirmation: true,
+    });
+  }
   if (actions.length === 0) {
     actions.push({
       actionType: "manual_review",
@@ -4234,10 +4285,38 @@ function buildDeterministicAssistantAnswer(input: {
     return data.status === "open" || data.status === "asked" || data.status === "partially_resolved";
   });
   const boundaryCount = recordIds(input.bundle.structuredRecords, "BoundarySignal").length;
-  const finding = [
-    `Intent: ${input.bundle.queryIntent}.`,
-    `Scope contains ${sessionRecords.length} participant session(s), ${input.bundle.evidenceSnippets.length} evidence snippet(s), ${openCandidates.length} actionable clarification candidate(s), ${boundaryCount} boundary signal(s), ${defectCount} extraction defect(s), and ${disputeCount} evidence dispute(s).`,
-  ].join(" ");
+  const baseScopeSummary = `Scope contains ${sessionRecords.length} participant session(s), ${input.bundle.evidenceSnippets.length} evidence snippet(s), ${openCandidates.length} actionable clarification candidate(s), ${boundaryCount} boundary signal(s), ${defectCount} extraction defect(s), and ${disputeCount} evidence dispute(s).`;
+  const nextActionRecords = input.bundle.structuredRecords.filter((record) => record.recordType === "SessionNextAction");
+  const handoffRecords = input.bundle.structuredRecords.filter((record) => record.recordType === "Pass6HandoffCandidate");
+  let finding = [`Intent: ${input.bundle.queryIntent}.`, baseScopeSummary].join(" ");
+  if (input.bundle.queryIntent === "pass5_stage_overview") {
+    finding = [
+      "I am the read-only Pass 5 Section Copilot.",
+      "My mission is to help the admin understand participant sessions, raw evidence, transcript trust, first-pass extraction, clarification queues, answer rechecks, boundary signals, next actions, and later handoff candidates.",
+      "I use bounded DB-first context when records are needed and recommend routed admin actions only. This copilot does not mutate records or send participant messages.",
+      "I do not perform Pass 6 synthesis/evaluation, final workflow reconstruction, package generation, or WhatsApp API work.",
+      baseScopeSummary,
+    ].join(" ");
+  } else if (input.bundle.queryIntent === "pass5_general_discussion") {
+    finding = [
+      "Pass 5 is the participant-session intake and governance stage.",
+      "It captures raw participant evidence, gates transcript trust, runs governed first-pass participant-level extraction, manages clarification candidates and answer rechecks, records boundary signals, supports dashboard review, and preserves handoff candidates for later review.",
+      "It does not decide final workflow truth or run later-stage synthesis.",
+      baseScopeSummary,
+    ].join(" ");
+  } else if (input.bundle.queryIntent === "pass5_session_discussion" || input.bundle.queryIntent === "session_summary") {
+    const labels = sessionRecords.map((record) => record.label).join(", ") || "the current participant session";
+    finding = `For ${labels}, the bounded context shows the current Pass 5 session records and supporting evidence. ${baseScopeSummary}`;
+  } else if (input.bundle.queryIntent === "evidence_question" || input.bundle.queryIntent === "pass5_record_question") {
+    finding = `The bounded context includes ${input.bundle.evidenceSnippets.length} evidence snippet(s) and ${recordIds(input.bundle.structuredRecords, "RawEvidenceItem").length} raw evidence metadata record(s). ${baseScopeSummary}`;
+  } else if (input.bundle.queryIntent === "next_action_question" || input.bundle.queryIntent === "unresolved_items_question" || input.bundle.queryIntent === "pass5_status_question") {
+    const nextActions = nextActionRecords.map((record) => record.label).join(", ") || "manual admin review";
+    finding = `The visible next action path is: ${nextActions}. Open clarification, boundary, defect, dispute, and unmapped records should be reviewed through their owning Pass 5 panels. ${baseScopeSummary}`;
+  } else if (input.bundle.queryIntent === "pass6_handoff_candidate_suggestion") {
+    finding = `Pass 5 can preserve later-review handoff candidates only. It currently has ${handoffRecords.length} candidate record(s) in scope; any new candidate must be admin-confirmed and remains non-final. ${baseScopeSummary}`;
+  } else if (input.bundle.queryIntent === "out_of_scope_request") {
+    finding = "That request is outside the Pass 5 copilot boundary. I can explain the current Pass 5 records, show what Pass 5 prepared for later review, or suggest a routed admin action, but I cannot run Pass 6 synthesis/evaluation, reconstruct the final workflow, generate packages, send participant messages, or approve/reject evidence automatically.";
+  }
   const uncertainty: string[] = [];
   if (input.bundle.promptVersionId === "provider_not_configured") uncertainty.push("Provider execution was not configured; this is deterministic manual fallback, not AI success.");
   if (input.bundle.evidenceSnippets.length === 0) uncertainty.push("No raw evidence snippet was included in the bounded context.");

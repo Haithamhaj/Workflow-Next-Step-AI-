@@ -59,6 +59,35 @@ Post-closure integration decision:
 - Complex scenario validation passed.
 - Pass 5 branch is ready for integration/merge.
 
+Pre-merge Block 12 Admin Assistant / Section Copilot defect patch completed:
+
+- root cause: the assistant classifier treated broad but valid Pass 5 questions as `unsupported` unless they matched a narrow operational intent keyword
+- added stage-aware Pass 5 copilot intents for stage overview, general discussion, session discussion, record/status questions, and explicit out-of-scope requests
+- broad questions such as `what is your mission`, `explain Pass 5`, `what happened in this session`, `what evidence do we have`, and `what is still missing` are now answered from bounded Pass 5 context instead of rejected
+- out-of-scope requests for Pass 6 synthesis/evaluation, final workflow reconstruction, package generation, WhatsApp API, autonomous writes, participant sends, or automatic evidence approval are redirected with a safe Pass 5 boundary answer
+- `admin_assistant_prompt` now describes a stage-aware read-only Pass 5 copilot that can discuss participant sessions, evidence, transcript trust, extraction, clarification, answer recheck, boundary signals, next actions, and handoff candidates
+- session detail assistant form anchors back to the copilot panel after submission so the admin sees the answer instead of returning to the top of the page
+- proof script added: `scripts/prove-pass5-block12-stage-aware-copilot.mjs`
+
+Pre-merge Block 12 defect patch proof commands passed:
+
+- `pnpm --filter @workflow/participant-sessions build`
+- `pnpm --filter @workflow/prompts build`
+- `pnpm build:contracts`
+- `node scripts/prove-pass5-block12-admin-assistant.mjs`
+- `node scripts/prove-pass5-block12-stage-aware-copilot.mjs`
+- `pnpm typecheck`
+- `pnpm build`
+
+Pre-merge Block 12 boundaries preserved:
+
+- no Pass 6 synthesis/evaluation
+- no final workflow reconstruction
+- no package generation
+- no WhatsApp API
+- no autonomous writes
+- no hidden shadow state
+
 Block 14 final acceptance proof passed after narrow banned-wording/proof-surface cleanup:
 
 - removed banned later-stage wording from the active participant-session handoff-candidate panel copy
