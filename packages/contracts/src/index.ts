@@ -46,6 +46,24 @@ export {
   clarificationCandidateSchema,
   boundarySignalSchema,
   pass6HandoffCandidateSchema,
+  pass6CoreSchema,
+  synthesisInputBundleSchema,
+  workflowUnitSchema,
+  workflowClaimSchema,
+  analysisMethodUsageSchema,
+  differenceInterpretationSchema,
+  assembledWorkflowDraftSchema,
+  sevenConditionAssessmentSchema,
+  workflowReadinessResultSchema,
+  prePackageGateResultSchema,
+  clarificationNeedSchema,
+  inquiryPacketSchema,
+  initialWorkflowPackageSchema,
+  workflowGapClosureBriefSchema,
+  draftOperationalDocumentSchema,
+  workflowGraphRecordSchema,
+  pass6CopilotContextBundleSchema,
+  pass7ReviewCandidateSchema,
 } from "./schemas/index.js";
 
 import { makeValidator } from "./validate.js";
@@ -94,6 +112,24 @@ import {
   clarificationCandidateSchema,
   boundarySignalSchema,
   pass6HandoffCandidateSchema,
+  pass6CoreSchema,
+  synthesisInputBundleSchema,
+  workflowUnitSchema,
+  workflowClaimSchema,
+  analysisMethodUsageSchema,
+  differenceInterpretationSchema,
+  assembledWorkflowDraftSchema,
+  sevenConditionAssessmentSchema,
+  workflowReadinessResultSchema,
+  prePackageGateResultSchema,
+  clarificationNeedSchema,
+  inquiryPacketSchema,
+  initialWorkflowPackageSchema,
+  workflowGapClosureBriefSchema,
+  draftOperationalDocumentSchema,
+  workflowGraphRecordSchema,
+  pass6CopilotContextBundleSchema,
+  pass7ReviewCandidateSchema,
 } from "./schemas/index.js";
 import type { CaseConfiguration } from "./types/case-configuration.js";
 import type { SourceRegistration } from "./types/source-registration.js";
@@ -129,6 +165,25 @@ import type {
   TelegramIdentityBinding,
   UnmappedContentItem,
 } from "./types/participant-session.js";
+import type {
+  AnalysisMethodUsage,
+  AssembledWorkflowDraft,
+  ClarificationNeed,
+  DifferenceInterpretation,
+  DraftOperationalDocument,
+  InitialWorkflowPackage,
+  InquiryPacket,
+  Pass6CopilotContextBundle,
+  Pass7ReviewCandidate,
+  PrePackageGateResult,
+  SevenConditionAssessment,
+  SynthesisInputBundle,
+  WorkflowClaim,
+  WorkflowGapClosureBrief,
+  WorkflowGraphRecord,
+  WorkflowReadinessResult,
+  WorkflowUnit,
+} from "./types/pass6-core.js";
 import {
   SessionState,
   ParticipantSessionState,
@@ -294,3 +349,54 @@ export const validateBoundarySignal =
 
 export const validatePass6HandoffCandidate =
   makeValidator<Pass6HandoffCandidate>(pass6HandoffCandidateSchema);
+
+export const validateSynthesisInputBundle =
+  makeValidator<SynthesisInputBundle>(synthesisInputBundleSchema);
+
+export const validateWorkflowUnit =
+  makeValidator<WorkflowUnit>(workflowUnitSchema);
+
+export const validateWorkflowClaim =
+  makeValidator<WorkflowClaim>(workflowClaimSchema);
+
+export const validateAnalysisMethodUsage =
+  makeValidator<AnalysisMethodUsage>(analysisMethodUsageSchema);
+
+export const validateDifferenceInterpretation =
+  makeValidator<DifferenceInterpretation>(differenceInterpretationSchema);
+
+export const validateAssembledWorkflowDraft =
+  makeValidator<AssembledWorkflowDraft>(assembledWorkflowDraftSchema);
+
+export const validateSevenConditionAssessment =
+  makeValidator<SevenConditionAssessment>(sevenConditionAssessmentSchema);
+
+export const validateWorkflowReadinessResult =
+  makeValidator<WorkflowReadinessResult>(workflowReadinessResultSchema);
+
+export const validatePrePackageGateResult =
+  makeValidator<PrePackageGateResult>(prePackageGateResultSchema);
+
+export const validateClarificationNeed =
+  makeValidator<ClarificationNeed>(clarificationNeedSchema);
+
+export const validateInquiryPacket =
+  makeValidator<InquiryPacket>(inquiryPacketSchema);
+
+export const validateInitialWorkflowPackage =
+  makeValidator<InitialWorkflowPackage>(initialWorkflowPackageSchema);
+
+export const validateWorkflowGapClosureBrief =
+  makeValidator<WorkflowGapClosureBrief>(workflowGapClosureBriefSchema);
+
+export const validateDraftOperationalDocument =
+  makeValidator<DraftOperationalDocument>(draftOperationalDocumentSchema);
+
+export const validateWorkflowGraphRecord =
+  makeValidator<WorkflowGraphRecord>(workflowGraphRecordSchema);
+
+export const validatePass6CopilotContextBundle =
+  makeValidator<Pass6CopilotContextBundle>(pass6CopilotContextBundleSchema);
+
+export const validatePass7ReviewCandidate =
+  makeValidator<Pass7ReviewCandidate>(pass7ReviewCandidateSchema);

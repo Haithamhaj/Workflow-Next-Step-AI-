@@ -24,6 +24,7 @@ import targetingRolloutPlanSchema from "./targeting-rollout-plan.schema.json" wi
 import targetingRecommendationPacketSchema from "./targeting-recommendation-packet.schema.json" with { type: "json" };
 import pass4PromptTestRunSchema from "./pass4-prompt-test-run.schema.json" with { type: "json" };
 import participantSessionSchema from "./participant-session.schema.json" with { type: "json" };
+import pass6CoreSchema from "./pass6-core.schema.json" with { type: "json" };
 
 function pass5Schema(title: string, definitionName: string) {
   return {
@@ -52,6 +53,33 @@ const evidenceDisputeSchema = pass5Schema("EvidenceDispute", "evidenceDispute");
 const clarificationCandidateSchema = pass5Schema("ClarificationCandidate", "clarificationCandidate");
 const boundarySignalSchema = pass5Schema("BoundarySignal", "boundarySignal");
 const pass6HandoffCandidateSchema = pass5Schema("Pass6HandoffCandidate", "pass6HandoffCandidate");
+
+function pass6Schema(title: string, definitionName: string) {
+  return {
+    $schema: "http://json-schema.org/draft-07/schema#",
+    title,
+    $ref: `#/definitions/${definitionName}`,
+    definitions: pass6CoreSchema.definitions,
+  };
+}
+
+const synthesisInputBundleSchema = pass6Schema("SynthesisInputBundle", "synthesisInputBundle");
+const workflowUnitSchema = pass6Schema("WorkflowUnit", "workflowUnit");
+const workflowClaimSchema = pass6Schema("WorkflowClaim", "workflowClaim");
+const analysisMethodUsageSchema = pass6Schema("AnalysisMethodUsage", "analysisMethodUsage");
+const differenceInterpretationSchema = pass6Schema("DifferenceInterpretation", "differenceInterpretation");
+const assembledWorkflowDraftSchema = pass6Schema("AssembledWorkflowDraft", "assembledWorkflowDraft");
+const sevenConditionAssessmentSchema = pass6Schema("SevenConditionAssessment", "sevenConditionAssessment");
+const workflowReadinessResultSchema = pass6Schema("WorkflowReadinessResult", "workflowReadinessResult");
+const prePackageGateResultSchema = pass6Schema("PrePackageGateResult", "prePackageGateResult");
+const clarificationNeedSchema = pass6Schema("ClarificationNeed", "clarificationNeed");
+const inquiryPacketSchema = pass6Schema("InquiryPacket", "inquiryPacket");
+const initialWorkflowPackageSchema = pass6Schema("InitialWorkflowPackage", "initialWorkflowPackage");
+const workflowGapClosureBriefSchema = pass6Schema("WorkflowGapClosureBrief", "workflowGapClosureBrief");
+const draftOperationalDocumentSchema = pass6Schema("DraftOperationalDocument", "draftOperationalDocument");
+const workflowGraphRecordSchema = pass6Schema("WorkflowGraphRecord", "workflowGraphRecord");
+const pass6CopilotContextBundleSchema = pass6Schema("Pass6CopilotContextBundle", "pass6CopilotContextBundle");
+const pass7ReviewCandidateSchema = pass6Schema("Pass7ReviewCandidate", "pass7ReviewCandidate");
 
 export {
   caseConfigurationSchema,
@@ -98,4 +126,22 @@ export {
   clarificationCandidateSchema,
   boundarySignalSchema,
   pass6HandoffCandidateSchema,
+  pass6CoreSchema,
+  synthesisInputBundleSchema,
+  workflowUnitSchema,
+  workflowClaimSchema,
+  analysisMethodUsageSchema,
+  differenceInterpretationSchema,
+  assembledWorkflowDraftSchema,
+  sevenConditionAssessmentSchema,
+  workflowReadinessResultSchema,
+  prePackageGateResultSchema,
+  clarificationNeedSchema,
+  inquiryPacketSchema,
+  initialWorkflowPackageSchema,
+  workflowGapClosureBriefSchema,
+  draftOperationalDocumentSchema,
+  workflowGraphRecordSchema,
+  pass6CopilotContextBundleSchema,
+  pass7ReviewCandidateSchema,
 };

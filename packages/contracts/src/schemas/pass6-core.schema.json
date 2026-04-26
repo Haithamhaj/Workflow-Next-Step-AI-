@@ -1,0 +1,728 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://workflow.local/schemas/pass6-core.json",
+  "title": "Pass6CoreContracts",
+  "description": "Pass 6 Block 1 contract/schema seams only. These shapes define cross-block handoff data and do not implement analysis, persistence, provider execution, package generation, visual rendering, Copilot writes, or Pass 7 mechanics.",
+  "definitions": {
+    "nonEmptyString": {
+      "type": "string",
+      "minLength": 1
+    },
+    "optionalString": {
+      "type": "string"
+    },
+    "timestamp": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "reference": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["referenceId", "referenceType"],
+      "properties": {
+        "referenceId": { "$ref": "#/definitions/nonEmptyString" },
+        "referenceType": { "$ref": "#/definitions/nonEmptyString" },
+        "label": { "$ref": "#/definitions/optionalString" },
+        "sourceId": { "$ref": "#/definitions/optionalString" },
+        "sessionId": { "$ref": "#/definitions/optionalString" },
+        "evidenceItemId": { "$ref": "#/definitions/optionalString" },
+        "quote": { "$ref": "#/definitions/optionalString" },
+        "notes": { "$ref": "#/definitions/optionalString" }
+      }
+    },
+    "sourceBasis": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["basisId", "basisType", "references"],
+      "properties": {
+        "basisId": { "$ref": "#/definitions/nonEmptyString" },
+        "basisType": {
+          "type": "string",
+          "enum": ["pass5_output", "raw_evidence", "extraction", "clarification", "boundary_signal", "handoff_candidate", "admin_note", "source_document", "method_output", "other"]
+        },
+        "summary": { "$ref": "#/definitions/optionalString" },
+        "references": {
+          "type": "array",
+          "items": { "$ref": "#/definitions/reference" }
+        }
+      }
+    },
+    "roleLayerContext": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["contextId"],
+      "properties": {
+        "contextId": { "$ref": "#/definitions/nonEmptyString" },
+        "participantRole": { "$ref": "#/definitions/optionalString" },
+        "department": { "$ref": "#/definitions/optionalString" },
+        "layer": { "$ref": "#/definitions/optionalString" },
+        "authorityScope": { "$ref": "#/definitions/optionalString" },
+        "notes": { "$ref": "#/definitions/optionalString" }
+      }
+    },
+    "truthLensContext": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["contextId", "lensType"],
+      "properties": {
+        "contextId": { "$ref": "#/definitions/nonEmptyString" },
+        "lensType": {
+          "type": "string",
+          "enum": ["participant_claim", "observed_evidence", "documented_policy", "admin_interpretation", "system_inference", "unknown"]
+        },
+        "summary": { "$ref": "#/definitions/optionalString" },
+        "limitations": {
+          "type": "array",
+          "items": { "$ref": "#/definitions/nonEmptyString" }
+        }
+      }
+    },
+    "preparedMaterialItem": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["itemId", "itemType", "summary", "basis"],
+      "properties": {
+        "itemId": { "$ref": "#/definitions/nonEmptyString" },
+        "itemType": { "$ref": "#/definitions/nonEmptyString" },
+        "summary": { "$ref": "#/definitions/nonEmptyString" },
+        "basis": { "$ref": "#/definitions/sourceBasis" },
+        "roleLayerContextIds": {
+          "type": "array",
+          "items": { "$ref": "#/definitions/nonEmptyString" }
+        },
+        "truthLensContextIds": {
+          "type": "array",
+          "items": { "$ref": "#/definitions/nonEmptyString" }
+        },
+        "notes": { "$ref": "#/definitions/optionalString" }
+      }
+    },
+    "preparationSummary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["preparedBy", "summary", "noDropNotes"],
+      "properties": {
+        "preparedBy": {
+          "type": "string",
+          "enum": ["system", "admin", "system_with_admin_review"]
+        },
+        "summary": { "$ref": "#/definitions/nonEmptyString" },
+        "acceptedPass5Only": { "type": "boolean" },
+        "doesNotRevalidatePass5": { "type": "boolean" },
+        "noDropNotes": {
+          "type": "array",
+          "items": { "$ref": "#/definitions/nonEmptyString" }
+        }
+      }
+    },
+    "synthesisInputBundle": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "bundleId",
+        "caseId",
+        "createdAt",
+        "sourcePass5SessionIds",
+        "analysis_material",
+        "boundary_role_limit_material",
+        "gap_risk_no_drop_material",
+        "document_source_signal_material",
+        "roleLayerContexts",
+        "truthLensContexts",
+        "preparationSummary"
+      ],
+      "properties": {
+        "bundleId": { "$ref": "#/definitions/nonEmptyString" },
+        "caseId": { "$ref": "#/definitions/nonEmptyString" },
+        "createdAt": { "$ref": "#/definitions/timestamp" },
+        "sourcePass5SessionIds": {
+          "type": "array",
+          "items": { "$ref": "#/definitions/nonEmptyString" }
+        },
+        "analysis_material": {
+          "type": "array",
+          "items": { "$ref": "#/definitions/preparedMaterialItem" }
+        },
+        "boundary_role_limit_material": {
+          "type": "array",
+          "items": { "$ref": "#/definitions/preparedMaterialItem" }
+        },
+        "gap_risk_no_drop_material": {
+          "type": "array",
+          "items": { "$ref": "#/definitions/preparedMaterialItem" }
+        },
+        "document_source_signal_material": {
+          "type": "array",
+          "items": { "$ref": "#/definitions/preparedMaterialItem" }
+        },
+        "roleLayerContexts": {
+          "type": "array",
+          "items": { "$ref": "#/definitions/roleLayerContext" }
+        },
+        "truthLensContexts": {
+          "type": "array",
+          "items": { "$ref": "#/definitions/truthLensContext" }
+        },
+        "preparationSummary": { "$ref": "#/definitions/preparationSummary" }
+      }
+    },
+    "workflowUnit": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["unitId", "caseId", "bundleId", "unitType", "unitText", "basis"],
+      "properties": {
+        "unitId": { "$ref": "#/definitions/nonEmptyString" },
+        "caseId": { "$ref": "#/definitions/nonEmptyString" },
+        "bundleId": { "$ref": "#/definitions/nonEmptyString" },
+        "unitType": {
+          "type": "string",
+          "enum": ["action_step", "trigger_input", "output_outcome", "sequence_signal", "decision_rule", "approval_control", "handoff", "exception", "boundary", "information_context", "unknown_gap"]
+        },
+        "unitText": { "$ref": "#/definitions/nonEmptyString" },
+        "roleLayerContextId": { "$ref": "#/definitions/optionalString" },
+        "basis": { "$ref": "#/definitions/sourceBasis" },
+        "notes": { "$ref": "#/definitions/optionalString" }
+      }
+    },
+    "workflowClaim": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["claimId", "caseId", "primaryClaimType", "normalizedStatement", "unitIds", "basis", "status"],
+      "properties": {
+        "claimId": { "$ref": "#/definitions/nonEmptyString" },
+        "caseId": { "$ref": "#/definitions/nonEmptyString" },
+        "primaryClaimType": {
+          "type": "string",
+          "enum": ["execution_claim", "sequence_claim", "decision_rule_claim", "ownership_claim", "boundary_claim"]
+        },
+        "secondaryClaimTypes": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": ["execution_claim", "sequence_claim", "decision_rule_claim", "ownership_claim", "boundary_claim"]
+          }
+        },
+        "claimText": { "$ref": "#/definitions/optionalString" },
+        "normalizedStatement": { "$ref": "#/definitions/nonEmptyString" },
+        "sourceParticipantIds": {
+          "type": "array",
+          "items": { "$ref": "#/definitions/nonEmptyString" }
+        },
+        "sourceSessionIds": {
+          "type": "array",
+          "items": { "$ref": "#/definitions/nonEmptyString" }
+        },
+        "sourceLayerContextIds": {
+          "type": "array",
+          "items": { "$ref": "#/definitions/nonEmptyString" }
+        },
+        "unitIds": {
+          "type": "array",
+          "items": { "$ref": "#/definitions/nonEmptyString" }
+        },
+        "basis": { "$ref": "#/definitions/sourceBasis" },
+        "confidence": {
+          "type": "string",
+          "enum": ["high", "medium", "low", "unknown"]
+        },
+        "materiality": {
+          "type": "string",
+          "enum": ["high", "medium", "low", "unknown"]
+        },
+        "status": {
+          "type": "string",
+          "enum": ["proposed", "accepted_for_assembly", "warning", "unresolved", "review_needed"]
+        }
+      }
+    },
+    "analysisMethodUsage": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["methodUsageId", "methodId", "methodKey", "methodName", "methodType", "version", "selectionReason", "selectionSource", "appliedToType", "appliedToId", "outputSummary", "impact", "suitabilityAssessment"],
+      "properties": {
+        "methodUsageId": { "$ref": "#/definitions/nonEmptyString" },
+        "methodId": { "$ref": "#/definitions/nonEmptyString" },
+        "methodKey": {
+          "type": "string",
+          "enum": ["bpmn_process_structure", "sipoc_boundary", "triangulation", "espoused_theory_vs_theory_in_use", "raci_responsibility", "ssm_multi_perspective", "apqc_vocabulary"]
+        },
+        "methodName": { "$ref": "#/definitions/nonEmptyString" },
+        "methodType": {
+          "type": "string",
+          "enum": ["process_structure_lens", "boundary_lens", "evidence_lens", "practice_reality_lens", "responsibility_lens", "multi_perspective_lens", "vocabulary_lens"]
+        },
+        "version": { "$ref": "#/definitions/nonEmptyString" },
+        "selectionReason": { "$ref": "#/definitions/nonEmptyString" },
+        "selectionSource": {
+          "type": "string",
+          "enum": ["system_selected", "admin_forced"]
+        },
+        "appliedToType": {
+          "type": "string",
+          "enum": ["bundle", "workflow_unit", "claim", "difference", "workflow_draft", "readiness_assessment", "gap", "package_section"]
+        },
+        "appliedToId": { "$ref": "#/definitions/nonEmptyString" },
+        "outputSummary": { "$ref": "#/definitions/nonEmptyString" },
+        "impact": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["affectedIds", "impactSummary"],
+          "properties": {
+            "affectedIds": {
+              "type": "array",
+              "items": { "$ref": "#/definitions/nonEmptyString" }
+            },
+            "impactSummary": { "$ref": "#/definitions/nonEmptyString" },
+            "changedRouting": { "type": "boolean" },
+            "changedReadiness": { "type": "boolean" }
+          }
+        },
+        "suitabilityAssessment": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["suitable", "notes"],
+          "properties": {
+            "suitable": { "type": "boolean" },
+            "notes": { "$ref": "#/definitions/nonEmptyString" },
+            "limitations": {
+              "type": "array",
+              "items": { "$ref": "#/definitions/nonEmptyString" }
+            }
+          }
+        }
+      }
+    },
+    "differenceInterpretation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["differenceId", "caseId", "involvedClaimIds", "differenceType", "recommendedRoute", "explanation"],
+      "properties": {
+        "differenceId": { "$ref": "#/definitions/nonEmptyString" },
+        "caseId": { "$ref": "#/definitions/nonEmptyString" },
+        "involvedClaimIds": {
+          "type": "array",
+          "items": { "$ref": "#/definitions/nonEmptyString" }
+        },
+        "involvedLayers": {
+          "type": "array",
+          "items": { "$ref": "#/definitions/nonEmptyString" }
+        },
+        "involvedRoles": {
+          "type": "array",
+          "items": { "$ref": "#/definitions/nonEmptyString" }
+        },
+        "differenceType": {
+          "type": "string",
+          "enum": ["completion", "variant", "normative_reality_mismatch", "factual_conflict"]
+        },
+        "materiality": {
+          "type": "string",
+          "enum": ["high", "medium", "low", "unknown"]
+        },
+        "recommendedRoute": {
+          "type": "string",
+          "enum": ["assemble_with_warning", "clarify_before_package", "admin_review", "document_as_variant", "exclude_as_out_of_scope"]
+        },
+        "explanation": { "$ref": "#/definitions/nonEmptyString" },
+        "methodUsageIds": {
+          "type": "array",
+          "items": { "$ref": "#/definitions/nonEmptyString" }
+        },
+        "notPerformanceEvaluation": { "type": "boolean" }
+      }
+    },
+    "workflowElement": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["elementId", "label"],
+      "properties": {
+        "elementId": { "$ref": "#/definitions/nonEmptyString" },
+        "label": { "$ref": "#/definitions/nonEmptyString" },
+        "description": { "$ref": "#/definitions/optionalString" },
+        "claimIds": {
+          "type": "array",
+          "items": { "$ref": "#/definitions/nonEmptyString" }
+        },
+        "basis": { "$ref": "#/definitions/sourceBasis" }
+      }
+    },
+    "claimBasisEntry": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["workflowElementId", "claimIds"],
+      "properties": {
+        "workflowElementId": { "$ref": "#/definitions/nonEmptyString" },
+        "claimIds": {
+          "type": "array",
+          "items": { "$ref": "#/definitions/nonEmptyString" }
+        },
+        "notes": { "$ref": "#/definitions/optionalString" }
+      }
+    },
+    "assembledWorkflowDraft": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["draftId", "caseId", "basedOnBundleId", "workflowUnderstandingLevel", "steps", "sequence", "decisions", "handoffs", "controls", "systemsTools", "variants", "warningsCaveats", "unresolvedItems", "claimBasisMap", "metadata"],
+      "properties": {
+        "draftId": { "$ref": "#/definitions/nonEmptyString" },
+        "caseId": { "$ref": "#/definitions/nonEmptyString" },
+        "basedOnBundleId": { "$ref": "#/definitions/nonEmptyString" },
+        "workflowUnderstandingLevel": {
+          "type": "string",
+          "enum": ["partial_workflow_understanding", "reconstructable_workflow_with_gaps", "package_ready_workflow", "workflow_exists_but_not_package_ready"]
+        },
+        "steps": { "type": "array", "items": { "$ref": "#/definitions/workflowElement" } },
+        "sequence": { "type": "array", "items": { "$ref": "#/definitions/workflowElement" } },
+        "decisions": { "type": "array", "items": { "$ref": "#/definitions/workflowElement" } },
+        "handoffs": { "type": "array", "items": { "$ref": "#/definitions/workflowElement" } },
+        "controls": { "type": "array", "items": { "$ref": "#/definitions/workflowElement" } },
+        "systemsTools": { "type": "array", "items": { "$ref": "#/definitions/workflowElement" } },
+        "variants": { "type": "array", "items": { "$ref": "#/definitions/workflowElement" } },
+        "warningsCaveats": { "type": "array", "items": { "$ref": "#/definitions/nonEmptyString" } },
+        "unresolvedItems": { "type": "array", "items": { "$ref": "#/definitions/nonEmptyString" } },
+        "claimBasisMap": { "type": "array", "items": { "$ref": "#/definitions/claimBasisEntry" } },
+        "metadata": { "$ref": "#/definitions/recordMetadata" }
+      }
+    },
+    "conditionAssessmentItem": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["conditionKey", "status", "summary", "basis"],
+      "properties": {
+        "conditionKey": {
+          "type": "string",
+          "enum": ["core_sequence_continuity", "step_to_step_connection", "essential_step_requirements", "decision_rules_thresholds", "handoffs_responsibility", "controls_approvals", "use_case_boundary"]
+        },
+        "status": {
+          "type": "string",
+          "enum": ["clear_enough", "warning", "materially_broken", "unknown", "not_applicable"]
+        },
+        "summary": { "$ref": "#/definitions/nonEmptyString" },
+        "basis": { "$ref": "#/definitions/sourceBasis" },
+        "blocking": { "type": "boolean" }
+      }
+    },
+    "sevenConditionAssessment": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["assessmentId", "caseId", "assembledWorkflowDraftId", "conditions", "overallSummary"],
+      "properties": {
+        "assessmentId": { "$ref": "#/definitions/nonEmptyString" },
+        "caseId": { "$ref": "#/definitions/nonEmptyString" },
+        "assembledWorkflowDraftId": { "$ref": "#/definitions/nonEmptyString" },
+        "conditions": {
+          "type": "array",
+          "minItems": 7,
+          "items": { "$ref": "#/definitions/conditionAssessmentItem" }
+        },
+        "overallSummary": { "$ref": "#/definitions/nonEmptyString" }
+      }
+    },
+    "workflowReadinessResult": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["resultId", "caseId", "assembledWorkflowDraftId", "readinessDecision", "sevenConditionAssessment", "gapRiskSummary", "allowedUseFor6C", "routingRecommendations", "analysisMetadata", "is6CAllowed"],
+      "properties": {
+        "resultId": { "$ref": "#/definitions/nonEmptyString" },
+        "caseId": { "$ref": "#/definitions/nonEmptyString" },
+        "assembledWorkflowDraftId": { "$ref": "#/definitions/nonEmptyString" },
+        "readinessDecision": {
+          "type": "string",
+          "enum": ["ready_for_initial_package", "ready_for_initial_package_with_warnings", "partial_only_not_package_ready", "needs_more_clarification_before_package", "needs_review_decision_before_package", "workflow_exists_but_current_basis_insufficient"]
+        },
+        "sevenConditionAssessment": { "$ref": "#/definitions/sevenConditionAssessment" },
+        "gapRiskSummary": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["summary", "gapIds", "riskIds"],
+          "properties": {
+            "summary": { "$ref": "#/definitions/nonEmptyString" },
+            "gapIds": { "type": "array", "items": { "$ref": "#/definitions/nonEmptyString" } },
+            "riskIds": { "type": "array", "items": { "$ref": "#/definitions/nonEmptyString" } }
+          }
+        },
+        "allowedUseFor6C": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": ["initial_package", "initial_package_with_warnings", "gap_closure_brief", "draft_operational_document", "none"]
+          }
+        },
+        "routingRecommendations": {
+          "type": "array",
+          "items": { "$ref": "#/definitions/nonEmptyString" }
+        },
+        "analysisMetadata": { "$ref": "#/definitions/recordMetadata" },
+        "is6CAllowed": { "type": "boolean" }
+      }
+    },
+    "clarificationNeed": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["clarificationNeedId", "questionText", "whyItMatters", "expectedAnswerType", "blockingStatus", "basis", "recommendedChannel", "priority"],
+      "properties": {
+        "clarificationNeedId": { "$ref": "#/definitions/nonEmptyString" },
+        "questionText": { "$ref": "#/definitions/nonEmptyString" },
+        "targetRecipient": { "$ref": "#/definitions/optionalString" },
+        "targetRole": { "$ref": "#/definitions/optionalString" },
+        "whyItMatters": { "$ref": "#/definitions/nonEmptyString" },
+        "relatedWorkflowElementId": { "$ref": "#/definitions/optionalString" },
+        "relatedGapId": { "$ref": "#/definitions/optionalString" },
+        "relatedSevenConditionKey": {
+          "type": "string",
+          "enum": ["core_sequence_continuity", "step_to_step_connection", "essential_step_requirements", "decision_rules_thresholds", "handoffs_responsibility", "controls_approvals", "use_case_boundary", "unknown"]
+        },
+        "expectedAnswerType": {
+          "type": "string",
+          "enum": ["free_text", "yes_no", "owner_name", "threshold_value", "system_name", "document_reference", "sequence_order", "approval_rule", "other"]
+        },
+        "exampleAnswer": { "$ref": "#/definitions/optionalString" },
+        "blockingStatus": {
+          "type": "string",
+          "enum": ["blocking", "non_blocking"]
+        },
+        "basis": { "$ref": "#/definitions/sourceBasis" },
+        "recommendedChannel": {
+          "type": "string",
+          "enum": ["admin_review", "participant_follow_up", "manager_follow_up", "source_document_review", "external_interface_review", "other"]
+        },
+        "priority": {
+          "type": "string",
+          "enum": ["high", "medium", "low"]
+        }
+      }
+    },
+    "inquiryPacket": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["inquiryPacketId", "caseId", "clarificationNeeds", "packetStatus", "createdAt"],
+      "properties": {
+        "inquiryPacketId": { "$ref": "#/definitions/nonEmptyString" },
+        "caseId": { "$ref": "#/definitions/nonEmptyString" },
+        "targetRole": { "$ref": "#/definitions/optionalString" },
+        "targetRecipient": { "$ref": "#/definitions/optionalString" },
+        "clarificationNeeds": {
+          "type": "array",
+          "items": { "$ref": "#/definitions/clarificationNeed" }
+        },
+        "packetStatus": {
+          "type": "string",
+          "enum": ["draft_not_sent", "ready_for_admin_review", "superseded"]
+        },
+        "createdAt": { "$ref": "#/definitions/timestamp" }
+      }
+    },
+    "prePackageGateResult": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["gateResultId", "caseId", "workflowReadinessResultId", "gateDecision", "clarificationNeeds", "inquiryPackets"],
+      "properties": {
+        "gateResultId": { "$ref": "#/definitions/nonEmptyString" },
+        "caseId": { "$ref": "#/definitions/nonEmptyString" },
+        "workflowReadinessResultId": { "$ref": "#/definitions/nonEmptyString" },
+        "gateDecision": {
+          "type": "string",
+          "enum": ["no_gate_block_package_allowed", "clarification_required_before_package", "review_decision_required_before_package", "proceed_with_warnings_approved", "package_blocked_gap_brief_required"]
+        },
+        "clarificationNeeds": { "type": "array", "items": { "$ref": "#/definitions/clarificationNeed" } },
+        "inquiryPackets": { "type": "array", "items": { "$ref": "#/definitions/inquiryPacket" } },
+        "proceedWithWarningsApproval": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["approvedBy", "approvedAt", "approvalNote"],
+          "properties": {
+            "approvedBy": { "$ref": "#/definitions/nonEmptyString" },
+            "approvedAt": { "$ref": "#/definitions/timestamp" },
+            "approvalNote": { "$ref": "#/definitions/nonEmptyString" }
+          }
+        }
+      }
+    },
+    "packageSection": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["sectionId", "title", "contentSummary"],
+      "properties": {
+        "sectionId": { "$ref": "#/definitions/nonEmptyString" },
+        "title": { "$ref": "#/definitions/nonEmptyString" },
+        "contentSummary": { "$ref": "#/definitions/nonEmptyString" },
+        "basisClaimIds": { "type": "array", "items": { "$ref": "#/definitions/nonEmptyString" } }
+      }
+    },
+    "initialWorkflowPackage": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["packageId", "caseId", "workflowReadinessResultId", "packageStatus", "clientFacingSections", "warningsCaveats", "interfacesDependencies", "metadata"],
+      "properties": {
+        "packageId": { "$ref": "#/definitions/nonEmptyString" },
+        "caseId": { "$ref": "#/definitions/nonEmptyString" },
+        "workflowReadinessResultId": { "$ref": "#/definitions/nonEmptyString" },
+        "packageStatus": {
+          "type": "string",
+          "enum": ["initial_package_ready", "initial_package_ready_with_warnings", "initial_package_admin_approved_with_limitations", "initial_package_blocked", "partial_output_only"]
+        },
+        "clientFacingSections": { "type": "array", "items": { "$ref": "#/definitions/packageSection" } },
+        "adminInternalAppendix": { "$ref": "#/definitions/optionalString" },
+        "warningsCaveats": { "type": "array", "items": { "$ref": "#/definitions/nonEmptyString" } },
+        "interfacesDependencies": { "type": "array", "items": { "$ref": "#/definitions/nonEmptyString" } },
+        "documentReferenceImplications": { "type": "array", "items": { "$ref": "#/definitions/nonEmptyString" } },
+        "metadata": { "$ref": "#/definitions/recordMetadata" }
+      }
+    },
+    "workflowGapClosureBrief": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["briefId", "caseId", "packageBlockedReason", "currentlyVisibleWorkflow", "brokenUnknownConditions", "gapsToClose", "recommendedClarificationRoute", "nextStepToReachPackageReadiness"],
+      "properties": {
+        "briefId": { "$ref": "#/definitions/nonEmptyString" },
+        "caseId": { "$ref": "#/definitions/nonEmptyString" },
+        "packageBlockedReason": { "$ref": "#/definitions/nonEmptyString" },
+        "currentlyVisibleWorkflow": { "$ref": "#/definitions/nonEmptyString" },
+        "brokenUnknownConditions": { "type": "array", "items": { "$ref": "#/definitions/nonEmptyString" } },
+        "gapsToClose": { "type": "array", "items": { "$ref": "#/definitions/nonEmptyString" } },
+        "recommendedClarificationRoute": { "$ref": "#/definitions/nonEmptyString" },
+        "nextStepToReachPackageReadiness": { "$ref": "#/definitions/nonEmptyString" }
+      }
+    },
+    "draftOperationalDocument": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["draftId", "caseId", "documentDraftType", "draftStatus", "evidenceMaturitySummary", "sections", "limitations", "metadata"],
+      "properties": {
+        "draftId": { "$ref": "#/definitions/nonEmptyString" },
+        "caseId": { "$ref": "#/definitions/nonEmptyString" },
+        "documentDraftType": {
+          "type": "string",
+          "enum": ["sop_draft", "policy_draft", "sla_supporting_reference_draft", "work_instruction_draft", "role_responsibility_guidance_draft", "questionnaire_inquiry_set_draft"]
+        },
+        "draftStatus": {
+          "type": "string",
+          "enum": ["draft_only_not_approved", "requested_but_not_ready", "superseded"]
+        },
+        "evidenceMaturitySummary": { "$ref": "#/definitions/nonEmptyString" },
+        "sections": { "type": "array", "items": { "$ref": "#/definitions/packageSection" } },
+        "limitations": { "type": "array", "items": { "$ref": "#/definitions/nonEmptyString" } },
+        "metadata": { "$ref": "#/definitions/recordMetadata" }
+      }
+    },
+    "workflowGraphRecord": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["visualRecordId", "caseId", "assembledWorkflowDraftId", "workflowGraphJson", "workflowMermaid", "workflowReactFlowModel", "visualValidationErrors"],
+      "properties": {
+        "visualRecordId": { "$ref": "#/definitions/nonEmptyString" },
+        "caseId": { "$ref": "#/definitions/nonEmptyString" },
+        "assembledWorkflowDraftId": { "$ref": "#/definitions/nonEmptyString" },
+        "workflowGraphJson": {
+          "type": "object",
+          "additionalProperties": true,
+          "properties": {
+            "nodes": {
+              "type": "array",
+              "items": { "$ref": "#/definitions/workflowGraphNode" }
+            },
+            "edges": {
+              "type": "array",
+              "items": { "$ref": "#/definitions/workflowGraphEdge" }
+            }
+          }
+        },
+        "workflowMermaid": { "$ref": "#/definitions/optionalString" },
+        "workflowReactFlowModel": {
+          "type": "object",
+          "additionalProperties": true
+        },
+        "visualValidationErrors": {
+          "type": "array",
+          "items": { "$ref": "#/definitions/nonEmptyString" }
+        }
+      }
+    },
+    "workflowGraphNode": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": ["id", "type", "status", "label"],
+      "properties": {
+        "id": { "$ref": "#/definitions/nonEmptyString" },
+        "type": {
+          "type": "string",
+          "enum": ["start", "end", "step", "decision", "handoff", "approval", "control", "system", "document", "interface", "external", "warning", "unresolved", "note", "group", "custom"]
+        },
+        "status": {
+          "type": "string",
+          "enum": ["confirmed", "assumed", "warning", "unresolved", "external_unvalidated", "out_of_scope"]
+        },
+        "label": { "$ref": "#/definitions/nonEmptyString" }
+      }
+    },
+    "workflowGraphEdge": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": ["id", "source", "target", "type", "status"],
+      "properties": {
+        "id": { "$ref": "#/definitions/nonEmptyString" },
+        "source": { "$ref": "#/definitions/nonEmptyString" },
+        "target": { "$ref": "#/definitions/nonEmptyString" },
+        "type": {
+          "type": "string",
+          "enum": ["sequence", "conditional", "handoff", "approval", "dependency", "reference", "exception", "feedback", "custom"]
+        },
+        "status": {
+          "type": "string",
+          "enum": ["confirmed", "assumed", "warning", "unresolved"]
+        }
+      }
+    },
+    "pass6CopilotContextBundle": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["contextBundleId", "caseId", "bundleRefs", "claimRefs", "methodUsageRefs", "workflowDraftRefs", "readinessResultRefs", "gateResultRefs", "packageOrBriefRefs", "visualRecordRefs", "activeConfigPolicyRefs", "relevantAdminActionRefs", "readOnly"],
+      "properties": {
+        "contextBundleId": { "$ref": "#/definitions/nonEmptyString" },
+        "caseId": { "$ref": "#/definitions/nonEmptyString" },
+        "bundleRefs": { "type": "array", "items": { "$ref": "#/definitions/reference" } },
+        "claimRefs": { "type": "array", "items": { "$ref": "#/definitions/reference" } },
+        "methodUsageRefs": { "type": "array", "items": { "$ref": "#/definitions/reference" } },
+        "workflowDraftRefs": { "type": "array", "items": { "$ref": "#/definitions/reference" } },
+        "readinessResultRefs": { "type": "array", "items": { "$ref": "#/definitions/reference" } },
+        "gateResultRefs": { "type": "array", "items": { "$ref": "#/definitions/reference" } },
+        "packageOrBriefRefs": { "type": "array", "items": { "$ref": "#/definitions/reference" } },
+        "visualRecordRefs": { "type": "array", "items": { "$ref": "#/definitions/reference" } },
+        "activeConfigPolicyRefs": { "type": "array", "items": { "$ref": "#/definitions/reference" } },
+        "relevantAdminActionRefs": { "type": "array", "items": { "$ref": "#/definitions/reference" } },
+        "readOnly": { "type": "boolean" }
+      }
+    },
+    "pass7ReviewCandidate": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["candidateId", "caseId", "sourcePass6ResultId", "issueType", "reason", "linkedReferences", "recommendedReviewRoute", "status"],
+      "properties": {
+        "candidateId": { "$ref": "#/definitions/nonEmptyString" },
+        "caseId": { "$ref": "#/definitions/nonEmptyString" },
+        "sourcePass6ResultId": { "$ref": "#/definitions/nonEmptyString" },
+        "issueType": {
+          "type": "string",
+          "enum": ["claim_conflict", "difference_unresolved", "gap_blocks_package", "evidence_weakness", "admin_review_needed", "external_interface_unvalidated", "other"]
+        },
+        "reason": { "$ref": "#/definitions/nonEmptyString" },
+        "linkedReferences": { "type": "array", "items": { "$ref": "#/definitions/reference" } },
+        "recommendedReviewRoute": { "$ref": "#/definitions/nonEmptyString" },
+        "status": {
+          "type": "string",
+          "enum": ["candidate_open", "candidate_deferred", "candidate_dismissed", "accepted_for_pass7_review"]
+        }
+      }
+    },
+    "recordMetadata": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["createdAt", "createdBy"],
+      "properties": {
+        "createdAt": { "$ref": "#/definitions/timestamp" },
+        "createdBy": { "$ref": "#/definitions/nonEmptyString" },
+        "notes": { "$ref": "#/definitions/optionalString" }
+      }
+    }
+  }
+}

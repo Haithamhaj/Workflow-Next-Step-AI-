@@ -17,7 +17,11 @@ Final Pass 5 archive/reference document:
 
 ## Next Pass
 
-The next pass is Pass 6, but implementation does not start until Pass 6 Block 0 is accepted.
+The active pass is Pass 6.
+
+Pass 6 Block 0 is accepted as the documentation-only build readiness gate.
+
+Pass 6 Block 1 — Core Contracts and Schema Seams is the current completed implementation block pending acceptance.
 
 Technical Decomposition v4 is the active Pass 6 build map.
 
@@ -34,6 +38,16 @@ Block 0 is documentation-only.
 - Old block maps are historical.
 - No source implementation has started.
 - Next implementation step after acceptance is Block 1 — Core Contracts and Schema Seams.
+
+## Pass 6 Block 1 Acceptance Gate
+
+Block 1 is contract/schema/type work only.
+
+- Pass 6 core seam contracts are defined in `packages/contracts`.
+- Validators and TypeScript types are exported from `@workflow/contracts`.
+- `scripts/prove-pass6-block1-contracts.mjs` validates representative good fixtures and rejects invalid required folder, decision, enum, and identity fields.
+- No behavior implementation starts in Block 1.
+- Next implementation step after acceptance is Block 2 — Persistence and Repository Layer.
 
 ## Active Pass 6 Block Map
 

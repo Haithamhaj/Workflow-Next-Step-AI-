@@ -36,6 +36,17 @@ Workflow / visual-core boundary for later Block 17:
 - WDE must implement `buildPackageVisuals(graph)` later as a local wrapper using `validateWorkflowGraph`, `toMermaid`, and `toReactFlow`.
 - Block 0 does not implement this wrapper.
 
+## Pass 6 Block 1 — Core Contracts and Schema Seams
+
+Pass 6 Block 1 adds contract/schema/type seams only.
+
+- Added Draft-07 Pass 6 core contract definitions in `packages/contracts`.
+- Added hand-mirrored TypeScript types and exported validators.
+- Added a focused proof script: `scripts/prove-pass6-block1-contracts.mjs`.
+- Covered SynthesisInputBundle, WorkflowUnit, WorkflowClaim, AnalysisMethodUsage, DifferenceInterpretation, AssembledWorkflowDraft, SevenConditionAssessment, WorkflowReadinessResult, PrePackageGateResult, ClarificationNeed, InquiryPacket, InitialWorkflowPackage, WorkflowGapClosureBrief, DraftOperationalDocument, WorkflowGraphRecord, Pass6CopilotContextBundle, and Pass7ReviewCandidate.
+- Block 1 does not implement persistence, UI, Prompt Workspace, provider execution, 6A builder behavior, 6B analysis behavior, Pre-6C gate behavior, 6C package generation behavior, visual-core integration, Copilot behavior, or Pass 7 mechanics.
+- Next implementation step after Block 1 acceptance is Block 2 — Persistence and Repository Layer.
+
 **Pass 5 — Participant Session Outreach / Narrative-First Clarification is accepted, closed, integrated, and archived on `main`.**
 
 Final Pass 5 status: `pass5_participant_session_outreach_accepted`

@@ -22,6 +22,14 @@ Status: LOCKED | FORMALIZED | IMPL-EXTENSION
 - **Provider direction preserved for Pass 6 planning** — OpenAI / GPT remains default for text intelligence unless explicitly changed by the operator later; Google remains the direction for STT/OCR and existing accepted Google-backed surfaces; provider success must never be faked — LOCKED
 - **Workflow / visual-core boundary is fixed for later Block 17** — WDE owns workflow truth, package eligibility, and WorkflowGraph JSON construction. `workflow-visual-core` owns validation and rendering only. WDE must later implement `buildPackageVisuals(graph)` as a local wrapper over `validateWorkflowGraph`, `toMermaid`, and `toReactFlow`; Block 0 does not implement it — LOCKED
 
+## Pass 6 Block 1 — Core Contracts and Schema Seams
+
+- **Pass 6 core seams live in `packages/contracts` only** — Block 1 adds Draft-07 schemas, hand-mirrored TypeScript types, and validators for the active Pass 6 block map without adding persistence, UI, provider execution, analysis behavior, package generation, visual integration, Copilot behavior, or Pass 7 mechanics — LOCKED
+- **`SynthesisInputBundle` preserves accepted Pass 5 outputs for later synthesis without revalidating Pass 5** — the contract requires the four conceptual material folders (`analysis_material`, `boundary_role_limit_material`, `gap_risk_no_drop_material`, `document_source_signal_material`) plus role/layer, truth-lens, and preparation-summary context — LOCKED
+- **`WorkflowClaim` remains pre-truth assembly material** — claims carry source/basis, confidence/materiality placeholders, and review statuses, but a claim is explicitly not final workflow truth — LOCKED
+- **`WorkflowGraphRecord` is a WDE-side storage/pass-through seam only** — it records graph JSON, Mermaid, React Flow model, and validation errors using visual-core enum values, but does not call or implement `workflow-visual-core` — LOCKED
+- **`Pass7ReviewCandidate` is candidate-only** — it carries a source Pass 6 result, reason, linked references, route, and status, but no discussion thread, review action, or final decision mechanics — LOCKED
+
 ## contracts
 
 - **Ajv 8 + ajv-formats for JSON Schema validation** — industry standard, fast, supports Draft-07, formats plugin needed for `date-time` and `uri` — LOCKED
