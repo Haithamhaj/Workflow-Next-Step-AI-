@@ -30,6 +30,12 @@ Status: LOCKED | FORMALIZED | IMPL-EXTENSION
 - **`WorkflowGraphRecord` is a WDE-side storage/pass-through seam only** — it records graph JSON, Mermaid, React Flow model, and validation errors using visual-core enum values, but does not call or implement `workflow-visual-core` — LOCKED
 - **`Pass7ReviewCandidate` is candidate-only** — it carries a source Pass 6 result, reason, linked references, route, and status, but no discussion thread, review action, or final decision mechanics — LOCKED
 
+## Pass 6 Block 2 — Persistence and Repository Layer
+
+- **Pass 6 persistence stores supplied records only** — repositories save, read, list, find by case where available, and update supplied records without deriving workflow claims, readiness decisions, package eligibility, prompt outputs, visuals, Copilot answers, or Pass 7 review mechanics — LOCKED
+- **Pass 6 core records use a grouped SQLite payload table** — the persistence layer stores Block 1 record families in `pass6_core_records` keyed by record type and id, with a case-id index where the contract carries `caseId`; this avoids broad bespoke table work while keeping record responsibilities typed at the repository boundary — IMPL-EXTENSION
+- **Stored Pass 6 records preserve timestamp fields without becoming contract validators** — persistence record types add or preserve `createdAt` / `updatedAt` where needed, but validation remains owned by `packages/contracts` and no business rules are added at save time — LOCKED
+
 ## contracts
 
 - **Ajv 8 + ajv-formats for JSON Schema validation** — industry standard, fast, supports Draft-07, formats plugin needed for `date-time` and `uri` — LOCKED

@@ -62,6 +62,22 @@ import type {
   AdminReviewStatus,
   Pass6HandoffAdminDecision,
   EvidenceDisputeAdminDecision,
+  AnalysisMethodUsage,
+  AssembledWorkflowDraft,
+  ClarificationNeed,
+  DifferenceInterpretation,
+  DraftOperationalDocument,
+  InitialWorkflowPackage,
+  InquiryPacket,
+  Pass6CopilotContextBundle,
+  Pass7ReviewCandidate,
+  PrePackageGateResult,
+  SynthesisInputBundle,
+  WorkflowClaim,
+  WorkflowGapClosureBrief,
+  WorkflowGraphRecord,
+  WorkflowReadinessResult,
+  WorkflowUnit,
 } from "@workflow/contracts";
 
 import { mkdirSync } from "node:fs";
@@ -231,6 +247,69 @@ export interface StoredBoundarySignal extends BoundarySignal {}
 export interface StoredEvidenceDispute extends EvidenceDispute {}
 export interface StoredSessionNextAction extends SessionNextAction {}
 export interface StoredPass6HandoffCandidate extends Pass6HandoffCandidate {}
+
+export interface StoredSynthesisInputBundle extends SynthesisInputBundle {
+  updatedAt: string;
+}
+export interface StoredWorkflowUnit extends WorkflowUnit {
+  createdAt: string;
+  updatedAt: string;
+}
+export interface StoredWorkflowClaim extends WorkflowClaim {
+  createdAt: string;
+  updatedAt: string;
+}
+export interface StoredAnalysisMethodUsage extends AnalysisMethodUsage {
+  createdAt: string;
+  updatedAt: string;
+}
+export interface StoredDifferenceInterpretation extends DifferenceInterpretation {
+  createdAt: string;
+  updatedAt: string;
+}
+export interface StoredAssembledWorkflowDraft extends AssembledWorkflowDraft {
+  createdAt: string;
+  updatedAt: string;
+}
+export interface StoredWorkflowReadinessResult extends WorkflowReadinessResult {
+  createdAt: string;
+  updatedAt: string;
+}
+export interface StoredPrePackageGateResult extends PrePackageGateResult {
+  createdAt: string;
+  updatedAt: string;
+}
+export interface StoredClarificationNeed extends ClarificationNeed {
+  createdAt: string;
+  updatedAt: string;
+}
+export interface StoredInquiryPacket extends InquiryPacket {
+  updatedAt: string;
+}
+export interface StoredInitialWorkflowPackage extends InitialWorkflowPackage {
+  createdAt: string;
+  updatedAt: string;
+}
+export interface StoredWorkflowGapClosureBrief extends WorkflowGapClosureBrief {
+  createdAt: string;
+  updatedAt: string;
+}
+export interface StoredDraftOperationalDocument extends DraftOperationalDocument {
+  createdAt: string;
+  updatedAt: string;
+}
+export interface StoredWorkflowGraphRecord extends WorkflowGraphRecord {
+  createdAt: string;
+  updatedAt: string;
+}
+export interface StoredPass6CopilotContextBundle extends Pass6CopilotContextBundle {
+  createdAt: string;
+  updatedAt: string;
+}
+export interface StoredPass7ReviewCandidate extends Pass7ReviewCandidate {
+  createdAt: string;
+  updatedAt: string;
+}
 
 // ---------------------------------------------------------------------------
 // Repository interfaces — backend-agnostic
@@ -650,6 +729,31 @@ export interface Pass6HandoffCandidateRepository {
     adminDecision: Pass6HandoffAdminDecision,
   ): StoredPass6HandoffCandidate | null;
 }
+
+export interface Pass6RecordRepository<TRecord extends object> {
+  save(record: TRecord): void;
+  findById(id: string): TRecord | null;
+  findByCaseId(caseId: string): TRecord[];
+  findAll(): TRecord[];
+  update(id: string, updates: Partial<TRecord>): TRecord | null;
+}
+
+export type SynthesisInputBundleRepository = Pass6RecordRepository<StoredSynthesisInputBundle>;
+export type WorkflowUnitRepository = Pass6RecordRepository<StoredWorkflowUnit>;
+export type WorkflowClaimRepository = Pass6RecordRepository<StoredWorkflowClaim>;
+export type AnalysisMethodUsageRepository = Pass6RecordRepository<StoredAnalysisMethodUsage>;
+export type DifferenceInterpretationRepository = Pass6RecordRepository<StoredDifferenceInterpretation>;
+export type AssembledWorkflowDraftRepository = Pass6RecordRepository<StoredAssembledWorkflowDraft>;
+export type WorkflowReadinessResultRepository = Pass6RecordRepository<StoredWorkflowReadinessResult>;
+export type PrePackageGateResultRepository = Pass6RecordRepository<StoredPrePackageGateResult>;
+export type ClarificationNeedRepository = Pass6RecordRepository<StoredClarificationNeed>;
+export type InquiryPacketRepository = Pass6RecordRepository<StoredInquiryPacket>;
+export type InitialWorkflowPackageRepository = Pass6RecordRepository<StoredInitialWorkflowPackage>;
+export type WorkflowGapClosureBriefRepository = Pass6RecordRepository<StoredWorkflowGapClosureBrief>;
+export type DraftOperationalDocumentRepository = Pass6RecordRepository<StoredDraftOperationalDocument>;
+export type WorkflowGraphRecordRepository = Pass6RecordRepository<StoredWorkflowGraphRecord>;
+export type Pass6CopilotContextBundleRepository = Pass6RecordRepository<StoredPass6CopilotContextBundle>;
+export type Pass7ReviewCandidateRepository = Pass6RecordRepository<StoredPass7ReviewCandidate>;
 
 // ---------------------------------------------------------------------------
 // In-memory implementations
@@ -1520,6 +1624,49 @@ function cloneRecord<T>(record: T): T {
   return structuredClone(record);
 }
 
+type Pass6RecordIdGetter<TRecord extends object> = (record: TRecord) => string;
+type Pass6RecordCaseIdGetter<TRecord extends object> = (record: TRecord) => string | undefined;
+
+class InMemoryPass6RecordRepository<TRecord extends object>
+  implements Pass6RecordRepository<TRecord>
+{
+  private readonly store = new Map<string, TRecord>();
+
+  constructor(
+    private readonly getId: Pass6RecordIdGetter<TRecord>,
+    private readonly getCaseId: Pass6RecordCaseIdGetter<TRecord> = () => undefined,
+  ) {}
+
+  save(record: TRecord): void {
+    this.store.set(this.getId(record), cloneRecord(record));
+  }
+
+  findById(id: string): TRecord | null {
+    const record = this.store.get(id);
+    return record ? cloneRecord(record) : null;
+  }
+
+  findByCaseId(caseId: string): TRecord[] {
+    return this.findAll().filter((record) => this.getCaseId(record) === caseId);
+  }
+
+  findAll(): TRecord[] {
+    return Array.from(this.store.values()).map((record) => cloneRecord(record));
+  }
+
+  update(id: string, updates: Partial<TRecord>): TRecord | null {
+    const existing = this.store.get(id);
+    if (!existing) return null;
+    const updated = cloneRecord({ ...existing, ...updates });
+    this.store.set(id, updated);
+    return cloneRecord(updated);
+  }
+}
+
+function pass6CaseId<TRecord extends { caseId?: string }>(record: TRecord): string | undefined {
+  return record.caseId;
+}
+
 const inactiveTelegramBindingStatuses: readonly TelegramBindingStatus[] = [
   "rejected_or_unlinked",
 ];
@@ -1989,6 +2136,13 @@ function openIntakeDatabase(dbPath?: string): DatabaseSync {
       admin_decision TEXT NOT NULL,
       payload TEXT NOT NULL
     );
+    CREATE TABLE IF NOT EXISTS pass6_core_records (
+      record_type TEXT NOT NULL,
+      id TEXT NOT NULL,
+      case_id TEXT,
+      payload TEXT NOT NULL,
+      PRIMARY KEY (record_type, id)
+    );
     CREATE INDEX IF NOT EXISTS idx_provider_jobs_source_id ON provider_extraction_jobs(source_id);
     CREATE INDEX IF NOT EXISTS idx_provider_jobs_session_id ON provider_extraction_jobs(session_id);
     CREATE INDEX IF NOT EXISTS idx_text_artifacts_source_id ON text_artifacts(source_id);
@@ -2058,6 +2212,8 @@ function openIntakeDatabase(dbPath?: string): DatabaseSync {
     CREATE INDEX IF NOT EXISTS idx_evidence_disputes_extraction_id ON evidence_disputes(extraction_id);
     CREATE INDEX IF NOT EXISTS idx_session_next_actions_session_id ON session_next_actions(session_id);
     CREATE INDEX IF NOT EXISTS idx_pass6_handoff_candidates_case_id ON pass6_handoff_candidates(case_id);
+    CREATE INDEX IF NOT EXISTS idx_pass6_core_records_type ON pass6_core_records(record_type);
+    CREATE INDEX IF NOT EXISTS idx_pass6_core_records_case_id ON pass6_core_records(record_type, case_id);
   `);
   return db;
 }
@@ -3196,7 +3352,96 @@ export class SQLitePass6HandoffCandidateRepository implements Pass6HandoffCandid
   }
 }
 
+export class SQLitePass6RecordRepository<TRecord extends object>
+  implements Pass6RecordRepository<TRecord>
+{
+  private readonly db: DatabaseSync;
+
+  constructor(
+    private readonly recordType: string,
+    private readonly getId: Pass6RecordIdGetter<TRecord>,
+    private readonly getCaseId: Pass6RecordCaseIdGetter<TRecord> = () => undefined,
+    dbPath?: string,
+  ) {
+    this.db = openIntakeDatabase(dbPath);
+  }
+
+  save(record: TRecord): void {
+    const cloned = cloneRecord(record);
+    this.db.prepare(
+      "INSERT INTO pass6_core_records (record_type, id, case_id, payload) VALUES (?, ?, ?, ?) ON CONFLICT(record_type, id) DO UPDATE SET case_id = excluded.case_id, payload = excluded.payload",
+    ).run(this.recordType, this.getId(cloned), this.getCaseId(cloned) ?? null, JSON.stringify(cloned));
+  }
+
+  findById(id: string): TRecord | null {
+    const row = this.db.prepare(
+      "SELECT payload FROM pass6_core_records WHERE record_type = ? AND id = ?",
+    ).get(this.recordType, id);
+    const record = parseStored<TRecord>(row);
+    return record ? cloneRecord(record) : null;
+  }
+
+  findByCaseId(caseId: string): TRecord[] {
+    const rows = this.db.prepare(
+      "SELECT payload FROM pass6_core_records WHERE record_type = ? AND case_id = ? ORDER BY id",
+    ).all(this.recordType, caseId);
+    return parseStoredList<TRecord>(rows).map((record) => cloneRecord(record));
+  }
+
+  findAll(): TRecord[] {
+    const rows = this.db.prepare(
+      "SELECT payload FROM pass6_core_records WHERE record_type = ? ORDER BY id",
+    ).all(this.recordType);
+    return parseStoredList<TRecord>(rows).map((record) => cloneRecord(record));
+  }
+
+  update(id: string, updates: Partial<TRecord>): TRecord | null {
+    const existing = this.findById(id);
+    if (!existing) return null;
+    const updated = cloneRecord({ ...existing, ...updates });
+    this.save(updated);
+    return cloneRecord(updated);
+  }
+}
+
+function createSQLitePass6Repositories(dbPath?: string): Pass6PersistenceRepositories {
+  return {
+    synthesisInputBundles: new SQLitePass6RecordRepository<StoredSynthesisInputBundle>("synthesis_input_bundle", (record) => record.bundleId, pass6CaseId, dbPath),
+    workflowUnits: new SQLitePass6RecordRepository<StoredWorkflowUnit>("workflow_unit", (record) => record.unitId, pass6CaseId, dbPath),
+    workflowClaims: new SQLitePass6RecordRepository<StoredWorkflowClaim>("workflow_claim", (record) => record.claimId, pass6CaseId, dbPath),
+    analysisMethodUsages: new SQLitePass6RecordRepository<StoredAnalysisMethodUsage>("analysis_method_usage", (record) => record.methodUsageId, () => undefined, dbPath),
+    differenceInterpretations: new SQLitePass6RecordRepository<StoredDifferenceInterpretation>("difference_interpretation", (record) => record.differenceId, pass6CaseId, dbPath),
+    assembledWorkflowDrafts: new SQLitePass6RecordRepository<StoredAssembledWorkflowDraft>("assembled_workflow_draft", (record) => record.draftId, pass6CaseId, dbPath),
+    workflowReadinessResults: new SQLitePass6RecordRepository<StoredWorkflowReadinessResult>("workflow_readiness_result", (record) => record.resultId, pass6CaseId, dbPath),
+    prePackageGateResults: new SQLitePass6RecordRepository<StoredPrePackageGateResult>("pre_package_gate_result", (record) => record.gateResultId, pass6CaseId, dbPath),
+    clarificationNeeds: new SQLitePass6RecordRepository<StoredClarificationNeed>("clarification_need", (record) => record.clarificationNeedId, () => undefined, dbPath),
+    inquiryPackets: new SQLitePass6RecordRepository<StoredInquiryPacket>("inquiry_packet", (record) => record.inquiryPacketId, pass6CaseId, dbPath),
+    initialWorkflowPackages: new SQLitePass6RecordRepository<StoredInitialWorkflowPackage>("initial_workflow_package", (record) => record.packageId, pass6CaseId, dbPath),
+    workflowGapClosureBriefs: new SQLitePass6RecordRepository<StoredWorkflowGapClosureBrief>("workflow_gap_closure_brief", (record) => record.briefId, pass6CaseId, dbPath),
+    draftOperationalDocuments: new SQLitePass6RecordRepository<StoredDraftOperationalDocument>("draft_operational_document", (record) => record.draftId, pass6CaseId, dbPath),
+    workflowGraphRecords: new SQLitePass6RecordRepository<StoredWorkflowGraphRecord>("workflow_graph_record", (record) => record.visualRecordId, pass6CaseId, dbPath),
+    pass6CopilotContextBundles: new SQLitePass6RecordRepository<StoredPass6CopilotContextBundle>("pass6_copilot_context_bundle", (record) => record.contextBundleId, pass6CaseId, dbPath),
+    pass7ReviewCandidates: new SQLitePass6RecordRepository<StoredPass7ReviewCandidate>("pass7_review_candidate", (record) => record.candidateId, pass6CaseId, dbPath),
+  };
+}
+
 export function createSQLiteIntakeRepositories(dbPath?: string): {
+  synthesisInputBundles: SynthesisInputBundleRepository;
+  workflowUnits: WorkflowUnitRepository;
+  workflowClaims: WorkflowClaimRepository;
+  analysisMethodUsages: AnalysisMethodUsageRepository;
+  differenceInterpretations: DifferenceInterpretationRepository;
+  assembledWorkflowDrafts: AssembledWorkflowDraftRepository;
+  workflowReadinessResults: WorkflowReadinessResultRepository;
+  prePackageGateResults: PrePackageGateResultRepository;
+  clarificationNeeds: ClarificationNeedRepository;
+  inquiryPackets: InquiryPacketRepository;
+  initialWorkflowPackages: InitialWorkflowPackageRepository;
+  workflowGapClosureBriefs: WorkflowGapClosureBriefRepository;
+  draftOperationalDocuments: DraftOperationalDocumentRepository;
+  workflowGraphRecords: WorkflowGraphRecordRepository;
+  pass6CopilotContextBundles: Pass6CopilotContextBundleRepository;
+  pass7ReviewCandidates: Pass7ReviewCandidateRepository;
   intakeSessions: IntakeSessionRepository;
   intakeSources: IntakeSourceRepository;
   providerJobs: ProviderExtractionJobRepository;
@@ -3236,6 +3481,7 @@ export function createSQLiteIntakeRepositories(dbPath?: string): {
   pass6HandoffCandidates: Pass6HandoffCandidateRepository;
 } {
   return {
+    ...createSQLitePass6Repositories(dbPath),
     intakeSessions: new SQLiteIntakeSessionRepository(dbPath),
     intakeSources: new SQLiteIntakeSourceRepository(dbPath),
     providerJobs: new SQLiteProviderExtractionJobRepository(dbPath),
@@ -3284,7 +3530,26 @@ export function getDefaultIntakeSqlitePath(): string {
 // Factory
 // ---------------------------------------------------------------------------
 
-export interface InMemoryStore {
+export interface Pass6PersistenceRepositories {
+  synthesisInputBundles: SynthesisInputBundleRepository;
+  workflowUnits: WorkflowUnitRepository;
+  workflowClaims: WorkflowClaimRepository;
+  analysisMethodUsages: AnalysisMethodUsageRepository;
+  differenceInterpretations: DifferenceInterpretationRepository;
+  assembledWorkflowDrafts: AssembledWorkflowDraftRepository;
+  workflowReadinessResults: WorkflowReadinessResultRepository;
+  prePackageGateResults: PrePackageGateResultRepository;
+  clarificationNeeds: ClarificationNeedRepository;
+  inquiryPackets: InquiryPacketRepository;
+  initialWorkflowPackages: InitialWorkflowPackageRepository;
+  workflowGapClosureBriefs: WorkflowGapClosureBriefRepository;
+  draftOperationalDocuments: DraftOperationalDocumentRepository;
+  workflowGraphRecords: WorkflowGraphRecordRepository;
+  pass6CopilotContextBundles: Pass6CopilotContextBundleRepository;
+  pass7ReviewCandidates: Pass7ReviewCandidateRepository;
+}
+
+export interface InMemoryStore extends Pass6PersistenceRepositories {
   cases: CaseRepository;
   sources: SourceRepository;
   prompts: PromptRepository;
@@ -3337,8 +3602,30 @@ export interface InMemoryStore {
   fileStore: Map<string, { bytes: ArrayBuffer; mimeType: string }>;
 }
 
+function createInMemoryPass6Repositories(): Pass6PersistenceRepositories {
+  return {
+    synthesisInputBundles: new InMemoryPass6RecordRepository<StoredSynthesisInputBundle>((record) => record.bundleId, pass6CaseId),
+    workflowUnits: new InMemoryPass6RecordRepository<StoredWorkflowUnit>((record) => record.unitId, pass6CaseId),
+    workflowClaims: new InMemoryPass6RecordRepository<StoredWorkflowClaim>((record) => record.claimId, pass6CaseId),
+    analysisMethodUsages: new InMemoryPass6RecordRepository<StoredAnalysisMethodUsage>((record) => record.methodUsageId),
+    differenceInterpretations: new InMemoryPass6RecordRepository<StoredDifferenceInterpretation>((record) => record.differenceId, pass6CaseId),
+    assembledWorkflowDrafts: new InMemoryPass6RecordRepository<StoredAssembledWorkflowDraft>((record) => record.draftId, pass6CaseId),
+    workflowReadinessResults: new InMemoryPass6RecordRepository<StoredWorkflowReadinessResult>((record) => record.resultId, pass6CaseId),
+    prePackageGateResults: new InMemoryPass6RecordRepository<StoredPrePackageGateResult>((record) => record.gateResultId, pass6CaseId),
+    clarificationNeeds: new InMemoryPass6RecordRepository<StoredClarificationNeed>((record) => record.clarificationNeedId),
+    inquiryPackets: new InMemoryPass6RecordRepository<StoredInquiryPacket>((record) => record.inquiryPacketId, pass6CaseId),
+    initialWorkflowPackages: new InMemoryPass6RecordRepository<StoredInitialWorkflowPackage>((record) => record.packageId, pass6CaseId),
+    workflowGapClosureBriefs: new InMemoryPass6RecordRepository<StoredWorkflowGapClosureBrief>((record) => record.briefId, pass6CaseId),
+    draftOperationalDocuments: new InMemoryPass6RecordRepository<StoredDraftOperationalDocument>((record) => record.draftId, pass6CaseId),
+    workflowGraphRecords: new InMemoryPass6RecordRepository<StoredWorkflowGraphRecord>((record) => record.visualRecordId, pass6CaseId),
+    pass6CopilotContextBundles: new InMemoryPass6RecordRepository<StoredPass6CopilotContextBundle>((record) => record.contextBundleId, pass6CaseId),
+    pass7ReviewCandidates: new InMemoryPass6RecordRepository<StoredPass7ReviewCandidate>((record) => record.candidateId, pass6CaseId),
+  };
+}
+
 export function createInMemoryStore(): InMemoryStore {
   return {
+    ...createInMemoryPass6Repositories(),
     cases: new InMemoryCaseRepository(),
     sources: new InMemorySourceRepository(),
     prompts: new InMemoryPromptRepository(),
@@ -3429,6 +3716,22 @@ export type {
   Pass6HandoffCandidate,
   RawEvidenceItem,
   SessionAccessToken,
+  AnalysisMethodUsage,
+  AssembledWorkflowDraft,
+  ClarificationNeed,
+  DifferenceInterpretation,
+  DraftOperationalDocument,
+  InitialWorkflowPackage,
+  InquiryPacket,
+  Pass6CopilotContextBundle,
+  Pass7ReviewCandidate,
+  PrePackageGateResult,
+  SynthesisInputBundle,
   TelegramIdentityBinding,
   SessionNextAction,
+  WorkflowClaim,
+  WorkflowGapClosureBrief,
+  WorkflowGraphRecord,
+  WorkflowReadinessResult,
+  WorkflowUnit,
 };

@@ -1,37 +1,17 @@
 import assert from "node:assert/strict";
 import { execSync } from "node:child_process";
+import { existsSync, unlinkSync } from "node:fs";
+import { join } from "node:path";
+import { tmpdir } from "node:os";
 
 import {
-  validateAnalysisMethodUsage,
-  validateAssembledWorkflowDraft,
-  validateClarificationNeed,
-  validateDifferenceInterpretation,
-  validateDraftOperationalDocument,
-  validateInitialWorkflowPackage,
-  validateInquiryPacket,
-  validatePass6CopilotContextBundle,
-  validatePass7ReviewCandidate,
-  validatePrePackageGateResult,
-  validateSevenConditionAssessment,
-  validateSynthesisInputBundle,
-  validateWorkflowClaim,
-  validateWorkflowGapClosureBrief,
-  validateWorkflowGraphRecord,
-  validateWorkflowReadinessResult,
-  validateWorkflowUnit,
-} from "../packages/contracts/dist/index.js";
+  createInMemoryStore,
+  createSQLiteIntakeRepositories,
+} from "../packages/persistence/dist/index.js";
 
-const now = "2026-04-26T00:00:00.000Z";
-
-function assertValid(name, validator, value) {
-  const result = validator(value);
-  assert.equal(result.ok, true, `${name} should validate: ${JSON.stringify(result.errors ?? [])}`);
-}
-
-function assertInvalid(name, validator, value) {
-  const result = validator(value);
-  assert.equal(result.ok, false, `${name} should reject invalid input`);
-}
+const now = "2026-04-27T00:00:00.000Z";
+const updatedAt = "2026-04-27T00:05:00.000Z";
+const caseId = "case-pass6-block2-proof";
 
 const reference = {
   referenceId: "ref-evidence-1",
@@ -48,6 +28,12 @@ const basis = {
   references: [reference],
 };
 
+const metadata = {
+  createdAt: now,
+  createdBy: "pass6-block2-proof",
+  notes: "Persistence fixture only.",
+};
+
 const material = {
   itemId: "material-1",
   itemType: "accepted_extraction",
@@ -57,63 +43,43 @@ const material = {
   truthLensContextIds: ["truth-context-1"],
 };
 
-const metadata = {
-  createdAt: now,
-  createdBy: "pass6-block1-proof",
-  notes: "Contract fixture only.",
-};
-
 const synthesisInputBundle = {
   bundleId: "bundle-1",
-  caseId: "case-1",
+  caseId,
   createdAt: now,
+  updatedAt,
   sourcePass5SessionIds: ["session-1"],
   analysis_material: [material],
   boundary_role_limit_material: [material],
   gap_risk_no_drop_material: [material],
   document_source_signal_material: [material],
-  roleLayerContexts: [
-    {
-      contextId: "role-context-1",
-      participantRole: "Coordinator",
-      department: "Operations",
-      layer: "operator",
-      authorityScope: "describes own work only",
-    },
-  ],
-  truthLensContexts: [
-    {
-      contextId: "truth-context-1",
-      lensType: "participant_claim",
-      summary: "First-person participant statement.",
-      limitations: ["Not final workflow truth."],
-    },
-  ],
+  roleLayerContexts: [{ contextId: "role-context-1", participantRole: "Coordinator" }],
+  truthLensContexts: [{ contextId: "truth-context-1", lensType: "participant_claim" }],
   preparationSummary: {
     preparedBy: "system_with_admin_review",
     summary: "Accepted Pass 5 outputs prepared for synthesis.",
     acceptedPass5Only: true,
     doesNotRevalidatePass5: true,
-    noDropNotes: ["Unmapped and boundary material retained."],
+    noDropNotes: ["Unmapped material retained."],
   },
 };
 
 const workflowUnit = {
   unitId: "unit-1",
-  caseId: "case-1",
+  caseId,
   bundleId: "bundle-1",
   unitType: "action_step",
   unitText: "Coordinator checks the request.",
   roleLayerContextId: "role-context-1",
   basis,
+  createdAt: now,
+  updatedAt,
 };
 
 const workflowClaim = {
   claimId: "claim-1",
-  caseId: "case-1",
+  caseId,
   primaryClaimType: "execution_claim",
-  secondaryClaimTypes: ["ownership_claim"],
-  claimText: "The coordinator checks the request.",
   normalizedStatement: "Coordinator checks request before approval.",
   sourceParticipantIds: ["participant-1"],
   sourceSessionIds: ["session-1"],
@@ -123,6 +89,8 @@ const workflowClaim = {
   confidence: "medium",
   materiality: "high",
   status: "proposed",
+  createdAt: now,
+  updatedAt,
 };
 
 const analysisMethodUsage = {
@@ -148,11 +116,13 @@ const analysisMethodUsage = {
     notes: "Appropriate for process structure classification.",
     limitations: ["Does not prove final workflow truth."],
   },
+  createdAt: now,
+  updatedAt,
 };
 
 const differenceInterpretation = {
   differenceId: "difference-1",
-  caseId: "case-1",
+  caseId,
   involvedClaimIds: ["claim-1", "claim-2"],
   involvedLayers: ["operator", "supervisor"],
   involvedRoles: ["Coordinator", "Supervisor"],
@@ -162,6 +132,8 @@ const differenceInterpretation = {
   explanation: "Two roles describe different valid variants.",
   methodUsageIds: ["method-usage-1"],
   notPerformanceEvaluation: true,
+  createdAt: now,
+  updatedAt,
 };
 
 const workflowElement = {
@@ -174,7 +146,7 @@ const workflowElement = {
 
 const assembledWorkflowDraft = {
   draftId: "draft-1",
-  caseId: "case-1",
+  caseId,
   basedOnBundleId: "bundle-1",
   workflowUnderstandingLevel: "reconstructable_workflow_with_gaps",
   steps: [workflowElement],
@@ -188,34 +160,36 @@ const assembledWorkflowDraft = {
   unresolvedItems: ["approval-threshold"],
   claimBasisMap: [{ workflowElementId: "step-1", claimIds: ["claim-1"] }],
   metadata,
+  createdAt: now,
+  updatedAt,
 };
 
-const conditionKeys = [
-  "core_sequence_continuity",
-  "step_to_step_connection",
-  "essential_step_requirements",
-  "decision_rules_thresholds",
-  "handoffs_responsibility",
-  "controls_approvals",
-  "use_case_boundary",
-];
+const conditionItem = (status = "clear_enough") => ({
+  status,
+  rationale: "Condition assessed from stored contract basis.",
+  basis,
+  blocksInitialPackage: false,
+});
 
 const sevenConditionAssessment = {
   assessmentId: "assessment-1",
-  caseId: "case-1",
+  caseId,
   assembledWorkflowDraftId: "draft-1",
-  conditions: Object.fromEntries(conditionKeys.map((conditionKey) => [conditionKey, {
-    status: conditionKey === "decision_rules_thresholds" ? "warning" : "clear_enough",
-    rationale: `${conditionKey} assessed for package readiness.`,
-    basis,
-    blocksInitialPackage: false,
-  }])),
+  conditions: {
+    core_sequence_continuity: conditionItem(),
+    step_to_step_connection: conditionItem(),
+    essential_step_requirements: conditionItem(),
+    decision_rules_thresholds: conditionItem("warning"),
+    handoffs_responsibility: conditionItem(),
+    controls_approvals: conditionItem(),
+    use_case_boundary: conditionItem(),
+  },
   overallSummary: "Workflow is usable with warnings.",
 };
 
 const workflowReadinessResult = {
   resultId: "readiness-1",
-  caseId: "case-1",
+  caseId,
   assembledWorkflowDraftId: "draft-1",
   readinessDecision: "ready_for_initial_package_with_warnings",
   sevenConditionAssessment,
@@ -228,6 +202,8 @@ const workflowReadinessResult = {
   routingRecommendations: ["Proceed only with warning approval."],
   analysisMetadata: metadata,
   is6CAllowed: true,
+  createdAt: now,
+  updatedAt,
 };
 
 const clarificationNeed = {
@@ -244,20 +220,23 @@ const clarificationNeed = {
   basis,
   recommendedChannel: "manager_follow_up",
   priority: "medium",
+  createdAt: now,
+  updatedAt,
 };
 
 const inquiryPacket = {
   inquiryPacketId: "inquiry-1",
-  caseId: "case-1",
+  caseId,
   targetRole: "Supervisor",
   clarificationNeeds: [clarificationNeed],
   packetStatus: "draft_not_sent",
   createdAt: now,
+  updatedAt,
 };
 
 const prePackageGateResult = {
   gateResultId: "gate-1",
-  caseId: "case-1",
+  caseId,
   workflowReadinessResultId: "readiness-1",
   gateDecision: "proceed_with_warnings_approved",
   clarificationNeeds: [clarificationNeed],
@@ -267,6 +246,8 @@ const prePackageGateResult = {
     approvedAt: now,
     approvalNote: "Proceed with explicit threshold caveat.",
   },
+  createdAt: now,
+  updatedAt,
 };
 
 const packageSection = {
@@ -278,7 +259,7 @@ const packageSection = {
 
 const initialWorkflowPackage = {
   packageId: "initial-package-1",
-  caseId: "case-1",
+  caseId,
   workflowReadinessResultId: "readiness-1",
   packageStatus: "initial_package_ready_with_warnings",
   clientFacingSections: [packageSection],
@@ -287,33 +268,39 @@ const initialWorkflowPackage = {
   interfacesDependencies: ["Supervisor approval dependency."],
   documentReferenceImplications: ["SOP draft may need threshold field."],
   metadata,
+  createdAt: now,
+  updatedAt,
 };
 
 const workflowGapClosureBrief = {
   briefId: "gap-brief-1",
-  caseId: "case-1",
+  caseId,
   packageBlockedReason: "Decision threshold unknown.",
   currentlyVisibleWorkflow: "Request check step is visible; approval threshold is missing.",
   brokenUnknownConditions: ["decision_rules_thresholds"],
   gapsToClose: ["Confirm approval threshold."],
   recommendedClarificationRoute: "Ask supervisor for threshold.",
   nextStepToReachPackageReadiness: "Resolve threshold question or approve warning route.",
+  createdAt: now,
+  updatedAt,
 };
 
 const draftOperationalDocument = {
   draftId: "draft-document-1",
-  caseId: "case-1",
+  caseId,
   documentDraftType: "sop_draft",
   draftStatus: "draft_only_not_approved",
   evidenceMaturitySummary: "Evidence is mature enough for a draft with warnings.",
   sections: [packageSection],
   limitations: ["Draft only. Not approved or released."],
   metadata,
+  createdAt: now,
+  updatedAt,
 };
 
 const workflowGraphRecord = {
   visualRecordId: "visual-1",
-  caseId: "case-1",
+  caseId,
   assembledWorkflowDraftId: "draft-1",
   workflowGraphJson: {
     nodes: [
@@ -325,38 +312,35 @@ const workflowGraphRecord = {
     ],
   },
   workflowMermaid: "flowchart LR\n  start-1 --> step-1",
-  workflowReactFlowModel: {
-    nodes: [],
-    edges: [],
-  },
+  workflowReactFlowModel: { nodes: [], edges: [] },
   visualValidationErrors: [],
+  createdAt: now,
+  updatedAt,
 };
 
-const contextRef = {
-  referenceId: "bundle-1",
-  referenceType: "synthesis_input_bundle",
-  label: "Synthesis input bundle",
-};
+const contextRef = { referenceId: "bundle-1", referenceType: "synthesis_input_bundle" };
 
 const pass6CopilotContextBundle = {
   contextBundleId: "copilot-context-1",
-  caseId: "case-1",
+  caseId,
   bundleRefs: [contextRef],
-  claimRefs: [{ ...contextRef, referenceId: "claim-1", referenceType: "workflow_claim" }],
-  methodUsageRefs: [{ ...contextRef, referenceId: "method-usage-1", referenceType: "analysis_method_usage" }],
-  workflowDraftRefs: [{ ...contextRef, referenceId: "draft-1", referenceType: "assembled_workflow_draft" }],
-  readinessResultRefs: [{ ...contextRef, referenceId: "readiness-1", referenceType: "workflow_readiness_result" }],
-  gateResultRefs: [{ ...contextRef, referenceId: "gate-1", referenceType: "pre_package_gate_result" }],
-  packageOrBriefRefs: [{ ...contextRef, referenceId: "initial-package-1", referenceType: "initial_workflow_package" }],
-  visualRecordRefs: [{ ...contextRef, referenceId: "visual-1", referenceType: "workflow_graph_record" }],
-  activeConfigPolicyRefs: [{ ...contextRef, referenceId: "policy-1", referenceType: "pass6_policy" }],
-  relevantAdminActionRefs: [{ ...contextRef, referenceId: "admin-action-1", referenceType: "admin_action" }],
+  claimRefs: [{ referenceId: "claim-1", referenceType: "workflow_claim" }],
+  methodUsageRefs: [{ referenceId: "method-usage-1", referenceType: "analysis_method_usage" }],
+  workflowDraftRefs: [{ referenceId: "draft-1", referenceType: "assembled_workflow_draft" }],
+  readinessResultRefs: [{ referenceId: "readiness-1", referenceType: "workflow_readiness_result" }],
+  gateResultRefs: [{ referenceId: "gate-1", referenceType: "pre_package_gate_result" }],
+  packageOrBriefRefs: [{ referenceId: "initial-package-1", referenceType: "initial_workflow_package" }],
+  visualRecordRefs: [{ referenceId: "visual-1", referenceType: "workflow_graph_record" }],
+  activeConfigPolicyRefs: [{ referenceId: "policy-1", referenceType: "pass6_policy" }],
+  relevantAdminActionRefs: [{ referenceId: "admin-action-1", referenceType: "admin_action" }],
   readOnly: true,
+  createdAt: now,
+  updatedAt,
 };
 
 const pass7ReviewCandidate = {
   candidateId: "pass7-candidate-1",
-  caseId: "case-1",
+  caseId,
   sourcePass6ResultId: "readiness-1",
   issueType: "gap_blocks_package",
   reason: "Approval threshold needs review if package warning is rejected.",
@@ -366,78 +350,100 @@ const pass7ReviewCandidate = {
   ],
   recommendedReviewRoute: "Create Pass 7 review only if admin rejects warning path.",
   status: "candidate_open",
+  createdAt: now,
+  updatedAt,
 };
 
-const validFixtures = [
-  ["SynthesisInputBundle", validateSynthesisInputBundle, synthesisInputBundle],
-  ["WorkflowUnit", validateWorkflowUnit, workflowUnit],
-  ["WorkflowClaim", validateWorkflowClaim, workflowClaim],
-  ["AnalysisMethodUsage", validateAnalysisMethodUsage, analysisMethodUsage],
-  ["DifferenceInterpretation", validateDifferenceInterpretation, differenceInterpretation],
-  ["AssembledWorkflowDraft", validateAssembledWorkflowDraft, assembledWorkflowDraft],
-  ["SevenConditionAssessment", validateSevenConditionAssessment, sevenConditionAssessment],
-  ["WorkflowReadinessResult", validateWorkflowReadinessResult, workflowReadinessResult],
-  ["ClarificationNeed", validateClarificationNeed, clarificationNeed],
-  ["InquiryPacket", validateInquiryPacket, inquiryPacket],
-  ["PrePackageGateResult", validatePrePackageGateResult, prePackageGateResult],
-  ["InitialWorkflowPackage", validateInitialWorkflowPackage, initialWorkflowPackage],
-  ["WorkflowGapClosureBrief", validateWorkflowGapClosureBrief, workflowGapClosureBrief],
-  ["DraftOperationalDocument", validateDraftOperationalDocument, draftOperationalDocument],
-  ["WorkflowGraphRecord", validateWorkflowGraphRecord, workflowGraphRecord],
-  ["Pass6CopilotContextBundle", validatePass6CopilotContextBundle, pass6CopilotContextBundle],
-  ["Pass7ReviewCandidate", validatePass7ReviewCandidate, pass7ReviewCandidate],
+const records = [
+  ["synthesisInputBundles", "bundle-1", synthesisInputBundle],
+  ["workflowUnits", "unit-1", workflowUnit],
+  ["workflowClaims", "claim-1", workflowClaim],
+  ["analysisMethodUsages", "method-usage-1", analysisMethodUsage],
+  ["differenceInterpretations", "difference-1", differenceInterpretation],
+  ["assembledWorkflowDrafts", "draft-1", assembledWorkflowDraft],
+  ["workflowReadinessResults", "readiness-1", workflowReadinessResult],
+  ["prePackageGateResults", "gate-1", prePackageGateResult],
+  ["clarificationNeeds", "clarification-need-1", clarificationNeed],
+  ["inquiryPackets", "inquiry-1", inquiryPacket],
+  ["initialWorkflowPackages", "initial-package-1", initialWorkflowPackage],
+  ["workflowGapClosureBriefs", "gap-brief-1", workflowGapClosureBrief],
+  ["draftOperationalDocuments", "draft-document-1", draftOperationalDocument],
+  ["workflowGraphRecords", "visual-1", workflowGraphRecord],
+  ["pass6CopilotContextBundles", "copilot-context-1", pass6CopilotContextBundle],
+  ["pass7ReviewCandidates", "pass7-candidate-1", pass7ReviewCandidate],
 ];
 
-for (const [name, validator, fixture] of validFixtures) {
-  assert.equal(typeof validator, "function", `${name} validator must be exported`);
-  assertValid(name, validator, fixture);
+function exerciseRepositories(store, label) {
+  for (const [repositoryName, id, record] of records) {
+    const repository = store[repositoryName];
+    assert.equal(typeof repository.save, "function", `${label}.${repositoryName}.save exists`);
+    repository.save(record);
+    assert.deepEqual(repository.findById(id), record, `${label}.${repositoryName} findById round-trip`);
+    assert.ok(repository.findAll().length >= 1, `${label}.${repositoryName} findAll returns records`);
+  }
+
+  assert.equal(store.workflowClaims.findByCaseId(caseId).length, 1, `${label}.workflowClaims findByCaseId`);
+  assert.equal(store.workflowReadinessResults.findByCaseId(caseId).length, 1, `${label}.workflowReadinessResults findByCaseId`);
+  assert.equal(store.initialWorkflowPackages.findByCaseId(caseId).length, 1, `${label}.initialWorkflowPackages findByCaseId`);
+  assert.equal(store.analysisMethodUsages.findByCaseId(caseId).length, 0, `${label}.analysisMethodUsages has no case index in contract`);
+
+  const updated = store.workflowClaims.update("claim-1", {
+    status: "accepted_for_assembly",
+    updatedAt: "2026-04-27T00:10:00.000Z",
+  });
+  assert.equal(updated.status, "accepted_for_assembly", `${label}.workflowClaims update stores supplied fields`);
+
+  const storedDraft = store.assembledWorkflowDrafts.findById("draft-1");
+  storedDraft.steps[0].label = "mutated outside repository";
+  assert.equal(
+    store.assembledWorkflowDrafts.findById("draft-1").steps[0].label,
+    "Check request",
+    `${label}.assembledWorkflowDrafts returns defensive copies`,
+  );
+
+  assert.equal(
+    store.workflowReadinessResults.findById("readiness-1").sevenConditionAssessment.conditions.decision_rules_thresholds.status,
+    "warning",
+    `${label}.workflowReadinessResults preserves nested seven-condition map`,
+  );
 }
 
-assertInvalid("SynthesisInputBundle missing required conceptual folder", validateSynthesisInputBundle, {
-  ...synthesisInputBundle,
-  analysis_material: undefined,
-});
+const memoryStore = createInMemoryStore();
+exerciseRepositories(memoryStore, "memory");
 
-assertInvalid("WorkflowReadinessResult invalid readiness decision", validateWorkflowReadinessResult, {
-  ...workflowReadinessResult,
-  readinessDecision: "ready_for_final_package",
-});
+memoryStore.workflowReadinessResults.save(workflowReadinessResult);
+assert.equal(
+  memoryStore.initialWorkflowPackages.findAll().length,
+  1,
+  "saving readiness results does not derive additional packages",
+);
+assert.equal(
+  memoryStore.pass7ReviewCandidates.findAll().length,
+  1,
+  "persistence stores Pass 7 candidates only when explicitly saved",
+);
 
-const missingConditionAssessment = structuredClone(sevenConditionAssessment);
-delete missingConditionAssessment.conditions.use_case_boundary;
-assertInvalid("SevenConditionAssessment missing required condition key", validateSevenConditionAssessment, missingConditionAssessment);
+const sqlitePath = join(tmpdir(), `workflow-pass6-block2-${process.pid}-${Date.now()}.sqlite`);
+if (existsSync(sqlitePath)) unlinkSync(sqlitePath);
+const sqliteStore = createSQLiteIntakeRepositories(sqlitePath);
+exerciseRepositories(sqliteStore, "sqlite");
 
-const extraConditionAssessment = structuredClone(sevenConditionAssessment);
-extraConditionAssessment.conditions.employee_performance = {
-  status: "warning",
-  rationale: "This condition key is outside the Pass 6 readiness contract.",
-  basis,
-  blocksInitialPackage: false,
-};
-assertInvalid("SevenConditionAssessment unknown condition key", validateSevenConditionAssessment, extraConditionAssessment);
-
-const invalidStatusAssessment = structuredClone(sevenConditionAssessment);
-invalidStatusAssessment.conditions.core_sequence_continuity.status = "blocked";
-assertInvalid("SevenConditionAssessment invalid condition status", validateSevenConditionAssessment, invalidStatusAssessment);
-
-assertInvalid("WorkflowGraphRecord invalid visual-core node enum", validateWorkflowGraphRecord, {
-  ...workflowGraphRecord,
-  workflowGraphJson: {
-    ...workflowGraphRecord.workflowGraphJson,
-    nodes: [{ id: "bad-node", type: "task", status: "confirmed", label: "Bad node" }],
-  },
-});
-
-assertInvalid("Pass7ReviewCandidate missing identity", validatePass7ReviewCandidate, {
-  ...pass7ReviewCandidate,
-  candidateId: undefined,
-});
+const restartedSqliteStore = createSQLiteIntakeRepositories(sqlitePath);
+assert.deepEqual(
+  restartedSqliteStore.workflowClaims.findById("claim-1"),
+  sqliteStore.workflowClaims.findById("claim-1"),
+  "SQLite restart preserves workflow claim",
+);
+assert.equal(
+  restartedSqliteStore.workflowGraphRecords.findById("visual-1").workflowGraphJson.nodes[1].status,
+  "warning",
+  "SQLite restart preserves nested visual graph record",
+);
 
 const changedFiles = execSync("git diff --name-only HEAD", { encoding: "utf8" })
   .split("\n")
   .filter(Boolean);
 const allowedPrefixes = [
-  "packages/contracts/",
   "packages/persistence/",
   "scripts/prove-pass6-block1-contracts.mjs",
   "scripts/prove-pass6-block2-persistence.mjs",
@@ -446,8 +452,8 @@ const allowedPrefixes = [
 for (const file of changedFiles) {
   assert.ok(
     allowedPrefixes.some((prefix) => file.startsWith(prefix)),
-    `Pass 6 Block 1 proof found non-contract behavior change: ${file}`,
+    `Pass 6 Block 2 proof found out-of-scope change: ${file}`,
   );
 }
 
-console.log("Pass 6 Block 1 contract proof passed.");
+console.log("Pass 6 Block 2 persistence proof passed.");

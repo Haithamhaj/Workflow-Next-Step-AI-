@@ -21,7 +21,9 @@ The active pass is Pass 6.
 
 Pass 6 Block 0 is accepted as the documentation-only build readiness gate.
 
-Pass 6 Block 1 — Core Contracts and Schema Seams is the current completed implementation block pending acceptance.
+Pass 6 Block 1 — Core Contracts and Schema Seams is accepted.
+
+Pass 6 Block 2 — Persistence and Repository Layer is the current completed implementation block pending acceptance.
 
 Technical Decomposition v4 is the active Pass 6 build map.
 
@@ -48,6 +50,16 @@ Block 1 is contract/schema/type work only.
 - `scripts/prove-pass6-block1-contracts.mjs` validates representative good fixtures and rejects invalid required folder, decision, enum, and identity fields.
 - No behavior implementation starts in Block 1.
 - Next implementation step after acceptance is Block 2 — Persistence and Repository Layer.
+
+## Pass 6 Block 2 Acceptance Gate
+
+Block 2 is persistence/repository work only.
+
+- Pass 6 Block 1 contract records have in-memory repository support.
+- Pass 6 Block 1 contract records have SQLite-backed repository support through the existing persistence entry point.
+- Repository operations store supplied records only: save, findById, findByCaseId, findAll, and update.
+- No analysis, scoring, routing, package eligibility, prompt behavior, visual rendering, Copilot behavior, or Pass 7 mechanics start in Block 2.
+- Next implementation step after acceptance is Block 3 — Pass 6 Admin Configuration and Policy Control Layer.
 
 ## Active Pass 6 Block Map
 
