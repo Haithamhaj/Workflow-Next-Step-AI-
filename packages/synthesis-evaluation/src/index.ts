@@ -24,8 +24,12 @@
 import {
   validateSynthesisRecord,
   validateEvaluationRecord,
+  validatePass6ConfigurationProfile,
   EvaluationAxisState,
   EvaluationOutcome,
+  type Pass6ConfigurationProfile,
+  type Pass6LockedGovernanceRule,
+  type Pass6PolicySet,
   type SynthesisRecord,
   type SynthesisDifferenceBlock,
   type EvaluationRecord,
@@ -38,6 +42,8 @@ import type {
   SynthesisRepository,
   EvaluationRepository,
   InterpretationSnapshotRepository,
+  Pass6ConfigurationProfileRepository,
+  StoredPass6ConfigurationProfile,
 } from "@workflow/persistence";
 
 export const SYNTHESIS_EVALUATION_PACKAGE =
@@ -63,7 +69,17 @@ export type {
   SynthesisRepository,
   EvaluationRepository,
   InterpretationSnapshotRepository,
+  Pass6ConfigurationProfileRepository,
+  StoredPass6ConfigurationProfile,
 } from "@workflow/persistence";
+
+export type {
+  Pass6ConfigurationProfile,
+  Pass6ConfigScope,
+  Pass6ConfigStatus,
+  Pass6LockedGovernanceRule,
+  Pass6PolicySet,
+} from "@workflow/contracts";
 
 // ---------------------------------------------------------------------------
 // Outcome types — discriminated unions
@@ -154,6 +170,326 @@ export function listSynthesisByCaseId(
   repo: SynthesisRepository,
 ): StoredSynthesisRecord[] {
   return repo.findByCaseId(caseId);
+}
+
+// ---------------------------------------------------------------------------
+// Pass 6 configuration and policy control — Block 3
+// ---------------------------------------------------------------------------
+
+export const PASS6_LOCKED_GOVERNANCE_RULES: readonly Pass6LockedGovernanceRule[] = [
+  {
+    ruleId: "pass6a_no_pass5_revalidation",
+    label: "Pass 6A does not redo Pass 5",
+    description: "Synthesis input preparation consumes accepted Pass 5 outputs only and does not revalidate Pass 5.",
+    locked: true,
+  },
+  {
+    ruleId: "document_source_claims_are_signals",
+    label: "Document/source claims are signals",
+    description: "Document and source claims are signals, not operational truth by default.",
+    locked: true,
+  },
+  {
+    ruleId: "candidate_items_not_truth",
+    label: "Candidate items are not workflow truth",
+    description: "Unresolved, disputed, defective, and candidate-only items are not upgraded into workflow truth by configuration.",
+    locked: true,
+  },
+  {
+    ruleId: "scores_do_not_approve_packages",
+    label: "Scores do not approve packages",
+    description: "Scores and thresholds can surface review needs but cannot approve packages automatically.",
+    locked: true,
+  },
+  {
+    ruleId: "material_conflicts_require_review",
+    label: "Material conflicts require handling",
+    description: "Material conflicts require admin or review handling and cannot be suppressed through admin config.",
+    locked: true,
+  },
+  {
+    ruleId: "six_c_requires_readiness_or_warning_approval",
+    label: "6C package generation is readiness-bound",
+    description: "6C cannot generate a full Initial Package unless readiness allows it or admin explicitly proceeds with warnings.",
+    locked: true,
+  },
+  {
+    ruleId: "visual_renderers_do_not_own_truth",
+    label: "Visual renderers do not own workflow truth",
+    description: "Visual renderers validate and render; WDE owns workflow truth and graph construction.",
+    locked: true,
+  },
+  {
+    ruleId: "copilot_read_only_default",
+    label: "Copilot is read-only by default",
+    description: "Pass 6 Copilot context is read-only by default and has no write authority.",
+    locked: true,
+  },
+] as const;
+
+function defaultPolicies(): Pass6PolicySet {
+  return {
+    claimScoringPolicy: {
+      weights: [
+        { factorKey: "evidence_strength", label: "Evidence strength", weight: 0.35 },
+        { factorKey: "source_agreement", label: "Source agreement", weight: 0.25 },
+        { factorKey: "role_authority_fit", label: "Role authority fit", weight: 0.2 },
+        { factorKey: "recency_context", label: "Recency/context fit", weight: 0.2 },
+      ],
+      adminReviewTriggerThreshold: 0.45,
+    },
+    materialityPolicy: {
+      weights: [
+        { factorKey: "customer_impact", label: "Customer impact", weight: 0.3 },
+        { factorKey: "control_or_compliance_impact", label: "Control or compliance impact", weight: 0.3 },
+        { factorKey: "handoff_impact", label: "Handoff impact", weight: 0.2 },
+        { factorKey: "frequency", label: "Frequency", weight: 0.2 },
+      ],
+      materialConflictReviewThreshold: 0.65,
+    },
+    differenceSeverityPolicy: {
+      thresholds: [
+        { thresholdKey: "warning", label: "Warning threshold", value: 0.4 },
+        { thresholdKey: "blocker", label: "Blocker threshold", value: 0.75 },
+      ],
+      adminReviewTriggerThreshold: 0.6,
+    },
+    methodRegistryConfig: {
+      defaultSelectionPreference: "Use active preferred methods when relevant; do not force every method.",
+      methods: [
+        { methodKey: "bpmn_process_structure", label: "BPMN / Process Structure Lens", active: true, defaultPreference: "preferred" },
+        { methodKey: "sipoc_boundary", label: "SIPOC Boundary Lens", active: true, defaultPreference: "preferred" },
+        { methodKey: "triangulation", label: "Triangulation Lens", active: true, defaultPreference: "preferred" },
+        { methodKey: "espoused_theory_vs_theory_in_use", label: "Espoused Theory vs Theory-in-Use Lens", active: true, defaultPreference: "available" },
+        { methodKey: "raci_responsibility", label: "RACI / Responsibility Lens", active: true, defaultPreference: "preferred" },
+        { methodKey: "ssm_multi_perspective", label: "SSM / Multi-Perspective Lens", active: true, defaultPreference: "available" },
+        { methodKey: "apqc_vocabulary", label: "APQC Vocabulary Lens", active: true, defaultPreference: "available" },
+      ],
+    },
+    layerFitPolicy: {
+      assumptions: [
+        "Participant statements are strongest for work the participant performs or directly observes.",
+        "Manager statements may clarify policy and boundaries but do not erase participant-level variants.",
+      ],
+      documentSourceInfluenceWeights: [
+        { factorKey: "approved_policy", label: "Approved policy/source document", weight: 0.35 },
+        { factorKey: "participant_narrative", label: "Participant narrative", weight: 0.4 },
+        { factorKey: "admin_note", label: "Admin note", weight: 0.25 },
+      ],
+    },
+    sevenConditionPolicy: {
+      conditions: [
+        { conditionKey: "core_sequence_continuity", label: "Core sequence continuity", helperText: "Can the core sequence be followed?", warningThreshold: 0.45, blockerThreshold: 0.75 },
+        { conditionKey: "step_to_step_connection", label: "Step-to-step connection", helperText: "Are transitions sufficiently connected?", warningThreshold: 0.45, blockerThreshold: 0.75 },
+        { conditionKey: "essential_step_requirements", label: "Essential step requirements", helperText: "Are required inputs and outputs clear enough?", warningThreshold: 0.45, blockerThreshold: 0.75 },
+        { conditionKey: "decision_rules_thresholds", label: "Decision rules and thresholds", helperText: "Are decision rules clear enough for package use?", warningThreshold: 0.4, blockerThreshold: 0.7 },
+        { conditionKey: "handoffs_responsibility", label: "Handoffs and responsibility", helperText: "Are owners and handoffs clear enough?", warningThreshold: 0.45, blockerThreshold: 0.75 },
+        { conditionKey: "controls_approvals", label: "Controls and approvals", helperText: "Are control and approval points clear enough?", warningThreshold: 0.45, blockerThreshold: 0.75 },
+        { conditionKey: "use_case_boundary", label: "Use-case boundary", helperText: "Is the workflow boundary clear enough?", warningThreshold: 0.4, blockerThreshold: 0.7 },
+      ],
+      warningVsBlockerThresholds: [
+        { thresholdKey: "warning_default", label: "Warning default", value: 0.45 },
+        { thresholdKey: "blocker_default", label: "Blocker default", value: 0.75 },
+      ],
+    },
+    readinessRoutingPolicy: {
+      warningThreshold: 0.45,
+      blockerThreshold: 0.75,
+      adminReviewTriggerThreshold: 0.6,
+      proceedWithWarningsMessageTemplate: "Proceed with warnings only when admin accepts the stated limitations.",
+    },
+    prePackageGatePolicy: {
+      clarificationPriorityThreshold: 0.6,
+      reviewDecisionThreshold: 0.7,
+    },
+    packageOutputPolicy: {
+      clientFacingVisibility: ["current_workflow", "warnings", "interfaces"],
+      adminInternalVisibility: ["claim_basis", "method_usage", "condition_assessment", "unresolved_items"],
+      packageWarningLanguageTemplate: "This package contains known limitations: {{warnings}}",
+      optionalDraftDocumentEligibilityThreshold: 0.8,
+      methodologyReportSections: ["method_usage", "evidence_basis", "condition_summary"],
+      tableLayoutPreference: "compact_admin_review",
+    },
+    visualMapPolicy: {
+      markerPreferences: ["warning_badge", "unresolved_marker", "external_interface_marker"],
+      showWarnings: true,
+      showUnresolved: true,
+    },
+    promptBehaviorProfile: {
+      profileName: "default-prompt-behavior-placeholder",
+      promptWorkspaceOwned: true,
+      behaviorNotes: ["Prompt behavior is visible here as a profile reference; prompt editing belongs to the later Prompt Workspace block."],
+    },
+  };
+}
+
+function validateProfile(profile: Pass6ConfigurationProfile): { ok: true } | { ok: false; error: string } {
+  const result = validatePass6ConfigurationProfile(profile);
+  if (!result.ok) {
+    return { ok: false, error: result.errors.map((error) => error.message ?? String(error)).join("; ") };
+  }
+  return { ok: true };
+}
+
+export function createDefaultPass6ConfigurationDraft(input: {
+  configId?: string;
+  changedBy: string;
+  changeReason: string;
+  now?: string;
+  basedOnConfigId?: string;
+  policies?: Pass6PolicySet;
+}): StoredPass6ConfigurationProfile {
+  const now = input.now ?? new Date().toISOString();
+  return {
+    configId: input.configId ?? `pass6-config-${Date.now()}`,
+    version: "1.0.0",
+    status: "draft",
+    scope: "global",
+    changedBy: input.changedBy,
+    changedAt: now,
+    changeReason: input.changeReason,
+    basedOnConfigId: input.basedOnConfigId,
+    policies: input.policies ?? defaultPolicies(),
+    lockedGovernanceRules: PASS6_LOCKED_GOVERNANCE_RULES.map((rule) => ({ ...rule })),
+  };
+}
+
+export function savePass6ConfigurationProfile(
+  profile: Pass6ConfigurationProfile,
+  repo: Pass6ConfigurationProfileRepository,
+): { ok: true; profile: StoredPass6ConfigurationProfile } | { ok: false; error: string } {
+  const validation = validateProfile(profile);
+  if (!validation.ok) return validation;
+  repo.save(profile);
+  return { ok: true, profile };
+}
+
+export function listPass6ConfigurationProfiles(
+  repo: Pass6ConfigurationProfileRepository,
+): StoredPass6ConfigurationProfile[] {
+  return repo.findAll();
+}
+
+export function findActivePass6ConfigurationProfile(
+  repo: Pass6ConfigurationProfileRepository,
+): StoredPass6ConfigurationProfile | null {
+  return repo.findActive("global", "");
+}
+
+export function compareActiveVsDraftPass6Configuration(
+  repo: Pass6ConfigurationProfileRepository,
+): { activeConfigId: string | null; draftConfigId: string | null; changedSections: string[]; summary: string } {
+  const active = repo.findActive("global", "");
+  const draft = repo.findDrafts()[0] ?? null;
+  if (!active || !draft) {
+    return { activeConfigId: active?.configId ?? null, draftConfigId: draft?.configId ?? null, changedSections: [], summary: "Active and draft profiles are not both available." };
+  }
+  const changedSections = Object.keys(draft.policies).filter((key) =>
+    JSON.stringify(draft.policies[key as keyof Pass6PolicySet]) !== JSON.stringify(active.policies[key as keyof Pass6PolicySet])
+  );
+  return {
+    activeConfigId: active.configId,
+    draftConfigId: draft.configId,
+    changedSections,
+    summary: changedSections.length === 0 ? "No policy section differences." : `${changedSections.length} policy section(s) differ.`,
+  };
+}
+
+export function updatePass6ConfigurationDraft(
+  configId: string,
+  updates: {
+    policies?: Pass6PolicySet;
+    lockedGovernanceRules?: Pass6LockedGovernanceRule[];
+    changedBy: string;
+    changeReason: string;
+    now?: string;
+  },
+  repo: Pass6ConfigurationProfileRepository,
+): { ok: true; profile: StoredPass6ConfigurationProfile } | { ok: false; error: string } {
+  if (updates.lockedGovernanceRules !== undefined) {
+    return { ok: false, error: "Locked governance rules are visible but not editable through Pass 6 admin configuration." };
+  }
+  const existing = repo.findById(configId);
+  if (!existing) return { ok: false, error: `Config '${configId}' not found.` };
+  if (existing.status !== "draft") return { ok: false, error: "Only draft config profiles can be edited." };
+  const updated: StoredPass6ConfigurationProfile = {
+    ...existing,
+    policies: updates.policies ?? existing.policies,
+    changedBy: updates.changedBy,
+    changedAt: updates.now ?? new Date().toISOString(),
+    changeReason: updates.changeReason,
+    lockedGovernanceRules: PASS6_LOCKED_GOVERNANCE_RULES.map((rule) => ({ ...rule })),
+  };
+  return savePass6ConfigurationProfile(updated, repo);
+}
+
+export function promotePass6ConfigurationDraft(
+  draftConfigId: string,
+  input: { changedBy: string; changeReason: string; now?: string },
+  repo: Pass6ConfigurationProfileRepository,
+): { ok: true; active: StoredPass6ConfigurationProfile; previous: StoredPass6ConfigurationProfile | null } | { ok: false; error: string } {
+  const draft = repo.findById(draftConfigId);
+  if (!draft) return { ok: false, error: `Draft config '${draftConfigId}' not found.` };
+  if (draft.status !== "draft") return { ok: false, error: "Only draft config profiles can be promoted." };
+  const now = input.now ?? new Date().toISOString();
+  const currentActive = repo.findActive(draft.scope, draft.scopeRef ?? "");
+  let previous: StoredPass6ConfigurationProfile | null = null;
+  if (currentActive) {
+    previous = {
+      ...currentActive,
+      status: "previous",
+      changedBy: input.changedBy,
+      changedAt: now,
+      changeReason: `Superseded by ${draft.configId}. ${input.changeReason}`,
+      previousVersionConfigId: currentActive.previousVersionConfigId,
+    };
+    repo.save(previous);
+  }
+  const active: StoredPass6ConfigurationProfile = {
+    ...draft,
+    status: "active",
+    changedBy: input.changedBy,
+    changedAt: now,
+    changeReason: input.changeReason,
+    previousVersionConfigId: previous?.configId,
+    effectiveFrom: now,
+    lockedGovernanceRules: PASS6_LOCKED_GOVERNANCE_RULES.map((rule) => ({ ...rule })),
+  };
+  repo.save(active);
+  return { ok: true, active, previous };
+}
+
+export function archivePass6ConfigurationProfile(
+  configId: string,
+  input: { changedBy: string; changeReason: string; now?: string },
+  repo: Pass6ConfigurationProfileRepository,
+): { ok: true; profile: StoredPass6ConfigurationProfile } | { ok: false; error: string } {
+  const existing = repo.findById(configId);
+  if (!existing) return { ok: false, error: `Config '${configId}' not found.` };
+  if (existing.status === "active") return { ok: false, error: "Active config must be superseded before archive." };
+  const archived = { ...existing, status: "archived" as const, changedBy: input.changedBy, changedAt: input.now ?? new Date().toISOString(), changeReason: input.changeReason };
+  repo.save(archived);
+  return { ok: true, profile: archived };
+}
+
+export function rollbackPass6ConfigurationProfile(
+  previousConfigId: string,
+  input: { newConfigId: string; changedBy: string; changeReason: string; now?: string },
+  repo: Pass6ConfigurationProfileRepository,
+): { ok: true; draft: StoredPass6ConfigurationProfile } | { ok: false; error: string } {
+  const previous = repo.findById(previousConfigId);
+  if (!previous) return { ok: false, error: `Rollback source '${previousConfigId}' not found.` };
+  const draft = createDefaultPass6ConfigurationDraft({
+    configId: input.newConfigId,
+    changedBy: input.changedBy,
+    changeReason: input.changeReason,
+    now: input.now,
+    basedOnConfigId: previous.configId,
+    policies: previous.policies,
+  });
+  const stored = { ...draft, rollbackReference: previous.configId };
+  repo.save(stored);
+  return { ok: true, draft: stored };
 }
 
 // ---------------------------------------------------------------------------

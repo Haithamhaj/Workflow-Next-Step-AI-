@@ -439,8 +439,11 @@ const changedFiles = execSync("git diff --name-only HEAD", { encoding: "utf8" })
 const allowedPrefixes = [
   "packages/contracts/",
   "packages/persistence/",
+  "packages/synthesis-evaluation/",
+  "apps/admin-web/",
   "scripts/prove-pass6-block1-contracts.mjs",
   "scripts/prove-pass6-block2-persistence.mjs",
+  "scripts/prove-pass6-block3-configuration.mjs",
   "handoff/",
 ];
 for (const file of changedFiles) {

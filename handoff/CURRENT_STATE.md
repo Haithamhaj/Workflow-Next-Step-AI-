@@ -58,6 +58,18 @@ Pass 6 Block 2 adds durable record storage only.
 - Block 2 does not implement UI, Prompt Workspace, provider execution, 6A builder behavior, 6B analysis behavior, readiness routing behavior, Pre-6C gate behavior, 6C package generation behavior, visual-core integration, Copilot behavior, or Pass 7 mechanics.
 - Next implementation step after Block 2 acceptance is Block 3 — Pass 6 Admin Configuration and Policy Control Layer.
 
+## Pass 6 Block 3 — Admin Configuration and Policy Control Layer
+
+Pass 6 Block 3 adds versioned, admin-visible configuration and policy control only.
+
+- Added `Pass6ConfigurationProfile` contracts, schema validation, and exported validator support.
+- Added persistence support for Pass 6 configuration profiles.
+- Added package-level configuration helpers for default draft creation, save/list/active lookup, draft promotion, previous-state handling, archive, rollback draft creation, active-vs-draft comparison, and locked governance edit rejection.
+- Added minimal admin API and admin surface at `/pass6/configuration`.
+- Locked governance rules are visible but not editable through admin configuration.
+- Block 3 does not implement 6A bundle building, 6B analysis, scoring execution, readiness routing execution, Pre-6C gate behavior, 6C package generation, Prompt Workspace, provider execution, visual-core integration, Copilot behavior, or Pass 7 mechanics.
+- Next implementation step after Block 3 acceptance is Block 4 — Pass 6 Prompt Workspace / PromptOps Layer.
+
 **Pass 5 — Participant Session Outreach / Narrative-First Clarification is accepted, closed, integrated, and archived on `main`.**
 
 Final Pass 5 status: `pass5_participant_session_outreach_accepted`

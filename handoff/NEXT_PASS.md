@@ -23,7 +23,9 @@ Pass 6 Block 0 is accepted as the documentation-only build readiness gate.
 
 Pass 6 Block 1 — Core Contracts and Schema Seams is accepted.
 
-Pass 6 Block 2 — Persistence and Repository Layer is the current completed implementation block pending acceptance.
+Pass 6 Block 2 — Persistence and Repository Layer is accepted.
+
+Pass 6 Block 3 — Pass 6 Admin Configuration and Policy Control Layer is the current completed implementation block pending acceptance.
 
 Technical Decomposition v4 is the active Pass 6 build map.
 
@@ -60,6 +62,18 @@ Block 2 is persistence/repository work only.
 - Repository operations store supplied records only: save, findById, findByCaseId, findAll, and update.
 - No analysis, scoring, routing, package eligibility, prompt behavior, visual rendering, Copilot behavior, or Pass 7 mechanics start in Block 2.
 - Next implementation step after acceptance is Block 3 — Pass 6 Admin Configuration and Policy Control Layer.
+
+## Pass 6 Block 3 Acceptance Gate
+
+Block 3 is admin-visible configuration and policy control only.
+
+- Pass 6 configuration profiles are versioned and persisted.
+- Draft, active, previous, and archived lifecycle states are supported.
+- Active-vs-draft comparison is available as structured output.
+- Locked governance rules are visible but cannot be edited through admin configuration.
+- Admin UI/API surfaces inspect and control configuration only.
+- No 6A builder, 6B analysis, scoring execution, readiness routing execution, Pre-6C behavior, 6C generation, Prompt Workspace, provider execution, visual-core integration, Copilot, or Pass 7 mechanics start in Block 3.
+- Next implementation step after acceptance is Block 4 — Pass 6 Prompt Workspace / PromptOps Layer.
 
 ## Active Pass 6 Block Map
 

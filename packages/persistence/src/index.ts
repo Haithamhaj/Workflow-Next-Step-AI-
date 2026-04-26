@@ -78,6 +78,7 @@ import type {
   WorkflowGraphRecord,
   WorkflowReadinessResult,
   WorkflowUnit,
+  Pass6ConfigurationProfile,
 } from "@workflow/contracts";
 
 import { mkdirSync } from "node:fs";
@@ -310,6 +311,7 @@ export interface StoredPass7ReviewCandidate extends Pass7ReviewCandidate {
   createdAt: string;
   updatedAt: string;
 }
+export interface StoredPass6ConfigurationProfile extends Pass6ConfigurationProfile {}
 
 // ---------------------------------------------------------------------------
 // Repository interfaces — backend-agnostic
@@ -754,6 +756,11 @@ export type DraftOperationalDocumentRepository = Pass6RecordRepository<StoredDra
 export type WorkflowGraphRecordRepository = Pass6RecordRepository<StoredWorkflowGraphRecord>;
 export type Pass6CopilotContextBundleRepository = Pass6RecordRepository<StoredPass6CopilotContextBundle>;
 export type Pass7ReviewCandidateRepository = Pass6RecordRepository<StoredPass7ReviewCandidate>;
+export interface Pass6ConfigurationProfileRepository
+  extends Pass6RecordRepository<StoredPass6ConfigurationProfile> {
+  findActive(scope?: string, scopeRef?: string): StoredPass6ConfigurationProfile | null;
+  findDrafts(): StoredPass6ConfigurationProfile[];
+}
 
 // ---------------------------------------------------------------------------
 // In-memory implementations
@@ -1663,6 +1670,27 @@ class InMemoryPass6RecordRepository<TRecord extends object>
   }
 }
 
+class InMemoryPass6ConfigurationProfileRepository
+  extends InMemoryPass6RecordRepository<StoredPass6ConfigurationProfile>
+  implements Pass6ConfigurationProfileRepository
+{
+  constructor() {
+    super((record) => record.configId, (record) => record.scopeRef);
+  }
+
+  findActive(scope = "global", scopeRef = ""): StoredPass6ConfigurationProfile | null {
+    return this.findAll().find((record) =>
+      record.status === "active" &&
+      record.scope === scope &&
+      (record.scopeRef ?? "") === scopeRef
+    ) ?? null;
+  }
+
+  findDrafts(): StoredPass6ConfigurationProfile[] {
+    return this.findAll().filter((record) => record.status === "draft");
+  }
+}
+
 function pass6CaseId<TRecord extends { caseId?: string }>(record: TRecord): string | undefined {
   return record.caseId;
 }
@@ -2143,6 +2171,13 @@ function openIntakeDatabase(dbPath?: string): DatabaseSync {
       payload TEXT NOT NULL,
       PRIMARY KEY (record_type, id)
     );
+    CREATE TABLE IF NOT EXISTS pass6_configuration_profiles (
+      id TEXT PRIMARY KEY,
+      status TEXT NOT NULL,
+      scope TEXT NOT NULL,
+      scope_ref TEXT,
+      payload TEXT NOT NULL
+    );
     CREATE INDEX IF NOT EXISTS idx_provider_jobs_source_id ON provider_extraction_jobs(source_id);
     CREATE INDEX IF NOT EXISTS idx_provider_jobs_session_id ON provider_extraction_jobs(session_id);
     CREATE INDEX IF NOT EXISTS idx_text_artifacts_source_id ON text_artifacts(source_id);
@@ -2214,6 +2249,8 @@ function openIntakeDatabase(dbPath?: string): DatabaseSync {
     CREATE INDEX IF NOT EXISTS idx_pass6_handoff_candidates_case_id ON pass6_handoff_candidates(case_id);
     CREATE INDEX IF NOT EXISTS idx_pass6_core_records_type ON pass6_core_records(record_type);
     CREATE INDEX IF NOT EXISTS idx_pass6_core_records_case_id ON pass6_core_records(record_type, case_id);
+    CREATE INDEX IF NOT EXISTS idx_pass6_configuration_profiles_status ON pass6_configuration_profiles(status);
+    CREATE INDEX IF NOT EXISTS idx_pass6_configuration_profiles_scope ON pass6_configuration_profiles(scope, scope_ref);
   `);
   return db;
 }
@@ -3404,8 +3441,63 @@ export class SQLitePass6RecordRepository<TRecord extends object>
   }
 }
 
+export class SQLitePass6ConfigurationProfileRepository
+  implements Pass6ConfigurationProfileRepository
+{
+  private readonly db: DatabaseSync;
+
+  constructor(dbPath?: string) {
+    this.db = openIntakeDatabase(dbPath);
+  }
+
+  save(record: StoredPass6ConfigurationProfile): void {
+    const cloned = cloneRecord(record);
+    this.db.prepare(
+      "INSERT INTO pass6_configuration_profiles (id, status, scope, scope_ref, payload) VALUES (?, ?, ?, ?, ?) ON CONFLICT(id) DO UPDATE SET status = excluded.status, scope = excluded.scope, scope_ref = excluded.scope_ref, payload = excluded.payload",
+    ).run(cloned.configId, cloned.status, cloned.scope, cloned.scopeRef ?? null, JSON.stringify(cloned));
+  }
+
+  findById(configId: string): StoredPass6ConfigurationProfile | null {
+    const row = this.db.prepare("SELECT payload FROM pass6_configuration_profiles WHERE id = ?").get(configId);
+    const record = parseStored<StoredPass6ConfigurationProfile>(row);
+    return record ? cloneRecord(record) : null;
+  }
+
+  findByCaseId(caseId: string): StoredPass6ConfigurationProfile[] {
+    const rows = this.db.prepare("SELECT payload FROM pass6_configuration_profiles WHERE scope = 'case' AND scope_ref = ? ORDER BY id").all(caseId);
+    return parseStoredList<StoredPass6ConfigurationProfile>(rows).map((record) => cloneRecord(record));
+  }
+
+  findAll(): StoredPass6ConfigurationProfile[] {
+    const rows = this.db.prepare("SELECT payload FROM pass6_configuration_profiles ORDER BY id").all();
+    return parseStoredList<StoredPass6ConfigurationProfile>(rows).map((record) => cloneRecord(record));
+  }
+
+  update(configId: string, updates: Partial<StoredPass6ConfigurationProfile>): StoredPass6ConfigurationProfile | null {
+    const existing = this.findById(configId);
+    if (!existing) return null;
+    const updated = cloneRecord({ ...existing, ...updates });
+    this.save(updated);
+    return cloneRecord(updated);
+  }
+
+  findActive(scope = "global", scopeRef = ""): StoredPass6ConfigurationProfile | null {
+    const row = this.db.prepare(
+      "SELECT payload FROM pass6_configuration_profiles WHERE status = 'active' AND scope = ? AND COALESCE(scope_ref, '') = ? ORDER BY id LIMIT 1",
+    ).get(scope, scopeRef);
+    const record = parseStored<StoredPass6ConfigurationProfile>(row);
+    return record ? cloneRecord(record) : null;
+  }
+
+  findDrafts(): StoredPass6ConfigurationProfile[] {
+    const rows = this.db.prepare("SELECT payload FROM pass6_configuration_profiles WHERE status = 'draft' ORDER BY id").all();
+    return parseStoredList<StoredPass6ConfigurationProfile>(rows).map((record) => cloneRecord(record));
+  }
+}
+
 function createSQLitePass6Repositories(dbPath?: string): Pass6PersistenceRepositories {
   return {
+    pass6ConfigurationProfiles: new SQLitePass6ConfigurationProfileRepository(dbPath),
     synthesisInputBundles: new SQLitePass6RecordRepository<StoredSynthesisInputBundle>("synthesis_input_bundle", (record) => record.bundleId, pass6CaseId, dbPath),
     workflowUnits: new SQLitePass6RecordRepository<StoredWorkflowUnit>("workflow_unit", (record) => record.unitId, pass6CaseId, dbPath),
     workflowClaims: new SQLitePass6RecordRepository<StoredWorkflowClaim>("workflow_claim", (record) => record.claimId, pass6CaseId, dbPath),
@@ -3426,6 +3518,7 @@ function createSQLitePass6Repositories(dbPath?: string): Pass6PersistenceReposit
 }
 
 export function createSQLiteIntakeRepositories(dbPath?: string): {
+  pass6ConfigurationProfiles: Pass6ConfigurationProfileRepository;
   synthesisInputBundles: SynthesisInputBundleRepository;
   workflowUnits: WorkflowUnitRepository;
   workflowClaims: WorkflowClaimRepository;
@@ -3531,6 +3624,7 @@ export function getDefaultIntakeSqlitePath(): string {
 // ---------------------------------------------------------------------------
 
 export interface Pass6PersistenceRepositories {
+  pass6ConfigurationProfiles: Pass6ConfigurationProfileRepository;
   synthesisInputBundles: SynthesisInputBundleRepository;
   workflowUnits: WorkflowUnitRepository;
   workflowClaims: WorkflowClaimRepository;
@@ -3604,6 +3698,7 @@ export interface InMemoryStore extends Pass6PersistenceRepositories {
 
 function createInMemoryPass6Repositories(): Pass6PersistenceRepositories {
   return {
+    pass6ConfigurationProfiles: new InMemoryPass6ConfigurationProfileRepository(),
     synthesisInputBundles: new InMemoryPass6RecordRepository<StoredSynthesisInputBundle>((record) => record.bundleId, pass6CaseId),
     workflowUnits: new InMemoryPass6RecordRepository<StoredWorkflowUnit>((record) => record.unitId, pass6CaseId),
     workflowClaims: new InMemoryPass6RecordRepository<StoredWorkflowClaim>((record) => record.claimId, pass6CaseId),
@@ -3725,6 +3820,7 @@ export type {
   InquiryPacket,
   Pass6CopilotContextBundle,
   Pass7ReviewCandidate,
+  Pass6ConfigurationProfile,
   PrePackageGateResult,
   SynthesisInputBundle,
   TelegramIdentityBinding,

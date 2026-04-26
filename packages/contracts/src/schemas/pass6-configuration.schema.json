@@ -1,0 +1,270 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://workflow.local/schemas/pass6-configuration.json",
+  "title": "Pass6ConfigurationProfile",
+  "description": "Versioned Pass 6 admin-visible configuration and policy profile. This schema stores configurable thresholds, weights, labels, method activation, display preferences, and message templates only; locked governance rules are visible but not mutable through admin config.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "configId",
+    "version",
+    "status",
+    "scope",
+    "changedBy",
+    "changedAt",
+    "changeReason",
+    "policies",
+    "lockedGovernanceRules"
+  ],
+  "properties": {
+    "configId": { "$ref": "#/definitions/nonEmptyString" },
+    "version": { "$ref": "#/definitions/nonEmptyString" },
+    "status": {
+      "type": "string",
+      "enum": ["draft", "active", "previous", "archived"]
+    },
+    "scope": {
+      "type": "string",
+      "enum": ["global", "domain", "department", "use_case", "case"]
+    },
+    "scopeRef": { "type": "string" },
+    "changedBy": { "$ref": "#/definitions/nonEmptyString" },
+    "changedAt": { "type": "string", "format": "date-time" },
+    "changeReason": { "$ref": "#/definitions/nonEmptyString" },
+    "effectiveFrom": { "type": "string", "format": "date-time" },
+    "basedOnConfigId": { "type": "string" },
+    "activeVsDraftComparisonSummary": { "type": "string" },
+    "testResultSummary": { "type": "string" },
+    "rollbackReference": { "type": "string" },
+    "previousVersionConfigId": { "type": "string" },
+    "policies": { "$ref": "#/definitions/pass6PolicySet" },
+    "lockedGovernanceRules": {
+      "type": "array",
+      "items": { "$ref": "#/definitions/lockedGovernanceRule" }
+    }
+  },
+  "definitions": {
+    "nonEmptyString": {
+      "type": "string",
+      "minLength": 1
+    },
+    "weight": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 1
+    },
+    "threshold": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 1
+    },
+    "weightedFactor": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["factorKey", "label", "weight"],
+      "properties": {
+        "factorKey": { "$ref": "#/definitions/nonEmptyString" },
+        "label": { "$ref": "#/definitions/nonEmptyString" },
+        "weight": { "$ref": "#/definitions/weight" },
+        "helperText": { "type": "string" }
+      }
+    },
+    "thresholdSetting": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["thresholdKey", "label", "value"],
+      "properties": {
+        "thresholdKey": { "$ref": "#/definitions/nonEmptyString" },
+        "label": { "$ref": "#/definitions/nonEmptyString" },
+        "value": { "$ref": "#/definitions/threshold" },
+        "helperText": { "type": "string" }
+      }
+    },
+    "methodConfig": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["methodKey", "label", "active", "defaultPreference"],
+      "properties": {
+        "methodKey": {
+          "type": "string",
+          "enum": [
+            "bpmn_process_structure",
+            "sipoc_boundary",
+            "triangulation",
+            "espoused_theory_vs_theory_in_use",
+            "raci_responsibility",
+            "ssm_multi_perspective",
+            "apqc_vocabulary"
+          ]
+        },
+        "label": { "$ref": "#/definitions/nonEmptyString" },
+        "active": { "type": "boolean" },
+        "defaultPreference": {
+          "type": "string",
+          "enum": ["preferred", "available", "off_by_default"]
+        },
+        "helperText": { "type": "string" }
+      }
+    },
+    "sevenConditionDisplay": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["conditionKey", "label", "helperText", "warningThreshold", "blockerThreshold"],
+      "properties": {
+        "conditionKey": {
+          "type": "string",
+          "enum": [
+            "core_sequence_continuity",
+            "step_to_step_connection",
+            "essential_step_requirements",
+            "decision_rules_thresholds",
+            "handoffs_responsibility",
+            "controls_approvals",
+            "use_case_boundary"
+          ]
+        },
+        "label": { "$ref": "#/definitions/nonEmptyString" },
+        "helperText": { "$ref": "#/definitions/nonEmptyString" },
+        "warningThreshold": { "$ref": "#/definitions/threshold" },
+        "blockerThreshold": { "$ref": "#/definitions/threshold" }
+      }
+    },
+    "lockedGovernanceRule": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["ruleId", "label", "description", "locked"],
+      "properties": {
+        "ruleId": { "$ref": "#/definitions/nonEmptyString" },
+        "label": { "$ref": "#/definitions/nonEmptyString" },
+        "description": { "$ref": "#/definitions/nonEmptyString" },
+        "locked": { "const": true }
+      }
+    },
+    "pass6PolicySet": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "claimScoringPolicy",
+        "materialityPolicy",
+        "differenceSeverityPolicy",
+        "methodRegistryConfig",
+        "layerFitPolicy",
+        "sevenConditionPolicy",
+        "readinessRoutingPolicy",
+        "prePackageGatePolicy",
+        "packageOutputPolicy",
+        "visualMapPolicy",
+        "promptBehaviorProfile"
+      ],
+      "properties": {
+        "claimScoringPolicy": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["weights", "adminReviewTriggerThreshold"],
+          "properties": {
+            "weights": { "type": "array", "minItems": 1, "items": { "$ref": "#/definitions/weightedFactor" } },
+            "adminReviewTriggerThreshold": { "$ref": "#/definitions/threshold" }
+          }
+        },
+        "materialityPolicy": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["weights", "materialConflictReviewThreshold"],
+          "properties": {
+            "weights": { "type": "array", "minItems": 1, "items": { "$ref": "#/definitions/weightedFactor" } },
+            "materialConflictReviewThreshold": { "$ref": "#/definitions/threshold" }
+          }
+        },
+        "differenceSeverityPolicy": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["thresholds", "adminReviewTriggerThreshold"],
+          "properties": {
+            "thresholds": { "type": "array", "minItems": 1, "items": { "$ref": "#/definitions/thresholdSetting" } },
+            "adminReviewTriggerThreshold": { "$ref": "#/definitions/threshold" }
+          }
+        },
+        "methodRegistryConfig": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["methods", "defaultSelectionPreference"],
+          "properties": {
+            "methods": { "type": "array", "minItems": 1, "items": { "$ref": "#/definitions/methodConfig" } },
+            "defaultSelectionPreference": { "$ref": "#/definitions/nonEmptyString" }
+          }
+        },
+        "layerFitPolicy": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["assumptions", "documentSourceInfluenceWeights"],
+          "properties": {
+            "assumptions": { "type": "array", "items": { "$ref": "#/definitions/nonEmptyString" } },
+            "documentSourceInfluenceWeights": { "type": "array", "items": { "$ref": "#/definitions/weightedFactor" } }
+          }
+        },
+        "sevenConditionPolicy": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["conditions", "warningVsBlockerThresholds"],
+          "properties": {
+            "conditions": { "type": "array", "minItems": 7, "items": { "$ref": "#/definitions/sevenConditionDisplay" } },
+            "warningVsBlockerThresholds": { "type": "array", "items": { "$ref": "#/definitions/thresholdSetting" } }
+          }
+        },
+        "readinessRoutingPolicy": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["warningThreshold", "blockerThreshold", "adminReviewTriggerThreshold", "proceedWithWarningsMessageTemplate"],
+          "properties": {
+            "warningThreshold": { "$ref": "#/definitions/threshold" },
+            "blockerThreshold": { "$ref": "#/definitions/threshold" },
+            "adminReviewTriggerThreshold": { "$ref": "#/definitions/threshold" },
+            "proceedWithWarningsMessageTemplate": { "$ref": "#/definitions/nonEmptyString" }
+          }
+        },
+        "prePackageGatePolicy": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["clarificationPriorityThreshold", "reviewDecisionThreshold"],
+          "properties": {
+            "clarificationPriorityThreshold": { "$ref": "#/definitions/threshold" },
+            "reviewDecisionThreshold": { "$ref": "#/definitions/threshold" }
+          }
+        },
+        "packageOutputPolicy": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["clientFacingVisibility", "adminInternalVisibility", "packageWarningLanguageTemplate", "optionalDraftDocumentEligibilityThreshold"],
+          "properties": {
+            "clientFacingVisibility": { "type": "array", "items": { "$ref": "#/definitions/nonEmptyString" } },
+            "adminInternalVisibility": { "type": "array", "items": { "$ref": "#/definitions/nonEmptyString" } },
+            "packageWarningLanguageTemplate": { "$ref": "#/definitions/nonEmptyString" },
+            "optionalDraftDocumentEligibilityThreshold": { "$ref": "#/definitions/threshold" },
+            "methodologyReportSections": { "type": "array", "items": { "$ref": "#/definitions/nonEmptyString" } },
+            "tableLayoutPreference": { "type": "string" }
+          }
+        },
+        "visualMapPolicy": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["markerPreferences", "showWarnings", "showUnresolved"],
+          "properties": {
+            "markerPreferences": { "type": "array", "items": { "$ref": "#/definitions/nonEmptyString" } },
+            "showWarnings": { "type": "boolean" },
+            "showUnresolved": { "type": "boolean" }
+          }
+        },
+        "promptBehaviorProfile": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["profileName", "promptWorkspaceOwned", "behaviorNotes"],
+          "properties": {
+            "profileName": { "$ref": "#/definitions/nonEmptyString" },
+            "promptWorkspaceOwned": { "type": "boolean" },
+            "behaviorNotes": { "type": "array", "items": { "$ref": "#/definitions/nonEmptyString" } }
+          }
+        }
+      }
+    }
+  }
+}

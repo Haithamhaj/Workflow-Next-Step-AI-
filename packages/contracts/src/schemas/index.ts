@@ -25,6 +25,7 @@ import targetingRecommendationPacketSchema from "./targeting-recommendation-pack
 import pass4PromptTestRunSchema from "./pass4-prompt-test-run.schema.json" with { type: "json" };
 import participantSessionSchema from "./participant-session.schema.json" with { type: "json" };
 import pass6CoreSchema from "./pass6-core.schema.json" with { type: "json" };
+import pass6ConfigurationSchema from "./pass6-configuration.schema.json" with { type: "json" };
 
 function pass5Schema(title: string, definitionName: string) {
   return {
@@ -144,4 +145,5 @@ export {
   workflowGraphRecordSchema,
   pass6CopilotContextBundleSchema,
   pass7ReviewCandidateSchema,
+  pass6ConfigurationSchema,
 };

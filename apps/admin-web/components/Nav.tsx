@@ -11,6 +11,7 @@ const links = [
   { href: "/participant-sessions", label: "Participant sessions" },
   { href: "/sessions", label: "Sessions" },
   { href: "/synthesis", label: "Synthesis" },
+  { href: "/pass6/configuration", label: "Pass 6 config" },
   { href: "/evaluations", label: "Evaluations" },
   { href: "/initial-packages", label: "Initial packages" },
   { href: "/issues", label: "Review issues" },

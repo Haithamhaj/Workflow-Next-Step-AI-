@@ -36,6 +36,13 @@ Status: LOCKED | FORMALIZED | IMPL-EXTENSION
 - **Pass 6 core records use a grouped SQLite payload table** — the persistence layer stores Block 1 record families in `pass6_core_records` keyed by record type and id, with a case-id index where the contract carries `caseId`; this avoids broad bespoke table work while keeping record responsibilities typed at the repository boundary — IMPL-EXTENSION
 - **Stored Pass 6 records preserve timestamp fields without becoming contract validators** — persistence record types add or preserve `createdAt` / `updatedAt` where needed, but validation remains owned by `packages/contracts` and no business rules are added at save time — LOCKED
 
+## Pass 6 Block 3 — Admin Configuration and Policy Control Layer
+
+- **Pass 6 admin configuration is separate from locked governance** — admins may adjust thresholds, weights, labels, display preferences, templates, and method activation, but may not edit truth/governance boundaries such as no Pass 5 revalidation, candidate-only items not becoming truth, scores not approving packages, visual renderers not owning truth, and Copilot read-only default — LOCKED
+- **Configuration lifecycle is versioned and admin-visible** — profiles support `draft`, `active`, `previous`, and `archived`; promotion moves the prior active profile to previous; rollback creates a new draft from a previous profile instead of mutating history — LOCKED
+- **Prompt behavior profile is a reference/config placeholder only in Block 3** — Prompt editing and prompt execution belong to the later Prompt Workspace / PromptOps block, not this configuration block — LOCKED
+- **Configuration helpers own lifecycle rules, not admin-web** — admin-web calls thin API routes backed by `@workflow/synthesis-evaluation` helpers; persistence stores supplied profiles only — LOCKED
+
 ## contracts
 
 - **Ajv 8 + ajv-formats for JSON Schema validation** — industry standard, fast, supports Draft-07, formats plugin needed for `date-time` and `uri` — LOCKED

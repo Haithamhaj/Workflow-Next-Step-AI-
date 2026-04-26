@@ -64,6 +64,7 @@ export {
   workflowGraphRecordSchema,
   pass6CopilotContextBundleSchema,
   pass7ReviewCandidateSchema,
+  pass6ConfigurationSchema,
 } from "./schemas/index.js";
 
 import { makeValidator } from "./validate.js";
@@ -130,6 +131,7 @@ import {
   workflowGraphRecordSchema,
   pass6CopilotContextBundleSchema,
   pass7ReviewCandidateSchema,
+  pass6ConfigurationSchema,
 } from "./schemas/index.js";
 import type { CaseConfiguration } from "./types/case-configuration.js";
 import type { SourceRegistration } from "./types/source-registration.js";
@@ -184,6 +186,7 @@ import type {
   WorkflowReadinessResult,
   WorkflowUnit,
 } from "./types/pass6-core.js";
+import type { Pass6ConfigurationProfile } from "./types/pass6-configuration.js";
 import {
   SessionState,
   ParticipantSessionState,
@@ -400,3 +403,6 @@ export const validatePass6CopilotContextBundle =
 
 export const validatePass7ReviewCandidate =
   makeValidator<Pass7ReviewCandidate>(pass7ReviewCandidateSchema);
+
+export const validatePass6ConfigurationProfile =
+  makeValidator<Pass6ConfigurationProfile>(pass6ConfigurationSchema);
