@@ -84,7 +84,7 @@ const synthesisInputBundle = {
   truthLensContexts: [
     {
       contextId: "truth-context-1",
-      lensType: "participant_claim",
+      lensType: "execution_evidence",
       summary: "First-person participant statement.",
       limitations: ["Not final workflow truth."],
     },
@@ -448,6 +448,7 @@ const allowedPrefixes = [
   "scripts/prove-pass6-block3-configuration.mjs",
   "scripts/prove-pass6-block4-prompt-workspace.mjs",
   "scripts/prove-pass6-block5-prompt-test-harness.mjs",
+  "scripts/prove-pass6-block6-synthesis-input-bundle.mjs",
   "handoff/",
 ];
 for (const file of changedFiles) {

@@ -54,7 +54,7 @@ const synthesisInputBundle = {
   gap_risk_no_drop_material: [material],
   document_source_signal_material: [material],
   roleLayerContexts: [{ contextId: "role-context-1", participantRole: "Coordinator" }],
-  truthLensContexts: [{ contextId: "truth-context-1", lensType: "participant_claim" }],
+  truthLensContexts: [{ contextId: "truth-context-1", lensType: "execution_evidence" }],
   preparationSummary: {
     preparedBy: "system_with_admin_review",
     summary: "Accepted Pass 5 outputs prepared for synthesis.",
@@ -455,6 +455,7 @@ const allowedPrefixes = [
   "scripts/prove-pass6-block3-configuration.mjs",
   "scripts/prove-pass6-block4-prompt-workspace.mjs",
   "scripts/prove-pass6-block5-prompt-test-harness.mjs",
+  "scripts/prove-pass6-block6-synthesis-input-bundle.mjs",
   "handoff/",
 ];
 for (const file of changedFiles) {

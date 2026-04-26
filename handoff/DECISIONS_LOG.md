@@ -58,6 +58,14 @@ Status: LOCKED | FORMALIZED | IMPL-EXTENSION
 - **Compiled prompt snapshots are stored for traceability** — every Prompt Workspace execution stores the deterministic compiled prompt plus test fixture context used for the run, so later review can inspect exactly what was sent to the provider — LOCKED
 - **Provider runtime metadata must be explicit** — token usage is captured and persisted when a provider returns it; if usage is missing, the result stores an explicit unavailable flag and reason. Cost estimates are unavailable until an approved pricing profile exists; no hard-coded real-world pricing is used — LOCKED
 
+## Pass 6 Block 6 — 6A SynthesisInputBundle Builder
+
+- **6A preparation trusts accepted Pass 5 status and does not redo Pass 5** — the builder consumes records already marked ready/accepted by Pass 5 and does not re-extract, revalidate evidence, reapprove transcripts, call providers, or ask clarification questions — LOCKED
+- **6A sorts material into the four approved bundle folders only** — accepted extraction and resolved clarification material goes to `analysis_material`; boundaries and role limits go to `boundary_role_limit_material`; unresolved, disputed, defective, low-confidence, unmapped, and candidate-only material goes to `gap_risk_no_drop_material`; document/source signals and question hints go to `document_source_signal_material` — LOCKED
+- **6A does not upgrade risky or candidate-only material into workflow truth** — open, disputed, defective, unresolved, low-confidence, and Pass 6 handoff candidate records are preserved for later synthesis/review and remain non-final — LOCKED
+- **Document/source signals remain signals only** — SOP/SLA/policy/KPI/role-document hints can be carried forward for later comparison, but 6A does not treat them as operational truth by default — LOCKED
+- **6A persistence uses the existing SynthesisInputBundle repository only** — persistence stores the prepared bundle when provided; no business logic is added to persistence and no 6B, Pre-6C, 6C, visual, Copilot, or Pass 7 records are created — LOCKED
+
 ## contracts
 
 - **Ajv 8 + ajv-formats for JSON Schema validation** — industry standard, fast, supports Draft-07, formats plugin needed for `date-time` and `uri` — LOCKED

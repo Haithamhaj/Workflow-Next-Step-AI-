@@ -98,6 +98,20 @@ Pass 6 Block 5 adds provider-backed Prompt Workspace test execution only.
 - Block 5 does not implement production 6A provider runs, production 6B provider runs, 6A builder behavior, 6B analysis, scoring execution, readiness routing execution, Pre-6C behavior, 6C package generation, visual-core integration, Copilot runtime behavior, or Pass 7 mechanics.
 - Next implementation step after Block 5 acceptance is Block 6 — 6A SynthesisInputBundle Builder.
 
+## Pass 6 Block 6 — 6A SynthesisInputBundle Builder
+
+Pass 6 Block 6 adds 6A preparation only.
+
+- Added a `SynthesisInputBundle` builder in `packages/synthesis-evaluation` that consumes accepted Pass 5 participant/session outputs for a case.
+- The builder sorts accepted Pass 5 material into `analysis_material`, `boundary_role_limit_material`, `gap_risk_no_drop_material`, and `document_source_signal_material`.
+- Role/layer context and conservative truth-lens context are carried forward for later synthesis.
+- Open, risk, disputed, defective, low-confidence, unresolved, and candidate-only material is preserved without upgrading it to workflow truth.
+- Document/source signals are preserved as signals only and are not treated as operational truth.
+- The builder can persist the bundle through the existing Block 2 `SynthesisInputBundle` repository when provided.
+- Added a focused proof script: `scripts/prove-pass6-block6-synthesis-input-bundle.mjs`.
+- Block 6 does not implement provider calls, 6B claim formation, scoring execution, method registry execution, difference interpretation, workflow assembly, seven-condition evaluation, readiness routing, Pre-6C behavior, 6C package generation, visual-core integration, Copilot runtime behavior, or Pass 7 mechanics.
+- Next implementation step after Block 6 acceptance is Block 7 — 6A Admin Bundle Review Surface.
+
 **Pass 5 — Participant Session Outreach / Narrative-First Clarification is accepted, closed, integrated, and archived on `main`.**
 
 Final Pass 5 status: `pass5_participant_session_outreach_accepted`

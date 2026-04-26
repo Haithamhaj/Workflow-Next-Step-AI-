@@ -29,7 +29,9 @@ Pass 6 Block 3 — Pass 6 Admin Configuration and Policy Control Layer is accept
 
 Pass 6 Block 4 — Pass 6 Prompt Workspace / PromptOps Layer is accepted.
 
-Pass 6 Block 5 — Provider Execution and Prompt Test Harness Foundation is the current completed implementation block pending acceptance.
+Pass 6 Block 5 — Provider Execution and Prompt Test Harness Foundation is accepted.
+
+Pass 6 Block 6 — 6A SynthesisInputBundle Builder is the current completed implementation block pending acceptance.
 
 Technical Decomposition v4 is the active Pass 6 build map.
 
@@ -107,6 +109,19 @@ Block 5 is provider-backed Prompt Workspace test harness work only.
 - Prompt test outputs are inspection records only and do not become 6A evidence, 6B claims, readiness results, Pre-6C inquiries, 6C package content, visual graph data, Copilot state, or Pass 7 candidates.
 - No production 6A/6B provider runs, 6A builder, 6B analysis, scoring execution, readiness routing execution, Pre-6C behavior, 6C generation, visual-core integration, Copilot runtime behavior, or Pass 7 mechanics start in Block 5.
 - Next implementation step after acceptance is Block 6 — 6A SynthesisInputBundle Builder.
+
+## Pass 6 Block 6 Acceptance Gate
+
+Block 6 is 6A SynthesisInputBundle preparation only.
+
+- Accepted Pass 5 participant/session outputs can be collected for a case.
+- Accepted Pass 5 material is sorted into the four approved `SynthesisInputBundle` folders.
+- Role/layer context and conservative truth-lens context are attached where available.
+- Open, risk, disputed, defective, low-confidence, unresolved, and candidate-only material is preserved without becoming workflow truth.
+- Document/source signals remain signals only and are not operational truth by default.
+- The builder trusts Pass 5 processing status and does not redo extraction, evidence validation, transcript approval, or clarification questions.
+- No provider calls, 6B claim formation, scoring execution, method registry execution, difference interpretation, workflow assembly, seven-condition evaluation, readiness routing, Pre-6C behavior, 6C generation, visual-core integration, Copilot runtime behavior, or Pass 7 mechanics start in Block 6.
+- Next implementation step after acceptance is Block 7 — 6A Admin Bundle Review Surface.
 
 ## Active Pass 6 Block Map
 

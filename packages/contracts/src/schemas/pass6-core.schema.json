@@ -53,9 +53,18 @@
       "required": ["contextId"],
       "properties": {
         "contextId": { "$ref": "#/definitions/nonEmptyString" },
+        "participantId": { "$ref": "#/definitions/optionalString" },
+        "sessionId": { "$ref": "#/definitions/optionalString" },
+        "targetCandidateId": { "$ref": "#/definitions/optionalString" },
         "participantRole": { "$ref": "#/definitions/optionalString" },
+        "hierarchyNodeId": { "$ref": "#/definitions/optionalString" },
         "department": { "$ref": "#/definitions/optionalString" },
+        "selectedUseCase": { "$ref": "#/definitions/optionalString" },
         "layer": { "$ref": "#/definitions/optionalString" },
+        "groupingLayerCategory": { "$ref": "#/definitions/optionalString" },
+        "levelHint": { "$ref": "#/definitions/optionalString" },
+        "inUseCaseScope": { "type": "boolean" },
+        "participantTargetType": { "$ref": "#/definitions/optionalString" },
         "authorityScope": { "$ref": "#/definitions/optionalString" },
         "notes": { "$ref": "#/definitions/optionalString" }
       }
@@ -68,7 +77,7 @@
         "contextId": { "$ref": "#/definitions/nonEmptyString" },
         "lensType": {
           "type": "string",
-          "enum": ["participant_claim", "observed_evidence", "documented_policy", "admin_interpretation", "system_inference", "unknown"]
+          "enum": ["execution_evidence", "oversight_evidence", "approval_control_evidence", "policy_intent_evidence", "handoff_dependency_evidence", "document_signal_evidence"]
         },
         "summary": { "$ref": "#/definitions/optionalString" },
         "limitations": {

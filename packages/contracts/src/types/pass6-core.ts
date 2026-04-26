@@ -37,9 +37,18 @@ export interface Pass6SourceBasis {
 
 export interface Pass6RoleLayerContext {
   contextId: string;
+  participantId?: string;
+  sessionId?: string;
+  targetCandidateId?: string;
   participantRole?: string;
+  hierarchyNodeId?: string;
   department?: string;
+  selectedUseCase?: string;
   layer?: string;
+  groupingLayerCategory?: string;
+  levelHint?: string;
+  inUseCaseScope?: boolean;
+  participantTargetType?: string;
   authorityScope?: string;
   notes?: string;
 }
@@ -47,12 +56,12 @@ export interface Pass6RoleLayerContext {
 export interface Pass6TruthLensContext {
   contextId: string;
   lensType:
-    | "participant_claim"
-    | "observed_evidence"
-    | "documented_policy"
-    | "admin_interpretation"
-    | "system_inference"
-    | "unknown";
+    | "execution_evidence"
+    | "oversight_evidence"
+    | "approval_control_evidence"
+    | "policy_intent_evidence"
+    | "handoff_dependency_evidence"
+    | "document_signal_evidence";
   summary?: string;
   limitations?: string[];
 }
