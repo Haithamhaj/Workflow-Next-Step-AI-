@@ -43,11 +43,11 @@ If the answer permits back-transitions, update `SessionStateTransitions` in `pac
 
 **Question:** §19.7 states: *"When peer-level synthesis leaves a materially important difference unresolved, the system should seek enrichment or closure from higher relevant levels such as supervisor, manager, or another relevant owner."* §19.8 states the system should treat outside-department differences initially as a dependency/handoff/external interface rather than expanding into multi-department reconstruction. Neither section specifies: (a) whether enrichment seeking is triggered automatically at synthesis-record creation or is operator-driven; (b) what data structure or provenance fields would record that enrichment was sought or received.
 
-**Current resolution for Pass 6:** No enrichment trigger logic is implemented. `createSynthesis` records the §19.11 minimum output only. Any enrichment is operator-driven via form re-submission. No trigger rules invented.
+**Current Pass 6 Block 0 status:** Historical parked Pass 6 notes are superseded by Technical Decomposition v4 for the current Pass 6 restart. Block 0 implements no enrichment trigger logic and does not edit `createSynthesis`. Cross-Department / External Interface Governance is conceptually closed for planning purposes only; implementation belongs to the active Pass 6 block map, not Block 0.
 
 **Operator action required:** Confirm whether enrichment per §19.7–§19.8 is automatic (system-triggered on synthesis creation when unresolved differences exist) or operator-driven. If automatic, specify the trigger condition and the provenance fields required on `SynthesisRecord`. Without this, any implementation of enrichment triggering is invented governance.
 
-If the answer introduces automatic triggering, update `synthesis-evaluation` construction logic and extend `synthesis-record.schema.json` with provenance fields.
+If a later active Pass 6 block introduces automatic triggering, update the relevant active contracts and construction logic within that block's accepted scope.
 
 ---
 
@@ -57,11 +57,11 @@ If the answer introduces automatic triggering, update `synthesis-evaluation` con
 
 **Question:** §21.4 specifies two conditions under which the Document/Reference Implication section should appear: *(a) the user or operator requested it* — implemented as the optional `outward.documentReferenceImplication` field; *(b) "the system explicitly activates it because the case already supports an early documentation implication path"* — the spec does not define what conditions constitute an "early documentation implication path."
 
-**Current resolution for Pass 6:** Only condition (a) is implemented. `outward.documentReferenceImplication` is an optional operator-supplied field. Condition (b) auto-activation is deferred because the triggering rule is not literally specified.
+**Current Pass 6 Block 0 status:** Historical parked Pass 6 implementation notes are superseded by Technical Decomposition v4 for the current Pass 6 restart. Block 0 implements no package output behavior, no auto-activation logic, and no `createInitialPackage` changes. 6C is conceptually closed for planning purposes only; implementation belongs to the active Pass 6 block map, not Block 0.
 
 **Operator action required:** Confirm what constitutes an "early documentation implication path" for condition (b) — specifically, what evaluation outcome value(s), synthesis fields, or other signals should cause the system to auto-activate the section. Without this literal rule, any auto-activation implementation is invented governance.
 
-If the answer specifies a literal trigger, add the auto-activation check to `createInitialPackage` in `packages/packages-output`.
+If a later active Pass 6 block specifies a literal trigger, add the auto-activation behavior within that block's accepted scope.
 
 ---
 
@@ -69,6 +69,6 @@ If the answer specifies a literal trigger, add the auto-activation check to `cre
 
 ---
 
-## Pass 7 review — resolved (accepted on `main` 2026-04-22)
+## Historical parked Pass 7 review note
 
-No new Pass 7 governance blocker was opened during implementation or acceptance. The review-issue pass stayed within literal §25 / §28 behavior plus the implementation extensions recorded in `DECISIONS_LOG.md`. OQ-001 through OQ-005 predate Pass 7 and remain open against their original scope.
+This note belongs to an older parked pass map. It is historical only for the current Pass 6 restart unless explicitly re-adopted by a later active block. OQ-001 through OQ-005 predate the current Pass 6 Block 0 cleanup and remain open only where a later accepted block scope still needs them.

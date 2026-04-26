@@ -487,7 +487,9 @@ Validate:
 - clarification objects
 - boundary signal persistence
 
-### Pass 6 — Synthesis + Evaluation + Initial Package
+### Historical Parked Pass 6 — Synthesis + Evaluation + Initial Package
+
+Current Pass 6 restart note: this older compact pass map is historical when it conflicts with Technical Decomposition v4. For the active Pass 6 build map, use `handoff/NEXT_PASS.md` and the current Pass 6 live reference. Pass 6 Block 0 is documentation-only; no contracts, persistence, UI, Prompt Workspace, provider execution, 6A/6B/6C logic, Visual Core integration, Copilot, or Pass 7 mechanics start here.
 Build:
 - `synthesis-evaluation`
 - session-to-synthesis seam

@@ -1,6 +1,40 @@
 # Current State
 
-**Accepted baseline: Pass 9 (Package Preview + Release Decision Surface), merged to `main` 2026-04-23, commit `41a8232`.**
+**Current authority baseline: Pass 5 final archive, integrated and archived on `main`.**
+
+`handoff/PASS5_FINAL_ARCHIVE_REFERENCE.md` is the final state after Pass 5 and is the highest local authority for the repository state before Pass 6.
+
+## Pass 6 Block 0 Acceptance Gate
+
+Pass 6 Block 0 — Build Readiness and Spec Cleanup is documentation-only.
+
+- Technical Decomposition v4 is the active Pass 6 build map.
+- Build Spec Structure v1 is active.
+- Old Pass 6 / 7 / 8 / 9 block maps and older branch-era Pass 6 records are historical only when they conflict with Technical Decomposition v4 or the Pass 5 final archive.
+- No source implementation has started in Block 0.
+- Next implementation step after acceptance is Block 1 — Core Contracts and Schema Seams.
+
+Block 0 records conceptual closure only:
+
+- 6A is conceptually closed.
+- 6B is conceptually closed.
+- Pre-6C Gate is conceptually closed.
+- Cross-Department / External Interface Governance is conceptually closed.
+- 6C is conceptually closed.
+- Visual Core integration is technically defined enough for later Block 17.
+
+Provider direction to preserve:
+
+- OpenAI / GPT remains default for text intelligence unless explicitly changed by the operator later.
+- Google remains the direction for STT/OCR and existing accepted Google-backed surfaces.
+- No provider success may be faked.
+
+Workflow / visual-core boundary for later Block 17:
+
+- WDE owns workflow truth, package eligibility, and WorkflowGraph JSON construction.
+- `workflow-visual-core` owns validation and rendering only.
+- WDE must implement `buildPackageVisuals(graph)` later as a local wrapper using `validateWorkflowGraph`, `toMermaid`, and `toReactFlow`.
+- Block 0 does not implement this wrapper.
 
 **Pass 5 — Participant Session Outreach / Narrative-First Clarification is accepted, closed, integrated, and archived on `main`.**
 
@@ -619,18 +653,20 @@ Overall Pass 2 status: `pass2_complete_after_all_proofs`.
 
 ---
 
-## Official pass sequence
+## Historical Parked Pass Sequence
 
-- **Pass 6:** Synthesis + Evaluation + Initial Package — accepted on `main`
-- **Pass 7:** Review / Issue Discussion — accepted on `main` (2026-04-22), commit `a8f3523`
-- **Pass 8:** Final Package + Release — accepted on `main` (2026-04-22), commit `3171ad4`
-- **Pass 9:** Package Preview + Release Decision Surface — **accepted on `main` (2026-04-23), commit `41a8232`**
+The older Pass 6 / 7 / 8 / 9 sequence below is historical and parked for the current Pass 6 restart. It must not override `PASS5_FINAL_ARCHIVE_REFERENCE.md`, Technical Decomposition v4, or the active Pass 6 block map.
+
+- **Old Pass 6:** Synthesis + Evaluation + Initial Package — historical parked map only.
+- **Old Pass 7:** Review / Issue Discussion — historical parked map only.
+- **Old Pass 8:** Final Package + Release — historical parked map only.
+- **Old Pass 9:** Package Preview + Release Decision Surface — historical parked map only.
 
 ---
 
-## What exists (all prior passes unchanged)
+## Historical Existing Surfaces Note
 
-All Pass 6–9 packages, routes, and UI surfaces remain unchanged. See git history for full details.
+Any old Pass 6–9 packages, routes, and UI surfaces visible in git history or parked docs are not the governing Pass 6 implementation plan. The current next step is Pass 6 Block 1 only after Block 0 acceptance.
 
 ---
 

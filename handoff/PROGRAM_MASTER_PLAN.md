@@ -1,12 +1,24 @@
 # Program Master Plan
 
-## Workflow Truth, Target Documentation, and Automation Readiness — Post-Pass-9 Extension Program
+## Workflow Truth, Target Documentation, and Automation Readiness — Historical Extension Program
 
 ---
 
+## Current Status Note
+
+This document is historical planning context for the current Pass 6 restart. The governing local authority is now:
+
+1. `handoff/PASS5_FINAL_ARCHIVE_REFERENCE.md`
+2. The current Pass 6 live reference / Technical Decomposition v4
+3. `03_Implementation_Handoff_Plan_Coding-Agent-First.md`
+4. `handoff/NEXT_PASS.md`
+5. `handoff/CURRENT_STATE.md`
+
+Any older Pass 6 / 7 / 8 / 9 or post-Pass-9 language in this document is historical only when it conflicts with the active Pass 6 build map. Pass 6 Block 0 does not implement source changes.
+
 ## 1. Purpose
 
-This document is the working master plan for all work that comes **after** the accepted baseline built through Pass 9.
+This document was the working master plan for work after an older accepted baseline. It is retained as historical context while Pass 6 restarts from the Pass 5 final archive and Technical Decomposition v4.
 
 Its purpose is to:
 
@@ -28,7 +40,7 @@ It is the controlled extension plan built on top of them.
 
 ### 2.1 Closed baseline rule
 
-Passes 1–9 are treated as a **closed baseline**.
+Older Pass 1–9 planning records are treated as a **closed historical baseline** for this document only.
 
 They are not open implementation buckets anymore.
 They are not to be informally reopened or repurposed.
@@ -48,12 +60,7 @@ This would weaken traceability, planning clarity, and later implementation disci
 
 ### 2.3 Current repository truth behind this rule
 
-The current repository state already records:
-
-* Pass 9 as the accepted baseline on `main`
-* no further defined next pass after Pass 9
-
-That means the baseline is closed and the next program must be defined explicitly before new implementation begins.
+The current handoff state records Pass 5 as the final archive authority and Pass 6 Technical Decomposition v4 as the active build map. The next implementation step after Block 0 acceptance is Pass 6 Block 1 — Core Contracts and Schema Seams.
 
 ---
 

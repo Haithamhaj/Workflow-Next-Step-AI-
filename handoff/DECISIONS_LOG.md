@@ -13,6 +13,15 @@ Status: LOCKED | FORMALIZED | IMPL-EXTENSION
 - **`tsconfig.base.json` with `strict`, `noUncheckedIndexedAccess`, `Bundler` moduleResolution** — maximum type safety from day one; harder to add later than to loosen — LOCKED
 - **`shared-utils` has zero `@workflow/*` dependencies** — prevents circular dependency chains; domain knowledge must stay in domain packages — LOCKED
 
+## Pass 6 Block 0 — Build Readiness and Spec Cleanup
+
+- **Technical Decomposition v4 is the active Pass 6 build map** — Pass 6 restarts from the current live reference after the Pass 5 final archive. Older Pass 6 / 7 / 8 / 9 block maps and branch-era records are historical only when they conflict with this active map — LOCKED
+- **Build Spec Structure v1 is active** — no v1.1 cleanup is required in Block 0. Future block specs should follow v1 unless the operator explicitly accepts a later structure revision — LOCKED
+- **Pass 6 Block 0 is documentation-only** — no contracts, persistence, UI, Prompt Workspace, provider execution, 6A/6B/6C logic, Visual Core integration, Copilot, or Pass 7 mechanics begin in Block 0 — LOCKED
+- **Conceptual closure is confirmed for 6A, 6B, Pre-6C Gate, Cross-Department / External Interface Governance, and 6C** — these are planning closure statements only and do not imply implementation exists — FORMALIZED
+- **Provider direction preserved for Pass 6 planning** — OpenAI / GPT remains default for text intelligence unless explicitly changed by the operator later; Google remains the direction for STT/OCR and existing accepted Google-backed surfaces; provider success must never be faked — LOCKED
+- **Workflow / visual-core boundary is fixed for later Block 17** — WDE owns workflow truth, package eligibility, and WorkflowGraph JSON construction. `workflow-visual-core` owns validation and rendering only. WDE must later implement `buildPackageVisuals(graph)` as a local wrapper over `validateWorkflowGraph`, `toMermaid`, and `toReactFlow`; Block 0 does not implement it — LOCKED
+
 ## contracts
 
 - **Ajv 8 + ajv-formats for JSON Schema validation** — industry standard, fast, supports Draft-07, formats plugin needed for `date-time` and `uri` — LOCKED
@@ -55,9 +64,9 @@ Status: LOCKED | FORMALIZED | IMPL-EXTENSION
 
 ---
 
-## Pass 6 — Synthesis + Evaluation + Initial Package (branch `pass-6-synthesis-evaluation`, pending merge)
+## Historical Parked Pass 6 — Synthesis + Evaluation + Initial Package (branch `pass-6-synthesis-evaluation`)
 
-> Status: these decisions are recorded against the Pass 6 work on branch `pass-6-synthesis-evaluation`. They become baseline-active only after the branch is merged into `main`. Until merge, they are proposal-scoped.
+> Status: this older branch-era block map is historical and parked for the current Pass 6 restart. It must not override `PASS5_FINAL_ARCHIVE_REFERENCE.md`, Technical Decomposition v4, Build Spec Structure v1, or the active Pass 6 block map. Entries below are retained as historical context only unless explicitly re-adopted by a later active Pass 6 block.
 
 - **Synthesis difference-block has exactly the five literal §19.3 fields (`where`, `what`, `participantsPerSide`, `whyMatters`, `laterClosurePath`)** — literal reading of the spec; no additional fields invented. Future enrichment (§19.6–§19.9 peer-level) is deferred behind OQ-004 — LOCKED
 - **`SynthesisRecord` requires `confidenceEvidenceNotes` (not optional) and keeps `sessionId` optional** — §19.11 minimum output treats confidence/evidence notes as required; session linkage is often absent at the synthesis stage — LOCKED
@@ -77,9 +86,9 @@ Status: LOCKED | FORMALIZED | IMPL-EXTENSION
 
 ---
 
-## Pass 7 — Review / Issue Discussion (accepted on `main`, 2026-04-22, merge of `a8f3523`)
+## Historical Parked Pass 7 — Review / Issue Discussion
 
-> Status: these decisions are baseline-active. Pass 7 was merged into `main` on 2026-04-22 via the linear merge of `codex/pass-7-review-issue-discussion` (`a8f3523`).
+> Status: these entries belong to an older parked pass map. They are historical only for the current Pass 6 restart unless explicitly re-adopted by a later active block.
 
 - **Pass 7 stayed in the existing `packages/review-issues` package boundary** — repository shape, ownership map, existing skeleton package, and local-patch-first discipline all favored filling the existing package instead of introducing a new sibling package. This preserves the accepted package map without widening scope — IMPL-EXTENSION
 - **`ReviewIssueRecord` is the persisted Pass 7 unit** — it contains the literal §25.4 issue brief, scoped discussion thread, linked evidence view model, exact controlled final action set, and an optional release seam object. No separate review wrapper record was introduced in this pass — IMPL-EXTENSION
@@ -96,9 +105,9 @@ Status: LOCKED | FORMALIZED | IMPL-EXTENSION
 
 ---
 
-## Pass 9 — Package Preview + Release Decision Surface (accepted on `main`, 2026-04-23, commit `41a8232`)
+## Historical Parked Pass 9 — Package Preview + Release Decision Surface
 
-> Status: these decisions are baseline-active. Pass 9 was merged into `main` on 2026-04-23 as a linear push of `codex/pass-9-package-preview`.
+> Status: these entries belong to an older parked pass map. They are historical only for the current Pass 6 restart unless explicitly re-adopted by a later active block.
 
 - **Pass 9 is a presentation-layer pass only** — it builds the client-facing delivery surface on top of accepted Pass 8 package logic. No new mechanics, state transitions, contracts, release logic, review logic, analysis logic, or prompt-chain logic were introduced — LOCKED
 - **Global shell reads "Workflow" on all pages** — `layout.tsx` title/description and `Nav.tsx` heading changed from "Workflow Admin" / "admin shell" to "Workflow". No admin-centric wording remains on client-facing surfaces — LOCKED
