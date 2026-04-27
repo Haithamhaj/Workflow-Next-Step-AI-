@@ -16,19 +16,22 @@ export function WorkspaceShell({
   language: WorkspaceLanguage;
   onToggleLanguage: () => void;
 }) {
+  const languageToggle = (
+    <button
+      type="button"
+      className={styles.workspaceLanguageToggle}
+      onClick={onToggleLanguage}
+      aria-label={`${dictionary.languageToggleLabel} ${dictionary.languageToggle}`}
+    >
+      <span>{dictionary.languageToggleLabel}</span>
+      <strong>{dictionary.languageToggle}</strong>
+    </button>
+  );
+
   return (
     <div className={styles.workspaceRoot} dir={direction} lang={language}>
-      <WorkspaceNav dictionary={dictionary} />
+      <WorkspaceNav dictionary={dictionary} languageToggle={languageToggle} />
       <div className={styles.workspaceMain}>{children}</div>
-      <button
-        type="button"
-        className={styles.workspaceLanguageToggle}
-        onClick={onToggleLanguage}
-        aria-label={`${dictionary.languageToggleLabel} ${dictionary.languageToggle}`}
-      >
-        <span>{dictionary.languageToggleLabel}</span>
-        <strong>{dictionary.languageToggle}</strong>
-      </button>
     </div>
   );
 }

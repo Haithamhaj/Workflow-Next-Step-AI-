@@ -1,5 +1,6 @@
 "use client";
 
+import type { ReactNode } from "react";
 import styles from "../workspace.module.css";
 import type { WorkspaceDictionary } from "../_i18n";
 import { usePathname } from "next/navigation";
@@ -16,7 +17,13 @@ const sections = [
   { id: "advanced", href: "/workspace/advanced", labelKey: "advanced" },
 ] as const;
 
-export function WorkspaceNav({ dictionary }: { dictionary: WorkspaceDictionary }) {
+export function WorkspaceNav({
+  dictionary,
+  languageToggle,
+}: {
+  dictionary: WorkspaceDictionary;
+  languageToggle?: ReactNode;
+}) {
   const pathname = usePathname();
 
   return (
@@ -24,6 +31,7 @@ export function WorkspaceNav({ dictionary }: { dictionary: WorkspaceDictionary }
       <div className={styles.workspaceBrand}>
         <span className={styles.workspaceBrandLabel}>{dictionary.brand.title}</span>
         <span className={styles.workspaceBrandNote}>{dictionary.shellLabel}</span>
+        {languageToggle}
       </div>
       <nav>
         <ul className={styles.workspaceNavList}>

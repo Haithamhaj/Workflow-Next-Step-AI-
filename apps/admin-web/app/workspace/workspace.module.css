@@ -15,7 +15,7 @@
 }
 
 .workspaceRoot[dir="rtl"] {
-  flex-direction: row-reverse;
+  direction: ltr;
 }
 
 .workspaceNav {
@@ -30,14 +30,13 @@
   display: block;
 }
 
-.workspaceRoot[dir="rtl"] .workspaceNav {
-  border-right: none;
-  border-left: 1px solid #263244;
-  padding: 18px 14px;
+.workspaceRoot[dir="rtl"] .workspaceNav,
+.workspaceRoot[dir="rtl"] .workspaceMain {
+  direction: rtl;
 }
 
 .workspaceBrand {
-  margin-bottom: 58px;
+  margin-bottom: 22px;
   min-width: 0;
 }
 
@@ -104,15 +103,12 @@
 }
 
 .workspaceLanguageToggle {
-  position: absolute;
-  top: 68px;
-  inset-inline-start: 14px;
-  inset-inline-end: auto;
+  margin-top: 14px;
   display: inline-flex;
   align-items: center;
-  justify-content: center;
+  justify-content: space-between;
   gap: 6px;
-  width: 196px;
+  width: 100%;
   box-sizing: border-box;
   padding: 7px 10px;
   border: 1px solid #344155;
@@ -193,7 +189,7 @@
 
 .workspaceGrid {
   display: grid;
-  grid-template-columns: repeat(3, minmax(220px, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 14px;
 }
 
@@ -524,7 +520,7 @@
 
 .workspaceJourneyMap {
   display: grid;
-  grid-template-columns: repeat(6, minmax(120px, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 10px;
 }
 
@@ -694,6 +690,7 @@
 
 .workspaceReadinessStep,
 .workspaceTabLike {
+  min-width: 0;
   min-height: 72px;
   display: flex;
   flex-direction: column;
@@ -777,10 +774,22 @@
 .workspaceRoleCard,
 .workspaceParticipantCard,
 .workspaceReadinessCard {
+  min-width: 0;
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
   gap: 12px;
+}
+
+.workspaceRoleCard > div,
+.workspaceParticipantCard > div,
+.workspaceReadinessCard > div,
+.workspaceReadinessStep > span,
+.workspaceReadinessStep > strong,
+.workspaceTabLike > span,
+.workspaceTabLike > strong {
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
 
 .workspaceRoleCard strong,
@@ -1234,10 +1243,6 @@
     flex-direction: row;
   }
 
-  .workspaceRoot[dir="rtl"] {
-    flex-direction: row-reverse;
-  }
-
   .workspaceNav {
     width: 150px;
     min-width: 150px;
@@ -1249,22 +1254,14 @@
   }
 
   .workspaceBrand {
-    margin-bottom: 54px;
+    margin-bottom: 18px;
   }
 
   .workspaceLanguageToggle {
-    top: 88px;
-    inset-inline-start: 10px;
-    width: 130px;
+    width: 100%;
     padding: 7px 8px;
     gap: 4px;
     white-space: normal;
-  }
-
-  .workspaceRoot[dir="rtl"] .workspaceNav {
-    border-right: none;
-    border-left: 1px solid #263244;
-    padding: 48px 10px 12px;
   }
 
   .workspaceNavList {
