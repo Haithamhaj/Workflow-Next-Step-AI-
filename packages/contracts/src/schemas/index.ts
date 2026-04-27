@@ -82,6 +82,7 @@ const workflowGapClosureBriefSchema = pass6Schema("WorkflowGapClosureBrief", "wo
 const draftOperationalDocumentSchema = pass6Schema("DraftOperationalDocument", "draftOperationalDocument");
 const workflowGraphRecordSchema = pass6Schema("WorkflowGraphRecord", "workflowGraphRecord");
 const pass6CopilotContextBundleSchema = pass6Schema("Pass6CopilotContextBundle", "pass6CopilotContextBundle");
+const pass6CopilotInteractionSchema = pass6Schema("Pass6CopilotInteraction", "pass6CopilotInteraction");
 const pass7ReviewCandidateSchema = pass6Schema("Pass7ReviewCandidate", "pass7ReviewCandidate");
 
 function pass6PromptWorkspaceContractSchema(title: string, definitionName: string) {
@@ -160,6 +161,7 @@ export {
   draftOperationalDocumentSchema,
   workflowGraphRecordSchema,
   pass6CopilotContextBundleSchema,
+  pass6CopilotInteractionSchema,
   pass7ReviewCandidateSchema,
   pass6ConfigurationSchema,
   pass6PromptWorkspaceSchema,

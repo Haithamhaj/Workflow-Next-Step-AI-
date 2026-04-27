@@ -71,6 +71,7 @@ import type {
   InitialWorkflowPackage,
   InquiryPacket,
   Pass6CopilotContextBundle,
+  Pass6CopilotInteraction,
   Pass7ReviewCandidate,
   PrePackageGateResult,
   SynthesisInputBundle,
@@ -314,6 +315,9 @@ export interface StoredWorkflowGraphRecord extends WorkflowGraphRecord {
 }
 export interface StoredPass6CopilotContextBundle extends Pass6CopilotContextBundle {
   createdAt: string;
+  updatedAt: string;
+}
+export interface StoredPass6CopilotInteraction extends Pass6CopilotInteraction {
   updatedAt: string;
 }
 export interface StoredPass7ReviewCandidate extends Pass7ReviewCandidate {
@@ -768,6 +772,7 @@ export type WorkflowGapClosureBriefRepository = Pass6RecordRepository<StoredWork
 export type DraftOperationalDocumentRepository = Pass6RecordRepository<StoredDraftOperationalDocument>;
 export type WorkflowGraphRecordRepository = Pass6RecordRepository<StoredWorkflowGraphRecord>;
 export type Pass6CopilotContextBundleRepository = Pass6RecordRepository<StoredPass6CopilotContextBundle>;
+export type Pass6CopilotInteractionRepository = Pass6RecordRepository<StoredPass6CopilotInteraction>;
 export type Pass7ReviewCandidateRepository = Pass6RecordRepository<StoredPass7ReviewCandidate>;
 export interface Pass6ConfigurationProfileRepository
   extends Pass6RecordRepository<StoredPass6ConfigurationProfile> {
@@ -3661,6 +3666,7 @@ function createSQLitePass6Repositories(dbPath?: string): Pass6PersistenceReposit
     draftOperationalDocuments: new SQLitePass6RecordRepository<StoredDraftOperationalDocument>("draft_operational_document", (record) => record.draftId, pass6CaseId, dbPath),
     workflowGraphRecords: new SQLitePass6RecordRepository<StoredWorkflowGraphRecord>("workflow_graph_record", (record) => record.visualRecordId, pass6CaseId, dbPath),
     pass6CopilotContextBundles: new SQLitePass6RecordRepository<StoredPass6CopilotContextBundle>("pass6_copilot_context_bundle", (record) => record.contextBundleId, pass6CaseId, dbPath),
+    pass6CopilotInteractions: new SQLitePass6RecordRepository<StoredPass6CopilotInteraction>("pass6_copilot_interaction", (record) => record.interactionId, pass6CaseId, dbPath),
     pass7ReviewCandidates: new SQLitePass6RecordRepository<StoredPass7ReviewCandidate>("pass7_review_candidate", (record) => record.candidateId, pass6CaseId, dbPath),
   };
 }
@@ -3686,6 +3692,7 @@ export function createSQLiteIntakeRepositories(dbPath?: string): {
   draftOperationalDocuments: DraftOperationalDocumentRepository;
   workflowGraphRecords: WorkflowGraphRecordRepository;
   pass6CopilotContextBundles: Pass6CopilotContextBundleRepository;
+  pass6CopilotInteractions: Pass6CopilotInteractionRepository;
   pass7ReviewCandidates: Pass7ReviewCandidateRepository;
   intakeSessions: IntakeSessionRepository;
   intakeSources: IntakeSourceRepository;
@@ -3796,6 +3803,7 @@ export interface Pass6PersistenceRepositories {
   draftOperationalDocuments: DraftOperationalDocumentRepository;
   workflowGraphRecords: WorkflowGraphRecordRepository;
   pass6CopilotContextBundles: Pass6CopilotContextBundleRepository;
+  pass6CopilotInteractions: Pass6CopilotInteractionRepository;
   pass7ReviewCandidates: Pass7ReviewCandidateRepository;
 }
 
@@ -3874,6 +3882,7 @@ function createInMemoryPass6Repositories(): Pass6PersistenceRepositories {
     draftOperationalDocuments: new InMemoryPass6RecordRepository<StoredDraftOperationalDocument>((record) => record.draftId, pass6CaseId),
     workflowGraphRecords: new InMemoryPass6RecordRepository<StoredWorkflowGraphRecord>((record) => record.visualRecordId, pass6CaseId),
     pass6CopilotContextBundles: new InMemoryPass6RecordRepository<StoredPass6CopilotContextBundle>((record) => record.contextBundleId, pass6CaseId),
+    pass6CopilotInteractions: new InMemoryPass6RecordRepository<StoredPass6CopilotInteraction>((record) => record.interactionId, pass6CaseId),
     pass7ReviewCandidates: new InMemoryPass6RecordRepository<StoredPass7ReviewCandidate>((record) => record.candidateId, pass6CaseId),
   };
 }
@@ -3980,6 +3989,7 @@ export type {
   InitialWorkflowPackage,
   InquiryPacket,
   Pass6CopilotContextBundle,
+  Pass6CopilotInteraction,
   Pass7ReviewCandidate,
   Pass6ConfigurationProfile,
   Pass6PromptCapabilityKey,

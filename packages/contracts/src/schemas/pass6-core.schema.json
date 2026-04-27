@@ -884,6 +884,63 @@
         "readOnly": { "type": "boolean" }
       }
     },
+    "pass6CopilotRoutedActionRecommendation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["action", "label", "reason", "executesAutomatically"],
+      "properties": {
+        "action": {
+          "type": "string",
+          "enum": ["view_bundle", "inspect_claim", "inspect_difference", "inspect_method_usage", "inspect_readiness_result", "inspect_pre6c_gate", "inspect_package", "inspect_visual", "consider_pre6c_clarification", "consider_proceed_with_warnings", "consider_pass7_candidate_later", "adjust_configuration_policy_later", "test_prompt_later"]
+        },
+        "label": { "$ref": "#/definitions/nonEmptyString" },
+        "reason": { "$ref": "#/definitions/nonEmptyString" },
+        "targetReference": { "$ref": "#/definitions/reference" },
+        "executesAutomatically": { "const": false }
+      }
+    },
+    "pass6CopilotInteraction": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["interactionId", "caseId", "question", "status", "contextBundleId", "contextReferencesUsed", "providerName", "modelName", "promptSpecId", "promptSpecVersion", "compiledPromptSnapshot", "routedActionRecommendations", "readOnlyBoundary", "createdAt"],
+      "properties": {
+        "interactionId": { "$ref": "#/definitions/nonEmptyString" },
+        "caseId": { "$ref": "#/definitions/nonEmptyString" },
+        "question": { "$ref": "#/definitions/nonEmptyString" },
+        "answer": { "$ref": "#/definitions/optionalString" },
+        "status": {
+          "type": "string",
+          "enum": ["succeeded", "failed"]
+        },
+        "failureCode": { "$ref": "#/definitions/optionalString" },
+        "failureMessage": { "$ref": "#/definitions/optionalString" },
+        "contextBundleId": { "$ref": "#/definitions/nonEmptyString" },
+        "contextReferencesUsed": { "type": "array", "items": { "$ref": "#/definitions/reference" } },
+        "providerName": { "$ref": "#/definitions/nonEmptyString" },
+        "modelName": { "$ref": "#/definitions/nonEmptyString" },
+        "promptSpecId": { "$ref": "#/definitions/nonEmptyString" },
+        "promptSpecVersion": { "$ref": "#/definitions/nonEmptyString" },
+        "compiledPromptSnapshot": { "$ref": "#/definitions/nonEmptyString" },
+        "routedActionRecommendations": {
+          "type": "array",
+          "items": { "$ref": "#/definitions/pass6CopilotRoutedActionRecommendation" }
+        },
+        "readOnlyBoundary": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["noAutonomousWrites", "noParticipantFacingSends", "noMessageOrEmailSending", "noReadinessOverride", "noPackageApproval", "noPass7Mechanics"],
+          "properties": {
+            "noAutonomousWrites": { "type": "boolean" },
+            "noParticipantFacingSends": { "type": "boolean" },
+            "noMessageOrEmailSending": { "type": "boolean" },
+            "noReadinessOverride": { "type": "boolean" },
+            "noPackageApproval": { "type": "boolean" },
+            "noPass7Mechanics": { "type": "boolean" }
+          }
+        },
+        "createdAt": { "$ref": "#/definitions/timestamp" }
+      }
+    },
     "pass7ReviewCandidate": {
       "type": "object",
       "additionalProperties": false,

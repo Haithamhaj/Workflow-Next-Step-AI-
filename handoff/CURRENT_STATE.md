@@ -273,6 +273,21 @@ Pass 6 Block 17 adds WDE-side visual integration only.
 - Block 17 does not implement provider calls, new workflow analysis, readiness recalculation, package eligibility changes, Copilot runtime behavior, Pass 7 mechanics, Final Package generation, or release behavior.
 - Next implementation step after Block 17 acceptance is Block 18 — Pass 6 Conversational Copilot.
 
+## Pass 6 Block 18 — Pass 6 Conversational Copilot
+
+Pass 6 Block 18 adds the read-only admin Copilot runtime only.
+
+- Added `Pass6CopilotInteraction` contract/schema/type support for persisted Copilot questions, answers/failures, context references, provider/model metadata, PromptSpec version, compiled prompt snapshot, and routed-action recommendations.
+- Added in-memory and SQLite-backed persistence support for Copilot interaction records through the existing Pass 6 repository pattern.
+- Added a DB-grounded Copilot context builder over stored Pass 6 records: 6A bundles, 6B units/claims/methods/differences/workflow drafts/readiness, Pre-6C gates and inquiry artifacts, 6C outputs, external interfaces, visual records, and active configuration profiles.
+- Added a provider-backed Copilot runtime using the `Pass6AnalysisCopilotPromptSpec`; OpenAI remains the default Pass 6 text provider unless explicitly changed by the operator.
+- Missing provider configuration and provider failures persist visible failed Copilot interactions; provider success is never faked.
+- Routed actions are recommendations only and do not execute admin actions.
+- Added minimal admin API/UI surfaces at `/pass6/copilot`.
+- Added a focused proof script: `scripts/prove-pass6-block18-copilot.mjs`.
+- Block 18 does not implement new 6A behavior, new 6B analysis behavior, readiness recalculation, package eligibility changes, new 6C package generation behavior, visual-core generation changes, autonomous writes, participant-facing sends, message/email sending, Pass 7 mechanics, Final Package generation, or release behavior.
+- Next implementation step after Block 18 acceptance is Block 19 — Pass 7 Candidate Seam.
+
 **Pass 5 — Participant Session Outreach / Narrative-First Clarification is accepted, closed, integrated, and archived on `main`.**
 
 Final Pass 5 status: `pass5_participant_session_outreach_accepted`

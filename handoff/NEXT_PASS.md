@@ -47,7 +47,15 @@ Pass 6 Block 12 — 6B Seven-Condition Evaluation and Workflow Readiness Result 
 
 Pass 6 Block 13 — 6B Methodology / Analysis Report and Admin Evaluation Surface is accepted.
 
-Pass 6 Block 14 — Pre-6C Gap Closure, Inquiry Gate, and Question Generation is the current completed implementation block pending acceptance.
+Pass 6 Block 14 — Pre-6C Gap Closure, Inquiry Gate, and Question Generation is accepted.
+
+Pass 6 Block 15 — Cross-Department / External Interface Handling is accepted.
+
+Pass 6 Block 16 — 6C Output Governance and Package Generation is accepted.
+
+Pass 6 Block 17 — Visual Core Integration is accepted.
+
+Pass 6 Block 18 — Pass 6 Conversational Copilot is the current completed implementation block pending acceptance.
 
 Technical Decomposition v4 is the active Pass 6 build map.
 
@@ -292,6 +300,19 @@ Block 17 is visual-core integration only.
 - Visual renderers do not own workflow truth or package eligibility.
 - No provider calls, new workflow analysis, readiness recalculation, package eligibility changes, Copilot runtime behavior, Pass 7 mechanics, Final Package generation, or release behavior start in Block 17.
 - Next implementation step after acceptance is Block 18 — Pass 6 Conversational Copilot.
+
+## Pass 6 Block 18 Acceptance Gate
+
+Block 18 is Pass 6 Conversational Copilot runtime only.
+
+- Copilot context is built from stored Pass 6 records across 6A, 6B, Pre-6C, 6C, external interfaces, visual records, active configuration, and PromptSpec metadata.
+- Copilot uses `Pass6AnalysisCopilotPromptSpec`, separate from Admin Explanation PromptSpec.
+- Copilot interactions persist question, answer or visible provider failure, context references, provider/model, prompt spec version, compiled prompt snapshot, and routed-action recommendations.
+- Routed actions are recommendations only and do not execute admin actions.
+- Missing provider configuration and provider failures are visible and do not fake success.
+- Copilot is read-only: it does not mutate analysis/package/visual/review records, invent evidence, approve packages, override readiness, send messages, or create Pass 7 mechanics.
+- No new 6A behavior, new 6B analysis behavior, readiness recalculation, package eligibility changes, new 6C package generation behavior, visual generation changes, autonomous writes, participant-facing sends, message/email sending, Pass 7 mechanics, Final Package generation, or release behavior start in Block 18.
+- Next implementation step after acceptance is Block 19 — Pass 7 Candidate Seam.
 
 ## Active Pass 6 Block Map
 

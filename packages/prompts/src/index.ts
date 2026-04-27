@@ -13,32 +13,72 @@ import {
   validatePass6PromptSpec,
   validatePass6PromptTestCase,
   validatePass6PromptTestExecutionResult,
+  validatePass6CopilotContextBundle,
+  validatePass6CopilotInteraction,
   validateStructuredPromptSpec,
   validatePromptRegistration,
+  type AnalysisMethodUsage,
+  type AssembledWorkflowDraft,
+  type ClarificationNeed,
+  type DifferenceInterpretation,
+  type DraftOperationalDocument,
+  type ExternalInterfaceRecord,
+  type InitialWorkflowPackage,
+  type InquiryPacket,
+  type Pass6CopilotContextBundle,
+  type Pass6CopilotInteraction,
+  type Pass6CopilotRoutedActionRecommendation,
+  type Pass6ConfigurationProfile,
   type Pass4PromptCapability,
   type Pass4PromptTestRun,
+  type Pass6Reference,
   type Pass6PromptCapabilityKey,
   type Pass6PromptSpec,
   type Pass6PromptStructuredSections,
   type Pass6PromptTestCase,
   type Pass6PromptTestExecutionResult,
+  type PrePackageGateResult,
   type Pass3PromptCapability,
   type Pass3PromptTestRun,
   type PromptRegistration,
   type PromptRole,
+  type SynthesisInputBundle,
   type StructuredPromptSpec,
   type StructuredPromptSpecBlock,
+  type WorkflowClaim,
+  type WorkflowGapClosureBrief,
+  type WorkflowGraphRecord,
+  type WorkflowReadinessResult,
+  type WorkflowUnit,
 } from "@workflow/contracts";
 import type {
+  AnalysisMethodUsageRepository,
+  AssembledWorkflowDraftRepository,
+  ClarificationNeedRepository,
+  DifferenceInterpretationRepository,
+  DraftOperationalDocumentRepository,
+  ExternalInterfaceRecordRepository,
+  InitialWorkflowPackageRepository,
+  InquiryPacketRepository,
   Pass3PromptTestRunRepository,
+  Pass6ConfigurationProfileRepository,
+  Pass6CopilotContextBundleRepository,
+  Pass6CopilotInteractionRepository,
   PromptRecord,
   PromptRepository,
   ProviderExtractionJobRepository,
   Pass6PromptSpecRepository,
   Pass6PromptTestCaseRepository,
   Pass6PromptTestExecutionResultRepository,
+  PrePackageGateResultRepository,
   StoredProviderExtractionJob,
+  SynthesisInputBundleRepository,
   StructuredPromptSpecRepository,
+  WorkflowClaimRepository,
+  WorkflowGapClosureBriefRepository,
+  WorkflowGraphRecordRepository,
+  WorkflowReadinessResultRepository,
+  WorkflowUnitRepository,
 } from "@workflow/persistence";
 import type { Pass4PromptTestRunRepository } from "@workflow/persistence";
 
@@ -62,6 +102,9 @@ export type {
   Pass6PromptStructuredSections,
   Pass6PromptTestCase,
   Pass6PromptTestExecutionResult,
+  Pass6CopilotContextBundle,
+  Pass6CopilotInteraction,
+  Pass6CopilotRoutedActionRecommendation,
 } from "@workflow/contracts";
 
 export const PASS3_HIERARCHY_PROMPT_MODULE = "pass3.hierarchy.draft" as const;
@@ -1376,6 +1419,20 @@ const pass6PromptNames: Record<Pass6PromptCapabilityKey, { name: string; descrip
 
 function pass6PromptSections(capabilityKey: Pass6PromptCapabilityKey): Pass6PromptStructuredSections {
   const metadata = pass6PromptNames[capabilityKey];
+  if (capabilityKey === "pass6_analysis_copilot") {
+    return {
+      roleDefinition: "You are the Pass 6 Conversational Copilot: a read-only, DB-grounded admin assistant for understanding Pass 6 records.",
+      missionOrTaskPurpose: "Help the admin discuss 6A preparation, 6B analysis outputs, Pre-6C gate context, 6C outputs, external interfaces, visuals, and governance boundaries without mutating records.",
+      caseContextInputs: "Use only supplied Pass 6 contract records, context references, active configuration/policy references, PromptSpec metadata, and explicit admin question text.",
+      sourceAndEvidenceRules: "Document/source claims are signals, not operational truth by default. Do not invent evidence, do not upgrade unresolved/disputed/defective/candidate-only items into workflow truth, and explain missing data honestly.",
+      methodOrPolicyRules: "Methods, scores, readiness decisions, package eligibility, visual outputs, and governance rules come from stored Pass 6 records and configuration. Copilot may explain them but cannot change or override them.",
+      outputContract: "Return an admin-facing answer with evidence/context references where useful, blocker-vs-warning clarity, and routed-action recommendations only.",
+      boundariesAndProhibitions: "Read-only by default. No autonomous writes, no participant-facing sends, no message/email sending, no package approval, no readiness override, no workflow truth invention, no visual truth ownership, no Pass 7 mechanics, no Final Package, and no release behavior.",
+      adminReviewNotes: "Routed actions are recommendations only. The admin must use explicit existing admin routes/actions outside Copilot to inspect or change anything.",
+      evaluationChecklist: "Check grounding, cite stored context, preserve uncertainty, distinguish locked governance from configurable policy, and avoid presenting recommendations as executed actions.",
+      examplesOrGoldenCases: "Example: explain why 6C is blocked from the readiness result and recommend inspect_readiness_result or consider_pre6c_clarification without generating questions or packages.",
+    };
+  }
   return {
     roleDefinition: `You support Pass 6 ${metadata.name}. You are a drafting and explanation assistant for admin review.`,
     missionOrTaskPurpose: metadata.description,
@@ -1980,4 +2037,502 @@ export function comparePass6PromptTestExecutions(input: {
     outputChanged,
     summary,
   };
+}
+
+// ---------------------------------------------------------------------------
+// Pass 6 Conversational Copilot — Block 18
+// ---------------------------------------------------------------------------
+
+export interface Pass6CopilotTextExecutor extends Pass6PromptTextExecutor {}
+
+export interface Pass6CopilotRepositories {
+  synthesisInputBundles: SynthesisInputBundleRepository;
+  workflowUnits: WorkflowUnitRepository;
+  workflowClaims: WorkflowClaimRepository;
+  analysisMethodUsages: AnalysisMethodUsageRepository;
+  differenceInterpretations: DifferenceInterpretationRepository;
+  assembledWorkflowDrafts: AssembledWorkflowDraftRepository;
+  workflowReadinessResults: WorkflowReadinessResultRepository;
+  prePackageGateResults: PrePackageGateResultRepository;
+  clarificationNeeds: ClarificationNeedRepository;
+  inquiryPackets: InquiryPacketRepository;
+  externalInterfaceRecords: ExternalInterfaceRecordRepository;
+  initialWorkflowPackages: InitialWorkflowPackageRepository;
+  workflowGapClosureBriefs: WorkflowGapClosureBriefRepository;
+  draftOperationalDocuments: DraftOperationalDocumentRepository;
+  workflowGraphRecords: WorkflowGraphRecordRepository;
+  pass6ConfigurationProfiles: Pass6ConfigurationProfileRepository;
+  pass6PromptSpecs: Pass6PromptSpecRepository;
+  pass6CopilotContextBundles: Pass6CopilotContextBundleRepository;
+  pass6CopilotInteractions: Pass6CopilotInteractionRepository;
+  pass7ReviewCandidates?: { findAll(): unknown[] };
+}
+
+export interface Pass6CopilotContextSnapshot {
+  bundles: SynthesisInputBundle[];
+  workflowUnits: WorkflowUnit[];
+  workflowClaims: WorkflowClaim[];
+  methodUsages: AnalysisMethodUsage[];
+  differences: DifferenceInterpretation[];
+  workflowDrafts: AssembledWorkflowDraft[];
+  readinessResults: WorkflowReadinessResult[];
+  gateResults: PrePackageGateResult[];
+  clarificationNeeds: ClarificationNeed[];
+  inquiryPackets: InquiryPacket[];
+  externalInterfaces: ExternalInterfaceRecord[];
+  initialPackages: InitialWorkflowPackage[];
+  gapClosureBriefs: WorkflowGapClosureBrief[];
+  draftOperationalDocuments: DraftOperationalDocument[];
+  visualRecords: WorkflowGraphRecord[];
+  activeConfigurations: Pass6ConfigurationProfile[];
+}
+
+export interface BuildPass6CopilotContextResult {
+  contextBundle: Pass6CopilotContextBundle & { createdAt: string; updatedAt: string };
+  snapshot: Pass6CopilotContextSnapshot;
+  summary: string;
+  references: Pass6Reference[];
+}
+
+export interface RunPass6CopilotInput {
+  caseId: string;
+  question: string;
+  provider: Pass6CopilotTextExecutor | null;
+  providerName?: string;
+  modelName?: string;
+  interactionId?: string;
+  contextBundleId?: string;
+  now?: string;
+}
+
+export interface RunPass6CopilotResult {
+  interaction: Pass6CopilotInteraction;
+  contextBundle: Pass6CopilotContextBundle;
+  contextSummary: string;
+  boundary: Pass6CopilotInteraction["readOnlyBoundary"] & {
+    noWorkflowTruthInvented: boolean;
+    noEvidenceInvented: boolean;
+    routedActionsAreRecommendationsOnly: boolean;
+  };
+}
+
+const pass6CopilotReadOnlyBoundary = {
+  noAutonomousWrites: true,
+  noParticipantFacingSends: true,
+  noMessageOrEmailSending: true,
+  noReadinessOverride: true,
+  noPackageApproval: true,
+  noPass7Mechanics: true,
+} as const;
+
+function ref(referenceType: string, referenceId: string, label?: string, notes?: string): Pass6Reference {
+  return { referenceType, referenceId, label, notes };
+}
+
+function refs<T>(items: T[], referenceType: string, idOf: (item: T) => string, labelOf?: (item: T) => string): Pass6Reference[] {
+  return items.map((item) => ref(referenceType, idOf(item), labelOf?.(item)));
+}
+
+function caseMethods(caseId: string, claims: WorkflowClaim[], differences: DifferenceInterpretation[], repo: AnalysisMethodUsageRepository): AnalysisMethodUsage[] {
+  const claimIds = new Set(claims.map((claim) => claim.claimId));
+  const differenceIds = new Set(differences.map((difference) => difference.differenceId));
+  const methodUsageIds = new Set(differences.flatMap((difference) => difference.methodUsageIds ?? []));
+  return repo.findAll().filter((usage) =>
+    methodUsageIds.has(usage.methodUsageId) ||
+    claimIds.has(usage.appliedToId) ||
+    differenceIds.has(usage.appliedToId) ||
+    usage.appliedToId === caseId
+  );
+}
+
+function activeConfigurations(repo: Pass6ConfigurationProfileRepository): Pass6ConfigurationProfile[] {
+  return repo.findAll().filter((profile) => profile.status === "active");
+}
+
+function latestByCreatedAt<T>(items: T[]): T[] {
+  return [...items].sort((a, b) =>
+    String((b as { createdAt?: string }).createdAt ?? "").localeCompare(String((a as { createdAt?: string }).createdAt ?? ""))
+  );
+}
+
+function summarizeContext(snapshot: Pass6CopilotContextSnapshot): string {
+  const readiness = latestByCreatedAt(snapshot.readinessResults)[0];
+  const gate = latestByCreatedAt(snapshot.gateResults)[0];
+  const pkg = latestByCreatedAt(snapshot.initialPackages)[0];
+  const brief = latestByCreatedAt(snapshot.gapClosureBriefs)[0];
+  const visual = latestByCreatedAt(snapshot.visualRecords)[0];
+  const bundle = latestByCreatedAt(snapshot.bundles)[0];
+  const openItems = snapshot.workflowClaims.filter((claim) => claim.status === "unresolved" || claim.status === "review_needed" || claim.status === "warning").length;
+  return [
+    `6A bundles=${snapshot.bundles.length}${bundle ? ` latest=${bundle.bundleId} folders analysis=${bundle.analysis_material.length} boundary=${bundle.boundary_role_limit_material.length} gapRisk=${bundle.gap_risk_no_drop_material.length} documentSignals=${bundle.document_source_signal_material.length}` : ""}.`,
+    `6B units=${snapshot.workflowUnits.length} claims=${snapshot.workflowClaims.length} openWarningReviewClaims=${openItems} methodUsages=${snapshot.methodUsages.length} differences=${snapshot.differences.length} workflowDrafts=${snapshot.workflowDrafts.length}.`,
+    readiness ? `Readiness ${readiness.resultId}: ${readiness.readinessDecision}; is6CAllowed=${readiness.is6CAllowed}; allowedUseFor6C=${readiness.allowedUseFor6C.join(", ")}.` : "No readiness result is stored for this case.",
+    gate ? `Pre-6C gate ${gate.gateResultId}: ${gate.gateDecision}; clarificationNeeds=${gate.clarificationNeeds.length}; inquiryPackets=${gate.inquiryPackets.length}.` : "No Pre-6C gate is stored for this case.",
+    pkg ? `6C package ${pkg.packageId}: ${pkg.packageStatus}; warnings=${pkg.warningsCaveats.length}.` : brief ? `Gap Closure Brief ${brief.briefId}: ${brief.packageBlockedReason}.` : "No 6C package or gap brief is stored for this case.",
+    `External interfaces=${snapshot.externalInterfaces.length}; visuals=${snapshot.visualRecords.length}${visual ? ` latest=${visual.visualRecordId} validationErrors=${visual.visualValidationErrors.length}` : ""}.`,
+    "Governance: Copilot is read-only; document/source claims are signals by default; unresolved/candidate/disputed material is not upgraded into workflow truth; routed actions are recommendations only.",
+  ].join("\n");
+}
+
+function allContextReferences(bundle: Pass6CopilotContextBundle): Pass6Reference[] {
+  return [
+    ...bundle.bundleRefs,
+    ...bundle.claimRefs,
+    ...bundle.methodUsageRefs,
+    ...bundle.workflowDraftRefs,
+    ...bundle.readinessResultRefs,
+    ...bundle.gateResultRefs,
+    ...bundle.packageOrBriefRefs,
+    ...bundle.visualRecordRefs,
+    ...bundle.activeConfigPolicyRefs,
+    ...bundle.relevantAdminActionRefs,
+  ];
+}
+
+export function buildPass6CopilotContextBundle(
+  input: { caseId: string; contextBundleId?: string; now?: string; persist?: boolean },
+  repos: Pass6CopilotRepositories,
+): BuildPass6CopilotContextResult {
+  const now = input.now ?? new Date().toISOString();
+  const bundles = latestByCreatedAt(repos.synthesisInputBundles.findByCaseId(input.caseId));
+  const workflowUnits = repos.workflowUnits.findByCaseId(input.caseId);
+  const workflowClaims = repos.workflowClaims.findByCaseId(input.caseId);
+  const differences = repos.differenceInterpretations.findByCaseId(input.caseId);
+  const methodUsages = caseMethods(input.caseId, workflowClaims, differences, repos.analysisMethodUsages);
+  const workflowDrafts = latestByCreatedAt(repos.assembledWorkflowDrafts.findByCaseId(input.caseId));
+  const readinessResults = latestByCreatedAt(repos.workflowReadinessResults.findByCaseId(input.caseId));
+  const gateResults = latestByCreatedAt(repos.prePackageGateResults.findByCaseId(input.caseId));
+  const clarificationNeeds = repos.clarificationNeeds.findAll()
+    .filter((need) => gateResults.some((gate) => gate.clarificationNeeds.some((gateNeed) => gateNeed.clarificationNeedId === need.clarificationNeedId)));
+  const inquiryPackets = repos.inquiryPackets.findByCaseId(input.caseId);
+  const externalInterfaces = repos.externalInterfaceRecords.findByCaseId(input.caseId);
+  const initialPackages = latestByCreatedAt(repos.initialWorkflowPackages.findByCaseId(input.caseId));
+  const gapClosureBriefs = latestByCreatedAt(repos.workflowGapClosureBriefs.findByCaseId(input.caseId));
+  const draftOperationalDocuments = latestByCreatedAt(repos.draftOperationalDocuments.findByCaseId(input.caseId));
+  const visualRecords = latestByCreatedAt(repos.workflowGraphRecords.findByCaseId(input.caseId));
+  const activeConfigs = activeConfigurations(repos.pass6ConfigurationProfiles);
+  const packageOrBriefRefs = [
+    ...refs(initialPackages, "initial_workflow_package", (record) => record.packageId, (record) => record.packageStatus),
+    ...refs(gapClosureBriefs, "workflow_gap_closure_brief", (record) => record.briefId, (record) => record.packageBlockedReason),
+    ...refs(draftOperationalDocuments, "draft_operational_document", (record) => record.draftId, (record) => record.documentDraftType),
+  ];
+  const contextBundle: Pass6CopilotContextBundle = {
+    contextBundleId: input.contextBundleId ?? `pass6-copilot-context-${crypto.randomUUID()}`,
+    caseId: input.caseId,
+    bundleRefs: refs(bundles, "synthesis_input_bundle", (record) => record.bundleId),
+    claimRefs: refs(workflowClaims, "workflow_claim", (record) => record.claimId, (record) => record.primaryClaimType),
+    methodUsageRefs: refs(methodUsages, "analysis_method_usage", (record) => record.methodUsageId, (record) => record.methodKey),
+    workflowDraftRefs: refs(workflowDrafts, "assembled_workflow_draft", (record) => record.draftId, (record) => record.workflowUnderstandingLevel),
+    readinessResultRefs: refs(readinessResults, "workflow_readiness_result", (record) => record.resultId, (record) => record.readinessDecision),
+    gateResultRefs: refs(gateResults, "pre_package_gate_result", (record) => record.gateResultId, (record) => record.gateDecision),
+    packageOrBriefRefs,
+    visualRecordRefs: refs(visualRecords, "workflow_graph_record", (record) => record.visualRecordId, (record) => `${record.workflowGraphJson.title ?? "Workflow visual"} errors=${record.visualValidationErrors.length}`),
+    activeConfigPolicyRefs: refs(activeConfigs, "pass6_configuration_profile", (record) => record.configId, (record) => `${record.version} ${record.scope}`),
+    relevantAdminActionRefs: [],
+    readOnly: true,
+  };
+  const validation = validatePass6CopilotContextBundle(contextBundle);
+  if (!validation.ok) throw new Error(`Invalid Pass 6 Copilot context bundle: ${validationMessage(validation.errors)}`);
+  const storedContextBundle = { ...contextBundle, createdAt: now, updatedAt: now };
+  if (input.persist !== false) repos.pass6CopilotContextBundles.save(storedContextBundle);
+  const snapshot: Pass6CopilotContextSnapshot = {
+    bundles,
+    workflowUnits,
+    workflowClaims,
+    methodUsages,
+    differences,
+    workflowDrafts,
+    readinessResults,
+    gateResults,
+    clarificationNeeds,
+    inquiryPackets,
+    externalInterfaces,
+    initialPackages,
+    gapClosureBriefs,
+    draftOperationalDocuments,
+    visualRecords,
+    activeConfigurations: activeConfigs,
+  };
+  return {
+    contextBundle: storedContextBundle,
+    snapshot,
+    summary: summarizeContext(snapshot),
+    references: allContextReferences(contextBundle),
+  };
+}
+
+function recommendActions(question: string, snapshot: Pass6CopilotContextSnapshot): Pass6CopilotRoutedActionRecommendation[] {
+  const lower = question.toLowerCase();
+  const recommendations: Pass6CopilotRoutedActionRecommendation[] = [];
+  const latestBundle = latestByCreatedAt(snapshot.bundles)[0];
+  const latestReadiness = latestByCreatedAt(snapshot.readinessResults)[0];
+  const latestGate = latestByCreatedAt(snapshot.gateResults)[0];
+  const latestPackage = latestByCreatedAt(snapshot.initialPackages)[0] ?? latestByCreatedAt(snapshot.gapClosureBriefs)[0];
+  const latestVisual = latestByCreatedAt(snapshot.visualRecords)[0];
+  if (lower.includes("bundle") || lower.includes("6a")) {
+    recommendations.push({
+      action: "view_bundle",
+      label: "View 6A bundle",
+      reason: "The question references 6A preparation or bundle contents.",
+      targetReference: latestBundle ? ref("synthesis_input_bundle", latestBundle.bundleId) : undefined,
+      executesAutomatically: false,
+    });
+  }
+  if (lower.includes("claim")) {
+    recommendations.push({
+      action: "inspect_claim",
+      label: "Inspect claims",
+      reason: "The question asks about claim basis or claim status.",
+      targetReference: snapshot.workflowClaims[0] ? ref("workflow_claim", snapshot.workflowClaims[0].claimId) : undefined,
+      executesAutomatically: false,
+    });
+  }
+  if (lower.includes("difference") || lower.includes("conflict") || lower.includes("mismatch")) {
+    recommendations.push({
+      action: "inspect_difference",
+      label: "Inspect differences",
+      reason: "The question references mismatch, conflict, or difference interpretation.",
+      targetReference: snapshot.differences[0] ? ref("difference_interpretation", snapshot.differences[0].differenceId) : undefined,
+      executesAutomatically: false,
+    });
+  }
+  if (lower.includes("method")) {
+    recommendations.push({
+      action: "inspect_method_usage",
+      label: "Inspect method usage",
+      reason: "The question asks about analytical method or lens usage.",
+      targetReference: snapshot.methodUsages[0] ? ref("analysis_method_usage", snapshot.methodUsages[0].methodUsageId) : undefined,
+      executesAutomatically: false,
+    });
+  }
+  if (lower.includes("ready") || lower.includes("6c") || lower.includes("blocker") || lower.includes("warning")) {
+    recommendations.push({
+      action: "inspect_readiness_result",
+      label: "Inspect readiness result",
+      reason: "The question asks about package readiness, blocker, or warning status.",
+      targetReference: latestReadiness ? ref("workflow_readiness_result", latestReadiness.resultId) : undefined,
+      executesAutomatically: false,
+    });
+  }
+  if (lower.includes("clarification") || lower.includes("question") || lower.includes("gate")) {
+    recommendations.push({
+      action: "inspect_pre6c_gate",
+      label: "Inspect Pre-6C gate",
+      reason: "The question asks about clarification or gate output.",
+      targetReference: latestGate ? ref("pre_package_gate_result", latestGate.gateResultId) : undefined,
+      executesAutomatically: false,
+    });
+    recommendations.push({
+      action: "consider_pre6c_clarification",
+      label: "Consider Pre-6C clarification",
+      reason: "Clarification can be considered manually when blocker gaps remain.",
+      executesAutomatically: false,
+    });
+  }
+  if (lower.includes("package") || lower.includes("brief") || lower.includes("draft")) {
+    recommendations.push({
+      action: "inspect_package",
+      label: "Inspect 6C output",
+      reason: "The question references package, brief, or optional draft output.",
+      targetReference: latestPackage ? ref("pass6_output", "packageId" in latestPackage ? latestPackage.packageId : latestPackage.briefId) : undefined,
+      executesAutomatically: false,
+    });
+  }
+  if (lower.includes("visual") || lower.includes("mermaid") || lower.includes("graph")) {
+    recommendations.push({
+      action: "inspect_visual",
+      label: "Inspect visual output",
+      reason: "The question references graph, Mermaid, React Flow, or visual validation.",
+      targetReference: latestVisual ? ref("workflow_graph_record", latestVisual.visualRecordId) : undefined,
+      executesAutomatically: false,
+    });
+  }
+  if (lower.includes("configuration") || lower.includes("policy") || lower.includes("threshold")) {
+    recommendations.push({
+      action: "adjust_configuration_policy_later",
+      label: "Consider policy adjustment later",
+      reason: "Policy/config changes are explicit admin actions outside Copilot.",
+      executesAutomatically: false,
+    });
+  }
+  if (lower.includes("pass 7") || lower.includes("review candidate")) {
+    recommendations.push({
+      action: "consider_pass7_candidate_later",
+      label: "Consider Pass 7 candidate later",
+      reason: "Copilot may recommend later review consideration but cannot create Pass 7 mechanics.",
+      executesAutomatically: false,
+    });
+  }
+  if (recommendations.length === 0) {
+    recommendations.push({
+      action: "inspect_readiness_result",
+      label: "Inspect Pass 6 readiness context",
+      reason: "This is a safe read-only starting point for Pass 6 questions.",
+      targetReference: latestReadiness ? ref("workflow_readiness_result", latestReadiness.resultId) : undefined,
+      executesAutomatically: false,
+    });
+  }
+  return recommendations;
+}
+
+function resolveCopilotPromptSpec(repo: Pass6PromptSpecRepository, now: string): Pass6PromptSpec {
+  const active = repo.findActiveByCapability("pass6_analysis_copilot");
+  if (active) return active;
+  const draft = repo.findDraftsByCapability("pass6_analysis_copilot")[0];
+  if (draft) return draft;
+  const created = defaultPass6PromptSpec("pass6_analysis_copilot", { now, promptSpecId: "pass6-analysis-copilot-default-draft" });
+  repo.save(created);
+  return created;
+}
+
+function copilotCompiledPrompt(promptSpec: Pass6PromptSpec, question: string, contextSummary: string): string {
+  return [
+    compilePass6PromptSpec(promptSpec),
+    "",
+    "## Pass 6 Copilot Runtime Boundary",
+    "- Read-only admin assistant.",
+    "- No autonomous writes, participant-facing sends, message/email sending, readiness override, package approval, Pass 7 mechanics, Final Package, or release action.",
+    "- Routed actions are recommendations only.",
+    "- Do not invent evidence or workflow truth. Explain missing data honestly.",
+    "",
+    "## DB-Grounded Context Summary",
+    contextSummary,
+    "",
+    "## Admin Question",
+    question,
+    "",
+    "## Response Expectations",
+    "Answer using only the supplied Pass 6 context. Include evidence/context references when useful, distinguish blocker vs warning, and recommend routed admin actions without executing them.",
+  ].join("\n");
+}
+
+function classifyCopilotError(message: string): string {
+  if (message.includes("not_configured") || message.includes("OPENAI_API_KEY") || message.includes("GOOGLE_AI_API_KEY")) return "provider_not_configured";
+  if (message.includes("rate") || message.includes("429")) return "provider_rate_limited";
+  if (message.includes("model")) return "provider_model_unavailable";
+  return "provider_execution_failed";
+}
+
+function validateCopilotInteractionOrThrow(interaction: Pass6CopilotInteraction): void {
+  const validation = validatePass6CopilotInteraction(interaction);
+  if (!validation.ok) throw new Error(`Invalid Pass 6 Copilot interaction: ${validationMessage(validation.errors)}`);
+}
+
+export async function runPass6Copilot(
+  input: RunPass6CopilotInput,
+  repos: Pass6CopilotRepositories,
+): Promise<RunPass6CopilotResult> {
+  const now = input.now ?? new Date().toISOString();
+  const context = buildPass6CopilotContextBundle({
+    caseId: input.caseId,
+    contextBundleId: input.contextBundleId,
+    now,
+    persist: true,
+  }, repos);
+  const promptSpec = resolveCopilotPromptSpec(repos.pass6PromptSpecs, now);
+  const compiledPromptSnapshot = copilotCompiledPrompt(promptSpec, input.question, context.summary);
+  const recommendations = recommendActions(input.question, context.snapshot);
+  const interactionId = input.interactionId ?? `pass6-copilot-interaction-${crypto.randomUUID()}`;
+  if (!input.provider) {
+    const interaction: Pass6CopilotInteraction = {
+      interactionId,
+      caseId: input.caseId,
+      question: input.question,
+      answer: "Pass 6 Copilot provider is not configured. No answer was generated and no Pass 6 records were changed.",
+      status: "failed",
+      failureCode: "provider_not_configured",
+      failureMessage: "provider_not_configured: no provider configured for Pass 6 Copilot runtime.",
+      contextBundleId: context.contextBundle.contextBundleId,
+      contextReferencesUsed: context.references,
+      providerName: input.providerName ?? promptSpec.providerPreference?.providerKey ?? "openai",
+      modelName: input.modelName ?? promptSpec.providerPreference?.modelKey ?? "unknown",
+      promptSpecId: promptSpec.promptSpecId,
+      promptSpecVersion: promptSpec.version,
+      compiledPromptSnapshot,
+      routedActionRecommendations: recommendations,
+      readOnlyBoundary: pass6CopilotReadOnlyBoundary,
+      createdAt: now,
+    };
+    validateCopilotInteractionOrThrow(interaction);
+    repos.pass6CopilotInteractions.save({ ...interaction, updatedAt: now });
+    return {
+      interaction,
+      contextBundle: context.contextBundle,
+      contextSummary: context.summary,
+      boundary: {
+        ...pass6CopilotReadOnlyBoundary,
+        noWorkflowTruthInvented: true,
+        noEvidenceInvented: true,
+        routedActionsAreRecommendationsOnly: true,
+      },
+    };
+  }
+  try {
+    const providerResult = await input.provider.runPromptText({ compiledPrompt: compiledPromptSnapshot });
+    const interaction: Pass6CopilotInteraction = {
+      interactionId,
+      caseId: input.caseId,
+      question: input.question,
+      answer: providerResult.text,
+      status: "succeeded",
+      contextBundleId: context.contextBundle.contextBundleId,
+      contextReferencesUsed: context.references,
+      providerName: providerResult.provider,
+      modelName: providerResult.model,
+      promptSpecId: promptSpec.promptSpecId,
+      promptSpecVersion: promptSpec.version,
+      compiledPromptSnapshot,
+      routedActionRecommendations: recommendations,
+      readOnlyBoundary: pass6CopilotReadOnlyBoundary,
+      createdAt: now,
+    };
+    validateCopilotInteractionOrThrow(interaction);
+    repos.pass6CopilotInteractions.save({ ...interaction, updatedAt: now });
+    return {
+      interaction,
+      contextBundle: context.contextBundle,
+      contextSummary: context.summary,
+      boundary: {
+        ...pass6CopilotReadOnlyBoundary,
+        noWorkflowTruthInvented: true,
+        noEvidenceInvented: true,
+        routedActionsAreRecommendationsOnly: true,
+      },
+    };
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    const failureCode = classifyCopilotError(message);
+    const interaction: Pass6CopilotInteraction = {
+      interactionId,
+      caseId: input.caseId,
+      question: input.question,
+      answer: "Pass 6 Copilot provider failed. No answer was generated and no Pass 6 records were changed.",
+      status: "failed",
+      failureCode,
+      failureMessage: message,
+      contextBundleId: context.contextBundle.contextBundleId,
+      contextReferencesUsed: context.references,
+      providerName: input.providerName ?? input.provider.name,
+      modelName: input.modelName ?? promptSpec.providerPreference?.modelKey ?? "unknown",
+      promptSpecId: promptSpec.promptSpecId,
+      promptSpecVersion: promptSpec.version,
+      compiledPromptSnapshot,
+      routedActionRecommendations: recommendations,
+      readOnlyBoundary: pass6CopilotReadOnlyBoundary,
+      createdAt: now,
+    };
+    validateCopilotInteractionOrThrow(interaction);
+    repos.pass6CopilotInteractions.save({ ...interaction, updatedAt: now });
+    return {
+      interaction,
+      contextBundle: context.contextBundle,
+      contextSummary: context.summary,
+      boundary: {
+        ...pass6CopilotReadOnlyBoundary,
+        noWorkflowTruthInvented: true,
+        noEvidenceInvented: true,
+        routedActionsAreRecommendationsOnly: true,
+      },
+    };
+  }
 }

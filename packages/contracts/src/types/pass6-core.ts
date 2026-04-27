@@ -647,6 +647,58 @@ export interface Pass6CopilotContextBundle {
   readOnly: boolean;
 }
 
+export type Pass6CopilotInteractionStatus = "succeeded" | "failed";
+
+export type Pass6CopilotRoutedAction =
+  | "view_bundle"
+  | "inspect_claim"
+  | "inspect_difference"
+  | "inspect_method_usage"
+  | "inspect_readiness_result"
+  | "inspect_pre6c_gate"
+  | "inspect_package"
+  | "inspect_visual"
+  | "consider_pre6c_clarification"
+  | "consider_proceed_with_warnings"
+  | "consider_pass7_candidate_later"
+  | "adjust_configuration_policy_later"
+  | "test_prompt_later";
+
+export interface Pass6CopilotRoutedActionRecommendation {
+  action: Pass6CopilotRoutedAction;
+  label: string;
+  reason: string;
+  targetReference?: Pass6Reference;
+  executesAutomatically: false;
+}
+
+export interface Pass6CopilotInteraction {
+  interactionId: string;
+  caseId: string;
+  question: string;
+  answer?: string;
+  status: Pass6CopilotInteractionStatus;
+  failureCode?: string;
+  failureMessage?: string;
+  contextBundleId: string;
+  contextReferencesUsed: Pass6Reference[];
+  providerName: string;
+  modelName: string;
+  promptSpecId: string;
+  promptSpecVersion: string;
+  compiledPromptSnapshot: string;
+  routedActionRecommendations: Pass6CopilotRoutedActionRecommendation[];
+  readOnlyBoundary: {
+    noAutonomousWrites: boolean;
+    noParticipantFacingSends: boolean;
+    noMessageOrEmailSending: boolean;
+    noReadinessOverride: boolean;
+    noPackageApproval: boolean;
+    noPass7Mechanics: boolean;
+  };
+  createdAt: string;
+}
+
 export interface Pass7ReviewCandidate {
   candidateId: string;
   caseId: string;

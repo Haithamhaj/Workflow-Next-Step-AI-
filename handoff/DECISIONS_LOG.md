@@ -237,6 +237,14 @@ Status: LOCKED | FORMALIZED | IMPL-EXTENSION
 
 ---
 
+## Pass 6 Block 18 — Conversational Copilot
+
+- **Pass 6 Copilot is read-only and DB-grounded** — The Copilot may answer admin questions from stored Pass 6 records and persisted context references, but it cannot mutate workflow records, invent evidence, approve packages, override readiness, send messages, or create Pass 7 mechanics — LOCKED
+- **Copilot provider failure is explicit** — Missing provider configuration or provider execution failure is persisted as a failed Copilot interaction with visible failure details; provider success is never faked — LOCKED
+- **Routed actions are recommendations only** — Copilot can recommend inspect/view/consider routes such as inspecting readiness, package, visual, gate, or later Pass 7 candidate consideration, but it does not execute those actions autonomously — LOCKED
+
+---
+
 - **Output formalization adopted as non-governing enhancement; prompt reinforcement deferred** — enterprise-facing wording refinement, targeted document naming, section-label normalization, and final deliverable presentation are documentation-first improvements that do not require mechanics changes. Adopted as a non-governing enhancement layer. Pass 8 may consume output wording/naming/presentation improvements on client-facing surfaces (`packages/packages-output`, `apps/admin-web` output surfaces). Prompt reinforcement (rewriting or rebuilding prompt-chain logic) belongs to a separate later prompt-rebuild/analysis-improvement track and is outside Pass 8 scope. This decision does not alter state logic, package-entry conditions, review/release gates, blocking thresholds, or governance contracts — FORMALIZED
 
 ---

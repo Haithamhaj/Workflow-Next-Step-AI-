@@ -64,6 +64,7 @@ export {
   draftOperationalDocumentSchema,
   workflowGraphRecordSchema,
   pass6CopilotContextBundleSchema,
+  pass6CopilotInteractionSchema,
   pass7ReviewCandidateSchema,
   pass6ConfigurationSchema,
   pass6PromptWorkspaceSchema,
@@ -136,6 +137,7 @@ import {
   draftOperationalDocumentSchema,
   workflowGraphRecordSchema,
   pass6CopilotContextBundleSchema,
+  pass6CopilotInteractionSchema,
   pass7ReviewCandidateSchema,
   pass6ConfigurationSchema,
   pass6PromptWorkspaceSchema,
@@ -187,6 +189,7 @@ import type {
   InitialWorkflowPackage,
   InquiryPacket,
   Pass6CopilotContextBundle,
+  Pass6CopilotInteraction,
   Pass7ReviewCandidate,
   PrePackageGateResult,
   SevenConditionAssessment,
@@ -419,6 +422,9 @@ export const validateWorkflowGraphRecord =
 
 export const validatePass6CopilotContextBundle =
   makeValidator<Pass6CopilotContextBundle>(pass6CopilotContextBundleSchema);
+
+export const validatePass6CopilotInteraction =
+  makeValidator<Pass6CopilotInteraction>(pass6CopilotInteractionSchema);
 
 export const validatePass7ReviewCandidate =
   makeValidator<Pass7ReviewCandidate>(pass7ReviewCandidateSchema);
