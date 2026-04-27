@@ -37,7 +37,7 @@
 }
 
 .workspaceBrand {
-  margin-bottom: 18px;
+  margin-bottom: 58px;
   min-width: 0;
 }
 
@@ -105,16 +105,20 @@
 
 .workspaceLanguageToggle {
   position: absolute;
-  top: 18px;
-  inset-inline-end: 18px;
+  top: 68px;
+  inset-inline-start: 14px;
+  inset-inline-end: auto;
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   gap: 6px;
+  width: 196px;
+  box-sizing: border-box;
   padding: 7px 10px;
-  border: 1px solid #d5deea;
-  border-radius: 999px;
-  background: #ffffff;
-  color: #235a9f;
+  border: 1px solid #344155;
+  border-radius: 10px;
+  background: #182234;
+  color: #dce5f2;
   font: inherit;
   font-size: 12px;
   font-weight: 700;
@@ -122,17 +126,18 @@
 }
 
 .workspaceLanguageToggle span {
-  color: #64748b;
+  color: #91a0b5;
   font-weight: 700;
 }
 
 .workspaceLanguageToggle strong {
-  color: #235a9f;
+  color: #ffffff;
 }
 
 .workspaceLanguageToggle:hover,
 .workspaceLanguageToggle:focus {
-  border-color: #8bb7ea;
+  border-color: #526177;
+  background: #1e293b;
 }
 
 .workspaceHeader {
@@ -1241,6 +1246,19 @@
     border-left: none;
     border-bottom: none;
     padding: 48px 10px 12px;
+  }
+
+  .workspaceBrand {
+    margin-bottom: 54px;
+  }
+
+  .workspaceLanguageToggle {
+    top: 88px;
+    inset-inline-start: 10px;
+    width: 130px;
+    padding: 7px 8px;
+    gap: 4px;
+    white-space: normal;
   }
 
   .workspaceRoot[dir="rtl"] .workspaceNav {
