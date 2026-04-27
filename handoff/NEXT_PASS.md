@@ -37,7 +37,9 @@ Pass 6 Block 7 — 6A Admin Bundle Review Surface is accepted.
 
 Pass 6 Block 8 — 6B Method Registry and Analysis Policy is accepted.
 
-Pass 6 Block 9 — 6B Workflow Unit and Claim Pipeline is the current completed implementation block pending acceptance.
+Pass 6 Block 9 — 6B Workflow Unit and Claim Pipeline is accepted.
+
+Pass 6 Block 10 — 6B Difference Interpretation and Multi-Lens Engine is the current completed implementation block pending acceptance.
 
 Technical Decomposition v4 is the active Pass 6 build map.
 
@@ -169,6 +171,21 @@ Block 9 is workflow unit and workflow claim pipeline work only.
 - Claims are not final workflow truth.
 - No difference interpretation, workflow assembly, seven-condition evaluation, readiness routing, Pre-6C behavior, 6C generation, visual-core integration, Copilot runtime behavior, Pass 7 mechanics, or provider calls start in Block 9.
 - Next implementation step after acceptance is Block 10 — 6B Difference Interpretation and Multi-Lens Engine.
+
+## Pass 6 Block 10 Acceptance Gate
+
+Block 10 is difference interpretation and method-usage traceability only.
+
+- Workflow claims can be compared into advisory `DifferenceInterpretation` records.
+- `AnalysisMethodUsage` records are persisted using registered Block 8 method cards.
+- Completion, variant, normative/reality mismatch, and factual conflict classifications are supported.
+- Method selection starts with the primary method and uses secondary lenses only for conditional triggers.
+- Method usage supports both `system_selected` and `admin_forced` records with suitability/limitation notes.
+- Document/source signals remain signals and do not override participant evidence by default.
+- Factual conflicts are not auto-resolved or merged into a clean workflow.
+- Routes are advisory only and do not create Pass 7 records.
+- No workflow assembly, seven-condition evaluation, readiness routing, Pre-6C behavior, 6C generation, visual-core integration, Copilot runtime behavior, Pass 7 mechanics, or provider calls start in Block 10.
+- Next implementation step after acceptance is Block 11 — 6B Workflow Assembly and Claim-Basis Map.
 
 ## Active Pass 6 Block Map
 

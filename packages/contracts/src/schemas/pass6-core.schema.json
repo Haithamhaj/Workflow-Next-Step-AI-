@@ -339,7 +339,7 @@
         },
         "recommendedRoute": {
           "type": "string",
-          "enum": ["assemble_with_warning", "clarify_before_package", "admin_review", "document_as_variant", "exclude_as_out_of_scope"]
+          "enum": ["carry_as_completion", "carry_as_variant", "warning", "clarification_needed", "review_candidate", "blocker_candidate"]
         },
         "explanation": { "$ref": "#/definitions/nonEmptyString" },
         "methodUsageIds": {

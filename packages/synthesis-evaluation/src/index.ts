@@ -26,6 +26,8 @@ import {
   validateEvaluationRecord,
   validatePass6ConfigurationProfile,
   validateSynthesisInputBundle,
+  validateAnalysisMethodUsage,
+  validateDifferenceInterpretation,
   validateWorkflowClaim,
   validateWorkflowUnit,
   EvaluationAxisState,
@@ -40,6 +42,7 @@ import {
   type EvaluationConditions,
   type AnalysisMethodKey,
   type AnalysisMethodUsage,
+  type DifferenceInterpretation,
   type BoundarySignal,
   type ClarificationCandidate,
   type EvidenceAnchor,
@@ -84,6 +87,10 @@ import type {
   StoredSynthesisInputBundle,
   StoredWorkflowClaim,
   StoredWorkflowUnit,
+  StoredAnalysisMethodUsage,
+  StoredDifferenceInterpretation,
+  AnalysisMethodUsageRepository,
+  DifferenceInterpretationRepository,
   WorkflowClaimRepository,
   WorkflowUnitRepository,
 } from "@workflow/persistence";
@@ -124,6 +131,10 @@ export type {
   StoredSynthesisInputBundle,
   StoredWorkflowClaim,
   StoredWorkflowUnit,
+  StoredAnalysisMethodUsage,
+  StoredDifferenceInterpretation,
+  AnalysisMethodUsageRepository,
+  DifferenceInterpretationRepository,
   WorkflowClaimRepository,
   WorkflowUnitRepository,
 } from "@workflow/persistence";
@@ -1386,6 +1397,7 @@ export interface Pass6MethodRegistryItem {
   active: boolean;
   methodVersion: string;
   adminFacingDescription: string;
+  exampleUseCase: string;
   defaultPreference: "preferred" | "available" | "off_by_default";
 }
 
@@ -1432,7 +1444,7 @@ const METHOD_LOCKED_BOUNDARIES = [
   "Methods cannot merge conflicting outputs into a fake clean workflow.",
 ];
 
-const PASS6_METHOD_REGISTRY_BASE: readonly Omit<Pass6MethodRegistryItem, "active" | "defaultPreference">[] = [
+const PASS6_METHOD_REGISTRY_BASE: readonly Omit<Pass6MethodRegistryItem, "active" | "defaultPreference" | "exampleUseCase">[] = [
   {
     methodId: "method-bpmn-process-structure-v1",
     methodKey: "bpmn_process_structure",
@@ -1679,6 +1691,7 @@ export function resolvePass6MethodRegistryForAdmin(
     const config = configuredMethods.get(method.methodKey);
     return {
       ...method,
+      exampleUseCase: `${method.displayName}: ${method.normalUseCases[0]}.`,
       active: config?.active ?? true,
       defaultPreference: config?.defaultPreference ?? "available",
     };
@@ -1986,6 +1999,325 @@ export function buildWorkflowUnitsAndClaimsFromBundle(
     claims,
     policyRefs: policyRefsForPipeline(input.configurationProfile),
   };
+}
+
+// ---------------------------------------------------------------------------
+// Pass 6B Difference Interpretation and Multi-Lens Engine — Block 10
+// ---------------------------------------------------------------------------
+
+export interface AdminForcedDifferenceMethodInput {
+  methodKey: AnalysisMethodKey;
+  reason: string;
+  appliedToClaimIds: string[];
+  suitability: "suitable" | "partially_suitable" | "weakly_suitable";
+  limitationsOrRisks: string[];
+  preserveSystemSuggestedMethod: boolean;
+}
+
+export interface InterpretWorkflowClaimDifferencesInput {
+  caseId: string;
+  claims: WorkflowClaim[];
+  now?: string;
+  persist?: boolean;
+  configRepo?: Pass6ConfigurationProfileRepository;
+  adminForcedMethods?: AdminForcedDifferenceMethodInput[];
+}
+
+export interface InterpretWorkflowClaimDifferencesRepositories {
+  differenceInterpretations?: DifferenceInterpretationRepository;
+  analysisMethodUsages?: AnalysisMethodUsageRepository;
+}
+
+export interface InterpretWorkflowClaimDifferencesOk {
+  ok: true;
+  differences: StoredDifferenceInterpretation[];
+  methodUsages: StoredAnalysisMethodUsage[];
+  methodRegistry: Pass6MethodRegistryAdminView;
+}
+
+export type InterpretWorkflowClaimDifferencesResult =
+  | InterpretWorkflowClaimDifferencesOk
+  | { ok: false; error: string };
+
+type DifferenceRoute = DifferenceInterpretation["recommendedRoute"];
+
+function methodUsageType(methodKey: AnalysisMethodKey): AnalysisMethodUsage["methodType"] {
+  if (methodKey === "bpmn_process_structure") return "process_structure_lens";
+  if (methodKey === "sipoc_boundary") return "boundary_lens";
+  if (methodKey === "triangulation") return "evidence_lens";
+  if (methodKey === "espoused_theory_vs_theory_in_use") return "practice_reality_lens";
+  if (methodKey === "raci_responsibility") return "responsibility_lens";
+  if (methodKey === "ssm_multi_perspective") return "multi_perspective_lens";
+  return "vocabulary_lens";
+}
+
+function claimText(claim: WorkflowClaim): string {
+  return `${claim.normalizedStatement} ${claim.claimText ?? ""}`.toLowerCase();
+}
+
+function claimIsDocumentSignal(claim: WorkflowClaim): boolean {
+  return claim.basis.basisType === "source_document" ||
+    claim.truthLensContextIds?.some((id) => id.includes("document_signal") || id.includes("policy_intent")) === true ||
+    claimText(claim).includes("document/source signal");
+}
+
+function layerKey(claim: WorkflowClaim): string {
+  return claim.sourceLayerContextIds?.join("|") || claim.sourceSessionIds?.join("|") || "unknown_layer";
+}
+
+function hasLayerSignal(claim: WorkflowClaim, signal: string): boolean {
+  return `${claim.sourceLayerContextIds?.join(" ") ?? ""} ${claim.sourceParticipantIds?.join(" ") ?? ""} ${claim.sourceSessionIds?.join(" ") ?? ""}`.toLowerCase().includes(signal);
+}
+
+function isCrossLayer(a: WorkflowClaim, b: WorkflowClaim): boolean {
+  return layerKey(a) !== layerKey(b);
+}
+
+function directContradiction(a: WorkflowClaim, b: WorkflowClaim): boolean {
+  const left = claimText(a);
+  const right = claimText(b);
+  const negators = ["does not", "do not", "never", "no ", "not required", "not approve", "without approval"];
+  const leftNeg = negators.some((term) => left.includes(term));
+  const rightNeg = negators.some((term) => right.includes(term));
+  const sharedTerms = ["finance", "approval", "approve", "handoff", "tax", "manager", "legal", "required"]
+    .filter((term) => left.includes(term) && right.includes(term));
+  return leftNeg !== rightNeg && sharedTerms.length >= 2;
+}
+
+function variantSignal(a: WorkflowClaim, b: WorkflowClaim): boolean {
+  const text = `${claimText(a)} ${claimText(b)}`;
+  return ["if ", "when ", "unless", "variant", "domestic", "international", "vendor type", "sometimes", "alternate"].some((term) => text.includes(term));
+}
+
+function materialityForDifference(a: WorkflowClaim, b: WorkflowClaim): DifferenceInterpretation["materiality"] {
+  if (a.materiality === "high" || b.materiality === "high") return "high";
+  if (a.materiality === "low" && b.materiality === "low") return "low";
+  return "medium";
+}
+
+function routeForDifference(type: DifferenceInterpretation["differenceType"], materiality: DifferenceInterpretation["materiality"]): DifferenceRoute {
+  if (type === "completion") return "carry_as_completion";
+  if (type === "variant") return "carry_as_variant";
+  if (type === "normative_reality_mismatch") return materiality === "high" ? "review_candidate" : "warning";
+  return materiality === "high" ? "blocker_candidate" : "clarification_needed";
+}
+
+function primaryMethodForDifference(
+  type: DifferenceInterpretation["differenceType"],
+  a: WorkflowClaim,
+  b: WorkflowClaim,
+): AnalysisMethodKey {
+  const text = `${claimText(a)} ${claimText(b)}`;
+  if (type === "normative_reality_mismatch") return "espoused_theory_vs_theory_in_use";
+  if (isCrossLayer(a, b)) return "ssm_multi_perspective";
+  if (type === "factual_conflict") return "triangulation";
+  if (a.primaryClaimType === "boundary_claim" || b.primaryClaimType === "boundary_claim") return "sipoc_boundary";
+  if (a.primaryClaimType === "ownership_claim" || b.primaryClaimType === "ownership_claim" || text.includes("approval") || text.includes("owner")) return "raci_responsibility";
+  if (a.primaryClaimType === "sequence_claim" || b.primaryClaimType === "sequence_claim" || text.includes("handoff")) return "bpmn_process_structure";
+  return "triangulation";
+}
+
+function secondaryMethodsForDifference(
+  primary: AnalysisMethodKey,
+  type: DifferenceInterpretation["differenceType"],
+  a: WorkflowClaim,
+  b: WorkflowClaim,
+): AnalysisMethodKey[] {
+  const methods: AnalysisMethodKey[] = [];
+  const text = `${claimText(a)} ${claimText(b)}`;
+  const highOrLow = a.materiality === "high" || b.materiality === "high" || a.confidence === "low" || b.confidence === "low";
+  const disputed = a.status === "review_needed" || b.status === "review_needed" || text.includes("dispute");
+  if ((highOrLow || disputed) && primary !== "triangulation") methods.push("triangulation");
+  if ((claimIsDocumentSignal(a) || claimIsDocumentSignal(b)) && primary !== "espoused_theory_vs_theory_in_use") methods.push("espoused_theory_vs_theory_in_use");
+  if (isCrossLayer(a, b) && primary !== "ssm_multi_perspective") methods.push("ssm_multi_perspective");
+  if ((a.primaryClaimType === "ownership_claim" || b.primaryClaimType === "ownership_claim" || text.includes("approval")) && primary !== "raci_responsibility") methods.push("raci_responsibility");
+  return uniqueBy(methods, (method) => method);
+}
+
+function classifyDifference(a: WorkflowClaim, b: WorkflowClaim): DifferenceInterpretation["differenceType"] | null {
+  if (claimIsDocumentSignal(a) !== claimIsDocumentSignal(b) && directContradiction(a, b)) return "normative_reality_mismatch";
+  if (directContradiction(a, b)) return "factual_conflict";
+  if (variantSignal(a, b)) return "variant";
+  if (isCrossLayer(a, b) && (hasLayerSignal(a, "frontline") || hasLayerSignal(a, "supervisor") || hasLayerSignal(a, "manager") || hasLayerSignal(b, "frontline") || hasLayerSignal(b, "supervisor") || hasLayerSignal(b, "manager"))) return "variant";
+  if (layerKey(a) === layerKey(b) && a.claimId !== b.claimId && a.primaryClaimType !== b.primaryClaimType) return "completion";
+  return null;
+}
+
+function registeredMethodOrError(methodKey: AnalysisMethodKey, registry: Pass6MethodRegistryAdminView): Pass6MethodRegistryItem {
+  const method = registry.methods.find((item) => item.methodKey === methodKey);
+  if (!method) throw new Error(`Registered Pass 6 method '${methodKey}' not found.`);
+  return method;
+}
+
+function createMethodUsage(
+  input: {
+    method: Pass6MethodRegistryItem;
+    methodRole: AnalysisMethodUsage["methodRole"];
+    reason: string;
+    appliedToId: string;
+    affectedIds: string[];
+    outputSummary: string;
+    impactSummary: string;
+    selectionSource?: AnalysisMethodUsage["selectionSource"];
+    suitable?: boolean;
+    suitabilityNotes?: string;
+    limitations?: string[];
+    now: string;
+  },
+): StoredAnalysisMethodUsage {
+  const base: AnalysisMethodUsage = {
+    methodUsageId: `method_usage:${safeIdPart(input.appliedToId)}:${safeIdPart(input.method.methodKey)}:${safeIdPart(input.methodRole ?? "primary")}`,
+    methodId: input.method.methodId,
+    methodKey: input.method.methodKey,
+    methodName: input.method.displayName,
+    methodType: methodUsageType(input.method.methodKey),
+    version: input.method.methodVersion,
+    selectionReason: input.reason,
+    selectionSource: input.selectionSource ?? "system_selected",
+    methodRole: input.methodRole,
+    appliedToType: "difference",
+    appliedToId: input.appliedToId,
+    outputSummary: input.outputSummary,
+    impact: {
+      affectedIds: input.affectedIds,
+      impactSummary: input.impactSummary,
+      changedRouting: false,
+      changedReadiness: false,
+    },
+    suitabilityAssessment: {
+      suitable: input.suitable ?? input.method.active,
+      notes: input.suitabilityNotes ?? (input.method.active ? "Registered method is active and suitable for advisory interpretation." : "Registered method is inactive; usage is traceability-only."),
+      limitations: input.limitations ?? input.method.limitations,
+    },
+  };
+  const validation = validatePipelineRecord("AnalysisMethodUsage", validateAnalysisMethodUsage(base));
+  if (!validation.ok) throw new Error(validation.error);
+  return { ...base, createdAt: input.now, updatedAt: input.now };
+}
+
+function createDifference(
+  input: {
+    caseId: string;
+    claims: [WorkflowClaim, WorkflowClaim];
+    differenceType: DifferenceInterpretation["differenceType"];
+    methodUsageIds: string[];
+    now: string;
+  },
+): StoredDifferenceInterpretation {
+  const [a, b] = input.claims;
+  const materiality = materialityForDifference(a, b);
+  const base: DifferenceInterpretation = {
+    differenceId: `difference:${safeIdPart(a.claimId)}:${safeIdPart(b.claimId)}:${input.differenceType}`,
+    caseId: input.caseId,
+    involvedClaimIds: [a.claimId, b.claimId],
+    involvedLayers: uniqueBy([...(a.sourceLayerContextIds ?? []), ...(b.sourceLayerContextIds ?? [])], (value) => value),
+    involvedRoles: uniqueBy([...(a.sourceParticipantIds ?? []), ...(b.sourceParticipantIds ?? [])], (value) => value),
+    differenceType: input.differenceType,
+    materiality,
+    recommendedRoute: routeForDifference(input.differenceType, materiality),
+    explanation: [
+      `Advisory ${input.differenceType} between claims ${a.claimId} and ${b.claimId}.`,
+      "This is not employee evaluation, not readiness, and not final workflow truth.",
+      input.differenceType === "factual_conflict" ? "Factual conflict is not auto-resolved or merged into a clean workflow." : undefined,
+      input.differenceType === "normative_reality_mismatch" ? "Document/source signal does not override participant evidence by default." : undefined,
+    ].filter(Boolean).join(" "),
+    methodUsageIds: input.methodUsageIds,
+    notPerformanceEvaluation: true,
+  };
+  const validation = validatePipelineRecord("DifferenceInterpretation", validateDifferenceInterpretation(base));
+  if (!validation.ok) throw new Error(validation.error);
+  return { ...base, createdAt: input.now, updatedAt: input.now };
+}
+
+export function interpretWorkflowClaimDifferences(
+  input: InterpretWorkflowClaimDifferencesInput,
+  repos: InterpretWorkflowClaimDifferencesRepositories = {},
+): InterpretWorkflowClaimDifferencesResult {
+  const now = input.now ?? new Date().toISOString();
+  const registry = resolvePass6MethodRegistryForAdmin(input.configRepo);
+  const differences: StoredDifferenceInterpretation[] = [];
+  const methodUsages: StoredAnalysisMethodUsage[] = [];
+  const seen = new Set<string>();
+
+  try {
+    for (let i = 0; i < input.claims.length; i += 1) {
+      for (let j = i + 1; j < input.claims.length; j += 1) {
+        const a = input.claims[i];
+        const b = input.claims[j];
+        if (!a || !b) continue;
+        if (a.caseId !== input.caseId || b.caseId !== input.caseId) continue;
+        const differenceType = classifyDifference(a, b);
+        if (!differenceType) continue;
+        const differenceId = `difference:${safeIdPart(a.claimId)}:${safeIdPart(b.claimId)}:${differenceType}`;
+        if (seen.has(differenceId)) continue;
+        seen.add(differenceId);
+
+        const primaryMethodKey = primaryMethodForDifference(differenceType, a, b);
+        const selectedMethods = [
+          { methodKey: primaryMethodKey, methodRole: "primary" as const },
+          ...secondaryMethodsForDifference(primaryMethodKey, differenceType, a, b).map((methodKey) => ({ methodKey, methodRole: "secondary" as const })),
+        ];
+
+        const usageIds: string[] = [];
+        for (const selected of selectedMethods) {
+          const method = registeredMethodOrError(selected.methodKey, registry);
+          const usage = createMethodUsage({
+            method,
+            methodRole: selected.methodRole,
+            reason: `${method.displayName} selected for ${differenceType} using registered Block 8 method card.`,
+            appliedToId: differenceId,
+            affectedIds: [a.claimId, b.claimId],
+            outputSummary: `${method.displayName} produced advisory ${differenceType} interpretation only.`,
+            impactSummary: "Creates DifferenceInterpretation traceability only; does not assemble workflow or decide readiness.",
+            limitations: [
+              ...method.limitations,
+              "Conflicting findings must not be merged into a fake clean workflow.",
+              "Route is advisory only.",
+            ],
+            now,
+          });
+          methodUsages.push(usage);
+          usageIds.push(usage.methodUsageId);
+        }
+
+        differences.push(createDifference({
+          caseId: input.caseId,
+          claims: [a, b],
+          differenceType,
+          methodUsageIds: usageIds,
+          now,
+        }));
+      }
+    }
+
+    for (const forced of input.adminForcedMethods ?? []) {
+      const method = registeredMethodOrError(forced.methodKey, registry);
+      const suitabilityNotes = `Admin-forced method requested: ${forced.reason}. Suitability=${forced.suitability}. ${forced.preserveSystemSuggestedMethod ? "System-suggested method is preserved for comparison." : "No system-suggested method preservation requested."}`;
+      methodUsages.push(createMethodUsage({
+        method,
+        methodRole: "admin_forced",
+        reason: forced.reason,
+        appliedToId: `admin_forced:${safeIdPart(forced.appliedToClaimIds.join("_") || forced.methodKey)}`,
+        affectedIds: forced.appliedToClaimIds,
+        outputSummary: "Admin-forced method usage represented for traceability only; no method execution resolves truth.",
+        impactSummary: "Records admin-forced method suitability and limitations without creating workflow assembly or readiness.",
+        selectionSource: "admin_forced",
+        suitable: forced.suitability !== "weakly_suitable",
+        suitabilityNotes,
+        limitations: forced.limitationsOrRisks,
+        now,
+      }));
+    }
+  } catch (error) {
+    return { ok: false, error: error instanceof Error ? error.message : String(error) };
+  }
+
+  if (input.persist !== false) {
+    for (const usage of methodUsages) repos.analysisMethodUsages?.save(usage);
+    for (const difference of differences) repos.differenceInterpretations?.save(difference);
+  }
+
+  return { ok: true, differences, methodUsages, methodRegistry: registry };
 }
 
 // ---------------------------------------------------------------------------

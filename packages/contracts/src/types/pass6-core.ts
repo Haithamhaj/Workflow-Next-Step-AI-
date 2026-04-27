@@ -212,11 +212,12 @@ export interface DifferenceInterpretation {
   differenceType: "completion" | "variant" | "normative_reality_mismatch" | "factual_conflict";
   materiality?: "high" | "medium" | "low" | "unknown";
   recommendedRoute:
-    | "assemble_with_warning"
-    | "clarify_before_package"
-    | "admin_review"
-    | "document_as_variant"
-    | "exclude_as_out_of_scope";
+    | "carry_as_completion"
+    | "carry_as_variant"
+    | "warning"
+    | "clarification_needed"
+    | "review_candidate"
+    | "blocker_candidate";
   explanation: string;
   methodUsageIds?: string[];
   notPerformanceEvaluation?: boolean;

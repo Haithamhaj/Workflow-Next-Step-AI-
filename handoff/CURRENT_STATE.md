@@ -154,6 +154,22 @@ Pass 6 Block 9 adds the first 6B transformation step only.
 - Block 9 does not implement provider calls, difference interpretation execution, workflow assembly, seven-condition evaluation, readiness routing, Pre-6C behavior, 6C package generation, visual-core integration, Copilot runtime behavior, or Pass 7 mechanics.
 - Next implementation step after Block 9 acceptance is Block 10 — 6B Difference Interpretation and Multi-Lens Engine.
 
+## Pass 6 Block 10 — 6B Difference Interpretation and Multi-Lens Engine
+
+Pass 6 Block 10 adds advisory difference interpretation only.
+
+- Added a deterministic comparison helper that compares `WorkflowClaim` records and produces `DifferenceInterpretation` records.
+- Added persisted `AnalysisMethodUsage` trace records using registered Block 8 method cards.
+- Supports advisory difference types: completion, variant, normative/reality mismatch, and factual conflict.
+- Supports advisory routes: `carry_as_completion`, `carry_as_variant`, `warning`, `clarification_needed`, `review_candidate`, and `blocker_candidate`.
+- Uses primary registered methods and conditional secondary lenses without running every method on every claim.
+- Document/source signals remain signals and do not override participant evidence by default.
+- Factual conflicts are not auto-resolved and are not merged into a fake clean workflow.
+- Admin-forced method usage can be represented with suitability and limitation notes, without executing provider calls or overriding governance.
+- Added a focused proof script: `scripts/prove-pass6-block10-difference-interpretation.mjs`.
+- Block 10 does not implement provider calls, workflow assembly, seven-condition evaluation, readiness routing, Pre-6C behavior, 6C package generation, visual-core integration, Copilot runtime behavior, or Pass 7 mechanics.
+- Next implementation step after Block 10 acceptance is Block 11 — 6B Workflow Assembly and Claim-Basis Map.
+
 **Pass 5 — Participant Session Outreach / Narrative-First Clarification is accepted, closed, integrated, and archived on `main`.**
 
 Final Pass 5 status: `pass5_participant_session_outreach_accepted`

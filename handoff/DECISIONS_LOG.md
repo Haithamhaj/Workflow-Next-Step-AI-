@@ -90,6 +90,15 @@ Status: LOCKED | FORMALIZED | IMPL-EXTENSION
 - **Preliminary confidence/materiality indicators are advisory only** — indicators can support later review and traceability but cannot approve readiness, generate package eligibility, resolve conflicts, or replace admin decisions — LOCKED
 - **Block 9 persistence stores only units and claims** — no DifferenceInterpretation, workflow draft, readiness result, Pre-6C result, package, visual, Copilot, or Pass 7 record is created by the claim pipeline — LOCKED
 
+## Pass 6 Block 10 — 6B Difference Interpretation and Multi-Lens Engine
+
+- **Difference interpretation is advisory and not workflow assembly** — Block 10 classifies claim relationships as completion, variant, normative/reality mismatch, or factual conflict, but does not build the workflow, decide readiness, or generate package content — LOCKED
+- **Method usage must consume registered Block 8 method cards** — every method usage record references the registered method key, method ID/name/version, reason, impact summary, suitability, limitations, and selection source — LOCKED
+- **Conditional multi-lens behavior is bounded** — the engine starts with a primary method and adds secondary lenses only for uncertainty, high materiality, low confidence, dispute, document sensitivity, or layer sensitivity; it does not run every method on every claim — LOCKED
+- **Documents and hierarchy do not become automatic truth** — document/source signals and higher hierarchy layers can create mismatches or variants, but they do not override participant evidence or determine truth by rank — LOCKED
+- **Conflicts are not cleaned up by inference** — factual conflicts and conflicting method findings must remain differences for later clarification/review and must not be merged into a fake clean workflow — LOCKED
+- **Block 10 does not create downstream decision records** — no assembled workflow draft, readiness result, Pre-6C result, package, visual, Copilot, or Pass 7 record is created by difference interpretation — LOCKED
+
 ## contracts
 
 - **Ajv 8 + ajv-formats for JSON Schema validation** — industry standard, fast, supports Draft-07, formats plugin needed for `date-time` and `uri` — LOCKED

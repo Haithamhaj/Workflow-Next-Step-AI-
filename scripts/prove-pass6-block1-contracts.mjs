@@ -160,7 +160,7 @@ const differenceInterpretation = {
   involvedRoles: ["Coordinator", "Supervisor"],
   differenceType: "variant",
   materiality: "medium",
-  recommendedRoute: "assemble_with_warning",
+  recommendedRoute: "carry_as_variant",
   explanation: "Two roles describe different valid variants.",
   methodUsageIds: ["method-usage-1"],
   notPerformanceEvaluation: true,
@@ -454,6 +454,7 @@ const allowedPrefixes = [
   "scripts/prove-pass6-block7-bundle-review-surface.mjs",
   "scripts/prove-pass6-block8-method-registry.mjs",
   "scripts/prove-pass6-block9-claim-pipeline.mjs",
+  "scripts/prove-pass6-block10-difference-interpretation.mjs",
   "handoff/",
 ];
 for (const file of changedFiles) {
