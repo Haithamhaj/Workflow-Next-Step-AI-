@@ -58,6 +58,7 @@ export {
   prePackageGateResultSchema,
   clarificationNeedSchema,
   inquiryPacketSchema,
+  externalInterfaceRecordSchema,
   initialWorkflowPackageSchema,
   workflowGapClosureBriefSchema,
   draftOperationalDocumentSchema,
@@ -129,6 +130,7 @@ import {
   prePackageGateResultSchema,
   clarificationNeedSchema,
   inquiryPacketSchema,
+  externalInterfaceRecordSchema,
   initialWorkflowPackageSchema,
   workflowGapClosureBriefSchema,
   draftOperationalDocumentSchema,
@@ -181,6 +183,7 @@ import type {
   ClarificationNeed,
   DifferenceInterpretation,
   DraftOperationalDocument,
+  ExternalInterfaceRecord,
   InitialWorkflowPackage,
   InquiryPacket,
   Pass6CopilotContextBundle,
@@ -398,6 +401,9 @@ export const validateClarificationNeed =
 
 export const validateInquiryPacket =
   makeValidator<InquiryPacket>(inquiryPacketSchema);
+
+export const validateExternalInterfaceRecord =
+  makeValidator<ExternalInterfaceRecord>(externalInterfaceRecordSchema);
 
 export const validateInitialWorkflowPackage =
   makeValidator<InitialWorkflowPackage>(initialWorkflowPackageSchema);

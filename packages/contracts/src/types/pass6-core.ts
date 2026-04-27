@@ -417,6 +417,69 @@ export interface PrePackageGateResult {
   };
 }
 
+export type ExternalInterfaceType =
+  | "input_provider"
+  | "output_receiver"
+  | "handoff_owner"
+  | "approval_control_authority"
+  | "dependency_support_function"
+  | "shared_system_queue_interface"
+  | "clarification_target"
+  | "out_of_scope_external_process";
+
+export type ExternalInterfaceConfirmationStatus =
+  | "confirmed"
+  | "assumed"
+  | "unclear"
+  | "unvalidated"
+  | "disputed";
+
+export type ExternalInterfaceMateriality =
+  | "non_material"
+  | "warning"
+  | "blocker_candidate"
+  | "blocker";
+
+export type ExternalInterfaceRecommendedAction =
+  | "carry_as_interface_note"
+  | "route_to_pre6c_clarification"
+  | "proceed_with_warning"
+  | "require_review_decision"
+  | "out_of_scope_note";
+
+export interface ExternalInterfaceRecord {
+  interfaceId: string;
+  caseId: string;
+  relatedWorkflowDraftId?: string;
+  relatedReadinessResultId?: string;
+  relatedGateResultId?: string;
+  interfaceType: ExternalInterfaceType;
+  externalDepartmentOrRole: string;
+  externalSystemOrQueue?: string;
+  selectedDepartmentSide: string;
+  whereItOccursInWorkflow: string;
+  whatIsTransferredOrRequired: string;
+  inputOutputCondition?: string;
+  knownOwnerOrReceivingSide?: string;
+  basis: Pass6SourceBasis;
+  confirmationStatus: ExternalInterfaceConfirmationStatus;
+  materiality: ExternalInterfaceMateriality;
+  affectsSevenCondition?: SevenConditionKey[];
+  recommendedAction: ExternalInterfaceRecommendedAction;
+  limitationsCaveats: string[];
+  packageVisualConsumption: {
+    includeInPackageInterfaceNotes: boolean;
+    includeInVisualGraph: boolean;
+    visualNodeStatus: WorkflowGraphNodeStatus;
+  };
+  scopeBoundary: {
+    selectedScopeRemainsPrimary: boolean;
+    externalWorkflowNotAnalyzed: boolean;
+    scopeExpansionImplemented: false;
+  };
+  metadata: Pass6RecordMetadata;
+}
+
 export interface PackageSection {
   sectionId: string;
   title: string;

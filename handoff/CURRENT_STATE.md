@@ -230,6 +230,20 @@ Pass 6 Block 14 adds the Pre-6C gate only.
 - Block 14 does not implement provider calls, actual message/email sending, participant re-contact execution, 6C package generation, Workflow Gap Closure Brief generation, visual-core integration, Copilot runtime behavior, or Pass 7 mechanics.
 - Next implementation step after Block 14 acceptance is Block 15 — Cross-Department / External Interface Handling.
 
+## Pass 6 Block 15 — Cross-Department / External Interface Handling
+
+Pass 6 Block 15 adds explicit cross-department/external interface records only.
+
+- Added `ExternalInterfaceRecord` contract/schema/type support for input providers, output receivers, handoff owners, approval/control authorities, dependency support functions, shared systems/queues, clarification targets, and out-of-scope external processes.
+- Added in-memory and SQLite-backed persistence support for interface records through the existing Pass 6 repository pattern.
+- Added deterministic interface registration from existing assembled workflow drafts, readiness results, and Pre-6C gate clarification needs.
+- Interface records preserve selected department/use-case scope, source basis, workflow location, confirmation status, materiality, seven-condition effects, recommended action, and package/visual consumption fields for later blocks.
+- Added minimal admin API and UI surfaces at `/pass6/interfaces`.
+- Interface status/materiality can be marked for admin inspection without expanding scope or analyzing another department's internal workflow.
+- Added a focused proof script: `scripts/prove-pass6-block15-external-interfaces.mjs`.
+- Block 15 does not implement provider calls, external outreach/message/email sending, scope expansion, external department internal workflow analysis, 6C package generation, Workflow Gap Closure Brief generation, visual-core integration, Copilot runtime behavior, or Pass 7 mechanics.
+- Next implementation step after Block 15 acceptance is Block 16 — 6C Output Governance and Package Generation.
+
 **Pass 5 — Participant Session Outreach / Narrative-First Clarification is accepted, closed, integrated, and archived on `main`.**
 
 Final Pass 5 status: `pass5_participant_session_outreach_accepted`

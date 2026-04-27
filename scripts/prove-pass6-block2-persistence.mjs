@@ -260,6 +260,44 @@ const prePackageGateResult = {
   updatedAt,
 };
 
+const externalInterfaceRecord = {
+  interfaceId: "external-interface-1",
+  caseId,
+  relatedWorkflowDraftId: "draft-1",
+  relatedReadinessResultId: "readiness-1",
+  relatedGateResultId: "gate-1",
+  interfaceType: "handoff_owner",
+  externalDepartmentOrRole: "Finance",
+  externalSystemOrQueue: "Shared queue",
+  selectedDepartmentSide: "Operations selected use case",
+  whereItOccursInWorkflow: "handoff:handoff-finance",
+  whatIsTransferredOrRequired: "Approved request is handed off to Finance through a shared queue.",
+  inputOutputCondition: "Finance receives the approved request after Operations validation.",
+  knownOwnerOrReceivingSide: "Finance",
+  basis,
+  confirmationStatus: "unvalidated",
+  materiality: "warning",
+  affectsSevenCondition: ["handoffs_responsibility", "use_case_boundary"],
+  recommendedAction: "proceed_with_warning",
+  limitationsCaveats: [
+    "Selected department remains primary.",
+    "Finance internal workflow is not analyzed.",
+  ],
+  packageVisualConsumption: {
+    includeInPackageInterfaceNotes: true,
+    includeInVisualGraph: true,
+    visualNodeStatus: "external_unvalidated",
+  },
+  scopeBoundary: {
+    selectedScopeRemainsPrimary: true,
+    externalWorkflowNotAnalyzed: true,
+    scopeExpansionImplemented: false,
+  },
+  metadata,
+  createdAt: now,
+  updatedAt,
+};
+
 const packageSection = {
   sectionId: "section-1",
   title: "Current Workflow",
@@ -375,6 +413,7 @@ const records = [
   ["prePackageGateResults", "gate-1", prePackageGateResult],
   ["clarificationNeeds", "clarification-need-1", clarificationNeed],
   ["inquiryPackets", "inquiry-1", inquiryPacket],
+  ["externalInterfaceRecords", "external-interface-1", externalInterfaceRecord],
   ["initialWorkflowPackages", "initial-package-1", initialWorkflowPackage],
   ["workflowGapClosureBriefs", "gap-brief-1", workflowGapClosureBrief],
   ["draftOperationalDocuments", "draft-document-1", draftOperationalDocument],
@@ -394,6 +433,7 @@ function exerciseRepositories(store, label) {
 
   assert.equal(store.workflowClaims.findByCaseId(caseId).length, 1, `${label}.workflowClaims findByCaseId`);
   assert.equal(store.workflowReadinessResults.findByCaseId(caseId).length, 1, `${label}.workflowReadinessResults findByCaseId`);
+  assert.equal(store.externalInterfaceRecords.findByCaseId(caseId).length, 1, `${label}.externalInterfaceRecords findByCaseId`);
   assert.equal(store.initialWorkflowPackages.findByCaseId(caseId).length, 1, `${label}.initialWorkflowPackages findByCaseId`);
   assert.equal(store.analysisMethodUsages.findByCaseId(caseId).length, 0, `${label}.analysisMethodUsages has no case index in contract`);
 
@@ -474,6 +514,7 @@ const allowedPrefixes = [
   "scripts/prove-pass6-block12-readiness-result.mjs",
   "scripts/prove-pass6-block13-analysis-report.mjs",
   "scripts/prove-pass6-block14-pre6c-gate.mjs",
+  "scripts/prove-pass6-block15-external-interfaces.mjs",
   "handoff/",
 ];
 for (const file of changedFiles) {

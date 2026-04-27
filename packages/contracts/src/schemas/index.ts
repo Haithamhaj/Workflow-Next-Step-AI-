@@ -76,6 +76,7 @@ const workflowReadinessResultSchema = pass6Schema("WorkflowReadinessResult", "wo
 const prePackageGateResultSchema = pass6Schema("PrePackageGateResult", "prePackageGateResult");
 const clarificationNeedSchema = pass6Schema("ClarificationNeed", "clarificationNeed");
 const inquiryPacketSchema = pass6Schema("InquiryPacket", "inquiryPacket");
+const externalInterfaceRecordSchema = pass6Schema("ExternalInterfaceRecord", "externalInterfaceRecord");
 const initialWorkflowPackageSchema = pass6Schema("InitialWorkflowPackage", "initialWorkflowPackage");
 const workflowGapClosureBriefSchema = pass6Schema("WorkflowGapClosureBrief", "workflowGapClosureBrief");
 const draftOperationalDocumentSchema = pass6Schema("DraftOperationalDocument", "draftOperationalDocument");
@@ -153,6 +154,7 @@ export {
   prePackageGateResultSchema,
   clarificationNeedSchema,
   inquiryPacketSchema,
+  externalInterfaceRecordSchema,
   initialWorkflowPackageSchema,
   workflowGapClosureBriefSchema,
   draftOperationalDocumentSchema,

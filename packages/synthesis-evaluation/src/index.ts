@@ -29,6 +29,7 @@ import {
   validateAnalysisMethodUsage,
   validateAssembledWorkflowDraft,
   validateDifferenceInterpretation,
+  validateExternalInterfaceRecord,
   validateClarificationNeed,
   validateInquiryPacket,
   validatePrePackageGateResult,
@@ -52,6 +53,11 @@ import {
   type ClaimBasisEntry,
   type ClarificationNeed,
   type DifferenceInterpretation,
+  type ExternalInterfaceRecord,
+  type ExternalInterfaceConfirmationStatus,
+  type ExternalInterfaceMateriality,
+  type ExternalInterfaceRecommendedAction,
+  type ExternalInterfaceType,
   type GateDecision,
   type InquiryPacket,
   type BoundarySignal,
@@ -112,11 +118,13 @@ import type {
   StoredPrePackageGateResult,
   StoredClarificationNeed,
   StoredInquiryPacket,
+  StoredExternalInterfaceRecord,
   AnalysisMethodUsageRepository,
   AssembledWorkflowDraftRepository,
   ClarificationNeedRepository,
   DifferenceInterpretationRepository,
   InquiryPacketRepository,
+  ExternalInterfaceRecordRepository,
   PrePackageGateResultRepository,
   WorkflowReadinessResultRepository,
   WorkflowClaimRepository,
@@ -166,11 +174,13 @@ export type {
   StoredPrePackageGateResult,
   StoredClarificationNeed,
   StoredInquiryPacket,
+  StoredExternalInterfaceRecord,
   AnalysisMethodUsageRepository,
   AssembledWorkflowDraftRepository,
   ClarificationNeedRepository,
   DifferenceInterpretationRepository,
   InquiryPacketRepository,
+  ExternalInterfaceRecordRepository,
   PrePackageGateResultRepository,
   WorkflowReadinessResultRepository,
   WorkflowClaimRepository,
@@ -3521,6 +3531,442 @@ export function runPre6CGateFromRepositories(
     assembledWorkflowDraft: repos.assembledWorkflowDrafts?.findById(readiness.assembledWorkflowDraftId) ?? undefined,
     differences: repos.differenceInterpretations?.findByCaseId(readiness.caseId) ?? [],
   }, repos);
+}
+
+// ---------------------------------------------------------------------------
+// Pass 6 Cross-Department / External Interface Handling — Block 15
+// ---------------------------------------------------------------------------
+
+export interface RegisterExternalInterfacesInput {
+  caseId?: string;
+  assembledWorkflowDraft?: AssembledWorkflowDraft;
+  workflowReadinessResult?: WorkflowReadinessResult;
+  prePackageGateResult?: PrePackageGateResult;
+  selectedDepartmentSide?: string;
+  now?: string;
+  persist?: boolean;
+}
+
+export interface RegisterExternalInterfacesRepositories {
+  externalInterfaceRecords?: ExternalInterfaceRecordRepository;
+}
+
+export interface RegisterExternalInterfacesOk {
+  ok: true;
+  interfaceRecords: StoredExternalInterfaceRecord[];
+  boundary: {
+    selectedScopeRemainsPrimary: true;
+    externalWorkflowNotAnalyzed: true;
+    scopeExpansionImplemented: false;
+    noExternalOutreach: true;
+    noPackageGenerated: true;
+    noVisualGraphCreated: true;
+    noPass7RecordsCreated: true;
+  };
+}
+
+export type RegisterExternalInterfacesResult =
+  | RegisterExternalInterfacesOk
+  | { ok: false; error: string };
+
+function externalInterfaceBasis(input: {
+  caseId: string;
+  id: string;
+  summary: string;
+  draft?: AssembledWorkflowDraft;
+  readiness?: WorkflowReadinessResult;
+  gate?: PrePackageGateResult;
+  sourceBasis?: Pass6SourceBasis;
+}): Pass6SourceBasis {
+  if (input.sourceBasis) return input.sourceBasis;
+  const references: Pass6Reference[] = [];
+  if (input.draft) {
+    references.push({
+      referenceId: `ref:${safeIdPart(input.id)}:${safeIdPart(input.draft.draftId)}`,
+      referenceType: "assembled_workflow_draft",
+      notes: input.draft.draftId,
+    });
+  }
+  if (input.readiness) {
+    references.push({
+      referenceId: `ref:${safeIdPart(input.id)}:${safeIdPart(input.readiness.resultId)}`,
+      referenceType: "workflow_readiness_result",
+      notes: input.readiness.resultId,
+    });
+  }
+  if (input.gate) {
+    references.push({
+      referenceId: `ref:${safeIdPart(input.id)}:${safeIdPart(input.gate.gateResultId)}`,
+      referenceType: "pre_package_gate_result",
+      notes: input.gate.gateResultId,
+    });
+  }
+  return {
+    basisId: `basis:external_interface:${safeIdPart(input.id)}`,
+    basisType: "method_output",
+    summary: input.summary,
+    references: references.length > 0 ? references : [{
+      referenceId: `ref:external_interface:${safeIdPart(input.caseId)}`,
+      referenceType: "case_scope",
+      notes: input.caseId,
+    }],
+  };
+}
+
+function hasExternalSignal(text: string): boolean {
+  const lower = text.toLowerCase();
+  return [
+    "external",
+    "cross-functional",
+    "cross functional",
+    "another department",
+    "other department",
+    "outside",
+    "upstream",
+    "downstream",
+    "finance",
+    "legal",
+    "procurement",
+    "vendor",
+    "supplier",
+    "customer",
+    "client",
+    "shared queue",
+    "shared system",
+    "queue",
+    "handoff",
+    "approval authority",
+    "department owner",
+  ].some((term) => lower.includes(term));
+}
+
+function classifyExternalInterface(text: string): ExternalInterfaceType {
+  const lower = text.toLowerCase();
+  if (lower.includes("approval") || lower.includes("authority") || lower.includes("control")) return "approval_control_authority";
+  if (lower.includes("shared system") || lower.includes("shared queue") || lower.includes("queue")) return "shared_system_queue_interface";
+  if (lower.includes("handoff")) return "handoff_owner";
+  if (lower.includes("input") || lower.includes("upstream") || lower.includes("provides")) return "input_provider";
+  if (lower.includes("output") || lower.includes("downstream") || lower.includes("receives")) return "output_receiver";
+  if (lower.includes("support") || lower.includes("dependency")) return "dependency_support_function";
+  if (lower.includes("unknown") || lower.includes("out of scope") || lower.includes("outside scope")) return "out_of_scope_external_process";
+  if (lower.includes("clarification") || lower.includes("confirm")) return "clarification_target";
+  return "handoff_owner";
+}
+
+function interfaceMateriality(text: string, readiness?: WorkflowReadinessResult): ExternalInterfaceMateriality {
+  const lower = text.toLowerCase();
+  if (lower.includes("blocker") || lower.includes("blocks") || lower.includes("materially_broken")) return "blocker";
+  if (lower.includes("unknown") || lower.includes("unvalidated") || lower.includes("unclear")) return readiness?.is6CAllowed ? "warning" : "blocker_candidate";
+  if (lower.includes("warning") || lower.includes("caveat")) return "warning";
+  return "non_material";
+}
+
+function interfaceConfirmationStatus(text: string): ExternalInterfaceConfirmationStatus {
+  const lower = text.toLowerCase();
+  if (lower.includes("confirmed")) return "confirmed";
+  if (lower.includes("disputed") || lower.includes("conflict")) return "disputed";
+  if (lower.includes("unknown") || lower.includes("unclear")) return "unclear";
+  if (lower.includes("unvalidated") || lower.includes("external")) return "unvalidated";
+  return "assumed";
+}
+
+function recommendedInterfaceAction(
+  interfaceType: ExternalInterfaceType,
+  materiality: ExternalInterfaceMateriality,
+  status: ExternalInterfaceConfirmationStatus,
+  readiness?: WorkflowReadinessResult,
+): ExternalInterfaceRecommendedAction {
+  if (interfaceType === "out_of_scope_external_process") return "out_of_scope_note";
+  if (status === "disputed" || materiality === "blocker") return "require_review_decision";
+  if (materiality === "blocker_candidate" || (status === "unclear" && !readiness?.is6CAllowed)) return "route_to_pre6c_clarification";
+  if (materiality === "warning" || status === "unvalidated") return "proceed_with_warning";
+  return "carry_as_interface_note";
+}
+
+function interfaceVisualStatus(
+  interfaceType: ExternalInterfaceType,
+  materiality: ExternalInterfaceMateriality,
+  status: ExternalInterfaceConfirmationStatus,
+): ExternalInterfaceRecord["packageVisualConsumption"]["visualNodeStatus"] {
+  if (interfaceType === "out_of_scope_external_process") return "out_of_scope";
+  if (status === "confirmed") return "confirmed";
+  if (status === "assumed") return "assumed";
+  if (materiality === "warning") return "warning";
+  if (status === "unvalidated") return "external_unvalidated";
+  return "unresolved";
+}
+
+function conditionKeysForInterface(text: string): SevenConditionKey[] {
+  const lower = text.toLowerCase();
+  const keys = new Set<SevenConditionKey>();
+  if (lower.includes("handoff") || lower.includes("owner") || lower.includes("responsibility")) keys.add("handoffs_responsibility");
+  if (lower.includes("approval") || lower.includes("authority") || lower.includes("control")) keys.add("controls_approvals");
+  if (lower.includes("boundary") || lower.includes("scope") || lower.includes("external")) keys.add("use_case_boundary");
+  if (lower.includes("input") || lower.includes("output") || lower.includes("trigger")) keys.add("use_case_boundary");
+  if (lower.includes("sequence") || lower.includes("downstream") || lower.includes("upstream")) keys.add("step_to_step_connection");
+  return Array.from(keys);
+}
+
+function externalDepartmentFromText(text: string): string {
+  const lower = text.toLowerCase();
+  if (lower.includes("finance")) return "Finance";
+  if (lower.includes("legal")) return "Legal";
+  if (lower.includes("procurement")) return "Procurement";
+  if (lower.includes("vendor") || lower.includes("supplier")) return "Vendor or supplier";
+  if (lower.includes("customer") || lower.includes("client")) return "Customer or client";
+  if (lower.includes("manager") || lower.includes("department owner")) return "Manager or department owner";
+  if (lower.includes("external") || lower.includes("cross-functional")) return "External or cross-functional role";
+  return "External department or role";
+}
+
+function externalSystemFromText(text: string): string | undefined {
+  const match = text.match(/\b(?:queue|system|portal|inbox)\s+([A-Za-z0-9_-]+)/i);
+  if (match?.[0]) return match[0];
+  if (text.toLowerCase().includes("shared queue")) return "Shared queue";
+  if (text.toLowerCase().includes("shared system")) return "Shared system";
+  return undefined;
+}
+
+function createExternalInterfaceRecord(input: {
+  caseId: string;
+  selectedDepartmentSide: string;
+  text: string;
+  whereItOccursInWorkflow: string;
+  draft?: AssembledWorkflowDraft;
+  readiness?: WorkflowReadinessResult;
+  gate?: PrePackageGateResult;
+  sourceBasis?: Pass6SourceBasis;
+  now: string;
+  idSeed: string;
+}): ExternalInterfaceRecord {
+  const type = classifyExternalInterface(input.text);
+  const materiality = interfaceMateriality(input.text, input.readiness);
+  const status = interfaceConfirmationStatus(input.text);
+  const action = recommendedInterfaceAction(type, materiality, status, input.readiness);
+  const visualNodeStatus = interfaceVisualStatus(type, materiality, status);
+  return {
+    interfaceId: `external_interface:${safeIdPart(input.caseId)}:${safeIdPart(input.idSeed)}`,
+    caseId: input.caseId,
+    relatedWorkflowDraftId: input.draft?.draftId,
+    relatedReadinessResultId: input.readiness?.resultId,
+    relatedGateResultId: input.gate?.gateResultId,
+    interfaceType: type,
+    externalDepartmentOrRole: externalDepartmentFromText(input.text),
+    externalSystemOrQueue: externalSystemFromText(input.text),
+    selectedDepartmentSide: input.selectedDepartmentSide,
+    whereItOccursInWorkflow: input.whereItOccursInWorkflow,
+    whatIsTransferredOrRequired: input.text,
+    inputOutputCondition: type === "input_provider" || type === "output_receiver" ? input.text : undefined,
+    knownOwnerOrReceivingSide: status === "confirmed" ? externalDepartmentFromText(input.text) : undefined,
+    basis: externalInterfaceBasis({
+      caseId: input.caseId,
+      id: input.idSeed,
+      summary: "Cross-department/external interface record derived from existing Pass 6 analysis context; selected scope remains primary.",
+      draft: input.draft,
+      readiness: input.readiness,
+      gate: input.gate,
+      sourceBasis: input.sourceBasis,
+    }),
+    confirmationStatus: status,
+    materiality,
+    affectsSevenCondition: conditionKeysForInterface(input.text),
+    recommendedAction: action,
+    limitationsCaveats: [
+      "Selected department/use case remains the primary scope.",
+      "External internal workflow is not analyzed or invented in this block.",
+      "Unknown external work remains unvalidated or out of scope until clarified.",
+    ],
+    packageVisualConsumption: {
+      includeInPackageInterfaceNotes: true,
+      includeInVisualGraph: true,
+      visualNodeStatus,
+    },
+    scopeBoundary: {
+      selectedScopeRemainsPrimary: true,
+      externalWorkflowNotAnalyzed: true,
+      scopeExpansionImplemented: false,
+    },
+    metadata: {
+      createdAt: input.now,
+      createdBy: "pass6-block15-interface-handler",
+      notes: "Interface record only; no outreach, package generation, visual rendering, Copilot state, or Pass 7 mechanics.",
+    },
+  };
+}
+
+export function registerExternalInterfacesFromPass6Context(
+  input: RegisterExternalInterfacesInput,
+  repos: RegisterExternalInterfacesRepositories = {},
+): RegisterExternalInterfacesResult {
+  const now = input.now ?? new Date().toISOString();
+  const caseId = input.caseId
+    ?? input.assembledWorkflowDraft?.caseId
+    ?? input.workflowReadinessResult?.caseId
+    ?? input.prePackageGateResult?.caseId;
+  if (!caseId) return { ok: false, error: "caseId or Pass 6 context with caseId is required." };
+  const selectedDepartmentSide = input.selectedDepartmentSide ?? "Selected department / in-scope use case";
+  const candidates: ExternalInterfaceRecord[] = [];
+
+  const draft = input.assembledWorkflowDraft;
+  if (draft) {
+    const draftGroups: Array<{ area: string; elements: WorkflowElement[] }> = [
+      { area: "handoff", elements: draft.handoffs },
+      { area: "control", elements: draft.controls },
+      { area: "system", elements: draft.systemsTools },
+      { area: "sequence", elements: draft.sequence },
+    ];
+    for (const group of draftGroups) {
+      for (const element of group.elements) {
+        const text = `${element.label}. ${element.description ?? ""}`;
+        if (!hasExternalSignal(text)) continue;
+        candidates.push(createExternalInterfaceRecord({
+          caseId,
+          selectedDepartmentSide,
+          text,
+          whereItOccursInWorkflow: `${group.area}:${element.elementId}`,
+          draft,
+          readiness: input.workflowReadinessResult,
+          gate: input.prePackageGateResult,
+          sourceBasis: element.basis,
+          now,
+          idSeed: `${group.area}:${element.elementId}`,
+        }));
+      }
+    }
+    for (const [index, text] of [...draft.warningsCaveats, ...draft.unresolvedItems].entries()) {
+      if (!hasExternalSignal(text)) continue;
+      candidates.push(createExternalInterfaceRecord({
+        caseId,
+        selectedDepartmentSide,
+        text,
+        whereItOccursInWorkflow: `draft_warning_or_unresolved:${index}`,
+        draft,
+        readiness: input.workflowReadinessResult,
+        gate: input.prePackageGateResult,
+        now,
+        idSeed: `draft_warning_or_unresolved:${index}`,
+      }));
+    }
+  }
+
+  const readiness = input.workflowReadinessResult;
+  if (readiness) {
+    for (const [index, route] of readiness.routingRecommendations.entries()) {
+      if (!hasExternalSignal(route)) continue;
+      candidates.push(createExternalInterfaceRecord({
+        caseId,
+        selectedDepartmentSide,
+        text: route,
+        whereItOccursInWorkflow: `readiness_route:${index}`,
+        draft,
+        readiness,
+        gate: input.prePackageGateResult,
+        now,
+        idSeed: `readiness_route:${index}`,
+      }));
+    }
+    for (const [conditionKey, condition] of Object.entries(readiness.sevenConditionAssessment.conditions) as Array<[SevenConditionKey, SevenConditionAssessmentItem]>) {
+      const text = conditionIssueText(conditionKey, condition);
+      if (!hasExternalSignal(text)) continue;
+      candidates.push(createExternalInterfaceRecord({
+        caseId,
+        selectedDepartmentSide,
+        text,
+        whereItOccursInWorkflow: `seven_condition:${conditionKey}`,
+        draft,
+        readiness,
+        gate: input.prePackageGateResult,
+        sourceBasis: condition.basis,
+        now,
+        idSeed: `seven_condition:${conditionKey}`,
+      }));
+    }
+  }
+
+  const gate = input.prePackageGateResult;
+  if (gate) {
+    for (const need of gate.clarificationNeeds) {
+      const text = `${need.targetRole ?? need.targetRecipient ?? ""}. ${need.questionText}. ${need.whyItMatters}`;
+      if (need.recommendedChannel !== "external_interface_review" && !hasExternalSignal(text)) continue;
+      candidates.push(createExternalInterfaceRecord({
+        caseId,
+        selectedDepartmentSide,
+        text,
+        whereItOccursInWorkflow: need.relatedWorkflowElementId ?? `clarification_need:${need.clarificationNeedId}`,
+        draft,
+        readiness,
+        gate,
+        sourceBasis: need.basis,
+        now,
+        idSeed: `clarification_need:${need.clarificationNeedId}`,
+      }));
+    }
+  }
+
+  const uniqueRecords = uniqueBy(candidates, (record) => record.interfaceId);
+  for (const record of uniqueRecords) {
+    const validation = validatePipelineRecord("ExternalInterfaceRecord", validateExternalInterfaceRecord(record));
+    if (!validation.ok) return { ok: false, error: validation.error };
+  }
+
+  const storedRecords: StoredExternalInterfaceRecord[] = uniqueRecords.map((record) => ({
+    ...record,
+    createdAt: record.metadata.createdAt,
+    updatedAt: now,
+  }));
+  if (input.persist !== false) {
+    for (const record of storedRecords) repos.externalInterfaceRecords?.save(record);
+  }
+
+  return {
+    ok: true,
+    interfaceRecords: storedRecords,
+    boundary: {
+      selectedScopeRemainsPrimary: true,
+      externalWorkflowNotAnalyzed: true,
+      scopeExpansionImplemented: false,
+      noExternalOutreach: true,
+      noPackageGenerated: true,
+      noVisualGraphCreated: true,
+      noPass7RecordsCreated: true,
+    },
+  };
+}
+
+export function registerExternalInterfacesFromRepositories(
+  input: {
+    workflowDraftId?: string;
+    workflowReadinessResultId?: string;
+    prePackageGateResultId?: string;
+    caseId?: string;
+    selectedDepartmentSide?: string;
+    now?: string;
+    persist?: boolean;
+  },
+  repos: {
+    assembledWorkflowDrafts?: AssembledWorkflowDraftRepository;
+    workflowReadinessResults?: WorkflowReadinessResultRepository;
+    prePackageGateResults?: PrePackageGateResultRepository;
+    externalInterfaceRecords?: ExternalInterfaceRecordRepository;
+  },
+): RegisterExternalInterfacesResult {
+  const gate = input.prePackageGateResultId ? repos.prePackageGateResults?.findById(input.prePackageGateResultId) ?? undefined : undefined;
+  const readinessId = input.workflowReadinessResultId ?? gate?.workflowReadinessResultId;
+  const readiness = readinessId ? repos.workflowReadinessResults?.findById(readinessId) ?? undefined : undefined;
+  const draftId = input.workflowDraftId ?? readiness?.assembledWorkflowDraftId;
+  const draft = draftId ? repos.assembledWorkflowDrafts?.findById(draftId) ?? undefined : undefined;
+  if (input.workflowDraftId && !draft) return { ok: false, error: `AssembledWorkflowDraft '${input.workflowDraftId}' not found.` };
+  if (input.workflowReadinessResultId && !readiness) return { ok: false, error: `WorkflowReadinessResult '${input.workflowReadinessResultId}' not found.` };
+  if (input.prePackageGateResultId && !gate) return { ok: false, error: `PrePackageGateResult '${input.prePackageGateResultId}' not found.` };
+  return registerExternalInterfacesFromPass6Context({
+    caseId: input.caseId,
+    assembledWorkflowDraft: draft,
+    workflowReadinessResult: readiness,
+    prePackageGateResult: gate,
+    selectedDepartmentSide: input.selectedDepartmentSide,
+    now: input.now,
+    persist: input.persist,
+  }, { externalInterfaceRecords: repos.externalInterfaceRecords });
 }
 
 // ---------------------------------------------------------------------------

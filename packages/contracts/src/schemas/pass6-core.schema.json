@@ -625,6 +625,93 @@
         }
       }
     },
+    "externalInterfaceRecord": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "interfaceId",
+        "caseId",
+        "interfaceType",
+        "externalDepartmentOrRole",
+        "selectedDepartmentSide",
+        "whereItOccursInWorkflow",
+        "whatIsTransferredOrRequired",
+        "basis",
+        "confirmationStatus",
+        "materiality",
+        "recommendedAction",
+        "limitationsCaveats",
+        "packageVisualConsumption",
+        "scopeBoundary",
+        "metadata"
+      ],
+      "properties": {
+        "interfaceId": { "$ref": "#/definitions/nonEmptyString" },
+        "caseId": { "$ref": "#/definitions/nonEmptyString" },
+        "relatedWorkflowDraftId": { "$ref": "#/definitions/optionalString" },
+        "relatedReadinessResultId": { "$ref": "#/definitions/optionalString" },
+        "relatedGateResultId": { "$ref": "#/definitions/optionalString" },
+        "interfaceType": {
+          "type": "string",
+          "enum": ["input_provider", "output_receiver", "handoff_owner", "approval_control_authority", "dependency_support_function", "shared_system_queue_interface", "clarification_target", "out_of_scope_external_process"]
+        },
+        "externalDepartmentOrRole": { "$ref": "#/definitions/nonEmptyString" },
+        "externalSystemOrQueue": { "$ref": "#/definitions/optionalString" },
+        "selectedDepartmentSide": { "$ref": "#/definitions/nonEmptyString" },
+        "whereItOccursInWorkflow": { "$ref": "#/definitions/nonEmptyString" },
+        "whatIsTransferredOrRequired": { "$ref": "#/definitions/nonEmptyString" },
+        "inputOutputCondition": { "$ref": "#/definitions/optionalString" },
+        "knownOwnerOrReceivingSide": { "$ref": "#/definitions/optionalString" },
+        "basis": { "$ref": "#/definitions/sourceBasis" },
+        "confirmationStatus": {
+          "type": "string",
+          "enum": ["confirmed", "assumed", "unclear", "unvalidated", "disputed"]
+        },
+        "materiality": {
+          "type": "string",
+          "enum": ["non_material", "warning", "blocker_candidate", "blocker"]
+        },
+        "affectsSevenCondition": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": ["core_sequence_continuity", "step_to_step_connection", "essential_step_requirements", "decision_rules_thresholds", "handoffs_responsibility", "controls_approvals", "use_case_boundary"]
+          }
+        },
+        "recommendedAction": {
+          "type": "string",
+          "enum": ["carry_as_interface_note", "route_to_pre6c_clarification", "proceed_with_warning", "require_review_decision", "out_of_scope_note"]
+        },
+        "limitationsCaveats": {
+          "type": "array",
+          "items": { "$ref": "#/definitions/nonEmptyString" }
+        },
+        "packageVisualConsumption": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["includeInPackageInterfaceNotes", "includeInVisualGraph", "visualNodeStatus"],
+          "properties": {
+            "includeInPackageInterfaceNotes": { "type": "boolean" },
+            "includeInVisualGraph": { "type": "boolean" },
+            "visualNodeStatus": {
+              "type": "string",
+              "enum": ["confirmed", "assumed", "warning", "unresolved", "external_unvalidated", "out_of_scope"]
+            }
+          }
+        },
+        "scopeBoundary": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["selectedScopeRemainsPrimary", "externalWorkflowNotAnalyzed", "scopeExpansionImplemented"],
+          "properties": {
+            "selectedScopeRemainsPrimary": { "type": "boolean", "const": true },
+            "externalWorkflowNotAnalyzed": { "type": "boolean", "const": true },
+            "scopeExpansionImplemented": { "type": "boolean", "const": false }
+          }
+        },
+        "metadata": { "$ref": "#/definitions/recordMetadata" }
+      }
+    },
     "packageSection": {
       "type": "object",
       "additionalProperties": false,

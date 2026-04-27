@@ -251,6 +251,20 @@ Block 14 is Pre-6C gate and inquiry draft work only.
 - No message/email sending, answer collection, participant re-contact execution, evidence update, 6C generation, Workflow Gap Closure Brief generation, visual-core integration, Copilot runtime behavior, Pass 7 mechanics, or provider calls start in Block 14.
 - Next implementation step after acceptance is Block 15 — Cross-Department / External Interface Handling.
 
+## Pass 6 Block 15 Acceptance Gate
+
+Block 15 is cross-department/external interface handling only.
+
+- Cross-department and external intersections are captured as `ExternalInterfaceRecord` records.
+- Interface records preserve the selected department/use case as the primary scope.
+- Supported interface types include input provider, output receiver, handoff owner, approval/control authority, dependency support function, shared system/queue, clarification target, and out-of-scope external process.
+- Interface records expose confirmation status, materiality, recommended action, source basis, workflow location, seven-condition effects, and later package/visual consumption fields.
+- Material unknown external inputs route to Pre-6C clarification recommendation.
+- Unknown external internal process remains unvalidated or out of scope.
+- Admin/API surfaces can list, inspect, register from existing context, and mark status/materiality.
+- No provider calls, external outreach/message/email sending, scope expansion, external department internal workflow analysis, 6C generation, Workflow Gap Closure Brief generation, visual-core integration, Copilot runtime behavior, or Pass 7 mechanics start in Block 15.
+- Next implementation step after acceptance is Block 16 — 6C Output Governance and Package Generation.
+
 ## Active Pass 6 Block Map
 
 0. Pass 6 Build Readiness and Spec Cleanup.

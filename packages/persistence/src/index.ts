@@ -67,6 +67,7 @@ import type {
   ClarificationNeed,
   DifferenceInterpretation,
   DraftOperationalDocument,
+  ExternalInterfaceRecord,
   InitialWorkflowPackage,
   InquiryPacket,
   Pass6CopilotContextBundle,
@@ -289,6 +290,10 @@ export interface StoredClarificationNeed extends ClarificationNeed {
   updatedAt: string;
 }
 export interface StoredInquiryPacket extends InquiryPacket {
+  updatedAt: string;
+}
+export interface StoredExternalInterfaceRecord extends ExternalInterfaceRecord {
+  createdAt: string;
   updatedAt: string;
 }
 export interface StoredInitialWorkflowPackage extends InitialWorkflowPackage {
@@ -757,6 +762,7 @@ export type WorkflowReadinessResultRepository = Pass6RecordRepository<StoredWork
 export type PrePackageGateResultRepository = Pass6RecordRepository<StoredPrePackageGateResult>;
 export type ClarificationNeedRepository = Pass6RecordRepository<StoredClarificationNeed>;
 export type InquiryPacketRepository = Pass6RecordRepository<StoredInquiryPacket>;
+export type ExternalInterfaceRecordRepository = Pass6RecordRepository<StoredExternalInterfaceRecord>;
 export type InitialWorkflowPackageRepository = Pass6RecordRepository<StoredInitialWorkflowPackage>;
 export type WorkflowGapClosureBriefRepository = Pass6RecordRepository<StoredWorkflowGapClosureBrief>;
 export type DraftOperationalDocumentRepository = Pass6RecordRepository<StoredDraftOperationalDocument>;
@@ -3649,6 +3655,7 @@ function createSQLitePass6Repositories(dbPath?: string): Pass6PersistenceReposit
     prePackageGateResults: new SQLitePass6RecordRepository<StoredPrePackageGateResult>("pre_package_gate_result", (record) => record.gateResultId, pass6CaseId, dbPath),
     clarificationNeeds: new SQLitePass6RecordRepository<StoredClarificationNeed>("clarification_need", (record) => record.clarificationNeedId, () => undefined, dbPath),
     inquiryPackets: new SQLitePass6RecordRepository<StoredInquiryPacket>("inquiry_packet", (record) => record.inquiryPacketId, pass6CaseId, dbPath),
+    externalInterfaceRecords: new SQLitePass6RecordRepository<StoredExternalInterfaceRecord>("external_interface_record", (record) => record.interfaceId, pass6CaseId, dbPath),
     initialWorkflowPackages: new SQLitePass6RecordRepository<StoredInitialWorkflowPackage>("initial_workflow_package", (record) => record.packageId, pass6CaseId, dbPath),
     workflowGapClosureBriefs: new SQLitePass6RecordRepository<StoredWorkflowGapClosureBrief>("workflow_gap_closure_brief", (record) => record.briefId, pass6CaseId, dbPath),
     draftOperationalDocuments: new SQLitePass6RecordRepository<StoredDraftOperationalDocument>("draft_operational_document", (record) => record.draftId, pass6CaseId, dbPath),
@@ -3673,6 +3680,7 @@ export function createSQLiteIntakeRepositories(dbPath?: string): {
   prePackageGateResults: PrePackageGateResultRepository;
   clarificationNeeds: ClarificationNeedRepository;
   inquiryPackets: InquiryPacketRepository;
+  externalInterfaceRecords: ExternalInterfaceRecordRepository;
   initialWorkflowPackages: InitialWorkflowPackageRepository;
   workflowGapClosureBriefs: WorkflowGapClosureBriefRepository;
   draftOperationalDocuments: DraftOperationalDocumentRepository;
@@ -3782,6 +3790,7 @@ export interface Pass6PersistenceRepositories {
   prePackageGateResults: PrePackageGateResultRepository;
   clarificationNeeds: ClarificationNeedRepository;
   inquiryPackets: InquiryPacketRepository;
+  externalInterfaceRecords: ExternalInterfaceRecordRepository;
   initialWorkflowPackages: InitialWorkflowPackageRepository;
   workflowGapClosureBriefs: WorkflowGapClosureBriefRepository;
   draftOperationalDocuments: DraftOperationalDocumentRepository;
@@ -3859,6 +3868,7 @@ function createInMemoryPass6Repositories(): Pass6PersistenceRepositories {
     prePackageGateResults: new InMemoryPass6RecordRepository<StoredPrePackageGateResult>((record) => record.gateResultId, pass6CaseId),
     clarificationNeeds: new InMemoryPass6RecordRepository<StoredClarificationNeed>((record) => record.clarificationNeedId),
     inquiryPackets: new InMemoryPass6RecordRepository<StoredInquiryPacket>((record) => record.inquiryPacketId, pass6CaseId),
+    externalInterfaceRecords: new InMemoryPass6RecordRepository<StoredExternalInterfaceRecord>((record) => record.interfaceId, pass6CaseId),
     initialWorkflowPackages: new InMemoryPass6RecordRepository<StoredInitialWorkflowPackage>((record) => record.packageId, pass6CaseId),
     workflowGapClosureBriefs: new InMemoryPass6RecordRepository<StoredWorkflowGapClosureBrief>((record) => record.briefId, pass6CaseId),
     draftOperationalDocuments: new InMemoryPass6RecordRepository<StoredDraftOperationalDocument>((record) => record.draftId, pass6CaseId),
@@ -3966,6 +3976,7 @@ export type {
   ClarificationNeed,
   DifferenceInterpretation,
   DraftOperationalDocument,
+  ExternalInterfaceRecord,
   InitialWorkflowPackage,
   InquiryPacket,
   Pass6CopilotContextBundle,

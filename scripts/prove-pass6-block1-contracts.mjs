@@ -7,6 +7,7 @@ import {
   validateClarificationNeed,
   validateDifferenceInterpretation,
   validateDraftOperationalDocument,
+  validateExternalInterfaceRecord,
   validateInitialWorkflowPackage,
   validateInquiryPacket,
   validatePass6CopilotContextBundle,
@@ -279,6 +280,42 @@ const prePackageGateResult = {
   },
 };
 
+const externalInterfaceRecord = {
+  interfaceId: "external-interface-1",
+  caseId: "case-1",
+  relatedWorkflowDraftId: "draft-1",
+  relatedReadinessResultId: "readiness-1",
+  relatedGateResultId: "gate-1",
+  interfaceType: "handoff_owner",
+  externalDepartmentOrRole: "Finance",
+  externalSystemOrQueue: "Shared queue",
+  selectedDepartmentSide: "Operations selected use case",
+  whereItOccursInWorkflow: "handoff:handoff-finance",
+  whatIsTransferredOrRequired: "Approved request is handed off to Finance through a shared queue.",
+  inputOutputCondition: "Finance receives the approved request after Operations validation.",
+  knownOwnerOrReceivingSide: "Finance",
+  basis,
+  confirmationStatus: "unvalidated",
+  materiality: "warning",
+  affectsSevenCondition: ["handoffs_responsibility", "use_case_boundary"],
+  recommendedAction: "proceed_with_warning",
+  limitationsCaveats: [
+    "Selected department remains primary.",
+    "Finance internal workflow is not analyzed.",
+  ],
+  packageVisualConsumption: {
+    includeInPackageInterfaceNotes: true,
+    includeInVisualGraph: true,
+    visualNodeStatus: "external_unvalidated",
+  },
+  scopeBoundary: {
+    selectedScopeRemainsPrimary: true,
+    externalWorkflowNotAnalyzed: true,
+    scopeExpansionImplemented: false,
+  },
+  metadata,
+};
+
 const packageSection = {
   sectionId: "section-1",
   title: "Current Workflow",
@@ -390,6 +427,7 @@ const validFixtures = [
   ["ClarificationNeed", validateClarificationNeed, clarificationNeed],
   ["InquiryPacket", validateInquiryPacket, inquiryPacket],
   ["PrePackageGateResult", validatePrePackageGateResult, prePackageGateResult],
+  ["ExternalInterfaceRecord", validateExternalInterfaceRecord, externalInterfaceRecord],
   ["InitialWorkflowPackage", validateInitialWorkflowPackage, initialWorkflowPackage],
   ["WorkflowGapClosureBrief", validateWorkflowGapClosureBrief, workflowGapClosureBrief],
   ["DraftOperationalDocument", validateDraftOperationalDocument, draftOperationalDocument],
@@ -443,6 +481,14 @@ assertInvalid("Pass7ReviewCandidate missing identity", validatePass7ReviewCandid
   candidateId: undefined,
 });
 
+assertInvalid("ExternalInterfaceRecord cannot expand scope", validateExternalInterfaceRecord, {
+  ...externalInterfaceRecord,
+  scopeBoundary: {
+    ...externalInterfaceRecord.scopeBoundary,
+    scopeExpansionImplemented: true,
+  },
+});
+
 const changedFiles = execSync("git diff --name-only HEAD", { encoding: "utf8" })
   .split("\n")
   .filter(Boolean);
@@ -467,6 +513,7 @@ const allowedPrefixes = [
   "scripts/prove-pass6-block12-readiness-result.mjs",
   "scripts/prove-pass6-block13-analysis-report.mjs",
   "scripts/prove-pass6-block14-pre6c-gate.mjs",
+  "scripts/prove-pass6-block15-external-interfaces.mjs",
   "handoff/",
 ];
 for (const file of changedFiles) {

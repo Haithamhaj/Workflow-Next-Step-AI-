@@ -210,6 +210,15 @@ Status: LOCKED | FORMALIZED | IMPL-EXTENSION
 
 ## Output Formalization (adopted 2026-04-22, pre-Pass 8)
 
+## Pass 6 Block 15 — External Interface Boundary
+
+- **External intersections are explicit interface records, not scope expansion** — Cross-department and external signals are captured as `ExternalInterfaceRecord` records with type, status, materiality, source basis, workflow location, and recommended action. The selected department/use case remains primary unless a later accepted scope-expansion mechanism exists — LOCKED
+- **Unknown external work remains unvalidated or out of scope** — The system must not invent another department's internal workflow. Unknown downstream/upstream work is marked `unvalidated` or `out_of_scope_external_process` and can route to Pre-6C clarification recommendation when material — LOCKED
+- **Package and visual blocks consume interface records later** — Block 15 provides package/visual consumption fields but does not generate package content, gap briefs, visual graphs, or visual-core calls — LOCKED
+- **Admin marking is inspection metadata only** — Admin can mark confirmation status/materiality for interface records, but this does not create outreach, update evidence, expand scope, create Pass 7 records, or analyze external workflows — LOCKED
+
+---
+
 - **Output formalization adopted as non-governing enhancement; prompt reinforcement deferred** — enterprise-facing wording refinement, targeted document naming, section-label normalization, and final deliverable presentation are documentation-first improvements that do not require mechanics changes. Adopted as a non-governing enhancement layer. Pass 8 may consume output wording/naming/presentation improvements on client-facing surfaces (`packages/packages-output`, `apps/admin-web` output surfaces). Prompt reinforcement (rewriting or rebuilding prompt-chain logic) belongs to a separate later prompt-rebuild/analysis-improvement track and is outside Pass 8 scope. This decision does not alter state logic, package-entry conditions, review/release gates, blocking thresholds, or governance contracts — FORMALIZED
 
 ---

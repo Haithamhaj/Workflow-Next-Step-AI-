@@ -56,4 +56,5 @@ export const store: InMemoryStore = globalThis.__workflowStore__ ?? (globalThis.
   prePackageGateResults: intakeRepositories.prePackageGateResults,
   clarificationNeeds: intakeRepositories.clarificationNeeds,
   inquiryPackets: intakeRepositories.inquiryPackets,
+  externalInterfaceRecords: intakeRepositories.externalInterfaceRecords,
 });
