@@ -111,6 +111,7 @@ const workflowUnit = {
 const workflowClaim = {
   claimId: "claim-1",
   caseId: "case-1",
+  bundleId: "bundle-1",
   primaryClaimType: "execution_claim",
   secondaryClaimTypes: ["ownership_claim"],
   claimText: "The coordinator checks the request.",
@@ -118,6 +119,7 @@ const workflowClaim = {
   sourceParticipantIds: ["participant-1"],
   sourceSessionIds: ["session-1"],
   sourceLayerContextIds: ["role-context-1"],
+  truthLensContextIds: ["truth-context-1"],
   unitIds: ["unit-1"],
   basis,
   confidence: "medium",
@@ -451,6 +453,7 @@ const allowedPrefixes = [
   "scripts/prove-pass6-block6-synthesis-input-bundle.mjs",
   "scripts/prove-pass6-block7-bundle-review-surface.mjs",
   "scripts/prove-pass6-block8-method-registry.mjs",
+  "scripts/prove-pass6-block9-claim-pipeline.mjs",
   "handoff/",
 ];
 for (const file of changedFiles) {

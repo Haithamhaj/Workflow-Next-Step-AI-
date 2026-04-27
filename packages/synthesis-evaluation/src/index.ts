@@ -26,6 +26,8 @@ import {
   validateEvaluationRecord,
   validatePass6ConfigurationProfile,
   validateSynthesisInputBundle,
+  validateWorkflowClaim,
+  validateWorkflowUnit,
   EvaluationAxisState,
   EvaluationOutcome,
   type Pass6ConfigurationProfile,
@@ -57,6 +59,11 @@ import {
   type TargetingSourceSignal,
   type UnmappedContentItem,
   type ExtractionDefect,
+  type WorkflowClaim,
+  type WorkflowClaimStatus,
+  type WorkflowClaimType,
+  type WorkflowUnit,
+  type WorkflowUnitType,
 } from "@workflow/contracts";
 import type {
   StoredSynthesisRecord,
@@ -75,6 +82,10 @@ import type {
   TargetingRolloutPlanRepository,
   StoredPass6ConfigurationProfile,
   StoredSynthesisInputBundle,
+  StoredWorkflowClaim,
+  StoredWorkflowUnit,
+  WorkflowClaimRepository,
+  WorkflowUnitRepository,
 } from "@workflow/persistence";
 
 export const SYNTHESIS_EVALUATION_PACKAGE =
@@ -111,6 +122,10 @@ export type {
   TargetingRolloutPlanRepository,
   StoredPass6ConfigurationProfile,
   StoredSynthesisInputBundle,
+  StoredWorkflowClaim,
+  StoredWorkflowUnit,
+  WorkflowClaimRepository,
+  WorkflowUnitRepository,
 } from "@workflow/persistence";
 
 export type {
@@ -1733,6 +1748,244 @@ export function updatePass6MethodActiveStatus(
     changeReason: input.changeReason,
     now: input.now,
   }, repo);
+}
+
+// ---------------------------------------------------------------------------
+// Pass 6B Workflow Unit and Claim Pipeline — Block 9
+// ---------------------------------------------------------------------------
+
+export interface BuildWorkflowUnitsAndClaimsInput {
+  bundle: SynthesisInputBundle;
+  now?: string;
+  persist?: boolean;
+  configurationProfile?: Pass6ConfigurationProfile | null;
+}
+
+export interface BuildWorkflowUnitsAndClaimsRepositories {
+  workflowUnits?: WorkflowUnitRepository;
+  workflowClaims?: WorkflowClaimRepository;
+}
+
+export interface BuildWorkflowUnitsAndClaimsOk {
+  ok: true;
+  units: StoredWorkflowUnit[];
+  claims: StoredWorkflowClaim[];
+  policyRefs: string[];
+}
+
+export interface BuildWorkflowUnitsAndClaimsError {
+  ok: false;
+  error: string;
+}
+
+export type BuildWorkflowUnitsAndClaimsResult =
+  | BuildWorkflowUnitsAndClaimsOk
+  | BuildWorkflowUnitsAndClaimsError;
+
+function unitTypeForMaterial(item: Pass6PreparedMaterialItem): WorkflowUnitType {
+  const type = item.itemType;
+  if (type.includes("sequence")) return "sequence_signal";
+  if (type.includes("decision")) return "decision_rule";
+  if (type.includes("approval") || type.includes("control")) return "approval_control";
+  if (type.includes("handoff") || type.includes("dependency")) return "handoff";
+  if (type.includes("exception")) return "exception";
+  if (type.includes("boundary")) return "boundary";
+  if (type.includes("unmapped") || type.includes("defect") || type.includes("dispute") || type.includes("unknown") || type.includes("clarification_open")) {
+    return "unknown_gap";
+  }
+  if (type.includes("source") || type.includes("document") || type.includes("question_hint")) return "information_context";
+  if (type.includes("trigger") || type.includes("input")) return "trigger_input";
+  if (type.includes("output") || type.includes("outcome")) return "output_outcome";
+  return "action_step";
+}
+
+function claimTypeForUnit(unit: WorkflowUnit, material: Pass6PreparedMaterialItem): WorkflowClaimType | null {
+  if (unit.unitType === "action_step" || unit.unitType === "exception") return "execution_claim";
+  if (unit.unitType === "sequence_signal") return "sequence_claim";
+  if (unit.unitType === "decision_rule" || unit.unitType === "approval_control") return "decision_rule_claim";
+  if (unit.unitType === "handoff") return "ownership_claim";
+  if (unit.unitType === "boundary") return "boundary_claim";
+  if (unit.unitType === "information_context" && material.basis.basisType === "source_document") return "boundary_claim";
+  if (unit.unitType === "unknown_gap") return "boundary_claim";
+  return null;
+}
+
+function claimStatusForMaterial(material: Pass6PreparedMaterialItem, folderName: string): WorkflowClaimStatus {
+  if (folderName === "analysis_material") {
+    return material.basis.basisType === "source_document" ? "warning" : "accepted_for_assembly";
+  }
+  if (folderName === "document_source_signal_material") return "warning";
+  if (folderName === "gap_risk_no_drop_material") {
+    if (material.itemType.includes("handoff_candidate") || material.itemType.includes("dispute") || material.itemType.includes("defect")) {
+      return "review_needed";
+    }
+    return "unresolved";
+  }
+  if (folderName === "boundary_role_limit_material") return "proposed";
+  return "proposed";
+}
+
+function confidenceForMaterial(material: Pass6PreparedMaterialItem, folderName: string): WorkflowClaim["confidence"] {
+  const text = `${material.summary} ${material.notes ?? ""} ${material.basis.summary ?? ""}`.toLowerCase();
+  if (folderName === "gap_risk_no_drop_material") return "low";
+  if (folderName === "document_source_signal_material") return "unknown";
+  if (text.includes("low-confidence") || text.includes("low_confidence") || text.includes("unresolved") || text.includes("dispute")) return "low";
+  if (text.includes("accepted") || text.includes("resolved")) return "medium";
+  return "medium";
+}
+
+function materialityForUnit(unit: WorkflowUnit, material: Pass6PreparedMaterialItem): WorkflowClaim["materiality"] {
+  const text = `${unit.unitText} ${material.notes ?? ""} ${material.basis.summary ?? ""}`.toLowerCase();
+  if (text.includes("approval") || text.includes("control") || text.includes("handoff") || text.includes("boundary") || text.includes("dispute")) return "high";
+  if (text.includes("document") || text.includes("source signal")) return "medium";
+  return "medium";
+}
+
+function combinedBasis(bundle: SynthesisInputBundle, material: Pass6PreparedMaterialItem): Pass6SourceBasis {
+  return {
+    ...material.basis,
+    references: [
+      {
+        referenceId: `bundle:${safeIdPart(bundle.bundleId)}:${safeIdPart(material.itemId)}`,
+        referenceType: "synthesis_input_bundle_item",
+        label: material.itemType,
+        notes: "Workflow unit/claim basis from 6A SynthesisInputBundle; not final workflow truth.",
+      },
+      ...material.basis.references,
+    ],
+  };
+}
+
+function sourceContextForMaterial(bundle: SynthesisInputBundle, material: Pass6PreparedMaterialItem): {
+  sourceParticipantIds: string[];
+  sourceSessionIds: string[];
+  sourceLayerContextIds: string[];
+} {
+  const sourceLayerContextIds = material.roleLayerContextIds ?? [];
+  const contexts = bundle.roleLayerContexts.filter((context) => sourceLayerContextIds.includes(context.contextId));
+  return {
+    sourceParticipantIds: uniqueBy(contexts.map((context) => context.participantId).filter((value): value is string => Boolean(value)), (value) => value),
+    sourceSessionIds: uniqueBy([
+      ...contexts.map((context) => context.sessionId).filter((value): value is string => Boolean(value)),
+      ...material.basis.references.map((reference) => reference.sessionId).filter((value): value is string => Boolean(value)),
+    ], (value) => value),
+    sourceLayerContextIds,
+  };
+}
+
+function materialEntries(bundle: SynthesisInputBundle): Array<{ folderName: string; material: Pass6PreparedMaterialItem }> {
+  return [
+    ...bundle.analysis_material.map((material) => ({ folderName: "analysis_material", material })),
+    ...bundle.boundary_role_limit_material.map((material) => ({ folderName: "boundary_role_limit_material", material })),
+    ...bundle.gap_risk_no_drop_material.map((material) => ({ folderName: "gap_risk_no_drop_material", material })),
+    ...bundle.document_source_signal_material.map((material) => ({ folderName: "document_source_signal_material", material })),
+  ];
+}
+
+function policyRefsForPipeline(profile?: Pass6ConfigurationProfile | null): string[] {
+  if (!profile) return ["pass6-claim-pipeline:no-active-config-profile"];
+  return [
+    `pass6-config:${profile.configId}`,
+    `claimScoringPolicy:${profile.version}`,
+    `materialityPolicy:${profile.version}`,
+  ];
+}
+
+function validatePipelineRecord<T>(
+  name: string,
+  validation: { ok: true; value: T } | { ok: false; errors: readonly { message?: string }[] },
+): { ok: true } | { ok: false; error: string } {
+  if (validation.ok) return { ok: true };
+  return { ok: false, error: `Invalid ${name}: ${validationErrorText(validation.errors)}` };
+}
+
+export function buildWorkflowUnitsAndClaimsFromBundle(
+  input: BuildWorkflowUnitsAndClaimsInput,
+  repos: BuildWorkflowUnitsAndClaimsRepositories = {},
+): BuildWorkflowUnitsAndClaimsResult {
+  const now = input.now ?? new Date().toISOString();
+  const bundleValidation = validateSynthesisInputBundle(input.bundle);
+  if (!bundleValidation.ok) {
+    return { ok: false, error: `Invalid SynthesisInputBundle: ${validationErrorText(bundleValidation.errors)}` };
+  }
+
+  const units: StoredWorkflowUnit[] = [];
+  const claims: StoredWorkflowClaim[] = [];
+
+  for (const { folderName, material } of materialEntries(input.bundle)) {
+    const unitType = unitTypeForMaterial(material);
+    const unitBase: WorkflowUnit = {
+      unitId: `unit:${safeIdPart(input.bundle.bundleId)}:${safeIdPart(material.itemId)}`,
+      caseId: input.bundle.caseId,
+      bundleId: input.bundle.bundleId,
+      unitType,
+      unitText: material.summary,
+      roleLayerContextId: material.roleLayerContextIds?.[0],
+      basis: combinedBasis(input.bundle, material),
+      notes: [
+        `sourceFolder=${folderName}`,
+        "WorkflowUnit is not automatically a workflow step.",
+        material.basis.basisType === "source_document" ? "Document/source unit remains signal-only unless later supported by participant evidence." : undefined,
+        folderName === "gap_risk_no_drop_material" ? "Open/risk/candidate-only material is preserved without truth upgrade." : undefined,
+        material.notes,
+      ].filter(Boolean).join(" "),
+    };
+    const unitValidation = validatePipelineRecord("WorkflowUnit", validateWorkflowUnit(unitBase));
+    if (!unitValidation.ok) return unitValidation;
+    const unit: StoredWorkflowUnit = {
+      ...unitBase,
+      createdAt: now,
+      updatedAt: now,
+    };
+    units.push(unit);
+
+    const primaryClaimType = claimTypeForUnit(unit, material);
+    if (!primaryClaimType) continue;
+
+    const sourceContext = sourceContextForMaterial(input.bundle, material);
+    const claimStatus = claimStatusForMaterial(material, folderName);
+    const claimBase: WorkflowClaim = {
+      claimId: `claim:${safeIdPart(input.bundle.bundleId)}:${safeIdPart(material.itemId)}`,
+      caseId: input.bundle.caseId,
+      bundleId: input.bundle.bundleId,
+      primaryClaimType,
+      claimText: material.summary,
+      normalizedStatement: [
+        material.summary,
+        material.basis.basisType === "source_document" ? "(document/source signal only)" : "",
+        folderName === "gap_risk_no_drop_material" ? "(open/risk material, not accepted truth)" : "",
+      ].filter(Boolean).join(" "),
+      sourceParticipantIds: sourceContext.sourceParticipantIds,
+      sourceSessionIds: sourceContext.sourceSessionIds,
+      sourceLayerContextIds: sourceContext.sourceLayerContextIds,
+      truthLensContextIds: material.truthLensContextIds ?? [],
+      unitIds: [unit.unitId],
+      basis: unit.basis,
+      confidence: confidenceForMaterial(material, folderName),
+      materiality: materialityForUnit(unit, material),
+      status: claimStatus,
+    };
+    const claimValidation = validatePipelineRecord("WorkflowClaim", validateWorkflowClaim(claimBase));
+    if (!claimValidation.ok) return claimValidation;
+    const claim: StoredWorkflowClaim = {
+      ...claimBase,
+      createdAt: now,
+      updatedAt: now,
+    };
+    claims.push(claim);
+  }
+
+  if (input.persist !== false) {
+    for (const unit of units) repos.workflowUnits?.save(unit);
+    for (const claim of claims) repos.workflowClaims?.save(claim);
+  }
+
+  return {
+    ok: true,
+    units,
+    claims,
+    policyRefs: policyRefsForPipeline(input.configurationProfile),
+  };
 }
 
 // ---------------------------------------------------------------------------

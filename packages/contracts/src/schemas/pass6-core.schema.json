@@ -196,10 +196,11 @@
     "workflowClaim": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["claimId", "caseId", "primaryClaimType", "normalizedStatement", "unitIds", "basis", "status"],
+      "required": ["claimId", "caseId", "bundleId", "primaryClaimType", "normalizedStatement", "unitIds", "basis", "status"],
       "properties": {
         "claimId": { "$ref": "#/definitions/nonEmptyString" },
         "caseId": { "$ref": "#/definitions/nonEmptyString" },
+        "bundleId": { "$ref": "#/definitions/nonEmptyString" },
         "primaryClaimType": {
           "type": "string",
           "enum": ["execution_claim", "sequence_claim", "decision_rule_claim", "ownership_claim", "boundary_claim"]
@@ -222,6 +223,10 @@
           "items": { "$ref": "#/definitions/nonEmptyString" }
         },
         "sourceLayerContextIds": {
+          "type": "array",
+          "items": { "$ref": "#/definitions/nonEmptyString" }
+        },
+        "truthLensContextIds": {
           "type": "array",
           "items": { "$ref": "#/definitions/nonEmptyString" }
         },

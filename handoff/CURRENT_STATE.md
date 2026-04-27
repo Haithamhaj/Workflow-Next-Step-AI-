@@ -140,6 +140,20 @@ Pass 6 Block 8 adds the 6B method registry and analysis policy layer only.
 - Block 8 does not implement provider calls, workflow unit extraction, workflow claim formation, scoring execution over real claims, difference interpretation execution, workflow assembly, seven-condition evaluation, readiness routing, Pre-6C behavior, 6C package generation, visual-core integration, Copilot runtime behavior, or Pass 7 mechanics.
 - Next implementation step after Block 8 acceptance is Block 9 — 6B Workflow Unit and Claim Pipeline.
 
+## Pass 6 Block 9 — 6B Workflow Unit and Claim Pipeline
+
+Pass 6 Block 9 adds the first 6B transformation step only.
+
+- Added a pipeline that converts a valid `SynthesisInputBundle` into `WorkflowUnit` records and typed `WorkflowClaim` records.
+- Workflow units preserve bundle, source material, folder, role/layer, truth-lens, and evidence/source basis references.
+- Claims carry `bundleId`, source unit IDs, participant/session/layer context, truth-lens context, basis references, advisory confidence/materiality indicators, and bounded status.
+- Document/source signal material remains signal-only and is not treated as operational truth.
+- Unresolved, defective, disputed, unmapped, low-confidence, and candidate-only material does not become `accepted_for_assembly`.
+- Preliminary confidence/materiality indicators are advisory only and do not approve readiness or package eligibility.
+- Added a focused proof script: `scripts/prove-pass6-block9-claim-pipeline.mjs`.
+- Block 9 does not implement provider calls, difference interpretation execution, workflow assembly, seven-condition evaluation, readiness routing, Pre-6C behavior, 6C package generation, visual-core integration, Copilot runtime behavior, or Pass 7 mechanics.
+- Next implementation step after Block 9 acceptance is Block 10 — 6B Difference Interpretation and Multi-Lens Engine.
+
 **Pass 5 — Participant Session Outreach / Narrative-First Clarification is accepted, closed, integrated, and archived on `main`.**
 
 Final Pass 5 status: `pass5_participant_session_outreach_accepted`

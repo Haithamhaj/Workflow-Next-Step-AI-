@@ -137,6 +137,7 @@ export type WorkflowClaimStatus =
 export interface WorkflowClaim {
   claimId: string;
   caseId: string;
+  bundleId: string;
   primaryClaimType: WorkflowClaimType;
   secondaryClaimTypes?: WorkflowClaimType[];
   claimText?: string;
@@ -144,6 +145,7 @@ export interface WorkflowClaim {
   sourceParticipantIds?: string[];
   sourceSessionIds?: string[];
   sourceLayerContextIds?: string[];
+  truthLensContextIds?: string[];
   unitIds: string[];
   basis: Pass6SourceBasis;
   confidence?: "high" | "medium" | "low" | "unknown";

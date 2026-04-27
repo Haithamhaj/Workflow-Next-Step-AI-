@@ -82,6 +82,14 @@ Status: LOCKED | FORMALIZED | IMPL-EXTENSION
 - **Method active/inactive state is configurable through Pass 6 configuration profiles** — admins can toggle methods in draft configuration, but locked method boundaries remain visible and not editable as behavior rules — LOCKED
 - **Admin-forced methods are traceability scaffold only** — forcing a method is represented for later analysis traceability and does not execute analysis, approve truth, or override locked governance in Block 8 — LOCKED
 
+## Pass 6 Block 9 — 6B Workflow Unit and Claim Pipeline
+
+- **Workflow units are intermediate extraction records, not workflow steps by default** — the pipeline creates units from 6A bundle material while preserving source folder, source basis, role/layer context, and truth-lens context, but unit creation does not assemble a workflow — LOCKED
+- **Workflow claims are typed proposed analysis records, not final workflow truth** — claims may be accepted for later assembly only when based on accepted participant extraction material; document-only, unresolved, disputed, defective, low-confidence, and candidate-only material remains warning, unresolved, proposed, or review-needed — LOCKED
+- **Document/source signals stay signal-only in claim formation** — document/source material can produce inspectable warning/proposed claims for later comparison, but it is not treated as operational reality by Block 9 — LOCKED
+- **Preliminary confidence/materiality indicators are advisory only** — indicators can support later review and traceability but cannot approve readiness, generate package eligibility, resolve conflicts, or replace admin decisions — LOCKED
+- **Block 9 persistence stores only units and claims** — no DifferenceInterpretation, workflow draft, readiness result, Pre-6C result, package, visual, Copilot, or Pass 7 record is created by the claim pipeline — LOCKED
+
 ## contracts
 
 - **Ajv 8 + ajv-formats for JSON Schema validation** — industry standard, fast, supports Draft-07, formats plugin needed for `date-time` and `uri` — LOCKED

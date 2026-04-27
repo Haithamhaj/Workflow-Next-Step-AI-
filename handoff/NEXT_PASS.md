@@ -35,7 +35,9 @@ Pass 6 Block 6 — 6A SynthesisInputBundle Builder is accepted.
 
 Pass 6 Block 7 — 6A Admin Bundle Review Surface is accepted.
 
-Pass 6 Block 8 — 6B Method Registry and Analysis Policy is the current completed implementation block pending acceptance.
+Pass 6 Block 8 — 6B Method Registry and Analysis Policy is accepted.
+
+Pass 6 Block 9 — 6B Workflow Unit and Claim Pipeline is the current completed implementation block pending acceptance.
 
 Technical Decomposition v4 is the active Pass 6 build map.
 
@@ -153,6 +155,20 @@ Block 8 is method registry and analysis policy only.
 - Locked method boundaries are visible and not editable as behavior rules.
 - No workflow unit extraction, claim formation, scoring execution, difference interpretation, workflow assembly, seven-condition evaluation, readiness routing, Pre-6C behavior, 6C generation, visual-core integration, Copilot runtime behavior, Pass 7 mechanics, or provider calls start in Block 8.
 - Next implementation step after acceptance is Block 9 — 6B Workflow Unit and Claim Pipeline.
+
+## Pass 6 Block 9 Acceptance Gate
+
+Block 9 is workflow unit and workflow claim pipeline work only.
+
+- A `SynthesisInputBundle` can be transformed into `WorkflowUnit` records.
+- Important workflow units can be transformed into typed `WorkflowClaim` records.
+- Claims preserve bundle ID, source unit IDs, source context, truth-lens context, and evidence/source basis.
+- Document/source signal material remains warning/proposed signal-only material unless later supported by participant evidence.
+- Unresolved, disputed, defective, unmapped, low-confidence, and candidate-only material does not become accepted for assembly.
+- Advisory confidence/materiality indicators do not approve readiness or package eligibility.
+- Claims are not final workflow truth.
+- No difference interpretation, workflow assembly, seven-condition evaluation, readiness routing, Pre-6C behavior, 6C generation, visual-core integration, Copilot runtime behavior, Pass 7 mechanics, or provider calls start in Block 9.
+- Next implementation step after acceptance is Block 10 — 6B Difference Interpretation and Multi-Lens Engine.
 
 ## Active Pass 6 Block Map
 
