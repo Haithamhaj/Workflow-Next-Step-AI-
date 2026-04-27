@@ -168,6 +168,9 @@ importers:
       '@workflow/persistence':
         specifier: workspace:*
         version: link:../persistence
+      workflow-visual-core:
+        specifier: file:../../../workflow-visual-core/packages/workflow-visual-core
+        version: file:../workflow-visual-core/packages/workflow-visual-core
     devDependencies:
       typescript:
         specifier: ^5.4.5
@@ -778,6 +781,9 @@ packages:
   whatwg-url@5.0.0:
     resolution: {integrity: sha512-saE57nupxk6v3HY35+jzBwYa0rKSy0XR8JSxZPwgLr7ys0IBzhGviA1/TUGJLmSVqs8pb9AnvICXEuOHLprYTw==}
 
+  workflow-visual-core@file:../workflow-visual-core/packages/workflow-visual-core:
+    resolution: {directory: ../workflow-visual-core/packages/workflow-visual-core, type: directory}
+
   wrappy@1.0.2:
     resolution: {integrity: sha512-l4Sp/DRseor9wL6EvV2+TuQn63dMkPjZ/sp9XkghTEbV9KlPS1xUsZ3u7/IQO4wxtcFB4bgpQPRcR3QCvezPcQ==}
 
@@ -1223,5 +1229,9 @@ snapshots:
     dependencies:
       tr46: 0.0.3
       webidl-conversions: 3.0.1
+
+  workflow-visual-core@file:../workflow-visual-core/packages/workflow-visual-core:
+    dependencies:
+      ajv: 8.18.0
 
   wrappy@1.0.2: {}

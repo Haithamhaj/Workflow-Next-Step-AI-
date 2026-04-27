@@ -31,6 +31,7 @@ import {
   type PrePackageGateResult,
   type SevenConditionKey,
   type WorkflowGapClosureBrief,
+  type WorkflowGraphRecord,
   type WorkflowReadinessResult,
 } from "@workflow/contracts";
 import type {
@@ -40,9 +41,20 @@ import type {
   StoredDraftOperationalDocument,
   StoredInitialWorkflowPackage,
   StoredWorkflowGapClosureBrief,
+  StoredWorkflowGraphRecord,
   InitialPackageRepository,
   WorkflowGapClosureBriefRepository,
+  WorkflowGraphRecordRepository,
 } from "@workflow/persistence";
+import {
+  validateWorkflowGraph,
+  toMermaid,
+  toReactFlow,
+  type ValidationError,
+  type WorkflowGraph,
+  type WorkflowGraphEdge,
+  type WorkflowGraphNode,
+} from "workflow-visual-core";
 
 export const PACKAGES_OUTPUT_PACKAGE = "@workflow/packages-output" as const;
 
@@ -63,10 +75,12 @@ export type {
   StoredInitialWorkflowPackage,
   StoredWorkflowGapClosureBrief,
   StoredDraftOperationalDocument,
+  StoredWorkflowGraphRecord,
   InitialPackageRepository,
   InitialWorkflowPackageRepository,
   WorkflowGapClosureBriefRepository,
   DraftOperationalDocumentRepository,
+  WorkflowGraphRecordRepository,
 } from "@workflow/persistence";
 
 // ---------------------------------------------------------------------------
@@ -409,6 +423,288 @@ export function generatePass6Output(
     blockedDraftReason: draftBuild.blockedReason,
     boundary: packageBoundary(),
   };
+}
+
+// ---------------------------------------------------------------------------
+// Pass 6 Visual Core Integration — Block 17
+// ---------------------------------------------------------------------------
+
+export interface BuildWorkflowGraphInput {
+  initialWorkflowPackage: InitialWorkflowPackage;
+  assembledWorkflowDraft: AssembledWorkflowDraft;
+  externalInterfaces?: ExternalInterfaceRecord[];
+  direction?: WorkflowGraph["direction"];
+  graphId?: string;
+}
+
+export type BuildPackageVisualsResult =
+  | {
+    ok: true;
+    workflowGraphJson: WorkflowGraph;
+    workflowMermaid: string;
+    workflowReactFlowModel: ReturnType<typeof toReactFlow>;
+  }
+  | { ok: false; errors: ValidationError[] };
+
+export interface GeneratePackageVisualsInput extends BuildWorkflowGraphInput {
+  visualRecordId?: string;
+  now?: string;
+  persist?: boolean;
+}
+
+export type GeneratePackageVisualsResult =
+  | { ok: true; visualRecord: StoredWorkflowGraphRecord; visuals: Extract<BuildPackageVisualsResult, { ok: true }> }
+  | { ok: false; visualRecord?: StoredWorkflowGraphRecord; errors: ValidationError[] };
+
+function graphNodeId(prefix: string, value: string): string {
+  return `${prefix}_${safeIdPart(value).replace(/:/g, "_")}`;
+}
+
+function graphStatusFromText(text: string): WorkflowGraphNode["status"] {
+  const lower = text.toLowerCase();
+  if (lower.includes("unresolved") || lower.includes("unknown")) return "unresolved";
+  if (lower.includes("warning") || lower.includes("caveat")) return "warning";
+  if (lower.includes("assumed")) return "assumed";
+  return "confirmed";
+}
+
+function elementNode(
+  element: { elementId: string; label: string; description?: string; claimIds?: string[] },
+  nodeType: WorkflowGraphNode["nodeType"],
+  lane: string,
+): WorkflowGraphNode {
+  const text = `${element.label} ${element.description ?? ""}`;
+  return {
+    id: graphNodeId(nodeType, element.elementId),
+    label: element.label,
+    nodeType,
+    description: element.description,
+    lane,
+    status: graphStatusFromText(text),
+    metadata: {
+      workflowElementId: element.elementId,
+      claimIds: element.claimIds ?? [],
+    },
+  };
+}
+
+function edge(
+  id: string,
+  from: string,
+  to: string,
+  edgeType: WorkflowGraphEdge["edgeType"] = "sequence",
+  label?: string,
+  status: WorkflowGraphEdge["status"] = "confirmed",
+): WorkflowGraphEdge {
+  return { id: graphNodeId("edge", id), from, to, edgeType, label, status };
+}
+
+function uniqueGraphNodes(nodes: WorkflowGraphNode[]): WorkflowGraphNode[] {
+  const seen = new Set<string>();
+  const out: WorkflowGraphNode[] = [];
+  for (const node of nodes) {
+    if (seen.has(node.id)) continue;
+    seen.add(node.id);
+    out.push(node);
+  }
+  return out;
+}
+
+function uniqueGraphEdges(edges: WorkflowGraphEdge[]): WorkflowGraphEdge[] {
+  const seen = new Set<string>();
+  const out: WorkflowGraphEdge[] = [];
+  for (const item of edges) {
+    if (seen.has(item.id)) continue;
+    seen.add(item.id);
+    out.push(item);
+  }
+  return out;
+}
+
+function interfaceNode(record: ExternalInterfaceRecord): WorkflowGraphNode {
+  return {
+    id: graphNodeId("interface", record.interfaceId),
+    label: record.externalDepartmentOrRole,
+    nodeType: record.interfaceType === "out_of_scope_external_process" ? "external" : "interface",
+    description: record.whatIsTransferredOrRequired,
+    lane: record.externalDepartmentOrRole,
+    status: record.packageVisualConsumption.visualNodeStatus,
+    markers: [record.interfaceType, record.materiality, record.recommendedAction],
+    metadata: {
+      interfaceId: record.interfaceId,
+      confirmationStatus: record.confirmationStatus,
+      materiality: record.materiality,
+      selectedScopeRemainsPrimary: record.scopeBoundary.selectedScopeRemainsPrimary,
+      externalWorkflowNotAnalyzed: record.scopeBoundary.externalWorkflowNotAnalyzed,
+    },
+  };
+}
+
+function markerNodes(
+  items: string[],
+  nodeType: "warning" | "unresolved",
+  lane: string,
+): WorkflowGraphNode[] {
+  return items.map((item, index) => ({
+    id: graphNodeId(nodeType, `${index}:${item}`),
+    label: nodeType === "warning" ? `Warning ${index + 1}` : `Unresolved ${index + 1}`,
+    nodeType,
+    description: item,
+    lane,
+    status: nodeType === "warning" ? "warning" : "unresolved",
+    markers: [nodeType],
+  }));
+}
+
+function selectedLane(input: BuildWorkflowGraphInput): string {
+  const fromInterface = input.externalInterfaces?.[0]?.selectedDepartmentSide;
+  if (fromInterface) return fromInterface;
+  return "Selected department / package scope";
+}
+
+export function buildWorkflowGraphFromInitialPackage(input: BuildWorkflowGraphInput): WorkflowGraph {
+  const selected = selectedLane(input);
+  const nodes: WorkflowGraphNode[] = [
+    { id: "start", label: "Package Scope Start", nodeType: "start", lane: selected, status: "confirmed" },
+  ];
+  const edges: WorkflowGraphEdge[] = [];
+
+  const stepNodes = input.assembledWorkflowDraft.steps.map((item) => elementNode(item, "step", selected));
+  const sequenceNodes = input.assembledWorkflowDraft.sequence.map((item) => elementNode(item, "step", selected));
+  const decisionNodes = input.assembledWorkflowDraft.decisions.map((item) => elementNode(item, "decision", selected));
+  const handoffNodes = input.assembledWorkflowDraft.handoffs.map((item) => elementNode(item, "handoff", selected));
+  const controlNodes = input.assembledWorkflowDraft.controls.map((item) => {
+    const nodeType: WorkflowGraphNode["nodeType"] = item.label.toLowerCase().includes("approval") ? "approval" : "control";
+    return elementNode(item, nodeType, selected);
+  });
+  const systemNodes = input.assembledWorkflowDraft.systemsTools.map((item) => elementNode(item, "system", selected));
+  const variantNodes = input.assembledWorkflowDraft.variants.map((item) => elementNode(item, "note", selected));
+  const warningNodes = markerNodes(input.initialWorkflowPackage.warningsCaveats, "warning", selected);
+  const unresolvedNodes = markerNodes(input.assembledWorkflowDraft.unresolvedItems, "unresolved", selected);
+  const interfaceNodes = (input.externalInterfaces ?? []).map(interfaceNode);
+  const endNode: WorkflowGraphNode = { id: "end", label: "Package Scope End", nodeType: "end", lane: selected, status: "confirmed" };
+
+  nodes.push(...stepNodes, ...sequenceNodes, ...decisionNodes, ...handoffNodes, ...controlNodes, ...systemNodes, ...variantNodes, ...interfaceNodes, ...warningNodes, ...unresolvedNodes, endNode);
+
+  const primaryFlow = stepNodes.length > 0 ? stepNodes : sequenceNodes;
+  const flowNodes = [...primaryFlow, ...decisionNodes, ...handoffNodes].filter((node) => node.id !== "start" && node.id !== "end");
+  if (flowNodes.length > 0) {
+    const firstFlowNode = flowNodes[0] as WorkflowGraphNode;
+    const lastFlowNode = flowNodes[flowNodes.length - 1] as WorkflowGraphNode;
+    edges.push(edge("start-to-first", "start", firstFlowNode.id));
+    for (let index = 0; index < flowNodes.length - 1; index += 1) {
+      const from = flowNodes[index] as WorkflowGraphNode;
+      const to = flowNodes[index + 1] as WorkflowGraphNode;
+      edges.push(edge(`${from.id}-to-${to.id}`, from.id, to.id, from.nodeType === "decision" ? "conditional" : "sequence"));
+    }
+    edges.push(edge("last-to-end", lastFlowNode.id, "end"));
+  } else {
+    edges.push(edge("start-to-end", "start", "end", "sequence", "No assembled steps available", "warning"));
+  }
+
+  const anchor = flowNodes.at(-1)?.id ?? "start";
+  for (const node of controlNodes) edges.push(edge(`${anchor}-approval-${node.id}`, anchor, node.id, node.nodeType === "approval" ? "approval" : "dependency"));
+  for (const node of systemNodes) edges.push(edge(`${anchor}-system-${node.id}`, anchor, node.id, "dependency"));
+  for (const node of interfaceNodes) {
+    const edgeType: WorkflowGraphEdge["edgeType"] = node.nodeType === "external" ? "dependency" : "handoff";
+    edges.push(edge(`${anchor}-interface-${node.id}`, anchor, node.id, edgeType, "External interface", node.status === "confirmed" ? "confirmed" : "warning"));
+  }
+  for (const node of warningNodes) edges.push(edge(`${anchor}-warning-${node.id}`, anchor, node.id, "reference", "Warning/caveat", "warning"));
+  for (const node of unresolvedNodes) edges.push(edge(`${anchor}-unresolved-${node.id}`, anchor, node.id, "reference", "Unresolved item", "unresolved"));
+
+  const lanes = [
+    { id: graphNodeId("lane", selected), label: selected },
+    ...(input.externalInterfaces ?? []).map((record) => ({
+      id: graphNodeId("lane", record.externalDepartmentOrRole),
+      label: record.externalDepartmentOrRole,
+      description: "External/interface lane only; scope is not expanded.",
+    })),
+  ];
+
+  return {
+    graphId: input.graphId ?? `workflow_graph:${safeIdPart(input.initialWorkflowPackage.packageId)}`,
+    title: `Workflow Visual — ${input.initialWorkflowPackage.packageId}`,
+    description: "Generated from WDE Pass 6C package/workflow data. Visual renderers do not own workflow truth.",
+    version: "1.0.0",
+    graphType: "workflow",
+    direction: input.direction ?? "TD",
+    nodes: uniqueGraphNodes(nodes),
+    edges: uniqueGraphEdges(edges),
+    lanes,
+    legend: [
+      { symbol: "warning", meaning: "Warning or caveat retained from WDE package data" },
+      { symbol: "unresolved", meaning: "Unresolved item retained from WDE workflow draft" },
+      { symbol: "interface", meaning: "Cross-department/external interface; scope not expanded" },
+    ],
+    sourceRefs: [
+      input.initialWorkflowPackage.packageId,
+      input.initialWorkflowPackage.workflowReadinessResultId,
+      input.assembledWorkflowDraft.draftId,
+      ...(input.externalInterfaces ?? []).map((record) => record.interfaceId),
+    ],
+    warnings: input.initialWorkflowPackage.warningsCaveats,
+    unresolvedItems: input.assembledWorkflowDraft.unresolvedItems,
+    metadata: {
+      caseId: input.initialWorkflowPackage.caseId,
+      packageId: input.initialWorkflowPackage.packageId,
+      workflowReadinessResultId: input.initialWorkflowPackage.workflowReadinessResultId,
+      assembledWorkflowDraftId: input.assembledWorkflowDraft.draftId,
+      visualTruthBoundary: "WDE owns workflow truth and package eligibility; workflow-visual-core validates and renders only.",
+      selectedScopeRemainsPrimary: true,
+    },
+  };
+}
+
+export function buildPackageVisuals(graph: WorkflowGraph): BuildPackageVisualsResult {
+  const validation = validateWorkflowGraph(graph);
+  if (!validation.ok) return { ok: false, errors: validation.errors };
+  const workflowGraphJson = validation.data;
+  return {
+    ok: true,
+    workflowGraphJson,
+    workflowMermaid: toMermaid(workflowGraphJson),
+    workflowReactFlowModel: toReactFlow(workflowGraphJson),
+  };
+}
+
+export function generatePackageVisuals(
+  input: GeneratePackageVisualsInput,
+  repos: { workflowGraphRecords?: WorkflowGraphRecordRepository } = {},
+): GeneratePackageVisualsResult {
+  const now = input.now ?? new Date().toISOString();
+  const graph = buildWorkflowGraphFromInitialPackage(input);
+  const visuals = buildPackageVisuals(graph);
+  const baseRecord = {
+    visualRecordId: input.visualRecordId ?? `workflow_visual:${safeIdPart(input.initialWorkflowPackage.packageId)}`,
+    caseId: input.initialWorkflowPackage.caseId,
+    assembledWorkflowDraftId: input.assembledWorkflowDraft.draftId,
+    workflowGraphJson: graph as unknown as WorkflowGraphRecord["workflowGraphJson"],
+    workflowMermaid: "",
+    workflowReactFlowModel: {},
+    visualValidationErrors: [],
+  };
+
+  if (!visuals.ok) {
+    const invalidRecord: StoredWorkflowGraphRecord = {
+      ...baseRecord,
+      visualValidationErrors: visuals.errors.map((error) => `${error.field}: ${error.message}`),
+      createdAt: now,
+      updatedAt: now,
+    };
+    if (input.persist !== false) repos.workflowGraphRecords?.save(invalidRecord);
+    return { ok: false, visualRecord: invalidRecord, errors: visuals.errors };
+  }
+
+  const visualRecord: StoredWorkflowGraphRecord = {
+    ...baseRecord,
+    workflowGraphJson: visuals.workflowGraphJson as unknown as WorkflowGraphRecord["workflowGraphJson"],
+    workflowMermaid: visuals.workflowMermaid,
+    workflowReactFlowModel: visuals.workflowReactFlowModel as unknown as Record<string, unknown>,
+    createdAt: now,
+    updatedAt: now,
+  };
+  if (input.persist !== false) repos.workflowGraphRecords?.save(visualRecord);
+  return { ok: true, visualRecord, visuals };
 }
 
 // ---------------------------------------------------------------------------

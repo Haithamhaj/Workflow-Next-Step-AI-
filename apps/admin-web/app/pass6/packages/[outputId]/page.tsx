@@ -55,6 +55,7 @@ export default function Pass6PackageDetailPage({ params }: Pass6PackageDetailPag
             <p><strong>Status:</strong> {initialPackage.packageStatus}</p>
             <p><strong>Case:</strong> {initialPackage.caseId}</p>
             <p><strong>Readiness:</strong> {initialPackage.workflowReadinessResultId}</p>
+            <p><a href={`/pass6/packages/${initialPackage.packageId}/visuals`}>View / generate visuals</a></p>
           </div>
           <div className="card">
             <h3>Client-Facing Sections</h3>

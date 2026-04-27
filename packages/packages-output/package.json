@@ -13,7 +13,8 @@
   },
   "dependencies": {
     "@workflow/contracts": "workspace:*",
-    "@workflow/persistence": "workspace:*"
+    "@workflow/persistence": "workspace:*",
+    "workflow-visual-core": "file:../../../workflow-visual-core/packages/workflow-visual-core"
   },
   "devDependencies": { "typescript": "^5.4.5" }
 }

@@ -815,35 +815,52 @@
     "workflowGraphNode": {
       "type": "object",
       "additionalProperties": true,
-      "required": ["id", "type", "status", "label"],
+      "required": ["id", "nodeType", "label"],
       "properties": {
         "id": { "$ref": "#/definitions/nonEmptyString" },
-        "type": {
+        "label": { "$ref": "#/definitions/nonEmptyString" },
+        "nodeType": {
           "type": "string",
           "enum": ["start", "end", "step", "decision", "handoff", "approval", "control", "system", "document", "interface", "external", "warning", "unresolved", "note", "group", "custom"]
         },
+        "description": { "$ref": "#/definitions/optionalString" },
+        "lane": { "$ref": "#/definitions/optionalString" },
+        "layer": { "$ref": "#/definitions/optionalString" },
         "status": {
           "type": "string",
           "enum": ["confirmed", "assumed", "warning", "unresolved", "external_unvalidated", "out_of_scope"]
         },
-        "label": { "$ref": "#/definitions/nonEmptyString" }
+        "markers": {
+          "type": "array",
+          "items": { "$ref": "#/definitions/nonEmptyString" }
+        },
+        "metadata": {
+          "type": "object",
+          "additionalProperties": true
+        }
       }
     },
     "workflowGraphEdge": {
       "type": "object",
       "additionalProperties": true,
-      "required": ["id", "source", "target", "type", "status"],
+      "required": ["id", "from", "to"],
       "properties": {
         "id": { "$ref": "#/definitions/nonEmptyString" },
-        "source": { "$ref": "#/definitions/nonEmptyString" },
-        "target": { "$ref": "#/definitions/nonEmptyString" },
-        "type": {
+        "from": { "$ref": "#/definitions/nonEmptyString" },
+        "to": { "$ref": "#/definitions/nonEmptyString" },
+        "label": { "$ref": "#/definitions/optionalString" },
+        "edgeType": {
           "type": "string",
           "enum": ["sequence", "conditional", "handoff", "approval", "dependency", "reference", "exception", "feedback", "custom"]
         },
+        "condition": { "$ref": "#/definitions/optionalString" },
         "status": {
           "type": "string",
           "enum": ["confirmed", "assumed", "warning", "unresolved"]
+        },
+        "metadata": {
+          "type": "object",
+          "additionalProperties": true
         }
       }
     },

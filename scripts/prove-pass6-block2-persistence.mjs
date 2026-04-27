@@ -351,12 +351,17 @@ const workflowGraphRecord = {
   caseId,
   assembledWorkflowDraftId: "draft-1",
   workflowGraphJson: {
+    graphId: "graph-1",
+    title: "Workflow Graph",
+    version: "1.0.0",
+    graphType: "workflow",
+    direction: "TD",
     nodes: [
-      { id: "start-1", type: "start", status: "confirmed", label: "Start" },
-      { id: "step-1", type: "step", status: "warning", label: "Check request" },
+      { id: "start-1", nodeType: "start", status: "confirmed", label: "Start" },
+      { id: "step-1", nodeType: "step", status: "warning", label: "Check request" },
     ],
     edges: [
-      { id: "edge-1", source: "start-1", target: "step-1", type: "sequence", status: "confirmed" },
+      { id: "edge-1", from: "start-1", to: "step-1", edgeType: "sequence", status: "confirmed" },
     ],
   },
   workflowMermaid: "flowchart LR\n  start-1 --> step-1",
@@ -517,6 +522,8 @@ const allowedPrefixes = [
   "scripts/prove-pass6-block14-pre6c-gate.mjs",
   "scripts/prove-pass6-block15-external-interfaces.mjs",
   "scripts/prove-pass6-block16-package-generation.mjs",
+  "scripts/prove-pass6-block17-visual-core-integration.mjs",
+  "pnpm-lock.yaml",
   "handoff/",
 ];
 for (const file of changedFiles) {

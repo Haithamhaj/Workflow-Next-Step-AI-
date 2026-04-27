@@ -578,24 +578,46 @@ export type WorkflowGraphEdgeStatus = "confirmed" | "assumed" | "warning" | "unr
 
 export interface WorkflowGraphNodeReference {
   id: string;
-  type: WorkflowGraphNodeType;
-  status: WorkflowGraphNodeStatus;
   label: string;
+  nodeType: WorkflowGraphNodeType;
+  description?: string;
+  lane?: string;
+  layer?: string;
+  status?: WorkflowGraphNodeStatus;
+  markers?: string[];
+  metadata?: Record<string, unknown>;
   [key: string]: unknown;
 }
 
 export interface WorkflowGraphEdgeReference {
   id: string;
-  source: string;
-  target: string;
-  type: WorkflowGraphEdgeType;
-  status: WorkflowGraphEdgeStatus;
+  from: string;
+  to: string;
+  label?: string;
+  edgeType?: WorkflowGraphEdgeType;
+  condition?: string;
+  status?: WorkflowGraphEdgeStatus;
+  metadata?: Record<string, unknown>;
   [key: string]: unknown;
 }
 
 export interface WorkflowGraphReferenceJson {
+  graphId?: string;
+  title?: string;
+  description?: string;
+  version?: string;
+  graphType?: string;
+  direction?: string;
   nodes?: WorkflowGraphNodeReference[];
   edges?: WorkflowGraphEdgeReference[];
+  lanes?: Array<Record<string, unknown>>;
+  groups?: Array<Record<string, unknown>>;
+  legend?: Array<Record<string, unknown>>;
+  styleHints?: Record<string, string>;
+  sourceRefs?: string[];
+  warnings?: string[];
+  unresolvedItems?: string[];
+  metadata?: Record<string, unknown>;
   [key: string]: unknown;
 }
 

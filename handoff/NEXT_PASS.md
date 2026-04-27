@@ -279,6 +279,20 @@ Block 16 is 6C output governance and package generation only.
 - No provider calls, visual-core integration, WorkflowGraph JSON generation, Mermaid generation, React Flow generation, Copilot runtime behavior, Pass 7 mechanics, Final Package generation, release behavior, actual sending, or participant re-contact start in Block 16.
 - Next implementation step after acceptance is Block 17 — Visual Core Integration.
 
+## Pass 6 Block 17 Acceptance Gate
+
+Block 17 is visual-core integration only.
+
+- WDE constructs WorkflowGraph JSON from existing Pass 6 package/workflow data.
+- `workflow-visual-core` validates the graph and generates Mermaid and React Flow-compatible output.
+- WDE implements local `buildPackageVisuals(graph)` using `validateWorkflowGraph`, `toMermaid`, and `toReactFlow`.
+- Mermaid and React Flow outputs are generated from the same validated graph object.
+- Visual output records persist graph JSON, Mermaid, React Flow model, validation errors, and package/case/draft metadata.
+- Warning, unresolved, and external interface markers remain visible.
+- Visual renderers do not own workflow truth or package eligibility.
+- No provider calls, new workflow analysis, readiness recalculation, package eligibility changes, Copilot runtime behavior, Pass 7 mechanics, Final Package generation, or release behavior start in Block 17.
+- Next implementation step after acceptance is Block 18 — Pass 6 Conversational Copilot.
+
 ## Active Pass 6 Block Map
 
 0. Pass 6 Build Readiness and Spec Cleanup.

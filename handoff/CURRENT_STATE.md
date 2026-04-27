@@ -259,6 +259,20 @@ Pass 6 Block 16 adds governed 6C output generation only.
 - Block 16 does not implement provider calls, visual-core integration, WorkflowGraph JSON generation, Mermaid generation, React Flow model generation, Copilot runtime behavior, Pass 7 mechanics, Final Package generation, release behavior, actual message/email sending, or participant re-contact execution.
 - Next implementation step after Block 16 acceptance is Block 17 — Visual Core Integration.
 
+## Pass 6 Block 17 — Visual Core Integration
+
+Pass 6 Block 17 adds WDE-side visual integration only.
+
+- Added `workflow-visual-core` as a local dependency of `packages/packages-output` using the package path `../workflow-visual-core/packages/workflow-visual-core`.
+- Implemented WDE-owned `buildWorkflowGraphFromInitialPackage` to construct canonical `WorkflowGraph JSON` from InitialWorkflowPackage, AssembledWorkflowDraft, and ExternalInterfaceRecord data.
+- Implemented WDE-owned `buildPackageVisuals(graph)` wrapper using `validateWorkflowGraph`, `toMermaid`, and `toReactFlow`.
+- Implemented `generatePackageVisuals` to persist `WorkflowGraphRecord` outputs with graph JSON, Mermaid, React Flow-compatible model, and validation errors.
+- Updated WDE `WorkflowGraphRecord` contract/schema fixtures to align with visual-core canonical graph keys (`nodeType`, `from`, `to`).
+- Added minimal admin API/UI surfaces at `/pass6/packages/[packageId]/visuals`.
+- Added a focused proof script: `scripts/prove-pass6-block17-visual-core-integration.mjs`.
+- Block 17 does not implement provider calls, new workflow analysis, readiness recalculation, package eligibility changes, Copilot runtime behavior, Pass 7 mechanics, Final Package generation, or release behavior.
+- Next implementation step after Block 17 acceptance is Block 18 — Pass 6 Conversational Copilot.
+
 **Pass 5 — Participant Session Outreach / Narrative-First Clarification is accepted, closed, integrated, and archived on `main`.**
 
 Final Pass 5 status: `pass5_participant_session_outreach_accepted`

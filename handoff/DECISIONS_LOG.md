@@ -228,6 +228,15 @@ Status: LOCKED | FORMALIZED | IMPL-EXTENSION
 
 ---
 
+## Pass 6 Block 17 — Visual Core Integration
+
+- **WDE owns WorkflowGraph construction; visual-core owns validation/rendering** — WDE builds the canonical WorkflowGraph JSON from existing package/workflow/interface records. `workflow-visual-core` is used only for `validateWorkflowGraph`, `toMermaid`, and `toReactFlow` — LOCKED
+- **Mermaid and React Flow share the validated graph source** — `buildPackageVisuals(graph)` validates first, then generates Mermaid and React Flow output from `validation.data`; invalid graphs return visible validation errors and no fallback rendering — LOCKED
+- **Visuals do not change workflow truth or eligibility** — Visual output storage records graph JSON, Mermaid, React Flow model, and validation errors only. It does not analyze workflow, recalculate readiness, decide package eligibility, or alter 6C output — LOCKED
+- **External and unresolved markers remain visible** — warning, unresolved, interface, external, and out-of-scope nodes/markers are carried into the graph instead of being hidden for presentation cleanliness — LOCKED
+
+---
+
 - **Output formalization adopted as non-governing enhancement; prompt reinforcement deferred** — enterprise-facing wording refinement, targeted document naming, section-label normalization, and final deliverable presentation are documentation-first improvements that do not require mechanics changes. Adopted as a non-governing enhancement layer. Pass 8 may consume output wording/naming/presentation improvements on client-facing surfaces (`packages/packages-output`, `apps/admin-web` output surfaces). Prompt reinforcement (rewriting or rebuilding prompt-chain logic) belongs to a separate later prompt-rebuild/analysis-improvement track and is outside Pass 8 scope. This decision does not alter state logic, package-entry conditions, review/release gates, blocking thresholds, or governance contracts — FORMALIZED
 
 ---
