@@ -300,6 +300,18 @@ Pass 6 Block 19 adds Pass 7 review candidate seam records only.
 - Block 19 does not implement provider calls, Pass 7 discussion mechanics, Pass 7 issue threads, review action execution, Final Package generation, release behavior, readiness recalculation, package eligibility changes, new 6C package generation behavior, visual generation changes, Copilot autonomous writes, or secret handling changes.
 - Next implementation step after Block 19 acceptance is Block 20 — Full Pass 6 Live Proof and Archive Closure.
 
+## Pass 6 Block 20 — Full Pass 6 Live Proof and Archive Closure
+
+Pass 6 Block 20 archives Pass 6 and records the full proof closure.
+
+- Added final archive reference: `handoff/PASS6_SYNTHESIS_EVALUATION_INITIAL_PACKAGE_ARCHIVE_REFERENCE.md`.
+- Added `scripts/prove-pass6-block20-full-live.mjs` for route/file-level archive closure checks and next-step guard validation.
+- Re-ran visual-core package checks: `npm test`, `npm run typecheck`, and `npm run build`.
+- Re-ran all accepted Pass 6 proof scripts from Block 1 through Block 19.
+- Re-ran workspace `pnpm typecheck`, `pnpm build`, and `git diff --check`.
+- Pass 6 is archived/accepted pending operator acceptance of the Block 20 proof.
+- Pass 7 is not started by Block 20 and requires explicit operator approval before any implementation begins.
+
 **Pass 5 — Participant Session Outreach / Narrative-First Clarification is accepted, closed, integrated, and archived on `main`.**
 
 Final Pass 5 status: `pass5_participant_session_outreach_accepted`

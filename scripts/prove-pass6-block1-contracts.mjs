@@ -530,6 +530,7 @@ const allowedPrefixes = [
   "scripts/prove-pass6-block17-visual-core-integration.mjs",
   "scripts/prove-pass6-block18-copilot.mjs",
   "scripts/prove-pass6-block19-pass7-candidate-seam.mjs",
+  "scripts/prove-pass6-block20-full-live.mjs",
   "pnpm-lock.yaml",
   "handoff/",
 ];

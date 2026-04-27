@@ -57,7 +57,13 @@ Pass 6 Block 17 — Visual Core Integration is accepted.
 
 Pass 6 Block 18 — Pass 6 Conversational Copilot is accepted.
 
-Pass 6 Block 19 — Pass 7 Candidate Seam is the current completed implementation block pending acceptance.
+Pass 6 Block 19 — Pass 7 Candidate Seam is accepted.
+
+Pass 6 Block 20 — Full Pass 6 Live Proof and Archive Closure is the current completed closure block pending operator acceptance.
+
+Pass 6 is archived/accepted pending operator acceptance of this Block 20 proof.
+
+The next implementation must be explicitly approved by the operator. Pass 7 is not started by Block 20.
 
 Technical Decomposition v4 is the active Pass 6 build map.
 
@@ -327,6 +333,20 @@ Block 19 is Pass 7 candidate seam work only.
 - Candidate status updates do not start Pass 7 discussion, create issue threads, execute review actions, make final decisions, or change package/release state.
 - No provider calls, Pass 7 discussion mechanics, Pass 7 issue threads, review action execution, Final Package generation, release behavior, readiness recalculation, package eligibility changes, new 6C package generation behavior, visual generation changes, Copilot autonomous writes, or secrets are introduced in Block 19.
 - Next implementation step after acceptance is Block 20 — Full Pass 6 Live Proof and Archive Closure.
+
+## Pass 6 Block 20 Acceptance Gate
+
+Block 20 is final proof/archive closure only.
+
+- Pass 6 archive reference exists at `handoff/PASS6_SYNTHESIS_EVALUATION_INITIAL_PACKAGE_ARCHIVE_REFERENCE.md`.
+- Visual-core local dependency checks pass.
+- All accepted Pass 6 proof scripts from Block 1 through Block 19 pass.
+- Workspace typecheck and build pass.
+- Admin Pass 6 routes are build-covered and archive-listed.
+- No new product feature is introduced except archive/proof closure files.
+- No Pass 7 mechanics, Pass 7 issue threads, review action execution, Final Package generation, release behavior, productionization/auth/real DB migration, actual sending, participant re-contact, provider fake success, visual truth ownership, Copilot autonomous writes, or secrets are introduced.
+- Pass 7 is not started by Block 20.
+- The next implementation must be explicitly approved by the operator.
 
 ## Active Pass 6 Block Map
 

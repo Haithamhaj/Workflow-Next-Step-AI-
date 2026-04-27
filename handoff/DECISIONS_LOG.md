@@ -21,6 +21,7 @@ Status: LOCKED | FORMALIZED | IMPL-EXTENSION
 - **Conceptual closure is confirmed for 6A, 6B, Pre-6C Gate, Cross-Department / External Interface Governance, and 6C** — these are planning closure statements only and do not imply implementation exists — FORMALIZED
 - **Provider direction preserved for Pass 6 planning** — OpenAI / GPT remains default for text intelligence unless explicitly changed by the operator later; Google remains the direction for STT/OCR and existing accepted Google-backed surfaces; provider success must never be faked — LOCKED
 - **Workflow / visual-core boundary is fixed for later Block 17** — WDE owns workflow truth, package eligibility, and WorkflowGraph JSON construction. `workflow-visual-core` owns validation and rendering only. WDE must later implement `buildPackageVisuals(graph)` as a local wrapper over `validateWorkflowGraph`, `toMermaid`, and `toReactFlow`; Block 0 does not implement it — LOCKED
+- **Pass 6 archive closure does not start Pass 7** — Block 20 archives and proves Pass 6 only. Any Pass 7 implementation, discussion mechanics, review action execution, Final Package generation, or release behavior requires separate operator approval — LOCKED
 
 ## Pass 6 Block 1 — Core Contracts and Schema Seams
 
