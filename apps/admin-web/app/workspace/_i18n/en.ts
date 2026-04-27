@@ -83,6 +83,7 @@ export const en = {
     },
   },
   links: {
+    cases: "Cases",
     intakeSources: "Intake sources",
     intakeSessions: "Intake sessions",
     targetingRollout: "Targeting rollout",
@@ -105,6 +106,55 @@ export const en = {
     evaluations: "Evaluations",
     pass6Methods: "Pass 6 methods",
     pass6Configuration: "Pass 6 configuration",
+  },
+  advanced: {
+    boundary:
+      "Advanced surfaces are for inspection, troubleshooting, and existing admin workflows. They are not the guided workspace path and must not be treated as a second source of workflow truth.",
+    mustNotTitle: "What Advanced must not do",
+    mustNotItems: [
+      "Advanced links do not bypass approval gates.",
+      "Advanced links do not change package eligibility.",
+      "Advanced links do not override evidence trust.",
+      "Advanced links do not replace prompt lifecycle governance.",
+      "Advanced links do not create client-facing delivery scope.",
+    ],
+    groups: {
+      coreAdmin: {
+        title: "Core Admin",
+        description:
+          "Existing case, intake, state, and admin configuration surfaces. Advanced because they expose raw setup and state-oriented records.",
+      },
+      sourceContext: {
+        title: "Source / Context",
+        description:
+          "Raw intake and source processing surfaces. The guided workspace does not own source classification, extraction, or context truth.",
+      },
+      targetingEvidence: {
+        title: "Targeting / Participant Evidence",
+        description:
+          "Existing targeting and participant-session work areas. Advanced routes retain detailed records and action panels.",
+      },
+      promptOps: {
+        title: "PromptOps",
+        description:
+          "Prompt registry and prompt workspace surfaces. Advanced because prompt lifecycle truth remains in PromptOps.",
+      },
+      pass6Analysis: {
+        title: "Pass 6 Analysis",
+        description:
+          "Pass 6 preparation, readiness, gate, interface, method, and configuration surfaces. The guided workspace does not own readiness or package eligibility.",
+      },
+      packagePreview: {
+        title: "Package / Preview",
+        description:
+          "Governed package output and preview surfaces. Advanced because Initial Package, Final Package, preview, and release concepts must stay distinct.",
+      },
+      reviewIssues: {
+        title: "Review / Issues",
+        description:
+          "Review, synthesis, and evaluation record surfaces. Advanced routes are for inspection and existing admin workflows, not a guided path.",
+      },
+    },
   },
   pages: {
     sources: {
@@ -201,7 +251,7 @@ export const en = {
       title: "Advanced Details",
       purpose: "Safe escape hatch to raw admin surfaces.",
       boundary:
-        "Advanced surfaces are for inspection and troubleshooting. They are not the guided workflow path.",
+        "Advanced surfaces are for inspection, troubleshooting, and existing admin workflows. They are not the guided workspace path and must not be treated as a second source of workflow truth.",
       capabilities: [
         "Raw admin routes",
         "Provider and prompt logs",

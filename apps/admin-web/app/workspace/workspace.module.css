@@ -192,6 +192,45 @@
   font-weight: 600;
 }
 
+.workspaceGuardrailPanel {
+  max-width: 960px;
+  margin: 0 0 18px;
+  padding: 18px;
+  border: 1px solid #fecdd3;
+  border-radius: 10px;
+  background: #fff1f2;
+  color: #7f1d1d;
+}
+
+.workspaceGuardrailList {
+  margin: 12px 0 0;
+  padding-inline-start: 20px;
+  color: #7f1d1d;
+}
+
+.workspaceGuardrailList li + li {
+  margin-top: 6px;
+}
+
+.workspaceAdvancedGroupGrid {
+  max-width: 960px;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.workspaceAdvancedGroup {
+  padding: 16px;
+  border: 1px solid #d6e0ec;
+  border-radius: 10px;
+  background: #ffffff;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+}
+
+.workspaceAdvancedGroup .workspaceLinkList {
+  margin-top: 14px;
+}
+
 .workspaceCard {
   min-height: 190px;
   display: flex;
@@ -291,6 +330,10 @@
   }
 
   .workspaceCapabilityGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .workspaceAdvancedGroupGrid {
     grid-template-columns: 1fr;
   }
 }
