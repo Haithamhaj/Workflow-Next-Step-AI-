@@ -1,5 +1,6 @@
 .workspaceRoot {
   min-height: calc(100vh - 48px);
+  position: relative;
   display: grid;
   grid-template-columns: 248px minmax(0, 1fr);
   border: 1px solid #1f2b3a;
@@ -7,6 +8,7 @@
   overflow: hidden;
   background: #f6f8fb;
   color: #172033;
+  text-align: start;
 }
 
 .workspaceNav {
@@ -14,6 +16,11 @@
   color: #c9d3e2;
   padding: 20px 16px;
   border-right: 1px solid #263244;
+}
+
+.workspaceRoot[dir="rtl"] .workspaceNav {
+  border-right: none;
+  border-left: 1px solid #263244;
 }
 
 .workspaceBrand {
@@ -51,6 +58,7 @@
   color: #dce5f2;
   text-decoration: none;
   font-size: 13px;
+  text-align: start;
 }
 
 .workspaceNavLink:hover,
@@ -63,6 +71,26 @@
   min-width: 0;
   padding: 28px;
   background: linear-gradient(180deg, #f9fbff 0%, #eef3f8 100%);
+}
+
+.workspaceLanguageToggle {
+  position: absolute;
+  top: 18px;
+  inset-inline-end: 18px;
+  padding: 7px 10px;
+  border: 1px solid #d5deea;
+  border-radius: 999px;
+  background: #ffffff;
+  color: #235a9f;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.workspaceLanguageToggle:hover,
+.workspaceLanguageToggle:focus {
+  border-color: #8bb7ea;
 }
 
 .workspaceHeader {
@@ -96,7 +124,7 @@
   margin: 18px 0 24px;
   padding: 14px 16px;
   border: 1px solid #c7d7ee;
-  border-left: 4px solid #3b82f6;
+  border-inline-start: 4px solid #3b82f6;
   border-radius: 8px;
   background: #eef6ff;
   color: #1d4b7a;
@@ -202,6 +230,7 @@
 
   .workspaceNav {
     border-right: none;
+    border-left: none;
     border-bottom: 1px solid #263244;
   }
 

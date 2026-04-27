@@ -1,13 +1,16 @@
 import styles from "../workspace.module.css";
+import type { WorkspaceDictionary } from "../_i18n";
 
-export function WorkspaceBoundaryNote() {
+export function WorkspaceBoundaryNote({
+  dictionary,
+}: {
+  dictionary: WorkspaceDictionary;
+}) {
   return (
-    <section className={styles.workspaceBoundary} aria-label="Workspace boundary">
-      <p className={styles.workspaceBoundaryTitle}>Production boundary</p>
+    <section className={styles.workspaceBoundary} aria-label={dictionary.boundary.label}>
+      <p className={styles.workspaceBoundaryTitle}>{dictionary.boundary.title}</p>
       <p className={styles.workspaceBoundaryText}>
-        This workspace is a guided UI layer. It does not own workflow truth,
-        approval gates, package eligibility, prompt lifecycle truth, provider
-        execution, or state transitions.
+        {dictionary.boundary.text}
       </p>
     </section>
   );
