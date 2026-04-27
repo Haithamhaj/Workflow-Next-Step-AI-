@@ -24,14 +24,19 @@ export function WorkspacePanel({
   description,
   children,
   action,
+  compact = false,
 }: {
   title: string;
   description?: string;
   children: ReactNode;
   action?: ReactNode;
+  compact?: boolean;
 }) {
   return (
-    <section className={styles.workspacePanel} aria-label={title}>
+    <section
+      className={`${styles.workspacePanel} ${compact ? styles.workspacePanelCompact : ""}`}
+      aria-label={title}
+    >
       <div className={styles.workspacePanelHeader}>
         <div>
           <h3 className={styles.workspacePanelTitle}>{title}</h3>
@@ -51,10 +56,33 @@ export function PriorityActionBanner({ dictionary }: { dictionary: WorkspaceDict
         <WorkspaceStatusPill dictionary={dictionary} status="needsReview" />
         <h3>{dictionary.visual.priority.title}</h3>
         <p>{dictionary.visual.priority.explanation}</p>
+        <strong>{dictionary.visual.priority.next}</strong>
       </div>
       <button className={styles.workspaceStaticAction} type="button" disabled>
         {dictionary.visual.priority.actionLabel}
       </button>
+    </section>
+  );
+}
+
+export function CommandCenterDashboard({ dictionary }: { dictionary: WorkspaceDictionary }) {
+  return (
+    <section className={styles.workspaceCommandDashboard} aria-label={dictionary.header.title}>
+      <div className={styles.workspaceDashboardHero}>
+        <div className={styles.workspaceDashboardIdentity}>
+          <span>{dictionary.header.kicker}</span>
+          <h2>{dictionary.header.title}</h2>
+          <p>{dictionary.header.lead}</p>
+        </div>
+        <PriorityActionBanner dictionary={dictionary} />
+      </div>
+      <div className={styles.workspaceDashboardBelow}>
+        <CommandSummaryCards dictionary={dictionary} />
+        <div className={styles.workspaceDashboardStack}>
+          <EvidenceMetricRow dictionary={dictionary} compact />
+          <PackageReadinessStrip dictionary={dictionary} compact />
+        </div>
+      </div>
     </section>
   );
 }
@@ -73,11 +101,12 @@ export function CommandSummaryCards({ dictionary }: { dictionary: WorkspaceDicti
   );
 }
 
-export function StageJourneyMap({ dictionary }: { dictionary: WorkspaceDictionary }) {
+export function StageJourneyMap({ dictionary, compact = false }: { dictionary: WorkspaceDictionary; compact?: boolean }) {
   return (
     <WorkspacePanel
       title={dictionary.visual.stageJourneyTitle}
       description={dictionary.visual.stageJourneyDescription}
+      compact={compact}
     >
       <div className={styles.workspaceJourneyMap}>
         {dictionary.visual.stages.map((stage) => (
@@ -129,9 +158,9 @@ export function StageJourneyCard({
   );
 }
 
-export function EvidenceMetricRow({ dictionary }: { dictionary: WorkspaceDictionary }) {
+export function EvidenceMetricRow({ dictionary, compact = false }: { dictionary: WorkspaceDictionary; compact?: boolean }) {
   return (
-    <WorkspacePanel title={dictionary.visual.evidenceIntegrityTitle}>
+    <WorkspacePanel title={dictionary.visual.evidenceIntegrityTitle} compact={compact}>
       <div className={styles.workspaceMetricGrid}>
         {dictionary.visual.evidenceMetrics.map((metric) => (
           <article key={metric.label} className={styles.workspaceMetricCard}>
@@ -193,9 +222,9 @@ export function TruthBoundaryCard({ dictionary }: { dictionary: WorkspaceDiction
   );
 }
 
-export function PackageReadinessStrip({ dictionary }: { dictionary: WorkspaceDictionary }) {
+export function PackageReadinessStrip({ dictionary, compact = false }: { dictionary: WorkspaceDictionary; compact?: boolean }) {
   return (
-    <WorkspacePanel title={dictionary.visual.packageReadinessTitle} description={dictionary.visual.packageReminder}>
+    <WorkspacePanel title={dictionary.visual.packageReadinessTitle} description={dictionary.visual.packageReminder} compact={compact}>
       <div className={styles.workspaceReadinessStrip}>
         {dictionary.visual.packageReadiness.map((item) => (
           <div key={item.label} className={styles.workspaceReadinessStep}>

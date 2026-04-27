@@ -1,6 +1,7 @@
 export const en = {
   languageName: "English",
   languageToggle: "العربية",
+  languageToggleLabel: "Switch to",
   shellLabel: "Static shell only",
   brand: {
     title: "Guided Workspace",
@@ -19,10 +20,10 @@ export const en = {
       "This workspace is a guided UI layer. It does not own workflow truth, approval gates, package eligibility, prompt lifecycle truth, provider execution, or state transitions.",
   },
   card: {
-    laterSlice: "Coming in later slice",
+    laterSlice: "Static preview",
     placeholder:
-      "Static placeholder only. Production data, actions, and guided state will be added in later slices.",
-    advancedLinksLabel: "advanced links",
+      "Connected later. This card does not load production data or run workflow actions.",
+    advancedLinksLabel: "advanced route",
   },
   placeholder: {
     stageLabel: "Workspace placeholder",
@@ -179,9 +180,10 @@ export const en = {
     priority: {
       title: "Review evidence blockers before package readiness can continue.",
       explanation:
-        "This is a static next-action example. Later slices will derive the next safe action from backend view models and existing gates.",
+        "Transcript trust and handoff clarity are blocking the static package readiness path. Later slices will derive this from backend view models and existing gates.",
       urgency: "Needs review",
       actionLabel: "Review blockers",
+      next: "Next: resolve evidence review before analysis and package preview.",
     },
     stageJourneyTitle: "Pass 1-6 journey",
     stageJourneyDescription:
@@ -192,6 +194,9 @@ export const en = {
       { label: "Active stage", value: "Participant Evidence", status: "blocked" },
       { label: "Next safe action", value: "Review blockers", status: "needsReview" },
       { label: "Package state", value: "Blocked", status: "blocked" },
+      { label: "Blockers", value: "3", status: "blocked" },
+      { label: "Warnings", value: "2", status: "warning" },
+      { label: "Evidence integrity", value: "3 / 4 trusted", status: "warning" },
     ],
     stages: [
       {

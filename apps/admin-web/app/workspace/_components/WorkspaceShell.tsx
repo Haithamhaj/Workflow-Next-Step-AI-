@@ -24,9 +24,10 @@ export function WorkspaceShell({
         type="button"
         className={styles.workspaceLanguageToggle}
         onClick={onToggleLanguage}
-        aria-label={`Switch workspace language to ${dictionary.languageToggle}`}
+        aria-label={`${dictionary.languageToggleLabel} ${dictionary.languageToggle}`}
       >
-        {dictionary.languageToggle}
+        <span>{dictionary.languageToggleLabel}</span>
+        <strong>{dictionary.languageToggle}</strong>
       </button>
     </div>
   );

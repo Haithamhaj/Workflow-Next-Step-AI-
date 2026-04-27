@@ -10,11 +10,8 @@ import { WorkspaceBoundaryNote } from "./WorkspaceBoundaryNote";
 import { WorkspaceSectionCard } from "./WorkspaceSectionCard";
 import { WorkspaceShell } from "./WorkspaceShell";
 import {
-  CommandSummaryCards,
-  EvidenceMetricRow,
+  CommandCenterDashboard,
   OrientationVisuals,
-  PackageReadinessStrip,
-  PriorityActionBanner,
   ReviewIssueList,
   StageJourneyMap,
   TruthBoundaryCard,
@@ -83,29 +80,17 @@ export function WorkspaceHome() {
       language={language}
       onToggleLanguage={toggleLanguage}
     >
-      <header className={styles.workspaceHeader}>
-        <div className={styles.workspaceKicker}>{dictionary.header.kicker}</div>
-        <h2 className={styles.workspaceTitle}>{dictionary.header.title}</h2>
-        <p className={styles.workspaceLead}>{dictionary.header.lead}</p>
-      </header>
+      <CommandCenterDashboard dictionary={dictionary} />
 
-      <WorkspaceBoundaryNote dictionary={dictionary} />
-
-      <CommandSummaryCards dictionary={dictionary} />
-
-      <PriorityActionBanner dictionary={dictionary} />
-
-      <StageJourneyMap dictionary={dictionary} />
-
-      <EvidenceMetricRow dictionary={dictionary} />
+      <StageJourneyMap dictionary={dictionary} compact />
 
       <ReviewIssueList dictionary={dictionary} limit={3} />
-
-      <PackageReadinessStrip dictionary={dictionary} />
 
       <OrientationVisuals dictionary={dictionary} />
 
       <TruthBoundaryCard dictionary={dictionary} />
+
+      <WorkspaceBoundaryNote dictionary={dictionary} />
 
       <div className={styles.workspaceGrid}>
         {sectionOrder.map((sectionId) => {
