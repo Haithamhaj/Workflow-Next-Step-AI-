@@ -27,6 +27,7 @@ import {
   validatePass6ConfigurationProfile,
   validateSynthesisInputBundle,
   validateAnalysisMethodUsage,
+  validateAssembledWorkflowDraft,
   validateDifferenceInterpretation,
   validateWorkflowClaim,
   validateWorkflowUnit,
@@ -42,6 +43,8 @@ import {
   type EvaluationConditions,
   type AnalysisMethodKey,
   type AnalysisMethodUsage,
+  type AssembledWorkflowDraft,
+  type ClaimBasisEntry,
   type DifferenceInterpretation,
   type BoundarySignal,
   type ClarificationCandidate,
@@ -65,6 +68,7 @@ import {
   type WorkflowClaim,
   type WorkflowClaimStatus,
   type WorkflowClaimType,
+  type WorkflowElement,
   type WorkflowUnit,
   type WorkflowUnitType,
 } from "@workflow/contracts";
@@ -88,8 +92,10 @@ import type {
   StoredWorkflowClaim,
   StoredWorkflowUnit,
   StoredAnalysisMethodUsage,
+  StoredAssembledWorkflowDraft,
   StoredDifferenceInterpretation,
   AnalysisMethodUsageRepository,
+  AssembledWorkflowDraftRepository,
   DifferenceInterpretationRepository,
   WorkflowClaimRepository,
   WorkflowUnitRepository,
@@ -132,8 +138,10 @@ export type {
   StoredWorkflowClaim,
   StoredWorkflowUnit,
   StoredAnalysisMethodUsage,
+  StoredAssembledWorkflowDraft,
   StoredDifferenceInterpretation,
   AnalysisMethodUsageRepository,
+  AssembledWorkflowDraftRepository,
   DifferenceInterpretationRepository,
   WorkflowClaimRepository,
   WorkflowUnitRepository,
@@ -2318,6 +2326,255 @@ export function interpretWorkflowClaimDifferences(
   }
 
   return { ok: true, differences, methodUsages, methodRegistry: registry };
+}
+
+// ---------------------------------------------------------------------------
+// Pass 6B Workflow Assembly and Claim-Basis Map — Block 11
+// ---------------------------------------------------------------------------
+
+export interface AssembleWorkflowDraftInput {
+  caseId: string;
+  basedOnBundleId: string;
+  claims: WorkflowClaim[];
+  differences?: DifferenceInterpretation[];
+  methodUsages?: AnalysisMethodUsage[];
+  draftId?: string;
+  now?: string;
+  createdBy?: string;
+  persist?: boolean;
+}
+
+export interface AssembleWorkflowDraftRepositories {
+  assembledWorkflowDrafts?: AssembledWorkflowDraftRepository;
+}
+
+export interface AssembleWorkflowDraftOk {
+  ok: true;
+  draft: StoredAssembledWorkflowDraft;
+}
+
+export type AssembleWorkflowDraftResult =
+  | AssembleWorkflowDraftOk
+  | { ok: false; error: string };
+
+function claimIsAcceptedForAssembly(claim: WorkflowClaim): boolean {
+  return claim.status === "accepted_for_assembly";
+}
+
+function workflowElementId(prefix: string, claim: WorkflowClaim): string {
+  return `${prefix}:${safeIdPart(claim.claimId)}`;
+}
+
+function workflowElementFromClaim(prefix: string, claim: WorkflowClaim, description?: string): WorkflowElement {
+  return {
+    elementId: workflowElementId(prefix, claim),
+    label: claim.normalizedStatement,
+    description,
+    claimIds: [claim.claimId],
+    basis: claim.basis,
+  };
+}
+
+function claimHasParticipantEvidence(claim: WorkflowClaim): boolean {
+  return !claimIsDocumentSignal(claim) && (claim.sourceParticipantIds?.length ?? 0) > 0;
+}
+
+function participantSupportedDocumentClaim(documentClaim: WorkflowClaim, claims: WorkflowClaim[]): boolean {
+  const documentText = claimText(documentClaim);
+  const importantTerms = ["approval", "approve", "handoff", "finance", "manager", "sales", "operations", "tax", "request"]
+    .filter((term) => documentText.includes(term));
+  return claims.some((claim) =>
+    claim.claimId !== documentClaim.claimId &&
+    claimIsAcceptedForAssembly(claim) &&
+    claimHasParticipantEvidence(claim) &&
+    claim.primaryClaimType === documentClaim.primaryClaimType &&
+    importantTerms.filter((term) => claimText(claim).includes(term)).length >= Math.min(2, importantTerms.length)
+  );
+}
+
+function differenceIdsForClaim(claimId: string, differences: DifferenceInterpretation[]): string[] {
+  return differences
+    .filter((difference) => difference.involvedClaimIds.includes(claimId))
+    .map((difference) => difference.differenceId);
+}
+
+function methodUsageIdsForClaim(claimId: string, differences: DifferenceInterpretation[]): string[] {
+  return uniqueBy(
+    differences
+      .filter((difference) => difference.involvedClaimIds.includes(claimId))
+      .flatMap((difference) => difference.methodUsageIds ?? []),
+    (id) => id,
+  );
+}
+
+function basisEntryForElement(
+  element: WorkflowElement,
+  claims: WorkflowClaim[],
+  differences: DifferenceInterpretation[],
+  notes: string,
+): ClaimBasisEntry {
+  const elementClaimIds = element.claimIds ?? [];
+  const elementClaims = elementClaimIds
+    .map((claimId) => claims.find((claim) => claim.claimId === claimId))
+    .filter((claim): claim is WorkflowClaim => claim !== undefined);
+  const primaryClaim = elementClaims[0];
+  return {
+    workflowElementId: element.elementId,
+    claimIds: elementClaimIds,
+    sourceUnitIds: uniqueBy(elementClaims.flatMap((claim) => claim.unitIds), (id) => id),
+    participantIds: uniqueBy(elementClaims.flatMap((claim) => claim.sourceParticipantIds ?? []), (id) => id),
+    sessionIds: uniqueBy(elementClaims.flatMap((claim) => claim.sourceSessionIds ?? []), (id) => id),
+    layerContextIds: uniqueBy(elementClaims.flatMap((claim) => claim.sourceLayerContextIds ?? []), (id) => id),
+    truthLensContextIds: uniqueBy(elementClaims.flatMap((claim) => claim.truthLensContextIds ?? []), (id) => id),
+    methodUsageIds: uniqueBy(elementClaimIds.flatMap((claimId) => methodUsageIdsForClaim(claimId, differences)), (id) => id),
+    differenceIds: uniqueBy(elementClaimIds.flatMap((claimId) => differenceIdsForClaim(claimId, differences)), (id) => id),
+    basis: primaryClaim?.basis,
+    confidence: primaryClaim?.confidence,
+    materiality: primaryClaim?.materiality,
+    notes,
+  };
+}
+
+function claimWarningText(claim: WorkflowClaim): string {
+  return `${claim.claimId}: ${claim.normalizedStatement}`;
+}
+
+function understandingLevel(
+  steps: WorkflowElement[],
+  sequence: WorkflowElement[],
+  unresolvedItems: string[],
+  warningsCaveats: string[],
+): AssembledWorkflowDraft["workflowUnderstandingLevel"] {
+  if (unresolvedItems.length > 0) return "workflow_exists_but_not_package_ready";
+  if (steps.length > 0 && sequence.length > 0) return "reconstructable_workflow_with_gaps";
+  if (steps.length > 0 || sequence.length > 0 || warningsCaveats.length > 0) return "partial_workflow_understanding";
+  return "partial_workflow_understanding";
+}
+
+export function assembleWorkflowDraftFromClaims(
+  input: AssembleWorkflowDraftInput,
+  repos: AssembleWorkflowDraftRepositories = {},
+): AssembleWorkflowDraftResult {
+  const now = input.now ?? new Date().toISOString();
+  const draftId = input.draftId ?? `assembled_workflow_draft:${safeIdPart(input.caseId)}:${safeIdPart(input.basedOnBundleId)}`;
+  const caseClaims = input.claims.filter((claim) => claim.caseId === input.caseId);
+  const differences = (input.differences ?? []).filter((difference) => difference.caseId === input.caseId);
+
+  const steps: WorkflowElement[] = [];
+  const sequence: WorkflowElement[] = [];
+  const decisions: WorkflowElement[] = [];
+  const handoffs: WorkflowElement[] = [];
+  const controls: WorkflowElement[] = [];
+  const systemsTools: WorkflowElement[] = [];
+  const variants: WorkflowElement[] = [];
+  const warningsCaveats: string[] = [
+    "Workflow assembly is advisory current understanding only; it is not readiness routing and not package eligibility.",
+  ];
+  const unresolvedItems: string[] = [];
+
+  for (const claim of caseClaims) {
+    const documentOnly = claimIsDocumentSignal(claim) && !participantSupportedDocumentClaim(claim, caseClaims);
+    if (!claimIsAcceptedForAssembly(claim) || documentOnly) {
+      const text = claimWarningText(claim);
+      if (documentOnly) warningsCaveats.push(`${text} remains document/source signal only, not operational truth.`);
+      else if (claim.status === "warning") warningsCaveats.push(`${text} remains warning/caveat material.`);
+      else unresolvedItems.push(`${text} remains ${claim.status}; not assembled as clean workflow truth.`);
+      continue;
+    }
+
+    const text = claimText(claim);
+    if (claim.primaryClaimType === "execution_claim") {
+      steps.push(workflowElementFromClaim("step", claim, "Accepted execution claim assembled as current workflow step."));
+    }
+    if (claim.primaryClaimType === "sequence_claim") {
+      sequence.push(workflowElementFromClaim("sequence", claim, "Accepted sequence claim assembled as current supported sequence."));
+    }
+    if (claim.primaryClaimType === "decision_rule_claim") {
+      decisions.push(workflowElementFromClaim("decision", claim, "Accepted decision rule claim assembled as current decision point."));
+    }
+    if (claim.primaryClaimType === "ownership_claim" || text.includes("handoff")) {
+      handoffs.push(workflowElementFromClaim("handoff", claim, "Accepted ownership/handoff claim assembled as responsibility or handoff signal."));
+    }
+    if (text.includes("approval") || text.includes("approve") || text.includes("control")) {
+      controls.push(workflowElementFromClaim("control", claim, "Accepted approval/control claim assembled as current control signal."));
+    }
+    if (text.includes("system") || text.includes("tool") || text.includes("platform")) {
+      systemsTools.push(workflowElementFromClaim("system", claim, "Accepted system/tool claim assembled as current system or tool signal."));
+    }
+  }
+
+  for (const difference of differences) {
+    if (difference.differenceType === "completion") {
+      warningsCaveats.push(`${difference.differenceId}: completion difference enriches workflow understanding without deciding readiness.`);
+      continue;
+    }
+    if (difference.differenceType === "variant") {
+      variants.push({
+        elementId: `variant:${safeIdPart(difference.differenceId)}`,
+        label: `Variant: ${difference.involvedClaimIds.join(" / ")}`,
+        description: difference.explanation,
+        claimIds: difference.involvedClaimIds,
+        basis: {
+          basisId: `basis:${safeIdPart(difference.differenceId)}`,
+          basisType: "method_output",
+          summary: "Variant preserved from DifferenceInterpretation; not flattened into one linear flow.",
+          references: difference.involvedClaimIds.map((claimId) => ({
+            referenceId: `ref:${safeIdPart(difference.differenceId)}:${safeIdPart(claimId)}`,
+            referenceType: "workflow_claim",
+            notes: claimId,
+          })),
+        },
+      });
+      continue;
+    }
+    if (difference.differenceType === "normative_reality_mismatch") {
+      warningsCaveats.push(`${difference.differenceId}: normative/document-vs-reality mismatch remains caveat; document signal is not operational truth by default.`);
+      continue;
+    }
+    unresolvedItems.push(`${difference.differenceId}: factual conflict remains unresolved/review-needed; not auto-resolved.`);
+  }
+
+  const allElements = [...steps, ...sequence, ...decisions, ...handoffs, ...controls, ...systemsTools, ...variants];
+  const claimBasisMap = allElements.map((element) => basisEntryForElement(
+    element,
+    caseClaims,
+    differences,
+    element.elementId.startsWith("variant:")
+      ? "Variant basis preserves alternate paths and associated difference/method usage traceability."
+      : "Element basis preserves source claims, units, role/layer context, truth-lens context, differences, and method usage.",
+  ));
+
+  const draft: AssembledWorkflowDraft = {
+    draftId,
+    caseId: input.caseId,
+    basedOnBundleId: input.basedOnBundleId,
+    workflowUnderstandingLevel: understandingLevel(steps, sequence, unresolvedItems, warningsCaveats),
+    steps: uniqueBy(steps, (element) => element.elementId),
+    sequence: uniqueBy(sequence, (element) => element.elementId),
+    decisions: uniqueBy(decisions, (element) => element.elementId),
+    handoffs: uniqueBy(handoffs, (element) => element.elementId),
+    controls: uniqueBy(controls, (element) => element.elementId),
+    systemsTools: uniqueBy(systemsTools, (element) => element.elementId),
+    variants: uniqueBy(variants, (element) => element.elementId),
+    warningsCaveats: uniqueBy(warningsCaveats, (warning) => warning),
+    unresolvedItems: uniqueBy(unresolvedItems, (item) => item),
+    claimBasisMap,
+    metadata: {
+      createdAt: now,
+      createdBy: input.createdBy ?? "system",
+      notes: [
+        `Assembly summary: ${steps.length} steps, ${sequence.length} sequence signals, ${decisions.length} decisions, ${handoffs.length} handoffs, ${controls.length} controls, ${variants.length} variants.`,
+        "No seven-condition evaluation, readiness routing, Pre-6C gate, package generation, visual rendering, Copilot write, or Pass 7 mechanics are performed.",
+      ].join(" "),
+    },
+  };
+
+  const validation = validatePipelineRecord("AssembledWorkflowDraft", validateAssembledWorkflowDraft(draft));
+  if (!validation.ok) return { ok: false, error: validation.error };
+
+  const stored: StoredAssembledWorkflowDraft = { ...draft, createdAt: now, updatedAt: now };
+  if (input.persist !== false) repos.assembledWorkflowDrafts?.save(stored);
+  return { ok: true, draft: stored };
 }
 
 // ---------------------------------------------------------------------------

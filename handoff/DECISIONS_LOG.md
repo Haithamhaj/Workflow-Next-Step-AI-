@@ -99,6 +99,14 @@ Status: LOCKED | FORMALIZED | IMPL-EXTENSION
 - **Conflicts are not cleaned up by inference** — factual conflicts and conflicting method findings must remain differences for later clarification/review and must not be merged into a fake clean workflow — LOCKED
 - **Block 10 does not create downstream decision records** — no assembled workflow draft, readiness result, Pre-6C result, package, visual, Copilot, or Pass 7 record is created by difference interpretation — LOCKED
 
+## Pass 6 Block 11 — 6B Workflow Assembly and Claim-Basis Map
+
+- **Workflow assembly creates current understanding, not readiness** — Block 11 can produce an `AssembledWorkflowDraft` and workflow understanding level, but it does not evaluate seven conditions, decide readiness, or determine 6C eligibility — LOCKED
+- **Accepted claims are the only clean assembly source by default** — warning, unresolved, review-needed, candidate, or document-only claims remain caveats/unresolved/source-signal material unless supported by participant evidence — LOCKED
+- **Variants and conflicts remain visible** — variant differences are preserved as variants; normative/document mismatches remain caveats; factual conflicts remain unresolved/review-needed and are not auto-resolved — LOCKED
+- **Claim-basis map is required assembly traceability** — assembled elements carry claim IDs, source unit IDs, participant/session/layer context, truth-lens context, method usage IDs, difference IDs, evidence/source basis, confidence, and materiality where available — LOCKED
+- **Block 11 persistence stores only assembled draft records** — no readiness result, Pre-6C result, package, visual, Copilot, or Pass 7 record is created by workflow assembly — LOCKED
+
 ## contracts
 
 - **Ajv 8 + ajv-formats for JSON Schema validation** — industry standard, fast, supports Draft-07, formats plugin needed for `date-time` and `uri` — LOCKED

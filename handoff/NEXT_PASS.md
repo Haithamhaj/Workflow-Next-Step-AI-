@@ -39,7 +39,9 @@ Pass 6 Block 8 — 6B Method Registry and Analysis Policy is accepted.
 
 Pass 6 Block 9 — 6B Workflow Unit and Claim Pipeline is accepted.
 
-Pass 6 Block 10 — 6B Difference Interpretation and Multi-Lens Engine is the current completed implementation block pending acceptance.
+Pass 6 Block 10 — 6B Difference Interpretation and Multi-Lens Engine is accepted.
+
+Pass 6 Block 11 — 6B Workflow Assembly and Claim-Basis Map is the current completed implementation block pending acceptance.
 
 Technical Decomposition v4 is the active Pass 6 build map.
 
@@ -186,6 +188,22 @@ Block 10 is difference interpretation and method-usage traceability only.
 - Routes are advisory only and do not create Pass 7 records.
 - No workflow assembly, seven-condition evaluation, readiness routing, Pre-6C behavior, 6C generation, visual-core integration, Copilot runtime behavior, Pass 7 mechanics, or provider calls start in Block 10.
 - Next implementation step after acceptance is Block 11 — 6B Workflow Assembly and Claim-Basis Map.
+
+## Pass 6 Block 11 Acceptance Gate
+
+Block 11 is workflow assembly and claim-basis mapping only.
+
+- `WorkflowClaim` and `DifferenceInterpretation` records can be assembled into an `AssembledWorkflowDraft`.
+- Accepted claims contribute to draft steps, sequence, decisions, handoffs/responsibility, controls, and systems/tools where appropriate.
+- Completion differences enrich workflow understanding without deciding readiness.
+- Variant differences remain visible as variants and are not flattened into a fake linear flow.
+- Normative/document-vs-reality mismatches remain warning/caveat material.
+- Factual conflicts remain unresolved/review-needed and are not auto-resolved.
+- Document/source claims remain source signals/caveats unless supported by participant evidence.
+- `claimBasisMap` preserves claim, source unit, participant/session/layer, truth-lens, method usage, difference, and evidence/source basis traceability.
+- `workflowUnderstandingLevel` is produced as assembly metadata only and does not decide readiness or 6C eligibility.
+- No seven-condition evaluation, readiness routing, Pre-6C behavior, 6C generation, visual-core integration, Copilot runtime behavior, Pass 7 mechanics, or provider calls start in Block 11.
+- Next implementation step after acceptance is Block 12 — 6B Seven-Condition Evaluation and Workflow Readiness Result.
 
 ## Active Pass 6 Block Map
 

@@ -374,6 +374,43 @@
           "type": "array",
           "items": { "$ref": "#/definitions/nonEmptyString" }
         },
+        "sourceUnitIds": {
+          "type": "array",
+          "items": { "$ref": "#/definitions/nonEmptyString" }
+        },
+        "participantIds": {
+          "type": "array",
+          "items": { "$ref": "#/definitions/nonEmptyString" }
+        },
+        "sessionIds": {
+          "type": "array",
+          "items": { "$ref": "#/definitions/nonEmptyString" }
+        },
+        "layerContextIds": {
+          "type": "array",
+          "items": { "$ref": "#/definitions/nonEmptyString" }
+        },
+        "truthLensContextIds": {
+          "type": "array",
+          "items": { "$ref": "#/definitions/nonEmptyString" }
+        },
+        "methodUsageIds": {
+          "type": "array",
+          "items": { "$ref": "#/definitions/nonEmptyString" }
+        },
+        "differenceIds": {
+          "type": "array",
+          "items": { "$ref": "#/definitions/nonEmptyString" }
+        },
+        "basis": { "$ref": "#/definitions/sourceBasis" },
+        "confidence": {
+          "type": "string",
+          "enum": ["high", "medium", "low", "unknown"]
+        },
+        "materiality": {
+          "type": "string",
+          "enum": ["high", "medium", "low", "unknown"]
+        },
         "notes": { "$ref": "#/definitions/optionalString" }
       }
     },

@@ -240,6 +240,16 @@ export interface WorkflowElement {
 export interface ClaimBasisEntry {
   workflowElementId: string;
   claimIds: string[];
+  sourceUnitIds?: string[];
+  participantIds?: string[];
+  sessionIds?: string[];
+  layerContextIds?: string[];
+  truthLensContextIds?: string[];
+  methodUsageIds?: string[];
+  differenceIds?: string[];
+  basis?: Pass6SourceBasis;
+  confidence?: "high" | "medium" | "low" | "unknown";
+  materiality?: "high" | "medium" | "low" | "unknown";
   notes?: string;
 }
 
