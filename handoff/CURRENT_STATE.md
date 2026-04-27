@@ -4,6 +4,16 @@
 
 `handoff/PASS5_FINAL_ARCHIVE_REFERENCE.md` is the final state after Pass 5 and is the highest local authority for the repository state before Pass 6.
 
+## Pass 6 Supplemental Source References
+
+Pass 6 supplemental planning/reference files have been archived under `handoff/pass6-source-references/`.
+
+- `handoff/pass6-source-references/PASS6_TECHNICAL_DECOMPOSITION_LIVE_REFERENCE.md`
+- `handoff/pass6-source-references/PASS6_CONCEPTUAL_CLOSURE_REFERENCE.md`
+
+These files do not reopen Pass 6 and do not alter runtime behavior. The accepted Pass 6 archive remains authoritative:
+`handoff/PASS6_SYNTHESIS_EVALUATION_INITIAL_PACKAGE_ARCHIVE_REFERENCE.md`.
+
 ## Pass 6 Block 0 Acceptance Gate
 
 Pass 6 Block 0 — Build Readiness and Spec Cleanup is documentation-only.

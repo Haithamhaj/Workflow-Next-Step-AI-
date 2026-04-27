@@ -71,6 +71,14 @@ Build Spec Structure v1 is active.
 
 Older parked Pass 6 / 7 / 8 / 9 block maps are historical only if they conflict with the current Pass 6 live reference, Technical Decomposition v4, the Pass 5 final archive, or the Implementation Handoff Plan.
 
+## Supplemental Pass 6 References Guard
+
+Supplemental Pass 6 planning/reference files are archived under `handoff/pass6-source-references/`.
+
+- These supplemental references do not start Pass 7.
+- They do not override `handoff/PASS6_SYNTHESIS_EVALUATION_INITIAL_PACKAGE_ARCHIVE_REFERENCE.md`.
+- Any next implementation still requires explicit operator approval and a fresh readiness/scope gate.
+
 ## Pass 6 Block 0 Acceptance Gate
 
 Block 0 is documentation-only.

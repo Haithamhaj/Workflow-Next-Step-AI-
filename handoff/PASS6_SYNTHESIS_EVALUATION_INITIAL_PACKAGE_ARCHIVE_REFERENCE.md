@@ -144,6 +144,16 @@ Pass 6 archive closure confirms:
 - No Copilot autonomous writes.
 - No secrets committed.
 
+## Supplemental Source References
+
+- `handoff/pass6-source-references/PASS6_TECHNICAL_DECOMPOSITION_LIVE_REFERENCE.md`
+  - Preserves the live technical decomposition and block-by-block acceptance trail used during Pass 6 planning/execution.
+  - Supplemental only; does not override this archive.
+
+- `handoff/pass6-source-references/PASS6_CONCEPTUAL_CLOSURE_REFERENCE.md`
+  - Preserves the conceptual Pass 6 closure logic for 6A, 6B, Pre-6C, Cross-Department / External Interface Governance, 6C, and Visual Core integration.
+  - Supplemental only; does not override this archive.
+
 ## Next Step Guard
 
 Pass 6 is archived/accepted only after operator acceptance of this Block 20 proof.

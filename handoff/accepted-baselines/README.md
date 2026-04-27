@@ -28,9 +28,19 @@ Current main authority checked for this normalization:
   the current main lineage.
 - Pass 5 is the direct accepted baseline authority for Pass 6.
 
+## Pass 6 Supplemental References
+
+- `handoff/pass6-source-references/PASS6_TECHNICAL_DECOMPOSITION_LIVE_REFERENCE.md`
+  - Supplemental planning/reference record only.
+  - Does not override `handoff/PASS6_SYNTHESIS_EVALUATION_INITIAL_PACKAGE_ARCHIVE_REFERENCE.md`.
+- `handoff/pass6-source-references/PASS6_CONCEPTUAL_CLOSURE_REFERENCE.md`
+  - Supplemental planning/reference record only.
+  - Does not override `handoff/PASS6_SYNTHESIS_EVALUATION_INITIAL_PACKAGE_ARCHIVE_REFERENCE.md`.
+
 ## Baseline Chain Status
 
 - `baseline_chain_status: usable_with_archival_caveats`
+- `supplemental_pass6_references_added: true`
 - `runtime_code_changed: false`
 - `passes_reopened: none`
 - `next_safe_action: continue_from_current_main`
