@@ -156,6 +156,232 @@ export const en = {
       },
     },
   },
+  visual: {
+    status: {
+      complete: "Complete",
+      warning: "Warning",
+      approved: "Approved",
+      needsReview: "Needs review",
+      blocked: "Blocked",
+      placeholder: "Static placeholder",
+      ready: "Ready",
+      waiting: "Waiting",
+      notReady: "Not ready",
+    },
+    actions: {
+      reviewEvidence: "Review evidence",
+      openAdvanced: "Open advanced route",
+      tune: "Tune",
+      compare: "Compare",
+      activate: "Activate",
+      disabled: "Disabled in this slice",
+    },
+    priority: {
+      title: "Review evidence blockers before package readiness can continue.",
+      explanation:
+        "This is a static next-action example. Later slices will derive the next safe action from backend view models and existing gates.",
+      urgency: "Needs review",
+      actionLabel: "Review blockers",
+    },
+    stageJourneyTitle: "Pass 1-6 journey",
+    stageJourneyDescription:
+      "Static orientation map showing how the guided workspace will organize the connected workflow.",
+    stages: [
+      {
+        number: "1",
+        label: "Setup / Case",
+        status: "complete",
+        purpose: "Case framing is available for the workspace shell.",
+        hint: "Command Center",
+      },
+      {
+        number: "2",
+        label: "Sources & Context",
+        status: "warning",
+        purpose: "Documents are useful signals, not workflow truth.",
+        hint: "Source scope review",
+      },
+      {
+        number: "3",
+        label: "Hierarchy",
+        status: "approved",
+        purpose: "Structure can guide targeting without proving execution.",
+        hint: "Role/interface grounding",
+      },
+      {
+        number: "4",
+        label: "Targeting",
+        status: "needsReview",
+        purpose: "Participant order and question seeds need operator review.",
+        hint: "Planning only",
+      },
+      {
+        number: "5",
+        label: "Participant Evidence",
+        status: "blocked",
+        purpose: "Evidence blockers must be resolved before package readiness.",
+        hint: "Transcript trust",
+      },
+      {
+        number: "6",
+        label: "Analysis & Package",
+        status: "waiting",
+        purpose: "Package readiness waits on accepted evidence and gates.",
+        hint: "Pass 6 preparation",
+      },
+    ],
+    evidenceMetrics: [
+      { label: "Participants", value: "4" },
+      { label: "Trusted transcripts", value: "3 / 4" },
+      { label: "Open clarifications", value: "2" },
+      { label: "Evidence disputes", value: "1" },
+    ],
+    reviewIssuesTitle: "Needs review",
+    reviewIssues: [
+      {
+        title: "Transcript review required",
+        why: "One participant transcript is not trusted yet.",
+        impact: "Package readiness remains blocked.",
+        action: "Review transcript trust before analysis continues.",
+        boundary: "Evidence trust gate",
+        status: "blocked",
+      },
+      {
+        title: "Finance handoff unclear",
+        why: "Participants describe different handoff owners.",
+        impact: "Workflow handoff cannot be finalized.",
+        action: "Queue clarification before synthesis.",
+        boundary: "Workflow truth boundary",
+        status: "needsReview",
+      },
+      {
+        title: "KPI document conflicts with participant reality",
+        why: "The documented SLA does not match participant descriptions.",
+        impact: "Treat document as a signal until validated.",
+        action: "Mark as source signal, not workflow truth.",
+        boundary: "Document signal",
+        status: "warning",
+      },
+    ],
+    truthBoundaryTitle: "Truth boundaries",
+    truthBoundaries: [
+      "Accepted evidence is not final workflow truth.",
+      "Documents are signals until validated against reality.",
+      "Hierarchy approval confirms structure, not workflow truth.",
+    ],
+    packageReadinessTitle: "Initial Package readiness",
+    packageReminder: "Initial Package is not Final Package.",
+    packageReadiness: [
+      { label: "Prepare Evidence", status: "ready" },
+      { label: "Analyze Workflow", status: "waiting" },
+      { label: "Gate / Readiness", status: "blocked" },
+      { label: "Package Preview", status: "notReady" },
+    ],
+    methodsTitle: "Method lenses",
+    methodsReminder: "Methods explain analysis; they do not invent evidence.",
+    methods: [
+      { title: "BPMN / Process Structure Lens", detail: "Frames steps, decisions, handoffs, and exception paths." },
+      { title: "SIPOC / Boundary Lens", detail: "Clarifies suppliers, inputs, process boundaries, outputs, and customers." },
+      { title: "Triangulation Lens", detail: "Compares documents, participants, and evidence anchors before conclusions." },
+      { title: "Theory-in-Use vs Stated Process", detail: "Separates what people do from what documents say should happen." },
+      { title: "RACI / Responsibility Lens", detail: "Checks responsibility, accountability, consultation, and informed roles." },
+    ],
+    departmentMap: {
+      title: "Department / Role / Interface Map",
+      label:
+        "Hierarchy and role maps show structure and interfaces. They do not prove workflow truth.",
+      legend: {
+        internal: "Internal role",
+        external: "External interface",
+        system: "System / queue node",
+        validation: "Needs validation",
+        signal: "Source signal only",
+        scope: "In use-case scope",
+        outside: "Outside primary scope",
+      },
+      nodes: {
+        manager: "Sales Manager",
+        supervisor: "Sales Supervisor",
+        executive: "Sales Executive",
+        finance: "Finance Coordinator",
+        operations: "Operations Coordinator",
+        crm: "CRM Queue / System Node",
+        clientSuccess: "Client Success / External Interface",
+      },
+      boundary:
+        "Do not treat hierarchy structure as actual workflow execution. Source-to-role signals remain evidence candidates.",
+    },
+    workflowMiniMap: {
+      title: "Workflow Mini Map",
+      label: "Static visual placeholder — real map will later come from WorkflowGraph JSON.",
+      steps: [
+        "Start",
+        "Collect client information",
+        "Decision: Finance approval needed?",
+        "Finance handoff",
+        "Activation readiness",
+      ],
+      warning: "Unresolved handoff",
+    },
+    screenPanels: {
+      sources: {
+        cards: [
+          "Source card: SOP / policy / SLA / KPI / role document",
+          "Document signal badge: useful for interpretation only",
+          "Source role and scope decision remains future backend-driven behavior",
+        ],
+      },
+      hierarchy: {
+        whyTitle: "Why this role matters",
+        whyText:
+          "Sales roles shape participant targeting, but role signals must be validated by participant evidence before workflow conclusions.",
+      },
+      targeting: {
+        cards: [
+          "Sales Manager — rollout order 1 — validate approvals and exceptions",
+          "Sales Executive — rollout order 2 — validate day-to-day intake reality",
+          "Finance Coordinator — external clarification source — validate handoff boundary",
+        ],
+        questionSeedsTitle: "Question seeds",
+        questionSeeds: [
+          "Where does onboarding wait for finance input?",
+          "Which CRM queue status is trusted by the team?",
+          "Who resolves missing client information?",
+        ],
+      },
+      evidence: {
+        lifecycleTitle: "Evidence lifecycle",
+        lifecycle: [
+          "Session captured",
+          "Transcript reviewed",
+          "Extraction prepared",
+          "Clarifications queued",
+        ],
+      },
+      analysis: {
+        tabs: ["Prepare Evidence", "Analyze Workflow", "Gate / Readiness", "Package Preview"],
+      },
+      prompts: {
+        groups: [
+          "Source Understanding",
+          "Hierarchy Drafting",
+          "Evidence Extraction",
+          "Clarification Questions",
+          "Synthesis",
+          "Package Writing",
+        ],
+        comparisonTitle: "Before / after comparison placeholder",
+        before: "Before: technical prompt output with raw labels.",
+        after: "After: admin-friendly explanation with preserved governance boundaries.",
+      },
+      package: {
+        blockedTitle: "Package preview blocked",
+        blockedText:
+          "Initial Package preview remains disabled until evidence blockers and readiness gates are satisfied by backend-controlled logic.",
+        artifacts: ["Gap brief", "Draft operational document", "Visual workflow map", "Client-safe preview"],
+      },
+    },
+  },
   pages: {
     sources: {
       eyebrow: "Stage 2",

@@ -9,6 +9,16 @@ import {
 import { WorkspaceBoundaryNote } from "./WorkspaceBoundaryNote";
 import { WorkspaceSectionCard } from "./WorkspaceSectionCard";
 import { WorkspaceShell } from "./WorkspaceShell";
+import {
+  DepartmentRoleInterfaceMap,
+  EvidenceMetricRow,
+  PackageReadinessStrip,
+  PriorityActionBanner,
+  ReviewIssueList,
+  StageJourneyMap,
+  TruthBoundaryCard,
+  WorkflowMiniMap,
+} from "./WorkspaceVisualSystem";
 import styles from "../workspace.module.css";
 
 const sectionLinks = {
@@ -80,6 +90,23 @@ export function WorkspaceHome() {
       </header>
 
       <WorkspaceBoundaryNote dictionary={dictionary} />
+
+      <PriorityActionBanner dictionary={dictionary} />
+
+      <StageJourneyMap dictionary={dictionary} />
+
+      <EvidenceMetricRow dictionary={dictionary} />
+
+      <ReviewIssueList dictionary={dictionary} limit={3} />
+
+      <PackageReadinessStrip dictionary={dictionary} />
+
+      <div className={styles.workspaceSplitPanels}>
+        <WorkflowMiniMap dictionary={dictionary} />
+        <DepartmentRoleInterfaceMap dictionary={dictionary} compact />
+      </div>
+
+      <TruthBoundaryCard dictionary={dictionary} />
 
       <div className={styles.workspaceGrid}>
         {sectionOrder.map((sectionId) => {

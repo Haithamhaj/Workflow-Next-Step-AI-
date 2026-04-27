@@ -8,6 +8,7 @@ import {
   type WorkspaceLanguage,
 } from "../_i18n";
 import { WorkspaceShell } from "./WorkspaceShell";
+import { WorkspaceScreenVisuals } from "./WorkspaceVisualSystem";
 import styles from "../workspace.module.css";
 
 export type WorkspacePlaceholderKey =
@@ -63,6 +64,10 @@ export function WorkspacePlaceholderPage({
         <p className={styles.workspaceBoundaryText}>{dictionary.placeholder.displayOnly}</p>
         <p className={styles.workspaceBoundaryText}>{page.boundary}</p>
       </section>
+
+      {pageKey !== "advanced" ? (
+        <WorkspaceScreenVisuals pageKey={pageKey} dictionary={dictionary} />
+      ) : null}
 
       <section className={styles.workspacePanel} aria-label={dictionary.placeholder.futureCapabilities}>
         <div className={styles.workspacePanelHeader}>
