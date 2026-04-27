@@ -8,9 +8,9 @@ export const en = {
   },
   header: {
     kicker: "Workspace sandbox slice",
-    title: "Guided Workspace",
+    title: "Guided Intelligence Workspace",
     lead:
-      "This is the Guided Workspace entry point. It will summarize existing operational stages across setup, sources, hierarchy, targeting, evidence, analysis, prompt control, and package review. Advanced and raw admin routes remain available through the existing admin UI.",
+      "Future production workspace will summarize case progress, evidence, readiness, and package state. Advanced and raw admin routes remain available through the existing admin UI.",
   },
   boundary: {
     label: "Boundary note",
@@ -186,6 +186,13 @@ export const en = {
     stageJourneyTitle: "Pass 1-6 journey",
     stageJourneyDescription:
       "Static orientation map showing how the guided workspace will organize the connected workflow.",
+    evidenceIntegrityTitle: "Evidence integrity summary",
+    orientationTitle: "Structure map and workflow map are different views.",
+    commandSummary: [
+      { label: "Active stage", value: "Participant Evidence", status: "blocked" },
+      { label: "Next safe action", value: "Review blockers", status: "needsReview" },
+      { label: "Package state", value: "Blocked", status: "blocked" },
+    ],
     stages: [
       {
         number: "1",
@@ -310,6 +317,15 @@ export const en = {
       },
       boundary:
         "Do not treat hierarchy structure as actual workflow execution. Source-to-role signals remain evidence candidates.",
+      roles: [
+        { name: "Sales Manager", detail: "internal / in-scope", status: "approved" },
+        { name: "Sales Supervisor", detail: "internal / in-scope", status: "approved" },
+        { name: "Sales Executive", detail: "needs validation", status: "needsReview" },
+        { name: "Finance Coordinator", detail: "cross-functional dependency / source signal only", status: "warning" },
+        { name: "Operations Coordinator", detail: "external handoff dependency", status: "warning" },
+        { name: "CRM Queue", detail: "system node", status: "placeholder" },
+        { name: "Client Success", detail: "external interface", status: "placeholder" },
+      ],
     },
     workflowMiniMap: {
       title: "Workflow Mini Map",
@@ -356,19 +372,48 @@ export const en = {
           "Transcript reviewed",
           "Extraction prepared",
           "Clarifications queued",
+          "Boundary signals carried forward",
+          "Ready for analysis",
+        ],
+        participantsTitle: "Participant evidence cards",
+        participants: [
+          { name: "Ahmad", role: "Sales Executive", statusText: "Complete", status: "complete" },
+          { name: "Sara", role: "Sales Supervisor", statusText: "Complete", status: "complete" },
+          { name: "Omar", role: "Finance Coordinator", statusText: "Transcript review required", status: "blocked" },
+          { name: "Lina", role: "Operations Coordinator", statusText: "Clarification pending", status: "needsReview" },
         ],
       },
       analysis: {
         tabs: ["Prepare Evidence", "Analyze Workflow", "Gate / Readiness", "Package Preview"],
+        foldersTitle: "Prepare Evidence folders",
+        folders: [
+          "Analysis material",
+          "Boundary / role-limit material",
+          "Gap / risk / no-drop material",
+          "Document / source signal material",
+        ],
+        readinessTitle: "Readiness / Gate panel",
+        readinessReminder: "Scores cannot approve the package by themselves.",
+        readiness: [
+          { label: "Sequence clarity", value: "Clear", status: "complete" },
+          { label: "Role ownership clarity", value: "Warning", status: "warning" },
+          { label: "Decision logic clarity", value: "Blocked", status: "blocked" },
+          { label: "Handoff clarity", value: "Blocked", status: "blocked" },
+          { label: "Evidence strength", value: "Warning", status: "warning" },
+        ],
       },
       prompts: {
+        boundary:
+          "Prompts can affect wording and extraction behavior, but they do not own gates or package eligibility.",
         groups: [
-          "Source Understanding",
-          "Hierarchy Drafting",
-          "Evidence Extraction",
-          "Clarification Questions",
-          "Synthesis",
-          "Package Writing",
+          { name: "Source Understanding", status: "approved" },
+          { name: "Hierarchy Drafting", status: "approved" },
+          { name: "Evidence Extraction", status: "needsReview" },
+          { name: "Clarification Questions", status: "warning" },
+          { name: "Synthesis", status: "placeholder" },
+          { name: "Evaluation / Readiness", status: "placeholder" },
+          { name: "Package Writing", status: "placeholder" },
+          { name: "Admin Copilot", status: "placeholder" },
         ],
         comparisonTitle: "Before / after comparison placeholder",
         before: "Before: technical prompt output with raw labels.",
@@ -378,7 +423,18 @@ export const en = {
         blockedTitle: "Package preview blocked",
         blockedText:
           "Initial Package preview remains disabled until evidence blockers and readiness gates are satisfied by backend-controlled logic.",
+        blockersTitle: "Why package is blocked",
+        blockers: [
+          "Transcript review unresolved",
+          "Finance handoff not validated",
+          "KPI vs reality mismatch",
+        ],
         artifacts: ["Gap brief", "Draft operational document", "Visual workflow map", "Client-safe preview"],
+        gapBriefTitle: "Gap brief placeholder",
+        gapBrief:
+          "Later slices will summarize unresolved evidence gaps without turning gaps into final package claims.",
+        exportTitle: "Future-only package actions",
+        exportActions: ["Generate Initial Package", "Export PDF", "Client preview link"],
       },
     },
   },

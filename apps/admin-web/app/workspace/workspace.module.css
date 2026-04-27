@@ -99,8 +99,13 @@
 }
 
 .workspaceHeader {
-  max-width: 960px;
+  max-width: 1100px;
   margin-bottom: 18px;
+  padding: 24px;
+  border: 1px solid #d6e0ec;
+  border-radius: 14px;
+  background: linear-gradient(135deg, #ffffff 0%, #eef6ff 100%);
+  box-shadow: 0 12px 30px rgba(15, 23, 42, 0.08);
 }
 
 .workspaceKicker {
@@ -114,7 +119,7 @@
 .workspaceTitle {
   margin: 4px 0 8px;
   color: #111827;
-  font-size: 30px;
+  font-size: 34px;
   line-height: 1.1;
 }
 
@@ -125,7 +130,7 @@
 }
 
 .workspaceBoundary {
-  max-width: 960px;
+  max-width: 1100px;
   margin: 18px 0 24px;
   padding: 14px 16px;
   border: 1px solid #c7d7ee;
@@ -151,7 +156,7 @@
 }
 
 .workspacePanel {
-  max-width: 960px;
+  max-width: 1100px;
   margin: 0 0 18px;
   padding: 18px;
   border: 1px solid #d6e0ec;
@@ -192,7 +197,7 @@
   border: 1px solid #f8c471;
   border-radius: 12px;
   background: linear-gradient(135deg, #fff7ed 0%, #ffffff 100%);
-  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.08);
+  box-shadow: 0 14px 34px rgba(124, 45, 18, 0.12);
 }
 
 .workspacePriorityBanner h3 {
@@ -208,7 +213,8 @@
 }
 
 .workspaceStaticAction,
-.workspacePromptActions button {
+.workspacePromptActions button,
+.workspaceExportActions button {
   padding: 8px 12px;
   border: 1px solid #cbd5e1;
   border-radius: 8px;
@@ -218,6 +224,36 @@
   font-size: 12px;
   font-weight: 700;
   cursor: not-allowed;
+}
+
+.workspaceCommandSummary {
+  max-width: 1100px;
+  margin: 0 0 18px;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.workspaceCommandSummaryCard {
+  padding: 16px;
+  border: 1px solid #d6e0ec;
+  border-radius: 12px;
+  background: #ffffff;
+  box-shadow: 0 8px 22px rgba(15, 23, 42, 0.06);
+}
+
+.workspaceCommandSummaryCard span {
+  display: block;
+  color: #64748b;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.workspaceCommandSummaryCard strong {
+  display: block;
+  margin: 8px 0 12px;
+  color: #172033;
+  font-size: 20px;
 }
 
 .workspaceStatusPill {
@@ -334,8 +370,7 @@
 }
 
 .workspaceMetricGrid {
-  max-width: 960px;
-  margin: 0 0 18px;
+  margin: 0;
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 12px;
@@ -343,9 +378,9 @@
 
 .workspaceMetricCard {
   padding: 16px;
-  border: 1px solid #d6e0ec;
+  border: 1px solid #c7d7ee;
   border-radius: 10px;
-  background: #ffffff;
+  background: linear-gradient(180deg, #ffffff 0%, #f8fbff 100%);
 }
 
 .workspaceMetricCard span {
@@ -396,7 +431,7 @@
 }
 
 .workspaceTruthCard {
-  max-width: 960px;
+  max-width: 1100px;
   margin: 0 0 18px;
   padding: 16px 18px;
   border: 1px solid #bfdbfe;
@@ -420,6 +455,11 @@
 .workspaceTruthCard li + li,
 .workspaceSeedList li + li {
   margin-top: 6px;
+}
+
+.workspaceTruthCard p {
+  margin: 0;
+  color: #1e3a8a;
 }
 
 .workspaceReadinessStrip,
@@ -465,6 +505,10 @@
   grid-template-columns: repeat(4, minmax(120px, 1fr));
   gap: 12px;
   align-items: center;
+  padding: 12px;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  background: #f8fafc;
 }
 
 .workspaceDepartmentMapCompact {
@@ -485,6 +529,78 @@
   font-size: 13px;
   font-weight: 800;
   text-align: center;
+}
+
+.workspaceRoleCardGrid,
+.workspaceParticipantGrid,
+.workspaceFolderGrid,
+.workspaceReadinessGrid {
+  margin-top: 14px;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.workspaceRoleCard,
+.workspaceParticipantCard,
+.workspaceFolderCard,
+.workspaceReadinessCard {
+  padding: 12px;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  background: #ffffff;
+}
+
+.workspaceRoleCard,
+.workspaceParticipantCard,
+.workspaceReadinessCard {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.workspaceRoleCard strong,
+.workspaceParticipantCard strong,
+.workspaceFolderCard strong,
+.workspaceReadinessCard strong {
+  display: block;
+  color: #172033;
+}
+
+.workspaceRoleCard span,
+.workspaceParticipantCard span,
+.workspaceReadinessCard span {
+  display: block;
+  margin-top: 4px;
+  color: #64748b;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.workspaceParticipantCard p {
+  margin: 8px 0 0;
+  color: #64748b;
+  font-size: 12px;
+  text-align: end;
+}
+
+.workspaceFolderCard {
+  min-height: 98px;
+}
+
+.workspaceFolderCard > span {
+  display: block;
+  width: 42px;
+  height: 26px;
+  margin-bottom: 12px;
+  border-radius: 5px 5px 3px 3px;
+  background: linear-gradient(180deg, #bfdbfe 0%, #dbeafe 100%);
+}
+
+.workspaceReadinessCard strong {
+  margin: 8px 0;
+  font-size: 18px;
 }
 
 .workspaceMapNode span {
@@ -548,6 +664,10 @@
   display: grid;
   grid-template-columns: repeat(5, minmax(100px, 1fr));
   gap: 12px;
+  padding: 12px;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  background: #f8fafc;
 }
 
 .workspaceFlowNode {
@@ -610,6 +730,15 @@
   max-width: none;
 }
 
+.workspaceOrientationSection {
+  max-width: 1100px;
+  margin: 0 0 18px;
+}
+
+.workspaceOrientationSection > .workspacePanelTitle {
+  margin-bottom: 12px;
+}
+
 .workspacePromptActions {
   margin-top: 14px;
   display: flex;
@@ -630,6 +759,58 @@
   border-radius: 10px;
   background: #f8fafc;
   color: #475569;
+}
+
+.workspaceBlockedPanel {
+  max-width: 1100px;
+  margin: 0 0 18px;
+  display: grid;
+  grid-template-columns: minmax(0, 1.3fr) minmax(260px, 0.7fr);
+  gap: 18px;
+  padding: 20px;
+  border: 1px solid #fecdd3;
+  border-radius: 14px;
+  background: linear-gradient(135deg, #fff1f2 0%, #ffffff 100%);
+  box-shadow: 0 14px 34px rgba(159, 18, 57, 0.1);
+}
+
+.workspaceBlockedPanel h3 {
+  margin: 10px 0 8px;
+  color: #9f1239;
+  font-size: 22px;
+}
+
+.workspaceBlockedPanel p {
+  margin: 0;
+  color: #7f1d1d;
+}
+
+.workspaceBlockerList {
+  padding: 14px;
+  border: 1px solid #fecdd3;
+  border-radius: 10px;
+  background: #ffffff;
+}
+
+.workspaceBlockerList h4 {
+  margin: 0 0 10px;
+  color: #7f1d1d;
+}
+
+.workspaceBlockerList ul {
+  margin: 0;
+  padding-inline-start: 20px;
+  color: #7f1d1d;
+}
+
+.workspaceBlockerList li + li {
+  margin-top: 6px;
+}
+
+.workspaceExportActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
 }
 
 .workspaceCapabilityGrid {
@@ -769,14 +950,16 @@
   .workspaceJourneyMap,
   .workspaceReviewGrid,
   .workspaceMethodGrid,
-  .workspacePromptGrid {
+  .workspacePromptGrid,
+  .workspaceCommandSummary {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .workspaceMetricGrid,
   .workspaceReadinessStrip,
   .workspaceTabLikeGrid,
-  .workspaceFlowMap {
+  .workspaceFlowMap,
+  .workspaceBlockedPanel {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
@@ -816,7 +999,8 @@
 
   .workspacePriorityBanner,
   .workspaceSplitPanels,
-  .workspaceComparison {
+  .workspaceComparison,
+  .workspaceBlockedPanel {
     grid-template-columns: 1fr;
   }
 
@@ -828,13 +1012,18 @@
   .workspaceJourneyMap,
   .workspaceReviewGrid,
   .workspaceMetricGrid,
+  .workspaceCommandSummary,
   .workspaceReadinessStrip,
   .workspaceTabLikeGrid,
   .workspaceMethodGrid,
   .workspacePromptGrid,
   .workspaceDepartmentMap,
   .workspaceDepartmentMapCompact,
-  .workspaceFlowMap {
+  .workspaceFlowMap,
+  .workspaceRoleCardGrid,
+  .workspaceParticipantGrid,
+  .workspaceFolderGrid,
+  .workspaceReadinessGrid {
     grid-template-columns: 1fr;
   }
 

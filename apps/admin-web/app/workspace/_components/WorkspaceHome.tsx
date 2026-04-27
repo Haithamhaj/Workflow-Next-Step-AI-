@@ -10,14 +10,14 @@ import { WorkspaceBoundaryNote } from "./WorkspaceBoundaryNote";
 import { WorkspaceSectionCard } from "./WorkspaceSectionCard";
 import { WorkspaceShell } from "./WorkspaceShell";
 import {
-  DepartmentRoleInterfaceMap,
+  CommandSummaryCards,
   EvidenceMetricRow,
+  OrientationVisuals,
   PackageReadinessStrip,
   PriorityActionBanner,
   ReviewIssueList,
   StageJourneyMap,
   TruthBoundaryCard,
-  WorkflowMiniMap,
 } from "./WorkspaceVisualSystem";
 import styles from "../workspace.module.css";
 
@@ -91,6 +91,8 @@ export function WorkspaceHome() {
 
       <WorkspaceBoundaryNote dictionary={dictionary} />
 
+      <CommandSummaryCards dictionary={dictionary} />
+
       <PriorityActionBanner dictionary={dictionary} />
 
       <StageJourneyMap dictionary={dictionary} />
@@ -101,10 +103,7 @@ export function WorkspaceHome() {
 
       <PackageReadinessStrip dictionary={dictionary} />
 
-      <div className={styles.workspaceSplitPanels}>
-        <WorkflowMiniMap dictionary={dictionary} />
-        <DepartmentRoleInterfaceMap dictionary={dictionary} compact />
-      </div>
+      <OrientationVisuals dictionary={dictionary} />
 
       <TruthBoundaryCard dictionary={dictionary} />
 

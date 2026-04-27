@@ -59,6 +59,20 @@ export function PriorityActionBanner({ dictionary }: { dictionary: WorkspaceDict
   );
 }
 
+export function CommandSummaryCards({ dictionary }: { dictionary: WorkspaceDictionary }) {
+  return (
+    <div className={styles.workspaceCommandSummary}>
+      {dictionary.visual.commandSummary.map((item) => (
+        <article key={item.label} className={styles.workspaceCommandSummaryCard}>
+          <span>{item.label}</span>
+          <strong>{item.value}</strong>
+          <WorkspaceStatusPill dictionary={dictionary} status={item.status} />
+        </article>
+      ))}
+    </div>
+  );
+}
+
 export function StageJourneyMap({ dictionary }: { dictionary: WorkspaceDictionary }) {
   return (
     <WorkspacePanel
@@ -117,14 +131,16 @@ export function StageJourneyCard({
 
 export function EvidenceMetricRow({ dictionary }: { dictionary: WorkspaceDictionary }) {
   return (
-    <div className={styles.workspaceMetricGrid}>
-      {dictionary.visual.evidenceMetrics.map((metric) => (
-        <article key={metric.label} className={styles.workspaceMetricCard}>
-          <span>{metric.label}</span>
-          <strong>{metric.value}</strong>
-        </article>
-      ))}
-    </div>
+    <WorkspacePanel title={dictionary.visual.evidenceIntegrityTitle}>
+      <div className={styles.workspaceMetricGrid}>
+        {dictionary.visual.evidenceMetrics.map((metric) => (
+          <article key={metric.label} className={styles.workspaceMetricCard}>
+            <span>{metric.label}</span>
+            <strong>{metric.value}</strong>
+          </article>
+        ))}
+      </div>
+    </WorkspacePanel>
   );
 }
 
@@ -241,6 +257,17 @@ export function DepartmentRoleInterfaceMap({ dictionary, compact = false }: { di
           {nodes.clientSuccess}
         </div>
       </div>
+      <div className={styles.workspaceRoleCardGrid}>
+        {dictionary.visual.departmentMap.roles.map((role) => (
+          <article key={role.name} className={styles.workspaceRoleCard}>
+            <div>
+              <strong>{role.name}</strong>
+              <span>{role.detail}</span>
+            </div>
+            <WorkspaceStatusPill dictionary={dictionary} status={role.status} />
+          </article>
+        ))}
+      </div>
       <div className={styles.workspaceMapLegend}>
         {Object.values(dictionary.visual.departmentMap.legend).map((label) => (
           <span key={label}>{label}</span>
@@ -265,6 +292,108 @@ export function WorkflowMiniMap({ dictionary }: { dictionary: WorkspaceDictionar
             <span>{step}</span>
             {index === 3 ? <strong>{dictionary.visual.workflowMiniMap.warning}</strong> : null}
           </div>
+        ))}
+      </div>
+    </WorkspacePanel>
+  );
+}
+
+export function OrientationVisuals({ dictionary }: { dictionary: WorkspaceDictionary }) {
+  return (
+    <section className={styles.workspaceOrientationSection} aria-label={dictionary.visual.orientationTitle}>
+      <h3 className={styles.workspacePanelTitle}>{dictionary.visual.orientationTitle}</h3>
+      <div className={styles.workspaceSplitPanels}>
+        <DepartmentRoleInterfaceMap dictionary={dictionary} compact />
+        <WorkflowMiniMap dictionary={dictionary} />
+      </div>
+    </section>
+  );
+}
+
+function ParticipantEvidenceCards({ dictionary }: { dictionary: WorkspaceDictionary }) {
+  return (
+    <WorkspacePanel title={dictionary.visual.screenPanels.evidence.participantsTitle}>
+      <div className={styles.workspaceParticipantGrid}>
+        {dictionary.visual.screenPanels.evidence.participants.map((participant) => (
+          <article key={participant.name} className={styles.workspaceParticipantCard}>
+            <div>
+              <strong>{participant.name}</strong>
+              <span>{participant.role}</span>
+            </div>
+            <div>
+              <WorkspaceStatusPill dictionary={dictionary} status={participant.status} />
+              <p>{participant.statusText}</p>
+            </div>
+          </article>
+        ))}
+      </div>
+    </WorkspacePanel>
+  );
+}
+
+function AnalysisFolders({ dictionary }: { dictionary: WorkspaceDictionary }) {
+  return (
+    <WorkspacePanel title={dictionary.visual.screenPanels.analysis.foldersTitle}>
+      <div className={styles.workspaceFolderGrid}>
+        {dictionary.visual.screenPanels.analysis.folders.map((folder) => (
+          <article key={folder} className={styles.workspaceFolderCard}>
+            <span />
+            <strong>{folder}</strong>
+            <WorkspaceStatusPill dictionary={dictionary} status="placeholder" />
+          </article>
+        ))}
+      </div>
+    </WorkspacePanel>
+  );
+}
+
+function ReadinessGatePanel({ dictionary }: { dictionary: WorkspaceDictionary }) {
+  return (
+    <WorkspacePanel
+      title={dictionary.visual.screenPanels.analysis.readinessTitle}
+      description={dictionary.visual.screenPanels.analysis.readinessReminder}
+    >
+      <div className={styles.workspaceReadinessGrid}>
+        {dictionary.visual.screenPanels.analysis.readiness.map((item) => (
+          <article key={item.label} className={styles.workspaceReadinessCard}>
+            <span>{item.label}</span>
+            <strong>{item.value}</strong>
+            <WorkspaceStatusPill dictionary={dictionary} status={item.status} />
+          </article>
+        ))}
+      </div>
+    </WorkspacePanel>
+  );
+}
+
+function PackageBlockedPanel({ dictionary }: { dictionary: WorkspaceDictionary }) {
+  return (
+    <section className={styles.workspaceBlockedPanel} aria-label={dictionary.visual.screenPanels.package.blockedTitle}>
+      <div>
+        <WorkspaceStatusPill dictionary={dictionary} status="blocked" />
+        <h3>{dictionary.visual.screenPanels.package.blockedTitle}</h3>
+        <p>{dictionary.visual.screenPanels.package.blockedText}</p>
+      </div>
+      <div className={styles.workspaceBlockerList}>
+        <h4>{dictionary.visual.screenPanels.package.blockersTitle}</h4>
+        <ul>
+          {dictionary.visual.screenPanels.package.blockers.map((blocker) => (
+            <li key={blocker}>{blocker}</li>
+          ))}
+        </ul>
+      </div>
+    </section>
+  );
+}
+
+function PackageExportPanel({ dictionary }: { dictionary: WorkspaceDictionary }) {
+  return (
+    <WorkspacePanel title={dictionary.visual.screenPanels.package.exportTitle}>
+      <div className={styles.workspaceExportActions}>
+        {dictionary.visual.screenPanels.package.exportActions.map((action) => (
+          <button key={action} type="button" disabled>
+            {action}
+          </button>
         ))}
       </div>
     </WorkspacePanel>
@@ -345,6 +474,7 @@ export function WorkspaceScreenVisuals({
             ))}
           </div>
         </WorkspacePanel>
+        <ParticipantEvidenceCards dictionary={dictionary} />
         <ReviewIssueList dictionary={dictionary} />
         <TruthBoundaryCard dictionary={dictionary} />
       </>
@@ -365,10 +495,12 @@ export function WorkspaceScreenVisuals({
             </div>
           ))}
         </div>
+        <AnalysisFolders dictionary={dictionary} />
         <MethodLensGrid dictionary={dictionary} />
         <PackageReadinessStrip dictionary={dictionary} />
         <WorkflowMiniMap dictionary={dictionary} />
         <DepartmentRoleInterfaceMap dictionary={dictionary} compact />
+        <ReadinessGatePanel dictionary={dictionary} />
         <ReviewIssueList dictionary={dictionary} limit={2} />
       </>
     );
@@ -377,12 +509,18 @@ export function WorkspaceScreenVisuals({
   if (pageKey === "prompts") {
     return (
       <>
-        <TruthBoundaryCard dictionary={dictionary} />
+        <section className={styles.workspaceTruthCard} aria-label={dictionary.pages.prompts.title}>
+          <h3>{dictionary.pages.prompts.title}</h3>
+          <p>{dictionary.visual.screenPanels.prompts.boundary}</p>
+        </section>
         <WorkspacePanel title={dictionary.pages.prompts.title}>
           <div className={styles.workspacePromptGrid}>
             {dictionary.visual.screenPanels.prompts.groups.map((group) => (
-              <article key={group} className={styles.workspacePromptCard}>
-                <h4>{group}</h4>
+              <article key={group.name} className={styles.workspacePromptCard}>
+                <div className={styles.workspaceJourneyTopline}>
+                  <h4>{group.name}</h4>
+                  <WorkspaceStatusPill dictionary={dictionary} status={group.status} />
+                </div>
                 <div className={styles.workspacePromptActions}>
                   <button type="button" disabled>{dictionary.visual.actions.tune}</button>
                   <button type="button" disabled>{dictionary.visual.actions.compare}</button>
@@ -404,9 +542,7 @@ export function WorkspaceScreenVisuals({
 
   return (
     <>
-      <WorkspacePanel title={dictionary.visual.screenPanels.package.blockedTitle}>
-        <p className={styles.workspaceCardPurpose}>{dictionary.visual.screenPanels.package.blockedText}</p>
-      </WorkspacePanel>
+      <PackageBlockedPanel dictionary={dictionary} />
       <PackageReadinessStrip dictionary={dictionary} />
       <WorkspacePanel title={dictionary.pages.package.title}>
         <div className={styles.workspaceCapabilityGrid}>
@@ -417,6 +553,10 @@ export function WorkspaceScreenVisuals({
           ))}
         </div>
       </WorkspacePanel>
+      <WorkspacePanel title={dictionary.visual.screenPanels.package.gapBriefTitle}>
+        <p className={styles.workspaceCardPurpose}>{dictionary.visual.screenPanels.package.gapBrief}</p>
+      </WorkspacePanel>
+      <PackageExportPanel dictionary={dictionary} />
       <WorkflowMiniMap dictionary={dictionary} />
     </>
   );
