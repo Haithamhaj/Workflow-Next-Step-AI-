@@ -201,6 +201,20 @@ Pass 6 Block 12 adds the official 6B bridge to Pre-6C and 6C only.
 - Block 12 does not implement provider calls, Pre-6C behavior, 6C package generation, visual-core integration, Copilot runtime behavior, or Pass 7 mechanics.
 - Next implementation step after Block 12 acceptance is Block 13 — 6B Methodology / Analysis Report and Admin Evaluation Surface.
 
+## Pass 6 Block 13 — 6B Methodology / Analysis Report and Admin Evaluation Surface
+
+Pass 6 Block 13 adds the admin/internal analysis report surface only.
+
+- Added a deterministic `Pass6MethodologyAnalysisReport` view model builder from existing claims, method usage, differences, assembled workflow draft, method registry cards, and readiness result.
+- Added report sections for workflow assembly, claims review, method usage, difference/mismatch review, seven-condition assessment, workflow readiness summary, and decision-needed items.
+- Added read-only admin API routes at `/api/pass6/evaluation` and `/api/pass6/evaluation/[resultId]`.
+- Added read-only admin UI routes at `/pass6/evaluation` and `/pass6/evaluation/[resultId]`.
+- The report explicitly identifies itself as admin/internal analytical detail, not the client-facing Initial Workflow Package.
+- Decision-needed reporting distinguishes blockers, review-needed conflicts, clarification-needed gaps, and warnings that can proceed.
+- Added a focused proof script: `scripts/prove-pass6-block13-analysis-report.mjs`.
+- Block 13 does not implement provider calls, Pre-6C behavior, Pre-6C question generation, 6C package generation, visual-core integration, Copilot runtime behavior, Pass 7 mechanics, or readiness override behavior.
+- Next implementation step after Block 13 acceptance is Block 14 — Pre-6C Gap Closure, Inquiry Gate, and Question Generation.
+
 **Pass 5 — Participant Session Outreach / Narrative-First Clarification is accepted, closed, integrated, and archived on `main`.**
 
 Final Pass 5 status: `pass5_participant_session_outreach_accepted`

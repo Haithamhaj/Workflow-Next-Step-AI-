@@ -457,6 +457,7 @@ const allowedPrefixes = [
   "scripts/prove-pass6-block10-difference-interpretation.mjs",
   "scripts/prove-pass6-block11-workflow-assembly.mjs",
   "scripts/prove-pass6-block12-readiness-result.mjs",
+  "scripts/prove-pass6-block13-analysis-report.mjs",
   "handoff/",
 ];
 for (const file of changedFiles) {

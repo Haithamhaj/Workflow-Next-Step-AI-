@@ -15,6 +15,7 @@ const links = [
   { href: "/pass6/prompts", label: "Pass 6 prompts" },
   { href: "/pass6/synthesis-input-bundles", label: "Pass 6 bundles" },
   { href: "/pass6/methods", label: "Pass 6 methods" },
+  { href: "/pass6/evaluation", label: "Pass 6 evaluation" },
   { href: "/evaluations", label: "Evaluations" },
   { href: "/initial-packages", label: "Initial packages" },
   { href: "/issues", label: "Review issues" },

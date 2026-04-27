@@ -2886,6 +2886,327 @@ export function evaluateWorkflowReadinessFromDraft(
 }
 
 // ---------------------------------------------------------------------------
+// Pass 6B Methodology / Analysis Report and Admin Evaluation Surface — Block 13
+// ---------------------------------------------------------------------------
+
+export interface Pass6AnalysisReportInput {
+  claims: WorkflowClaim[];
+  methodUsages: AnalysisMethodUsage[];
+  differences: DifferenceInterpretation[];
+  assembledWorkflowDraft: AssembledWorkflowDraft;
+  readinessResult: WorkflowReadinessResult;
+  methodRegistry?: Pass6MethodRegistryAdminView;
+  generatedAt?: string;
+}
+
+export interface Pass6AnalysisReportRepositories {
+  workflowReadinessResults: WorkflowReadinessResultRepository;
+  assembledWorkflowDrafts: AssembledWorkflowDraftRepository;
+  workflowClaims: WorkflowClaimRepository;
+  differenceInterpretations: DifferenceInterpretationRepository;
+  analysisMethodUsages: AnalysisMethodUsageRepository;
+  pass6ConfigurationProfiles?: Pass6ConfigurationProfileRepository;
+}
+
+export interface Pass6MethodologyAnalysisReport {
+  reportId: string;
+  resultId: string;
+  caseId: string;
+  generatedAt: string;
+  audience: "admin_internal";
+  reportBoundaryNotes: string[];
+  workflowAssemblyView: {
+    draftId: string;
+    workflowUnderstandingLevel: AssembledWorkflowDraft["workflowUnderstandingLevel"];
+    steps: WorkflowElement[];
+    sequence: WorkflowElement[];
+    decisions: WorkflowElement[];
+    handoffs: WorkflowElement[];
+    controls: WorkflowElement[];
+    systemsTools: WorkflowElement[];
+    variants: WorkflowElement[];
+    warningsCaveats: string[];
+    unresolvedItems: string[];
+  };
+  claimsReviewTable: Array<{
+    claimId: string;
+    claimType: WorkflowClaimType;
+    status: WorkflowClaimStatus;
+    normalizedStatement: string;
+    sourceUnitIds: string[];
+    participantIds: string[];
+    sessionIds: string[];
+    layerContextIds: string[];
+    truthLensContextIds: string[];
+    confidence?: WorkflowClaim["confidence"];
+    materiality?: WorkflowClaim["materiality"];
+    linkedWorkflowElementIds: string[];
+    basis: Pass6SourceBasis;
+  }>;
+  methodUsageTable: Array<{
+    methodUsageId: string;
+    methodKey: AnalysisMethodKey;
+    methodName: string;
+    methodType: AnalysisMethodUsage["methodType"];
+    methodCardVersion?: string;
+    methodDefinition?: string;
+    selectionReason: string;
+    appliedTarget: {
+      type: AnalysisMethodUsage["appliedToType"];
+      id: string;
+    };
+    selectionSource: AnalysisMethodUsage["selectionSource"];
+    suitability: AnalysisMethodUsage["suitabilityAssessment"];
+    impactSummary: string;
+    version: string;
+    limitationsBoundaries: string[];
+  }>;
+  differenceMismatchTable: Array<{
+    differenceId: string;
+    differenceType: DifferenceInterpretation["differenceType"];
+    involvedClaimIds: string[];
+    involvedLayers: string[];
+    involvedRoles: string[];
+    recommendedRoute: DifferenceInterpretation["recommendedRoute"];
+    materiality: DifferenceInterpretation["materiality"];
+    explanation: string;
+    methodUsageIds: string[];
+  }>;
+  sevenConditionAssessmentTable: Array<{
+    conditionKey: SevenConditionKey;
+    status: SevenConditionAssessmentItem["status"];
+    rationale: string;
+    basis: Pass6SourceBasis;
+    blocksInitialPackage: boolean;
+  }>;
+  workflowReadinessSummary: {
+    readinessDecision: WorkflowReadinessDecision;
+    is6CAllowed: boolean;
+    allowedUseFor6C: WorkflowReadinessResult["allowedUseFor6C"];
+    routingRecommendations: string[];
+    gapRiskSummary: WorkflowReadinessResult["gapRiskSummary"];
+    metadata: WorkflowReadinessResult["analysisMetadata"];
+  };
+  decisionNeededPanel: {
+    blockers: string[];
+    reviewNeeded: string[];
+    clarificationNeeded: string[];
+    warningsProceedable: string[];
+  };
+  clientFacingSplitNote: string;
+}
+
+export type BuildPass6AnalysisReportResult =
+  | { ok: true; report: Pass6MethodologyAnalysisReport }
+  | { ok: false; error: string };
+
+function workflowElementIdsForClaim(draft: AssembledWorkflowDraft, claimId: string): string[] {
+  return [
+    ...draft.steps,
+    ...draft.sequence,
+    ...draft.decisions,
+    ...draft.handoffs,
+    ...draft.controls,
+    ...draft.systemsTools,
+    ...draft.variants,
+  ]
+    .filter((element) => element.claimIds?.includes(claimId))
+    .map((element) => element.elementId);
+}
+
+function methodCardForUsage(
+  usage: AnalysisMethodUsage,
+  registry?: Pass6MethodRegistryAdminView,
+): Pass6MethodRegistryItem | undefined {
+  return registry?.methods.find((method) => method.methodKey === usage.methodKey);
+}
+
+function sortedSevenConditionRows(
+  assessment: SevenConditionAssessment,
+): Pass6MethodologyAnalysisReport["sevenConditionAssessmentTable"] {
+  return SEVEN_CONDITION_KEYS.map((conditionKey) => {
+    const condition = assessment.conditions[conditionKey];
+    return {
+      conditionKey,
+      status: condition.status,
+      rationale: condition.rationale,
+      basis: condition.basis,
+      blocksInitialPackage: condition.blocksInitialPackage,
+    };
+  });
+}
+
+function buildDecisionNeededPanel(
+  differences: DifferenceInterpretation[],
+  readinessResult: WorkflowReadinessResult,
+  draft: AssembledWorkflowDraft,
+): Pass6MethodologyAnalysisReport["decisionNeededPanel"] {
+  const conditionRows = sortedSevenConditionRows(readinessResult.sevenConditionAssessment);
+  const blockers = [
+    ...conditionRows
+      .filter((condition) => condition.blocksInitialPackage)
+      .map((condition) => `${condition.conditionKey}: ${condition.rationale}`),
+    ...readinessResult.routingRecommendations
+      .filter((route) => route.includes("stop"))
+      .map((route) => `Routing blocker: ${route}`),
+  ];
+  const reviewNeeded = [
+    ...differences
+      .filter((difference) => difference.differenceType === "factual_conflict" || difference.recommendedRoute === "review_candidate" || difference.recommendedRoute === "blocker_candidate")
+      .map((difference) => `${difference.differenceId}: ${difference.explanation}`),
+    ...readinessResult.routingRecommendations
+      .filter((route) => route === "require_review_decision")
+      .map((route) => `Routing recommendation: ${route}`),
+  ];
+  const clarificationNeeded = [
+    ...draft.unresolvedItems
+      .filter((item) => item.toLowerCase().includes("missing") || item.toLowerCase().includes("clarification"))
+      .map((item) => `Unresolved item: ${item}`),
+    ...readinessResult.routingRecommendations
+      .filter((route) => route === "send_to_pre_6c_clarification")
+      .map((route) => `Routing recommendation: ${route}`),
+  ];
+  const warningsProceedable = [
+    ...draft.warningsCaveats.map((warning) => `Warning/caveat: ${warning}`),
+    ...conditionRows
+      .filter((condition) => condition.status === "warning" && !condition.blocksInitialPackage)
+      .map((condition) => `${condition.conditionKey}: ${condition.rationale}`),
+  ];
+  return {
+    blockers: uniqueBy(blockers, (item) => item),
+    reviewNeeded: uniqueBy(reviewNeeded, (item) => item),
+    clarificationNeeded: uniqueBy(clarificationNeeded, (item) => item),
+    warningsProceedable: uniqueBy(warningsProceedable, (item) => item),
+  };
+}
+
+export function buildPass6MethodologyAnalysisReport(
+  input: Pass6AnalysisReportInput,
+): BuildPass6AnalysisReportResult {
+  if (input.assembledWorkflowDraft.caseId !== input.readinessResult.caseId) {
+    return { ok: false, error: "Assembled workflow draft and readiness result caseId do not match." };
+  }
+  if (input.assembledWorkflowDraft.draftId !== input.readinessResult.assembledWorkflowDraftId) {
+    return { ok: false, error: "Readiness result does not reference the supplied assembled workflow draft." };
+  }
+
+  const draft = input.assembledWorkflowDraft;
+  const registry = input.methodRegistry;
+  const report: Pass6MethodologyAnalysisReport = {
+    reportId: `pass6_analysis_report:${safeIdPart(input.readinessResult.resultId)}`,
+    resultId: input.readinessResult.resultId,
+    caseId: input.readinessResult.caseId,
+    generatedAt: input.generatedAt ?? new Date().toISOString(),
+    audience: "admin_internal",
+    reportBoundaryNotes: [
+      "This report is admin/internal analytical detail only.",
+      "No client-facing Initial Workflow Package has been generated by this report.",
+      "No Pre-6C questions, Gap Closure Brief, Pass 7 candidate, visual graph, Copilot state, or provider run is created by this report.",
+      "6C later decides what becomes client-facing.",
+    ],
+    workflowAssemblyView: {
+      draftId: draft.draftId,
+      workflowUnderstandingLevel: draft.workflowUnderstandingLevel,
+      steps: draft.steps,
+      sequence: draft.sequence,
+      decisions: draft.decisions,
+      handoffs: draft.handoffs,
+      controls: draft.controls,
+      systemsTools: draft.systemsTools,
+      variants: draft.variants,
+      warningsCaveats: draft.warningsCaveats,
+      unresolvedItems: draft.unresolvedItems,
+    },
+    claimsReviewTable: input.claims.map((claim) => ({
+      claimId: claim.claimId,
+      claimType: claim.primaryClaimType,
+      status: claim.status,
+      normalizedStatement: claim.normalizedStatement,
+      sourceUnitIds: claim.unitIds,
+      participantIds: claim.sourceParticipantIds ?? [],
+      sessionIds: claim.sourceSessionIds ?? [],
+      layerContextIds: claim.sourceLayerContextIds ?? [],
+      truthLensContextIds: claim.truthLensContextIds ?? [],
+      confidence: claim.confidence,
+      materiality: claim.materiality,
+      linkedWorkflowElementIds: workflowElementIdsForClaim(draft, claim.claimId),
+      basis: claim.basis,
+    })),
+    methodUsageTable: input.methodUsages.map((usage) => {
+      const methodCard = methodCardForUsage(usage, registry);
+      return {
+        methodUsageId: usage.methodUsageId,
+        methodKey: usage.methodKey,
+        methodName: usage.methodName,
+        methodType: usage.methodType,
+        methodCardVersion: methodCard?.methodVersion,
+        methodDefinition: methodCard?.shortDefinition,
+        selectionReason: usage.selectionReason,
+        appliedTarget: {
+          type: usage.appliedToType,
+          id: usage.appliedToId,
+        },
+        selectionSource: usage.selectionSource,
+        suitability: usage.suitabilityAssessment,
+        impactSummary: usage.impact.impactSummary,
+        version: usage.version,
+        limitationsBoundaries: uniqueBy([
+          ...(usage.suitabilityAssessment.limitations ?? []),
+          ...(methodCard?.hardBoundaries ?? []),
+          ...(methodCard?.limitations ?? []),
+        ], (item) => item),
+      };
+    }),
+    differenceMismatchTable: input.differences.map((difference) => ({
+      differenceId: difference.differenceId,
+      differenceType: difference.differenceType,
+      involvedClaimIds: difference.involvedClaimIds,
+      involvedLayers: difference.involvedLayers ?? [],
+      involvedRoles: difference.involvedRoles ?? [],
+      recommendedRoute: difference.recommendedRoute,
+      materiality: difference.materiality ?? "unknown",
+      explanation: difference.explanation,
+      methodUsageIds: difference.methodUsageIds ?? [],
+    })),
+    sevenConditionAssessmentTable: sortedSevenConditionRows(input.readinessResult.sevenConditionAssessment),
+    workflowReadinessSummary: {
+      readinessDecision: input.readinessResult.readinessDecision,
+      is6CAllowed: input.readinessResult.is6CAllowed,
+      allowedUseFor6C: input.readinessResult.allowedUseFor6C,
+      routingRecommendations: input.readinessResult.routingRecommendations,
+      gapRiskSummary: input.readinessResult.gapRiskSummary,
+      metadata: input.readinessResult.analysisMetadata,
+    },
+    decisionNeededPanel: buildDecisionNeededPanel(input.differences, input.readinessResult, draft),
+    clientFacingSplitNote: "Admin/internal analysis report only. This is not the client-facing Initial Workflow Package; 6C later decides what can become client-facing.",
+  };
+  return { ok: true, report };
+}
+
+export function buildPass6MethodologyAnalysisReportFromRepositories(
+  resultId: string,
+  repos: Pass6AnalysisReportRepositories,
+): BuildPass6AnalysisReportResult {
+  const readinessResult = repos.workflowReadinessResults.findById(resultId);
+  if (!readinessResult) return { ok: false, error: `WorkflowReadinessResult '${resultId}' not found.` };
+  const draft = repos.assembledWorkflowDrafts.findById(readinessResult.assembledWorkflowDraftId);
+  if (!draft) return { ok: false, error: `AssembledWorkflowDraft '${readinessResult.assembledWorkflowDraftId}' not found.` };
+  const claims = repos.workflowClaims.findByCaseId(readinessResult.caseId);
+  const differences = repos.differenceInterpretations.findByCaseId(readinessResult.caseId);
+  const usageIds = new Set(differences.flatMap((difference) => difference.methodUsageIds ?? []));
+  const methodUsages = repos.analysisMethodUsages.findAll()
+    .filter((usage) => usageIds.has(usage.methodUsageId));
+  return buildPass6MethodologyAnalysisReport({
+    claims,
+    methodUsages,
+    differences,
+    assembledWorkflowDraft: draft,
+    readinessResult,
+    methodRegistry: resolvePass6MethodRegistryForAdmin(repos.pass6ConfigurationProfiles),
+  });
+}
+
+// ---------------------------------------------------------------------------
 // Evaluation — §20
 // ---------------------------------------------------------------------------
 

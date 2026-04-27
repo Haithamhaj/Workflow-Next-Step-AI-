@@ -115,6 +115,14 @@ Status: LOCKED | FORMALIZED | IMPL-EXTENSION
 - **6C permission is explicit and narrow** — `is6CAllowed` is true only for `ready_for_initial_package` and `ready_for_initial_package_with_warnings`; all other readiness decisions block 6C by default — LOCKED
 - **Scores and documents do not approve readiness** — confidence, scoring support, consensus, or document/source signals may inform assessment but cannot approve package readiness or turn document claims into operational truth by themselves — LOCKED
 
+## Pass 6 Block 13 — 6B Methodology / Analysis Report and Admin Evaluation Surface
+
+- **Analysis report is a view model, not new analysis truth** — Block 13 renders existing claims, method usage, differences, assembled draft, seven-condition assessment, and readiness results without changing readiness or creating new truth records — LOCKED
+- **Report audience is admin/internal only** — the Methodology / Analysis Report is explicitly not the client-facing Initial Workflow Package; 6C later decides what becomes client-facing — LOCKED
+- **Admin evaluation surface is read-only for Block 13** — allowed actions are list/view/rebuild deterministic report output from existing records only; no readiness override, package generation, question generation, provider run, or Pass 7 candidate creation is available — LOCKED
+- **Decision-needed panel preserves distinctions** — blockers, review-needed conflicts, clarification-needed gaps, and proceedable warnings must remain separately visible rather than collapsed into a single status — LOCKED
+- **Block 13 creates no downstream records** — no PrePackageGateResult, InitialWorkflowPackage, WorkflowGapClosureBrief, visual record, Copilot context, or Pass 7 review candidate is created by the report layer — LOCKED
+
 ## contracts
 
 - **Ajv 8 + ajv-formats for JSON Schema validation** — industry standard, fast, supports Draft-07, formats plugin needed for `date-time` and `uri` — LOCKED

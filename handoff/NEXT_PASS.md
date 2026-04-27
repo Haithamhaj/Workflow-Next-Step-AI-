@@ -43,7 +43,9 @@ Pass 6 Block 10 — 6B Difference Interpretation and Multi-Lens Engine is accept
 
 Pass 6 Block 11 — 6B Workflow Assembly and Claim-Basis Map is accepted.
 
-Pass 6 Block 12 — 6B Seven-Condition Evaluation and Workflow Readiness Result is the current completed implementation block pending acceptance.
+Pass 6 Block 12 — 6B Seven-Condition Evaluation and Workflow Readiness Result is accepted.
+
+Pass 6 Block 13 — 6B Methodology / Analysis Report and Admin Evaluation Surface is the current completed implementation block pending acceptance.
 
 Technical Decomposition v4 is the active Pass 6 build map.
 
@@ -221,6 +223,19 @@ Block 12 is seven-condition evaluation and workflow readiness bridge work only.
 - Document/source claims do not make a condition clear by default unless supported by participant/reality basis.
 - No Pre-6C behavior, 6C generation, visual-core integration, Copilot runtime behavior, Pass 7 mechanics, or provider calls start in Block 12.
 - Next implementation step after acceptance is Block 13 — 6B Methodology / Analysis Report and Admin Evaluation Surface.
+
+## Pass 6 Block 13 Acceptance Gate
+
+Block 13 is admin/internal report and evaluation surface work only.
+
+- Existing 6B outputs can be rendered as a unified Methodology / Analysis Report.
+- The report includes workflow assembly, claims review, method usage, differences/mismatches, seven-condition assessment, readiness summary, and decision-needed sections.
+- Admin/API output exposes report list and report detail.
+- The report clearly marks itself as admin/internal analytical detail and not the client-facing Initial Workflow Package.
+- Decision-needed output distinguishes blockers, review-needed items, clarification-needed gaps, and warnings that can proceed.
+- Admin surface is read-only and does not edit or override readiness.
+- No Pre-6C behavior, Pre-6C question generation, 6C generation, visual-core integration, Copilot runtime behavior, Pass 7 mechanics, readiness override behavior, or provider calls start in Block 13.
+- Next implementation step after acceptance is Block 14 — Pre-6C Gap Closure, Inquiry Gate, and Question Generation.
 
 ## Active Pass 6 Block Map
 
