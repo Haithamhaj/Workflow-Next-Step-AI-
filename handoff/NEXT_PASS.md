@@ -41,7 +41,9 @@ Pass 6 Block 9 — 6B Workflow Unit and Claim Pipeline is accepted.
 
 Pass 6 Block 10 — 6B Difference Interpretation and Multi-Lens Engine is accepted.
 
-Pass 6 Block 11 — 6B Workflow Assembly and Claim-Basis Map is the current completed implementation block pending acceptance.
+Pass 6 Block 11 — 6B Workflow Assembly and Claim-Basis Map is accepted.
+
+Pass 6 Block 12 — 6B Seven-Condition Evaluation and Workflow Readiness Result is the current completed implementation block pending acceptance.
 
 Technical Decomposition v4 is the active Pass 6 build map.
 
@@ -204,6 +206,21 @@ Block 11 is workflow assembly and claim-basis mapping only.
 - `workflowUnderstandingLevel` is produced as assembly metadata only and does not decide readiness or 6C eligibility.
 - No seven-condition evaluation, readiness routing, Pre-6C behavior, 6C generation, visual-core integration, Copilot runtime behavior, Pass 7 mechanics, or provider calls start in Block 11.
 - Next implementation step after acceptance is Block 12 — 6B Seven-Condition Evaluation and Workflow Readiness Result.
+
+## Pass 6 Block 12 Acceptance Gate
+
+Block 12 is seven-condition evaluation and workflow readiness bridge work only.
+
+- An `AssembledWorkflowDraft` can be evaluated into a `SevenConditionAssessment`.
+- All seven condition keys are evaluated exactly once using the object-map contract.
+- Each condition includes status, rationale, basis, and `blocksInitialPackage`.
+- A `WorkflowReadinessResult` is produced with readiness decision, gap/risk summary, `allowedUseFor6C`, routing recommendations, analysis metadata, and `is6CAllowed`.
+- 6C is allowed only for `ready_for_initial_package` or `ready_for_initial_package_with_warnings`.
+- Non-blocking warnings and automation-readiness weaknesses do not automatically block workflow documentability.
+- Material factual conflicts require review decision; missing essential detail requires clarification; materially broken sequence/boundary blocks 6C by default.
+- Document/source claims do not make a condition clear by default unless supported by participant/reality basis.
+- No Pre-6C behavior, 6C generation, visual-core integration, Copilot runtime behavior, Pass 7 mechanics, or provider calls start in Block 12.
+- Next implementation step after acceptance is Block 13 — 6B Methodology / Analysis Report and Admin Evaluation Surface.
 
 ## Active Pass 6 Block Map
 

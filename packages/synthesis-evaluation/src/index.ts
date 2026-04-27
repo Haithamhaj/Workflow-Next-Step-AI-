@@ -29,6 +29,8 @@ import {
   validateAnalysisMethodUsage,
   validateAssembledWorkflowDraft,
   validateDifferenceInterpretation,
+  validateSevenConditionAssessment,
+  validateWorkflowReadinessResult,
   validateWorkflowClaim,
   validateWorkflowUnit,
   EvaluationAxisState,
@@ -69,6 +71,11 @@ import {
   type WorkflowClaimStatus,
   type WorkflowClaimType,
   type WorkflowElement,
+  type WorkflowReadinessDecision,
+  type WorkflowReadinessResult,
+  type SevenConditionAssessment,
+  type SevenConditionAssessmentItem,
+  type SevenConditionKey,
   type WorkflowUnit,
   type WorkflowUnitType,
 } from "@workflow/contracts";
@@ -94,9 +101,11 @@ import type {
   StoredAnalysisMethodUsage,
   StoredAssembledWorkflowDraft,
   StoredDifferenceInterpretation,
+  StoredWorkflowReadinessResult,
   AnalysisMethodUsageRepository,
   AssembledWorkflowDraftRepository,
   DifferenceInterpretationRepository,
+  WorkflowReadinessResultRepository,
   WorkflowClaimRepository,
   WorkflowUnitRepository,
 } from "@workflow/persistence";
@@ -140,9 +149,11 @@ export type {
   StoredAnalysisMethodUsage,
   StoredAssembledWorkflowDraft,
   StoredDifferenceInterpretation,
+  StoredWorkflowReadinessResult,
   AnalysisMethodUsageRepository,
   AssembledWorkflowDraftRepository,
   DifferenceInterpretationRepository,
+  WorkflowReadinessResultRepository,
   WorkflowClaimRepository,
   WorkflowUnitRepository,
 } from "@workflow/persistence";
@@ -2575,6 +2586,303 @@ export function assembleWorkflowDraftFromClaims(
   const stored: StoredAssembledWorkflowDraft = { ...draft, createdAt: now, updatedAt: now };
   if (input.persist !== false) repos.assembledWorkflowDrafts?.save(stored);
   return { ok: true, draft: stored };
+}
+
+// ---------------------------------------------------------------------------
+// Pass 6B Seven-Condition Evaluation and Workflow Readiness Result — Block 12
+// ---------------------------------------------------------------------------
+
+export interface EvaluateWorkflowReadinessInput {
+  assembledWorkflowDraft: AssembledWorkflowDraft;
+  resultId?: string;
+  assessmentId?: string;
+  now?: string;
+  createdBy?: string;
+  persist?: boolean;
+  policyReferences?: string[];
+}
+
+export interface EvaluateWorkflowReadinessRepositories {
+  workflowReadinessResults?: WorkflowReadinessResultRepository;
+}
+
+export interface EvaluateWorkflowReadinessOk {
+  ok: true;
+  sevenConditionAssessment: SevenConditionAssessment;
+  readinessResult: StoredWorkflowReadinessResult;
+}
+
+export type EvaluateWorkflowReadinessResult =
+  | EvaluateWorkflowReadinessOk
+  | { ok: false; error: string };
+
+const SEVEN_CONDITION_KEYS: readonly SevenConditionKey[] = [
+  "core_sequence_continuity",
+  "step_to_step_connection",
+  "essential_step_requirements",
+  "decision_rules_thresholds",
+  "handoffs_responsibility",
+  "controls_approvals",
+  "use_case_boundary",
+] as const;
+
+function draftBasis(draft: AssembledWorkflowDraft, basisId: string, summary: string): Pass6SourceBasis {
+  const claimRefs = uniqueBy(
+    draft.claimBasisMap.flatMap((entry) => entry.claimIds),
+    (id) => id,
+  ).slice(0, 12);
+  return {
+    basisId,
+    basisType: "method_output",
+    summary,
+    references: [
+      {
+        referenceId: `ref:${safeIdPart(draft.draftId)}:${safeIdPart(basisId)}`,
+        referenceType: "assembled_workflow_draft",
+        notes: draft.draftId,
+      },
+      ...claimRefs.map((claimId) => ({
+        referenceId: `ref:${safeIdPart(basisId)}:${safeIdPart(claimId)}`,
+        referenceType: "workflow_claim",
+        notes: claimId,
+      })),
+    ],
+  };
+}
+
+function conditionItem(
+  draft: AssembledWorkflowDraft,
+  key: SevenConditionKey,
+  status: SevenConditionAssessmentItem["status"],
+  rationale: string,
+  blocksInitialPackage: boolean,
+): SevenConditionAssessmentItem {
+  return {
+    status,
+    rationale,
+    basis: draftBasis(draft, `basis:${safeIdPart(draft.draftId)}:${key}`, rationale),
+    blocksInitialPackage,
+  };
+}
+
+function textIncludesAny(items: string[], terms: string[]): boolean {
+  const text = items.join(" ").toLowerCase();
+  return terms.some((term) => text.includes(term));
+}
+
+function hasDocumentOnlyCaveat(draft: AssembledWorkflowDraft): boolean {
+  return textIncludesAny(draft.warningsCaveats, ["document/source signal only", "document signal is not operational truth"]);
+}
+
+function hasFactualConflict(draft: AssembledWorkflowDraft): boolean {
+  return textIncludesAny(draft.unresolvedItems, ["factual conflict", "review-needed", "review needed"]);
+}
+
+function hasMissingEssentialDetail(draft: AssembledWorkflowDraft): boolean {
+  return textIncludesAny(draft.unresolvedItems, ["missing essential", "missing factual", "essential detail", "required detail"]);
+}
+
+function hasBoundaryBlocker(draft: AssembledWorkflowDraft): boolean {
+  return textIncludesAny([...draft.unresolvedItems, ...draft.warningsCaveats], ["boundary materially broken", "use-case boundary broken", "scope boundary broken"]);
+}
+
+function hasSequenceBlocker(draft: AssembledWorkflowDraft): boolean {
+  return textIncludesAny(draft.unresolvedItems, ["sequence materially broken", "broken sequence", "sequence gap blocks"]);
+}
+
+function hasAutomationOnlyWeakness(draft: AssembledWorkflowDraft): boolean {
+  return textIncludesAny(draft.warningsCaveats, ["automation-readiness", "automation readiness", "automation-supportiveness"]);
+}
+
+function evaluateSevenConditions(draft: AssembledWorkflowDraft): SevenConditionAssessment["conditions"] {
+  const hasSteps = draft.steps.length > 0;
+  const hasSequence = draft.sequence.length > 0;
+  const hasDecisions = draft.decisions.length > 0;
+  const hasHandoffs = draft.handoffs.length > 0;
+  const hasControls = draft.controls.length > 0;
+  const hasVariants = draft.variants.length > 0;
+  const factualConflict = hasFactualConflict(draft);
+  const missingEssential = hasMissingEssentialDetail(draft);
+  const boundaryBlocker = hasBoundaryBlocker(draft);
+  const sequenceBlocker = hasSequenceBlocker(draft);
+  const documentOnly = hasDocumentOnlyCaveat(draft);
+  const automationOnly = hasAutomationOnlyWeakness(draft);
+
+  return {
+    core_sequence_continuity: conditionItem(
+      draft,
+      "core_sequence_continuity",
+      sequenceBlocker ? "materially_broken" : hasSequence ? (hasVariants ? "warning" : "clear_enough") : hasSteps ? "unknown" : "materially_broken",
+      sequenceBlocker
+        ? "Sequence evidence is materially broken and blocks current package use."
+        : hasSequence
+          ? "Core sequence is supported by assembled sequence evidence; variants remain visible where present."
+          : hasSteps
+            ? "Workflow work exists, but core sequence continuity is not yet established."
+            : "No assembled workflow steps or sequence establish core continuity.",
+      sequenceBlocker || (!hasSequence && hasSteps && draft.unresolvedItems.length > 0),
+    ),
+    step_to_step_connection: conditionItem(
+      draft,
+      "step_to_step_connection",
+      sequenceBlocker ? "materially_broken" : hasSteps && hasSequence ? "clear_enough" : hasSteps ? "warning" : "unknown",
+      sequenceBlocker
+        ? "Step-to-step connection is materially broken."
+        : hasSteps && hasSequence
+          ? "Assembled steps have supporting sequence evidence."
+          : hasSteps
+            ? "Steps exist but connection evidence remains incomplete; this is not automatically a package blocker."
+            : "No assembled steps are available to connect.",
+      sequenceBlocker,
+    ),
+    essential_step_requirements: conditionItem(
+      draft,
+      "essential_step_requirements",
+      missingEssential ? "materially_broken" : hasSteps ? (documentOnly ? "warning" : "clear_enough") : "unknown",
+      missingEssential
+        ? "Missing essential factual detail blocks current workflow understanding."
+        : hasSteps
+          ? "Essential step evidence is present; document-only material remains caveated where applicable."
+          : "Essential workflow steps are not yet visible in the assembled draft.",
+      missingEssential || !hasSteps,
+    ),
+    decision_rules_thresholds: conditionItem(
+      draft,
+      "decision_rules_thresholds",
+      hasDecisions ? (hasVariants ? "warning" : "clear_enough") : "not_applicable",
+      hasDecisions
+        ? "Decision or threshold claims are assembled; variants remain visible and are not flattened."
+        : "No decision/threshold requirement is currently evident in the assembled draft.",
+      false,
+    ),
+    handoffs_responsibility: conditionItem(
+      draft,
+      "handoffs_responsibility",
+      factualConflict ? "materially_broken" : hasHandoffs ? "clear_enough" : "warning",
+      factualConflict
+        ? "Material factual conflict affects handoff/responsibility and requires review before package."
+        : hasHandoffs
+          ? "Handoff or responsibility evidence is assembled."
+          : "Handoff/responsibility evidence is weak or absent; warning only unless material conflict exists.",
+      factualConflict,
+    ),
+    controls_approvals: conditionItem(
+      draft,
+      "controls_approvals",
+      hasControls ? "clear_enough" : textIncludesAny([...draft.warningsCaveats, ...draft.unresolvedItems], ["approval", "control"]) ? "warning" : "not_applicable",
+      hasControls
+        ? "Approval/control evidence is assembled."
+        : "Approval/control evidence is not clearly required or remains weak; weakness alone does not approve or block package.",
+      false,
+    ),
+    use_case_boundary: conditionItem(
+      draft,
+      "use_case_boundary",
+      boundaryBlocker ? "materially_broken" : documentOnly ? "warning" : "clear_enough",
+      boundaryBlocker
+        ? "Use-case boundary is materially broken and blocks current package use."
+        : documentOnly
+          ? "Boundary includes document/source signal caveats that must not be treated as operational truth by default."
+          : "Use-case boundary is clear enough from assembled basis for current workflow understanding.",
+      boundaryBlocker,
+    ),
+  };
+}
+
+function readinessDecisionFromConditions(
+  draft: AssembledWorkflowDraft,
+  conditions: SevenConditionAssessment["conditions"],
+): WorkflowReadinessDecision {
+  const conditionValues = SEVEN_CONDITION_KEYS.map((key) => conditions[key]);
+  const blocking = conditionValues.filter((condition) => condition.blocksInitialPackage);
+  const warning = conditionValues.some((condition) => condition.status === "warning") || draft.warningsCaveats.length > 1;
+  if (hasFactualConflict(draft)) return "needs_review_decision_before_package";
+  if (hasMissingEssentialDetail(draft)) return "needs_more_clarification_before_package";
+  if (blocking.some((condition) => condition.status === "materially_broken")) return "needs_more_clarification_before_package";
+  if (draft.steps.length === 0 && draft.sequence.length === 0) return "workflow_exists_but_current_basis_insufficient";
+  if (draft.workflowUnderstandingLevel === "partial_workflow_understanding" && draft.sequence.length === 0) return "partial_only_not_package_ready";
+  if (draft.workflowUnderstandingLevel === "workflow_exists_but_not_package_ready" && draft.unresolvedItems.length > 0) return "workflow_exists_but_current_basis_insufficient";
+  if (warning || draft.variants.length > 0 || hasAutomationOnlyWeakness(draft)) return "ready_for_initial_package_with_warnings";
+  return "ready_for_initial_package";
+}
+
+function allowedUseForDecision(
+  decision: WorkflowReadinessDecision,
+): WorkflowReadinessResult["allowedUseFor6C"] {
+  if (decision === "ready_for_initial_package") return ["initial_package", "draft_operational_document"];
+  if (decision === "ready_for_initial_package_with_warnings") return ["initial_package_with_warnings"];
+  return ["none"];
+}
+
+function routingForDecision(decision: WorkflowReadinessDecision): string[] {
+  if (decision === "ready_for_initial_package") return ["proceed_to_6c"];
+  if (decision === "ready_for_initial_package_with_warnings") return ["proceed_to_6c_with_warnings"];
+  if (decision === "needs_more_clarification_before_package") return ["send_to_pre_6c_clarification", "produce_gap_closure_brief_later"];
+  if (decision === "needs_review_decision_before_package") return ["require_review_decision", "produce_gap_closure_brief_later"];
+  if (decision === "partial_only_not_package_ready") return ["produce_gap_closure_brief_later"];
+  return ["insufficient_basis_stop", "produce_gap_closure_brief_later"];
+}
+
+export function evaluateWorkflowReadinessFromDraft(
+  input: EvaluateWorkflowReadinessInput,
+  repos: EvaluateWorkflowReadinessRepositories = {},
+): EvaluateWorkflowReadinessResult {
+  const now = input.now ?? new Date().toISOString();
+  const draft = input.assembledWorkflowDraft;
+  const assessmentId = input.assessmentId ?? `seven_condition_assessment:${safeIdPart(draft.draftId)}`;
+  const resultId = input.resultId ?? `workflow_readiness_result:${safeIdPart(draft.draftId)}`;
+
+  const conditions = evaluateSevenConditions(draft);
+  const assessment: SevenConditionAssessment = {
+    assessmentId,
+    caseId: draft.caseId,
+    assembledWorkflowDraftId: draft.draftId,
+    conditions,
+    overallSummary: "Seven-condition assessment produced from assembled workflow draft only; no Pre-6C, 6C, visual, Copilot, Pass 7, or provider behavior executed.",
+  };
+  const assessmentValidation = validatePipelineRecord("SevenConditionAssessment", validateSevenConditionAssessment(assessment));
+  if (!assessmentValidation.ok) return { ok: false, error: assessmentValidation.error };
+
+  const decision = readinessDecisionFromConditions(draft, conditions);
+  const gapIds = draft.unresolvedItems.map((_, index) => `gap:${safeIdPart(draft.draftId)}:${index + 1}`);
+  const riskIds = draft.warningsCaveats
+    .filter((warning) => !warning.includes("advisory current understanding"))
+    .map((_, index) => `risk:${safeIdPart(draft.draftId)}:${index + 1}`);
+  const result: WorkflowReadinessResult = {
+    resultId,
+    caseId: draft.caseId,
+    assembledWorkflowDraftId: draft.draftId,
+    readinessDecision: decision,
+    sevenConditionAssessment: assessment,
+    gapRiskSummary: {
+      summary: [
+        `${draft.unresolvedItems.length} unresolved item(s), ${draft.warningsCaveats.length} warning/caveat item(s), ${draft.variants.length} variant(s).`,
+        "6C may use complete package material only when the readiness decision allows it.",
+        "Warnings/caveats must remain visible; document/source claims must not be presented as complete operational truth by default.",
+      ].join(" "),
+      gapIds,
+      riskIds,
+    },
+    allowedUseFor6C: allowedUseForDecision(decision),
+    routingRecommendations: routingForDecision(decision),
+    analysisMetadata: {
+      createdAt: now,
+      createdBy: input.createdBy ?? "system",
+      notes: [
+        `Policy references: ${(input.policyReferences ?? ["pass6-block12-default-policy"]).join(", ")}.`,
+        "Scores/confidence may support review only; they do not approve readiness by themselves.",
+        "Automation-readiness weakness is not treated as workflow incompleteness by itself.",
+        "This block stores permission/routing bridge output only and does not generate package content.",
+      ].join(" "),
+    },
+    is6CAllowed: decision === "ready_for_initial_package" || decision === "ready_for_initial_package_with_warnings",
+  };
+  const resultValidation = validatePipelineRecord("WorkflowReadinessResult", validateWorkflowReadinessResult(result));
+  if (!resultValidation.ok) return { ok: false, error: resultValidation.error };
+
+  const stored: StoredWorkflowReadinessResult = { ...result, createdAt: now, updatedAt: now };
+  if (input.persist !== false) repos.workflowReadinessResults?.save(stored);
+  return { ok: true, sevenConditionAssessment: assessment, readinessResult: stored };
 }
 
 // ---------------------------------------------------------------------------

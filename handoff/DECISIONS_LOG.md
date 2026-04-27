@@ -107,6 +107,14 @@ Status: LOCKED | FORMALIZED | IMPL-EXTENSION
 - **Claim-basis map is required assembly traceability** — assembled elements carry claim IDs, source unit IDs, participant/session/layer context, truth-lens context, method usage IDs, difference IDs, evidence/source basis, confidence, and materiality where available — LOCKED
 - **Block 11 persistence stores only assembled draft records** — no readiness result, Pre-6C result, package, visual, Copilot, or Pass 7 record is created by workflow assembly — LOCKED
 
+## Pass 6 Block 12 — 6B Seven-Condition Evaluation and Workflow Readiness Result
+
+- **Seven-condition assessment is the official 6B bridge, not package generation** — Block 12 produces `SevenConditionAssessment` and `WorkflowReadinessResult` records only; it does not create Pre-6C gates, questions, packages, visuals, Copilot state, or Pass 7 records — LOCKED
+- **All seven condition keys are exact-map required** — readiness evaluation must populate each required condition exactly once with status, rationale, basis, and `blocksInitialPackage` — LOCKED
+- **Warnings and automation weakness are not automatic blockers** — non-blocking warnings and automation-readiness weaknesses remain visible but do not by themselves make workflow documentability incomplete — LOCKED
+- **6C permission is explicit and narrow** — `is6CAllowed` is true only for `ready_for_initial_package` and `ready_for_initial_package_with_warnings`; all other readiness decisions block 6C by default — LOCKED
+- **Scores and documents do not approve readiness** — confidence, scoring support, consensus, or document/source signals may inform assessment but cannot approve package readiness or turn document claims into operational truth by themselves — LOCKED
+
 ## contracts
 
 - **Ajv 8 + ajv-formats for JSON Schema validation** — industry standard, fast, supports Draft-07, formats plugin needed for `date-time` and `uri` — LOCKED
