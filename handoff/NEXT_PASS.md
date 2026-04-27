@@ -55,7 +55,9 @@ Pass 6 Block 16 — 6C Output Governance and Package Generation is accepted.
 
 Pass 6 Block 17 — Visual Core Integration is accepted.
 
-Pass 6 Block 18 — Pass 6 Conversational Copilot is the current completed implementation block pending acceptance.
+Pass 6 Block 18 — Pass 6 Conversational Copilot is accepted.
+
+Pass 6 Block 19 — Pass 7 Candidate Seam is the current completed implementation block pending acceptance.
 
 Technical Decomposition v4 is the active Pass 6 build map.
 
@@ -313,6 +315,18 @@ Block 18 is Pass 6 Conversational Copilot runtime only.
 - Copilot is read-only: it does not mutate analysis/package/visual/review records, invent evidence, approve packages, override readiness, send messages, or create Pass 7 mechanics.
 - No new 6A behavior, new 6B analysis behavior, readiness recalculation, package eligibility changes, new 6C package generation behavior, visual generation changes, autonomous writes, participant-facing sends, message/email sending, Pass 7 mechanics, Final Package generation, or release behavior start in Block 18.
 - Next implementation step after acceptance is Block 19 — Pass 7 Candidate Seam.
+
+## Pass 6 Block 19 Acceptance Gate
+
+Block 19 is Pass 7 candidate seam work only.
+
+- Pass 7 review candidate records can be created from unresolved/review-worthy Pass 6 outputs.
+- Candidates link back to source Pass 6 records: differences, readiness results, Pre-6C gates, external interfaces, packages/briefs, and admin-routed recommendations.
+- Candidate lifecycle supports `candidate_open`, `accepted_for_pass7_later`, `dismissed`, and `deferred`.
+- Admin UI/API surfaces allow listing, detail inspection, safe candidate creation from Pass 6 context, and candidate status updates.
+- Candidate status updates do not start Pass 7 discussion, create issue threads, execute review actions, make final decisions, or change package/release state.
+- No provider calls, Pass 7 discussion mechanics, Pass 7 issue threads, review action execution, Final Package generation, release behavior, readiness recalculation, package eligibility changes, new 6C package generation behavior, visual generation changes, Copilot autonomous writes, or secrets are introduced in Block 19.
+- Next implementation step after acceptance is Block 20 — Full Pass 6 Live Proof and Archive Closure.
 
 ## Active Pass 6 Block Map
 

@@ -30,6 +30,7 @@ import {
   validateAssembledWorkflowDraft,
   validateDifferenceInterpretation,
   validateExternalInterfaceRecord,
+  validatePass7ReviewCandidate,
   validateClarificationNeed,
   validateInquiryPacket,
   validatePrePackageGateResult,
@@ -68,11 +69,14 @@ import {
   type FirstPassExtractionOutput,
   type Pass6PreparedMaterialItem,
   type Pass6Reference,
+  type Pass7ReviewCandidate,
   type Pass6RoleLayerContext,
   type Pass6SourceBasis,
   type Pass6TruthLensContext,
   type Pass6HandoffCandidate,
   type PrePackageGateResult,
+  type InitialWorkflowPackage,
+  type WorkflowGapClosureBrief,
   type ParticipantSession,
   type QuestionHintSeed,
   type SynthesisInputBundle,
@@ -119,6 +123,7 @@ import type {
   StoredClarificationNeed,
   StoredInquiryPacket,
   StoredExternalInterfaceRecord,
+  StoredPass7ReviewCandidate,
   AnalysisMethodUsageRepository,
   AssembledWorkflowDraftRepository,
   ClarificationNeedRepository,
@@ -129,6 +134,7 @@ import type {
   WorkflowReadinessResultRepository,
   WorkflowClaimRepository,
   WorkflowUnitRepository,
+  Pass7ReviewCandidateRepository,
 } from "@workflow/persistence";
 
 export const SYNTHESIS_EVALUATION_PACKAGE =
@@ -175,6 +181,7 @@ export type {
   StoredClarificationNeed,
   StoredInquiryPacket,
   StoredExternalInterfaceRecord,
+  StoredPass7ReviewCandidate,
   AnalysisMethodUsageRepository,
   AssembledWorkflowDraftRepository,
   ClarificationNeedRepository,
@@ -185,6 +192,7 @@ export type {
   WorkflowReadinessResultRepository,
   WorkflowClaimRepository,
   WorkflowUnitRepository,
+  Pass7ReviewCandidateRepository,
 } from "@workflow/persistence";
 
 export type {
@@ -3967,6 +3975,343 @@ export function registerExternalInterfacesFromRepositories(
     now: input.now,
     persist: input.persist,
   }, { externalInterfaceRecords: repos.externalInterfaceRecords });
+}
+
+// ---------------------------------------------------------------------------
+// Pass 6 Block 19 — Pass 7 candidate seam only
+// ---------------------------------------------------------------------------
+
+export interface CreatePass7ReviewCandidatesInput {
+  caseId?: string;
+  differences?: DifferenceInterpretation[];
+  workflowReadinessResult?: WorkflowReadinessResult;
+  prePackageGateResult?: PrePackageGateResult;
+  externalInterfaceRecords?: ExternalInterfaceRecord[];
+  initialWorkflowPackage?: InitialWorkflowPackage;
+  workflowGapClosureBrief?: WorkflowGapClosureBrief;
+  adminRoutedReviewRecommendations?: Array<{
+    recommendationId: string;
+    caseId?: string;
+    issueType?: Pass7ReviewCandidate["issueType"];
+    reason: string;
+    severityMateriality?: Pass7ReviewCandidate["severityMateriality"];
+    recommendedReviewRoute?: Pass7ReviewCandidate["recommendedReviewRoute"];
+    linkedReferences?: Pass6Reference[];
+  }>;
+  now?: string;
+  persist?: boolean;
+}
+
+export interface CreatePass7ReviewCandidatesRepositories {
+  pass7ReviewCandidates?: Pass7ReviewCandidateRepository;
+}
+
+export interface CreatePass7ReviewCandidatesOk {
+  ok: true;
+  candidates: StoredPass7ReviewCandidate[];
+  boundary: {
+    candidateSeamOnly: true;
+    noPass7DiscussionThreads: true;
+    noReviewActionExecution: true;
+    noReadinessRecalculation: true;
+    noPackageEligibilityChanges: true;
+    noProviderCalls: true;
+  };
+}
+
+export type CreatePass7ReviewCandidatesResult =
+  | CreatePass7ReviewCandidatesOk
+  | { ok: false; error: string };
+
+function candidateReference(referenceId: string, referenceType: string, label?: string): Pass6Reference {
+  return { referenceId, referenceType, label };
+}
+
+function reviewRouteForIssue(issueType: Pass7ReviewCandidate["issueType"]): Pass7ReviewCandidate["recommendedReviewRoute"] {
+  if (issueType === "external_interface_blocker") return "external_interface_review_later";
+  if (issueType === "document_reality_mismatch" || issueType === "policy_practice_mismatch") return "document_policy_review_later";
+  if (issueType === "ownership_authority_conflict" || issueType === "approval_control_conflict") return "management_review_later";
+  if (issueType === "unresolved_high_materiality_gap") return "admin_decision_needed_later";
+  return "pass7_review_discussion_later";
+}
+
+function issueTypeForDifference(difference: DifferenceInterpretation): Pass7ReviewCandidate["issueType"] | null {
+  const text = difference.explanation.toLowerCase();
+  if (difference.differenceType === "factual_conflict") return "factual_conflict";
+  if (difference.differenceType === "normative_reality_mismatch") {
+    if (text.includes("document") || text.includes("sop") || text.includes("policy")) return "document_reality_mismatch";
+    return "policy_practice_mismatch";
+  }
+  if (difference.recommendedRoute === "blocker_candidate" || difference.recommendedRoute === "review_candidate") {
+    if (text.includes("approval") || text.includes("control")) return "approval_control_conflict";
+    if (text.includes("owner") || text.includes("authority") || text.includes("responsibility")) return "ownership_authority_conflict";
+    if (difference.materiality === "high") return "unresolved_high_materiality_gap";
+  }
+  return null;
+}
+
+function createCandidateRecord(input: {
+  caseId: string;
+  sourceType: Pass7ReviewCandidate["sourceType"];
+  sourceId: string;
+  sourcePass6RecordType: string;
+  issueType: Pass7ReviewCandidate["issueType"];
+  reason: string;
+  severityMateriality?: Pass7ReviewCandidate["severityMateriality"];
+  linkedClaimIds?: string[];
+  linkedDifferenceIds?: string[];
+  linkedWorkflowReadinessResultId?: string;
+  linkedPrePackageGateResultId?: string;
+  linkedExternalInterfaceRecordId?: string;
+  linkedPackageOrBriefId?: string;
+  linkedReferences?: Pass6Reference[];
+  recommendedReviewRoute?: Pass7ReviewCandidate["recommendedReviewRoute"];
+  now: string;
+}): Pass7ReviewCandidate {
+  return {
+    candidateId: `pass7_candidate:${safeIdPart(input.caseId)}:${safeIdPart(input.sourcePass6RecordType)}:${safeIdPart(input.sourceId)}:${safeIdPart(input.issueType)}`,
+    caseId: input.caseId,
+    sourceType: input.sourceType,
+    sourceId: input.sourceId,
+    sourcePass6RecordType: input.sourcePass6RecordType,
+    issueType: input.issueType,
+    reason: input.reason,
+    severityMateriality: input.severityMateriality ?? "unknown",
+    linkedClaimIds: input.linkedClaimIds,
+    linkedDifferenceIds: input.linkedDifferenceIds,
+    linkedWorkflowReadinessResultId: input.linkedWorkflowReadinessResultId,
+    linkedPrePackageGateResultId: input.linkedPrePackageGateResultId,
+    linkedExternalInterfaceRecordId: input.linkedExternalInterfaceRecordId,
+    linkedPackageOrBriefId: input.linkedPackageOrBriefId,
+    linkedReferences: input.linkedReferences ?? [
+      candidateReference(input.sourceId, input.sourcePass6RecordType, input.reason),
+    ],
+    recommendedReviewRoute: input.recommendedReviewRoute ?? reviewRouteForIssue(input.issueType),
+    status: "candidate_open",
+    createdAt: input.now,
+    updatedAt: input.now,
+  };
+}
+
+function candidateForReadiness(readiness: WorkflowReadinessResult, now: string): Pass7ReviewCandidate | null {
+  if (readiness.readinessDecision !== "needs_review_decision_before_package") return null;
+  return createCandidateRecord({
+    caseId: readiness.caseId,
+    sourceType: "workflow_readiness_result",
+    sourceId: readiness.resultId,
+    sourcePass6RecordType: "workflow_readiness_result",
+    issueType: "unresolved_high_materiality_gap",
+    reason: `Readiness result requires review decision before package: ${readiness.gapRiskSummary.summary}`,
+    severityMateriality: "high",
+    linkedWorkflowReadinessResultId: readiness.resultId,
+    linkedReferences: [candidateReference(readiness.resultId, "workflow_readiness_result", readiness.readinessDecision)],
+    recommendedReviewRoute: "admin_decision_needed_later",
+    now,
+  });
+}
+
+function candidateForGate(gate: PrePackageGateResult, now: string): Pass7ReviewCandidate | null {
+  if (gate.gateDecision === "review_decision_required_before_package") {
+    return createCandidateRecord({
+      caseId: gate.caseId,
+      sourceType: "pre_package_gate_result",
+      sourceId: gate.gateResultId,
+      sourcePass6RecordType: "pre_package_gate_result",
+      issueType: "unresolved_high_materiality_gap",
+      reason: "Pre-6C gate requires an admin/review decision before package generation.",
+      severityMateriality: "high",
+      linkedPrePackageGateResultId: gate.gateResultId,
+      linkedWorkflowReadinessResultId: gate.workflowReadinessResultId,
+      linkedReferences: [candidateReference(gate.gateResultId, "pre_package_gate_result", gate.gateDecision)],
+      recommendedReviewRoute: "admin_decision_needed_later",
+      now,
+    });
+  }
+  if (gate.gateDecision === "proceed_with_warnings_approved" && gate.proceedWithWarningsApproval?.followUpRecommendation) {
+    return createCandidateRecord({
+      caseId: gate.caseId,
+      sourceType: "pre_package_gate_result",
+      sourceId: `${gate.gateResultId}:proceed_with_warnings`,
+      sourcePass6RecordType: "pre_package_gate_result",
+      issueType: "proceed_with_warnings_followup",
+      reason: gate.proceedWithWarningsApproval.followUpRecommendation,
+      severityMateriality: "medium",
+      linkedPrePackageGateResultId: gate.gateResultId,
+      linkedWorkflowReadinessResultId: gate.workflowReadinessResultId,
+      linkedReferences: [candidateReference(gate.gateResultId, "pre_package_gate_result", "Proceed-with-warnings follow-up")],
+      recommendedReviewRoute: "pass7_review_discussion_later",
+      now,
+    });
+  }
+  return null;
+}
+
+function candidateForExternalInterface(record: ExternalInterfaceRecord, now: string): Pass7ReviewCandidate | null {
+  if (record.materiality !== "blocker" && record.materiality !== "blocker_candidate") return null;
+  return createCandidateRecord({
+    caseId: record.caseId,
+    sourceType: "external_interface_record",
+    sourceId: record.interfaceId,
+    sourcePass6RecordType: "external_interface_record",
+    issueType: "external_interface_blocker",
+    reason: `${record.externalDepartmentOrRole} interface is ${record.confirmationStatus} and ${record.materiality}: ${record.whatIsTransferredOrRequired}`,
+    severityMateriality: record.materiality === "blocker" ? "high" : "medium",
+    linkedExternalInterfaceRecordId: record.interfaceId,
+    linkedWorkflowReadinessResultId: record.relatedReadinessResultId,
+    linkedPrePackageGateResultId: record.relatedGateResultId,
+    linkedReferences: [
+      candidateReference(record.interfaceId, "external_interface_record", record.interfaceType),
+      ...record.basis.references,
+    ],
+    recommendedReviewRoute: "external_interface_review_later",
+    now,
+  });
+}
+
+export function createPass7ReviewCandidatesFromPass6Context(
+  input: CreatePass7ReviewCandidatesInput,
+  repos: CreatePass7ReviewCandidatesRepositories = {},
+): CreatePass7ReviewCandidatesResult {
+  const now = input.now ?? new Date().toISOString();
+  const caseId = input.caseId
+    ?? input.workflowReadinessResult?.caseId
+    ?? input.prePackageGateResult?.caseId
+    ?? input.initialWorkflowPackage?.caseId
+    ?? input.workflowGapClosureBrief?.caseId
+    ?? input.differences?.[0]?.caseId
+    ?? input.externalInterfaceRecords?.[0]?.caseId
+    ?? input.adminRoutedReviewRecommendations?.[0]?.caseId;
+  if (!caseId) return { ok: false, error: "caseId or Pass 6 source records with caseId are required." };
+
+  const candidates: Pass7ReviewCandidate[] = [];
+
+  for (const difference of input.differences ?? []) {
+    const issueType = issueTypeForDifference(difference);
+    if (!issueType) continue;
+    candidates.push(createCandidateRecord({
+      caseId: difference.caseId,
+      sourceType: "difference_interpretation",
+      sourceId: difference.differenceId,
+      sourcePass6RecordType: "difference_interpretation",
+      issueType,
+      reason: difference.explanation,
+      severityMateriality: difference.materiality ?? "unknown",
+      linkedClaimIds: difference.involvedClaimIds,
+      linkedDifferenceIds: [difference.differenceId],
+      linkedReferences: [
+        candidateReference(difference.differenceId, "difference_interpretation", difference.differenceType),
+        ...difference.involvedClaimIds.map((claimId) => candidateReference(claimId, "workflow_claim")),
+      ],
+      now,
+    }));
+  }
+
+  const readinessCandidate = input.workflowReadinessResult ? candidateForReadiness(input.workflowReadinessResult, now) : null;
+  if (readinessCandidate) candidates.push(readinessCandidate);
+
+  const gateCandidate = input.prePackageGateResult ? candidateForGate(input.prePackageGateResult, now) : null;
+  if (gateCandidate) candidates.push(gateCandidate);
+
+  for (const record of input.externalInterfaceRecords ?? []) {
+    const candidate = candidateForExternalInterface(record, now);
+    if (candidate) candidates.push(candidate);
+  }
+
+  if (input.initialWorkflowPackage?.warningsCaveats.some((warning) => /review|follow.?up|formal/i.test(warning))) {
+    candidates.push(createCandidateRecord({
+      caseId: input.initialWorkflowPackage.caseId,
+      sourceType: "initial_workflow_package",
+      sourceId: input.initialWorkflowPackage.packageId,
+      sourcePass6RecordType: "initial_workflow_package",
+      issueType: "proceed_with_warnings_followup",
+      reason: "Initial package contains review-worthy warning/caveat follow-up.",
+      severityMateriality: "medium",
+      linkedWorkflowReadinessResultId: input.initialWorkflowPackage.workflowReadinessResultId,
+      linkedPackageOrBriefId: input.initialWorkflowPackage.packageId,
+      linkedReferences: [candidateReference(input.initialWorkflowPackage.packageId, "initial_workflow_package")],
+      now,
+    }));
+  }
+
+  for (const recommendation of input.adminRoutedReviewRecommendations ?? []) {
+    candidates.push(createCandidateRecord({
+      caseId: recommendation.caseId ?? caseId,
+      sourceType: "admin_routed_review",
+      sourceId: recommendation.recommendationId,
+      sourcePass6RecordType: "admin_routed_review",
+      issueType: recommendation.issueType ?? "other_review_needed",
+      reason: recommendation.reason,
+      severityMateriality: recommendation.severityMateriality ?? "unknown",
+      linkedReferences: recommendation.linkedReferences ?? [candidateReference(recommendation.recommendationId, "admin_routed_review")],
+      recommendedReviewRoute: recommendation.recommendedReviewRoute,
+      now,
+    }));
+  }
+
+  const uniqueCandidates = uniqueBy(candidates, (candidate) => candidate.candidateId);
+  for (const candidate of uniqueCandidates) {
+    const validation = validatePipelineRecord("Pass7ReviewCandidate", validatePass7ReviewCandidate(candidate));
+    if (!validation.ok) return { ok: false, error: validation.error };
+  }
+
+  const storedCandidates: StoredPass7ReviewCandidate[] = uniqueCandidates.map((candidate) => ({
+    ...candidate,
+    createdAt: candidate.createdAt,
+    updatedAt: candidate.updatedAt,
+  }));
+  if (input.persist !== false) {
+    for (const candidate of storedCandidates) repos.pass7ReviewCandidates?.save(candidate);
+  }
+
+  return {
+    ok: true,
+    candidates: storedCandidates,
+    boundary: {
+      candidateSeamOnly: true,
+      noPass7DiscussionThreads: true,
+      noReviewActionExecution: true,
+      noReadinessRecalculation: true,
+      noPackageEligibilityChanges: true,
+      noProviderCalls: true,
+    },
+  };
+}
+
+export function createPass7ReviewCandidatesFromRepositories(
+  input: {
+    caseId?: string;
+    workflowReadinessResultId?: string;
+    prePackageGateResultId?: string;
+    now?: string;
+  },
+  repos: {
+    differenceInterpretations?: DifferenceInterpretationRepository;
+    workflowReadinessResults?: WorkflowReadinessResultRepository;
+    prePackageGateResults?: PrePackageGateResultRepository;
+    externalInterfaceRecords?: ExternalInterfaceRecordRepository;
+    pass7ReviewCandidates?: Pass7ReviewCandidateRepository;
+  },
+): CreatePass7ReviewCandidatesResult {
+  const readiness = input.workflowReadinessResultId
+    ? repos.workflowReadinessResults?.findById(input.workflowReadinessResultId) ?? null
+    : null;
+  const gate = input.prePackageGateResultId
+    ? repos.prePackageGateResults?.findById(input.prePackageGateResultId) ?? null
+    : null;
+  if (input.workflowReadinessResultId && !readiness) return { ok: false, error: `WorkflowReadinessResult '${input.workflowReadinessResultId}' not found.` };
+  if (input.prePackageGateResultId && !gate) return { ok: false, error: `PrePackageGateResult '${input.prePackageGateResultId}' not found.` };
+  const caseId = input.caseId ?? readiness?.caseId ?? gate?.caseId;
+  if (!caseId) return { ok: false, error: "caseId, workflowReadinessResultId, or prePackageGateResultId is required." };
+  return createPass7ReviewCandidatesFromPass6Context({
+    caseId,
+    workflowReadinessResult: readiness ?? undefined,
+    prePackageGateResult: gate ?? undefined,
+    differences: repos.differenceInterpretations?.findByCaseId(caseId) ?? [],
+    externalInterfaceRecords: repos.externalInterfaceRecords?.findByCaseId(caseId) ?? [],
+    now: input.now,
+  }, {
+    pass7ReviewCandidates: repos.pass7ReviewCandidates,
+  });
 }
 
 // ---------------------------------------------------------------------------

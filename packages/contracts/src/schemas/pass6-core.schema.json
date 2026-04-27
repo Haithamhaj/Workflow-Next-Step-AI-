@@ -944,22 +944,47 @@
     "pass7ReviewCandidate": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["candidateId", "caseId", "sourcePass6ResultId", "issueType", "reason", "linkedReferences", "recommendedReviewRoute", "status"],
+      "required": ["candidateId", "caseId", "sourceType", "sourceId", "sourcePass6RecordType", "issueType", "reason", "linkedReferences", "recommendedReviewRoute", "status", "createdAt", "updatedAt"],
       "properties": {
         "candidateId": { "$ref": "#/definitions/nonEmptyString" },
         "caseId": { "$ref": "#/definitions/nonEmptyString" },
-        "sourcePass6ResultId": { "$ref": "#/definitions/nonEmptyString" },
+        "sourceType": {
+          "type": "string",
+          "enum": ["difference_interpretation", "workflow_readiness_result", "analysis_report", "pre_package_gate_result", "external_interface_record", "initial_workflow_package", "workflow_gap_closure_brief", "admin_routed_review"]
+        },
+        "sourceId": { "$ref": "#/definitions/nonEmptyString" },
+        "sourcePass6RecordType": { "$ref": "#/definitions/nonEmptyString" },
         "issueType": {
           "type": "string",
-          "enum": ["claim_conflict", "difference_unresolved", "gap_blocks_package", "evidence_weakness", "admin_review_needed", "external_interface_unvalidated", "other"]
+          "enum": ["factual_conflict", "document_reality_mismatch", "ownership_authority_conflict", "approval_control_conflict", "external_interface_blocker", "policy_practice_mismatch", "unresolved_high_materiality_gap", "proceed_with_warnings_followup", "other_review_needed"]
         },
         "reason": { "$ref": "#/definitions/nonEmptyString" },
+        "severityMateriality": {
+          "type": "string",
+          "enum": ["high", "medium", "low", "unknown"]
+        },
+        "linkedClaimIds": { "type": "array", "items": { "$ref": "#/definitions/nonEmptyString" } },
+        "linkedDifferenceIds": { "type": "array", "items": { "$ref": "#/definitions/nonEmptyString" } },
+        "linkedWorkflowReadinessResultId": { "$ref": "#/definitions/nonEmptyString" },
+        "linkedPrePackageGateResultId": { "$ref": "#/definitions/nonEmptyString" },
+        "linkedExternalInterfaceRecordId": { "$ref": "#/definitions/nonEmptyString" },
+        "linkedPackageOrBriefId": { "$ref": "#/definitions/nonEmptyString" },
         "linkedReferences": { "type": "array", "items": { "$ref": "#/definitions/reference" } },
-        "recommendedReviewRoute": { "$ref": "#/definitions/nonEmptyString" },
+        "recommendedReviewRoute": {
+          "type": "string",
+          "enum": ["pass7_review_discussion_later", "admin_decision_needed_later", "management_review_later", "external_interface_review_later", "document_policy_review_later", "defer_until_more_evidence"]
+        },
         "status": {
           "type": "string",
-          "enum": ["candidate_open", "candidate_deferred", "candidate_dismissed", "accepted_for_pass7_review"]
-        }
+          "enum": ["candidate_open", "accepted_for_pass7_later", "dismissed", "deferred"]
+        },
+        "createdAt": { "$ref": "#/definitions/timestamp" },
+        "updatedAt": { "$ref": "#/definitions/timestamp" },
+        "adminDecision": {
+          "type": "string",
+          "enum": ["accepted_for_later_pass7", "dismissed", "deferred"]
+        },
+        "adminNote": { "$ref": "#/definitions/optionalString" }
       }
     },
     "recordMetadata": {

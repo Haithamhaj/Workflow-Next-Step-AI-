@@ -29,6 +29,7 @@ Status: LOCKED | FORMALIZED | IMPL-EXTENSION
 - **`WorkflowClaim` remains pre-truth assembly material** — claims carry source/basis, confidence/materiality placeholders, and review statuses, but a claim is explicitly not final workflow truth — LOCKED
 - **`WorkflowGraphRecord` is a WDE-side storage/pass-through seam only** — it records graph JSON, Mermaid, React Flow model, and validation errors using visual-core enum values, but does not call or implement `workflow-visual-core` — LOCKED
 - **`Pass7ReviewCandidate` is candidate-only** — it carries a source Pass 6 result, reason, linked references, route, and status, but no discussion thread, review action, or final decision mechanics — LOCKED
+- **Block 19 candidate lifecycle remains pre-Pass-7** — `accepted_for_pass7_later`, `dismissed`, and `deferred` update only the candidate seam record; they do not create issue threads, discussion mechanics, review decisions, package eligibility changes, Final Package state, or release state — LOCKED
 
 ## Pass 6 Block 2 — Persistence and Repository Layer
 

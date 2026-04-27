@@ -409,15 +409,21 @@ const pass6CopilotContextBundle = {
 const pass7ReviewCandidate = {
   candidateId: "pass7-candidate-1",
   caseId: "case-1",
-  sourcePass6ResultId: "readiness-1",
-  issueType: "gap_blocks_package",
+  sourceType: "workflow_readiness_result",
+  sourceId: "readiness-1",
+  sourcePass6RecordType: "workflow_readiness_result",
+  issueType: "unresolved_high_materiality_gap",
   reason: "Approval threshold needs review if package warning is rejected.",
+  severityMateriality: "high",
+  linkedWorkflowReadinessResultId: "readiness-1",
   linkedReferences: [
     { referenceId: "claim-1", referenceType: "workflow_claim" },
     { referenceId: "gap-threshold", referenceType: "gap" },
   ],
-  recommendedReviewRoute: "Create Pass 7 review only if admin rejects warning path.",
+  recommendedReviewRoute: "admin_decision_needed_later",
   status: "candidate_open",
+  createdAt: "2026-01-01T00:00:00.000Z",
+  updatedAt: "2026-01-01T00:00:00.000Z",
 };
 
 const validFixtures = [
@@ -522,6 +528,8 @@ const allowedPrefixes = [
   "scripts/prove-pass6-block15-external-interfaces.mjs",
   "scripts/prove-pass6-block16-package-generation.mjs",
   "scripts/prove-pass6-block17-visual-core-integration.mjs",
+  "scripts/prove-pass6-block18-copilot.mjs",
+  "scripts/prove-pass6-block19-pass7-candidate-seam.mjs",
   "pnpm-lock.yaml",
   "handoff/",
 ];

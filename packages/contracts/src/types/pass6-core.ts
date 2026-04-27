@@ -702,17 +702,46 @@ export interface Pass6CopilotInteraction {
 export interface Pass7ReviewCandidate {
   candidateId: string;
   caseId: string;
-  sourcePass6ResultId: string;
+  sourceType:
+    | "difference_interpretation"
+    | "workflow_readiness_result"
+    | "analysis_report"
+    | "pre_package_gate_result"
+    | "external_interface_record"
+    | "initial_workflow_package"
+    | "workflow_gap_closure_brief"
+    | "admin_routed_review";
+  sourceId: string;
+  sourcePass6RecordType: string;
   issueType:
-    | "claim_conflict"
-    | "difference_unresolved"
-    | "gap_blocks_package"
-    | "evidence_weakness"
-    | "admin_review_needed"
-    | "external_interface_unvalidated"
-    | "other";
+    | "factual_conflict"
+    | "document_reality_mismatch"
+    | "ownership_authority_conflict"
+    | "approval_control_conflict"
+    | "external_interface_blocker"
+    | "policy_practice_mismatch"
+    | "unresolved_high_materiality_gap"
+    | "proceed_with_warnings_followup"
+    | "other_review_needed";
   reason: string;
+  severityMateriality?: "high" | "medium" | "low" | "unknown";
+  linkedClaimIds?: string[];
+  linkedDifferenceIds?: string[];
+  linkedWorkflowReadinessResultId?: string;
+  linkedPrePackageGateResultId?: string;
+  linkedExternalInterfaceRecordId?: string;
+  linkedPackageOrBriefId?: string;
   linkedReferences: Pass6Reference[];
-  recommendedReviewRoute: string;
-  status: "candidate_open" | "candidate_deferred" | "candidate_dismissed" | "accepted_for_pass7_review";
+  recommendedReviewRoute:
+    | "pass7_review_discussion_later"
+    | "admin_decision_needed_later"
+    | "management_review_later"
+    | "external_interface_review_later"
+    | "document_policy_review_later"
+    | "defer_until_more_evidence";
+  status: "candidate_open" | "accepted_for_pass7_later" | "dismissed" | "deferred";
+  createdAt: string;
+  updatedAt: string;
+  adminDecision?: "accepted_for_later_pass7" | "dismissed" | "deferred";
+  adminNote?: string;
 }

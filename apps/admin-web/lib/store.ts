@@ -69,4 +69,5 @@ export const store: InMemoryStore = globalThis.__workflowStore__ ?? (globalThis.
   workflowGraphRecords: intakeRepositories.workflowGraphRecords,
   pass6CopilotContextBundles: intakeRepositories.pass6CopilotContextBundles,
   pass6CopilotInteractions: intakeRepositories.pass6CopilotInteractions,
+  pass7ReviewCandidates: intakeRepositories.pass7ReviewCandidates,
 });

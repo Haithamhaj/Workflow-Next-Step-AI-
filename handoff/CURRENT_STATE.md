@@ -288,6 +288,18 @@ Pass 6 Block 18 adds the read-only admin Copilot runtime only.
 - Block 18 does not implement new 6A behavior, new 6B analysis behavior, readiness recalculation, package eligibility changes, new 6C package generation behavior, visual-core generation changes, autonomous writes, participant-facing sends, message/email sending, Pass 7 mechanics, Final Package generation, or release behavior.
 - Next implementation step after Block 18 acceptance is Block 19 — Pass 7 Candidate Seam.
 
+## Pass 6 Block 19 — Pass 7 Candidate Seam
+
+Pass 6 Block 19 adds Pass 7 review candidate seam records only.
+
+- Hardened the `Pass7ReviewCandidate` contract/schema/type to carry source type/id, Pass 6 source record type, issue type, materiality, linked Pass 6 record IDs, recommended review route, candidate lifecycle status, timestamps, and optional admin decision/note.
+- Added deterministic candidate creation helpers in `packages/synthesis-evaluation` for material factual conflicts, document/reality mismatches, ownership/authority conflicts, approval/control conflicts, unresolved high-materiality gaps, external interface blockers, Pre-6C review decision gates, proceed-with-warnings follow-ups, and admin-routed review recommendations.
+- Candidate generation links back to source Pass 6 records and stores candidates through the existing Pass 6 persistence repository.
+- Added minimal admin API/UI surfaces at `/pass6/pass7-candidates` and `/pass6/pass7-candidates/[candidateId]` for listing, detail inspection, safe creation from Pass 6 context, and status changes to accepted-for-later, dismissed, or deferred.
+- Added a focused proof script: `scripts/prove-pass6-block19-pass7-candidate-seam.mjs`.
+- Block 19 does not implement provider calls, Pass 7 discussion mechanics, Pass 7 issue threads, review action execution, Final Package generation, release behavior, readiness recalculation, package eligibility changes, new 6C package generation behavior, visual generation changes, Copilot autonomous writes, or secret handling changes.
+- Next implementation step after Block 19 acceptance is Block 20 — Full Pass 6 Live Proof and Archive Closure.
+
 **Pass 5 — Participant Session Outreach / Narrative-First Clarification is accepted, closed, integrated, and archived on `main`.**
 
 Final Pass 5 status: `pass5_participant_session_outreach_accepted`
