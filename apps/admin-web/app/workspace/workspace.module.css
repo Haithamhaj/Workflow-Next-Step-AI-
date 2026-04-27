@@ -1,8 +1,11 @@
 .workspaceRoot {
   min-height: calc(100vh - 48px);
   position: relative;
+  width: 100%;
+  max-width: 100%;
   display: grid;
   grid-template-columns: 232px minmax(0, 1fr);
+  box-sizing: border-box;
   border: 1px solid #1f2b3a;
   border-radius: 14px;
   overflow: hidden;
@@ -74,6 +77,8 @@
 
 .workspaceMain {
   min-width: 0;
+  max-width: 100%;
+  overflow-x: hidden;
   padding: 22px;
   background: linear-gradient(180deg, #f9fbff 0%, #eef3f8 100%);
 }
@@ -204,7 +209,10 @@
 }
 
 .workspaceCommandDashboard {
+  width: 100%;
   max-width: none;
+  min-width: 0;
+  box-sizing: border-box;
   margin: 0 0 16px;
   padding: 18px;
   border: 1px solid #cfd9e7;
@@ -214,8 +222,9 @@
 }
 
 .workspaceDashboardHero {
+  min-width: 0;
   display: grid;
-  grid-template-columns: minmax(300px, 0.9fr) minmax(420px, 1.1fr);
+  grid-template-columns: minmax(0, 0.86fr) minmax(0, 1.14fr);
   gap: 16px;
   align-items: stretch;
   margin-bottom: 14px;
@@ -223,6 +232,8 @@
 
 .workspaceDashboardIdentity {
   min-width: 0;
+  max-width: 100%;
+  box-sizing: border-box;
   padding: 20px;
   border: 1px solid #d6e0ec;
   border-radius: 14px;
@@ -252,14 +263,16 @@
 }
 
 .workspaceDashboardBelow {
+  min-width: 0;
   display: grid;
-  grid-template-columns: minmax(320px, 0.9fr) minmax(520px, 1.1fr);
+  grid-template-columns: minmax(0, 0.78fr) minmax(0, 1.22fr);
   gap: 14px;
   align-items: stretch;
 }
 
 .workspaceDashboardStack {
   min-width: 0;
+  max-width: 100%;
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 14px;
@@ -292,6 +305,7 @@
 
 .workspacePriorityBanner {
   max-width: none;
+  min-width: 0;
   min-height: 100%;
   margin: 0;
   padding: 20px;
@@ -310,6 +324,7 @@
   color: #7c2d12;
   font-size: 24px;
   line-height: 1.12;
+  overflow-wrap: anywhere;
 }
 
 .workspacePriorityBanner p {
@@ -348,6 +363,7 @@
 
 .workspaceCommandSummary {
   max-width: none;
+  min-width: 0;
   margin: 0;
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -356,6 +372,8 @@
 
 .workspaceCommandSummaryCard {
   min-width: 0;
+  max-width: 100%;
+  box-sizing: border-box;
   padding: 13px;
   border: 1px solid #d6e0ec;
   border-radius: 12px;
@@ -376,6 +394,7 @@
   color: #172033;
   font-size: 18px;
   line-height: 1.1;
+  overflow-wrap: anywhere;
 }
 
 .workspaceStatusPill {
@@ -1113,6 +1132,17 @@
   .workspaceDepartmentMap,
   .workspaceDepartmentMapCompact {
     grid-template-columns: repeat(2, minmax(120px, 1fr));
+  }
+}
+
+@media (max-width: 1320px) {
+  .workspacePriorityBanner {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .workspaceStaticAction {
+    align-self: flex-start;
   }
 }
 
