@@ -215,6 +215,21 @@ Pass 6 Block 13 adds the admin/internal analysis report surface only.
 - Block 13 does not implement provider calls, Pre-6C behavior, Pre-6C question generation, 6C package generation, visual-core integration, Copilot runtime behavior, Pass 7 mechanics, or readiness override behavior.
 - Next implementation step after Block 13 acceptance is Block 14 — Pre-6C Gap Closure, Inquiry Gate, and Question Generation.
 
+## Pass 6 Block 14 — Pre-6C Gap Closure, Inquiry Gate, and Question Generation
+
+Pass 6 Block 14 adds the Pre-6C gate only.
+
+- Added deterministic Pre-6C gate generation from `WorkflowReadinessResult`.
+- Produces `PrePackageGateResult`, `ClarificationNeed`, and `InquiryPacket` records.
+- Clarification needs include question type, question text, target role/recipient, why it matters, related workflow/gap/condition/claim/difference references, expected answer type, example answer, blocking status, basis, channel, and priority.
+- Inquiry packets are draft/admin-review artifacts only and are not sent.
+- Proceed-with-warnings approval can record approval status, approver, timestamp, accepted warnings, reason, limitations to keep visible, and follow-up recommendation.
+- Added read-only/admin-approved API and UI surfaces at `/pass6/pre6c-gates`.
+- No answer is collected, no evidence is updated, no package is generated, and no Pass 7 issue is created.
+- Added a focused proof script: `scripts/prove-pass6-block14-pre6c-gate.mjs`.
+- Block 14 does not implement provider calls, actual message/email sending, participant re-contact execution, 6C package generation, Workflow Gap Closure Brief generation, visual-core integration, Copilot runtime behavior, or Pass 7 mechanics.
+- Next implementation step after Block 14 acceptance is Block 15 — Cross-Department / External Interface Handling.
+
 **Pass 5 — Participant Session Outreach / Narrative-First Clarification is accepted, closed, integrated, and archived on `main`.**
 
 Final Pass 5 status: `pass5_participant_session_outreach_accepted`

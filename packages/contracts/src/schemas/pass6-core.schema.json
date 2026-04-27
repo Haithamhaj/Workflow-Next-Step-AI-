@@ -520,9 +520,13 @@
     "clarificationNeed": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["clarificationNeedId", "questionText", "whyItMatters", "expectedAnswerType", "blockingStatus", "basis", "recommendedChannel", "priority"],
+      "required": ["clarificationNeedId", "questionType", "questionText", "whyItMatters", "expectedAnswerType", "blockingStatus", "basis", "recommendedChannel", "priority"],
       "properties": {
         "clarificationNeedId": { "$ref": "#/definitions/nonEmptyString" },
+        "questionType": {
+          "type": "string",
+          "enum": ["open_question", "open_question_with_helper_choices", "choice_based_with_optional_explanation", "meeting_agenda_item", "formal_email_inquiry", "admin_review_decision"]
+        },
         "questionText": { "$ref": "#/definitions/nonEmptyString" },
         "targetRecipient": { "$ref": "#/definitions/optionalString" },
         "targetRole": { "$ref": "#/definitions/optionalString" },
@@ -532,6 +536,14 @@
         "relatedSevenConditionKey": {
           "type": "string",
           "enum": ["core_sequence_continuity", "step_to_step_connection", "essential_step_requirements", "decision_rules_thresholds", "handoffs_responsibility", "controls_approvals", "use_case_boundary", "unknown"]
+        },
+        "relatedClaimIds": {
+          "type": "array",
+          "items": { "$ref": "#/definitions/nonEmptyString" }
+        },
+        "relatedDifferenceIds": {
+          "type": "array",
+          "items": { "$ref": "#/definitions/nonEmptyString" }
         },
         "expectedAnswerType": {
           "type": "string",
@@ -592,9 +604,23 @@
           "additionalProperties": false,
           "required": ["approvedBy", "approvedAt", "approvalNote"],
           "properties": {
+            "approvalStatus": {
+              "type": "string",
+              "enum": ["requested", "approved", "rejected"]
+            },
             "approvedBy": { "$ref": "#/definitions/nonEmptyString" },
             "approvedAt": { "$ref": "#/definitions/timestamp" },
-            "approvalNote": { "$ref": "#/definitions/nonEmptyString" }
+            "approvalNote": { "$ref": "#/definitions/nonEmptyString" },
+            "warningsAccepted": {
+              "type": "array",
+              "items": { "$ref": "#/definitions/nonEmptyString" }
+            },
+            "reasonForProceeding": { "$ref": "#/definitions/optionalString" },
+            "limitationsToKeepVisible": {
+              "type": "array",
+              "items": { "$ref": "#/definitions/nonEmptyString" }
+            },
+            "followUpRecommendation": { "$ref": "#/definitions/optionalString" }
           }
         }
       }

@@ -210,12 +210,15 @@ const workflowReadinessResult = {
 
 const clarificationNeed = {
   clarificationNeedId: "clarification-need-1",
+  questionType: "open_question",
   questionText: "What threshold requires supervisor approval?",
   targetRole: "Supervisor",
   whyItMatters: "The package needs the approval rule caveat.",
   relatedWorkflowElementId: "step-1",
   relatedGapId: "gap-threshold",
   relatedSevenConditionKey: "decision_rules_thresholds",
+  relatedClaimIds: ["claim-1"],
+  relatedDifferenceIds: ["difference-1"],
   expectedAnswerType: "threshold_value",
   exampleAnswer: "Supervisor approval is required above 10,000 SAR.",
   blockingStatus: "non_blocking",
@@ -244,9 +247,14 @@ const prePackageGateResult = {
   clarificationNeeds: [clarificationNeed],
   inquiryPackets: [inquiryPacket],
   proceedWithWarningsApproval: {
+    approvalStatus: "approved",
     approvedBy: "admin-1",
     approvedAt: now,
     approvalNote: "Proceed with explicit threshold caveat.",
+    warningsAccepted: ["risk-warning-package"],
+    reasonForProceeding: "Client needs an initial limited package.",
+    limitationsToKeepVisible: ["Threshold remains a caveat."],
+    followUpRecommendation: "Confirm threshold after package delivery.",
   },
   createdAt: now,
   updatedAt,
@@ -465,6 +473,7 @@ const allowedPrefixes = [
   "scripts/prove-pass6-block11-workflow-assembly.mjs",
   "scripts/prove-pass6-block12-readiness-result.mjs",
   "scripts/prove-pass6-block13-analysis-report.mjs",
+  "scripts/prove-pass6-block14-pre6c-gate.mjs",
   "handoff/",
 ];
 for (const file of changedFiles) {

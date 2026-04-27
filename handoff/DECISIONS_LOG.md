@@ -123,6 +123,14 @@ Status: LOCKED | FORMALIZED | IMPL-EXTENSION
 - **Decision-needed panel preserves distinctions** — blockers, review-needed conflicts, clarification-needed gaps, and proceedable warnings must remain separately visible rather than collapsed into a single status — LOCKED
 - **Block 13 creates no downstream records** — no PrePackageGateResult, InitialWorkflowPackage, WorkflowGapClosureBrief, visual record, Copilot context, or Pass 7 review candidate is created by the report layer — LOCKED
 
+## Pass 6 Block 14 — Pre-6C Gap Closure, Inquiry Gate, and Question Generation
+
+- **Pre-6C gate drafts next action only** — Block 14 converts readiness gaps and warning paths into `PrePackageGateResult`, `ClarificationNeed`, and `InquiryPacket` records; it does not generate 6C output or close gaps — LOCKED
+- **Question drafts are not evidence and are not sent automatically** — clarification and inquiry records are reviewable admin artifacts only; no channel adapter, email send, participant re-contact, answer collection, or evidence update happens in Block 14 — LOCKED
+- **Proceed-with-warnings is permission with visible limitations, not gap closure** — admin approval can permit later 6C with warnings, but accepted warnings and limitations must remain visible and the underlying gap remains open — LOCKED
+- **Targeting is recommendation-only** — suggested recipient roles/channels are deterministic recommendations for admin review and do not create participant sessions or external communications — LOCKED
+- **Block 14 creates no downstream package/review records** — no InitialWorkflowPackage, WorkflowGapClosureBrief, visual record, Copilot context, or Pass 7 review candidate is created by the Pre-6C gate — LOCKED
+
 ## contracts
 
 - **Ajv 8 + ajv-formats for JSON Schema validation** — industry standard, fast, supports Draft-07, formats plugin needed for `date-time` and `uri` — LOCKED

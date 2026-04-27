@@ -29,6 +29,9 @@ import {
   validateAnalysisMethodUsage,
   validateAssembledWorkflowDraft,
   validateDifferenceInterpretation,
+  validateClarificationNeed,
+  validateInquiryPacket,
+  validatePrePackageGateResult,
   validateSevenConditionAssessment,
   validateWorkflowReadinessResult,
   validateWorkflowClaim,
@@ -47,7 +50,10 @@ import {
   type AnalysisMethodUsage,
   type AssembledWorkflowDraft,
   type ClaimBasisEntry,
+  type ClarificationNeed,
   type DifferenceInterpretation,
+  type GateDecision,
+  type InquiryPacket,
   type BoundarySignal,
   type ClarificationCandidate,
   type EvidenceAnchor,
@@ -60,6 +66,7 @@ import {
   type Pass6SourceBasis,
   type Pass6TruthLensContext,
   type Pass6HandoffCandidate,
+  type PrePackageGateResult,
   type ParticipantSession,
   type QuestionHintSeed,
   type SynthesisInputBundle,
@@ -102,9 +109,15 @@ import type {
   StoredAssembledWorkflowDraft,
   StoredDifferenceInterpretation,
   StoredWorkflowReadinessResult,
+  StoredPrePackageGateResult,
+  StoredClarificationNeed,
+  StoredInquiryPacket,
   AnalysisMethodUsageRepository,
   AssembledWorkflowDraftRepository,
+  ClarificationNeedRepository,
   DifferenceInterpretationRepository,
+  InquiryPacketRepository,
+  PrePackageGateResultRepository,
   WorkflowReadinessResultRepository,
   WorkflowClaimRepository,
   WorkflowUnitRepository,
@@ -150,9 +163,15 @@ export type {
   StoredAssembledWorkflowDraft,
   StoredDifferenceInterpretation,
   StoredWorkflowReadinessResult,
+  StoredPrePackageGateResult,
+  StoredClarificationNeed,
+  StoredInquiryPacket,
   AnalysisMethodUsageRepository,
   AssembledWorkflowDraftRepository,
+  ClarificationNeedRepository,
   DifferenceInterpretationRepository,
+  InquiryPacketRepository,
+  PrePackageGateResultRepository,
   WorkflowReadinessResultRepository,
   WorkflowClaimRepository,
   WorkflowUnitRepository,
@@ -3204,6 +3223,304 @@ export function buildPass6MethodologyAnalysisReportFromRepositories(
     readinessResult,
     methodRegistry: resolvePass6MethodRegistryForAdmin(repos.pass6ConfigurationProfiles),
   });
+}
+
+// ---------------------------------------------------------------------------
+// Pass 6 Pre-6C Gap Closure, Inquiry Gate, and Question Generation — Block 14
+// ---------------------------------------------------------------------------
+
+export interface ProceedWithWarningsApprovalInput {
+  approvedBy: string;
+  approvedAt?: string;
+  approvalNote: string;
+  reasonForProceeding: string;
+}
+
+export interface RunPre6CGateInput {
+  workflowReadinessResult: WorkflowReadinessResult;
+  assembledWorkflowDraft?: AssembledWorkflowDraft;
+  differences?: DifferenceInterpretation[];
+  gateResultId?: string;
+  now?: string;
+  persist?: boolean;
+  proceedWithWarningsApproval?: ProceedWithWarningsApprovalInput;
+}
+
+export interface RunPre6CGateRepositories {
+  prePackageGateResults?: PrePackageGateResultRepository;
+  clarificationNeeds?: ClarificationNeedRepository;
+  inquiryPackets?: InquiryPacketRepository;
+}
+
+export interface RunPre6CGateOk {
+  ok: true;
+  gateResult: StoredPrePackageGateResult;
+  clarificationNeeds: StoredClarificationNeed[];
+  inquiryPackets: StoredInquiryPacket[];
+}
+
+export type RunPre6CGateResult =
+  | RunPre6CGateOk
+  | { ok: false; error: string };
+
+function conditionIssueText(conditionKey: SevenConditionKey, condition: SevenConditionAssessmentItem): string {
+  return `${conditionKey}: ${condition.status}. ${condition.rationale}`;
+}
+
+function targetForGateIssue(issueText: string, conditionKey?: SevenConditionKey): {
+  targetRole: string;
+  recommendedChannel: ClarificationNeed["recommendedChannel"];
+  questionType: ClarificationNeed["questionType"];
+  expectedAnswerType: ClarificationNeed["expectedAnswerType"];
+} {
+  const text = issueText.toLowerCase();
+  if (text.includes("external") || text.includes("cross-functional") || text.includes("upstream") || text.includes("downstream") || text.includes("handoff outside")) {
+    return { targetRole: "External or cross-functional process owner", recommendedChannel: "external_interface_review", questionType: "formal_email_inquiry", expectedAnswerType: "other" };
+  }
+  if (text.includes("approval") || text.includes("authority") || text.includes("owner") || text.includes("threshold") || conditionKey === "controls_approvals" || conditionKey === "handoffs_responsibility") {
+    return { targetRole: "Manager or department owner", recommendedChannel: "manager_follow_up", questionType: "choice_based_with_optional_explanation", expectedAnswerType: text.includes("threshold") ? "threshold_value" : "approval_rule" };
+  }
+  if (text.includes("boundary") || text.includes("policy") || text.includes("document") || conditionKey === "use_case_boundary") {
+    return { targetRole: "Department head or company-level owner", recommendedChannel: "source_document_review", questionType: "formal_email_inquiry", expectedAnswerType: "document_reference" };
+  }
+  if (text.includes("conflict") || text.includes("review")) {
+    return { targetRole: "Admin reviewer", recommendedChannel: "admin_review", questionType: "admin_review_decision", expectedAnswerType: "other" };
+  }
+  if (text.includes("exception") || text.includes("escalation")) {
+    return { targetRole: "Supervisor or senior role", recommendedChannel: "manager_follow_up", questionType: "meeting_agenda_item", expectedAnswerType: "free_text" };
+  }
+  return { targetRole: "Participant or frontline role", recommendedChannel: "participant_follow_up", questionType: "open_question", expectedAnswerType: "free_text" };
+}
+
+function usefulAnswerExample(expectedAnswerType: ClarificationNeed["expectedAnswerType"], targetRole: string): string {
+  if (expectedAnswerType === "threshold_value") return "Approval is required above 10,000 SAR; below that amount the coordinator can proceed.";
+  if (expectedAnswerType === "approval_rule") return "The department owner approves exceptions; routine requests are approved by the direct manager.";
+  if (expectedAnswerType === "document_reference") return "The policy reference is SOP-12, section 4.2, but actual execution differs for urgent cases.";
+  if (expectedAnswerType === "sequence_order") return "The coordinator checks the request first, then Finance reviews the tax form.";
+  if (expectedAnswerType === "owner_name") return "The Operations Manager owns the final decision.";
+  if (expectedAnswerType === "yes_no") return "Yes, this step happens before Finance receives the request.";
+  return `${targetRole} can answer with the actual step, owner, exception, or say "I do not know / another team handles this" if outside their role.`;
+}
+
+function gateBasis(readiness: WorkflowReadinessResult, id: string, summary: string): Pass6SourceBasis {
+  return {
+    basisId: `basis:${safeIdPart(id)}`,
+    basisType: "method_output",
+    summary,
+    references: [
+      {
+        referenceId: `ref:${safeIdPart(id)}:${safeIdPart(readiness.resultId)}`,
+        referenceType: "workflow_readiness_result",
+        notes: readiness.resultId,
+      },
+      {
+        referenceId: `ref:${safeIdPart(id)}:${safeIdPart(readiness.assembledWorkflowDraftId)}`,
+        referenceType: "assembled_workflow_draft",
+        notes: readiness.assembledWorkflowDraftId,
+      },
+    ],
+  };
+}
+
+function createClarificationNeedFromIssue(input: {
+  readiness: WorkflowReadinessResult;
+  issueId: string;
+  issueText: string;
+  conditionKey?: SevenConditionKey;
+  relatedWorkflowElementId?: string;
+  relatedClaimIds?: string[];
+  relatedDifferenceIds?: string[];
+  blocking: boolean;
+  priority?: ClarificationNeed["priority"];
+}): ClarificationNeed {
+  const target = targetForGateIssue(input.issueText, input.conditionKey);
+  const questionText = target.questionType === "admin_review_decision"
+    ? `Please review this material issue before package generation: ${input.issueText}`
+    : `Can you confirm the actual workflow detail for this gap: ${input.issueText}`;
+  return {
+    clarificationNeedId: `clarification_need:${safeIdPart(input.readiness.resultId)}:${safeIdPart(input.issueId)}`,
+    questionType: target.questionType,
+    questionText,
+    targetRole: target.targetRole,
+    whyItMatters: input.blocking
+      ? "This gap blocks Initial Package readiness until the missing or conflicting workflow detail is reviewed."
+      : "This warning can proceed only if the limitation remains visible and the admin accepts the caveat.",
+    relatedWorkflowElementId: input.relatedWorkflowElementId,
+    relatedGapId: input.issueId,
+    relatedSevenConditionKey: input.conditionKey ?? "unknown",
+    relatedClaimIds: input.relatedClaimIds,
+    relatedDifferenceIds: input.relatedDifferenceIds,
+    expectedAnswerType: target.expectedAnswerType,
+    exampleAnswer: usefulAnswerExample(target.expectedAnswerType, target.targetRole),
+    blockingStatus: input.blocking ? "blocking" : "non_blocking",
+    basis: gateBasis(input.readiness, input.issueId, "Pre-6C clarification need generated from WorkflowReadinessResult; draft only, not evidence."),
+    recommendedChannel: target.recommendedChannel,
+    priority: input.priority ?? (input.blocking ? "high" : "medium"),
+  };
+}
+
+function groupInquiryPackets(caseId: string, needs: ClarificationNeed[], now: string): InquiryPacket[] {
+  const groups = new Map<string, ClarificationNeed[]>();
+  for (const need of needs) {
+    const key = `${need.recommendedChannel}:${need.targetRole ?? need.targetRecipient ?? "unknown"}`;
+    groups.set(key, [...(groups.get(key) ?? []), need]);
+  }
+  return Array.from(groups.entries()).map(([key, clarificationNeeds]) => {
+    const first = clarificationNeeds[0];
+    return {
+      inquiryPacketId: `inquiry_packet:${safeIdPart(caseId)}:${safeIdPart(key)}`,
+      caseId,
+      targetRole: first?.targetRole,
+      targetRecipient: first?.targetRecipient,
+      clarificationNeeds,
+      packetStatus: "ready_for_admin_review",
+      createdAt: now,
+    };
+  });
+}
+
+function gateDecisionForReadiness(
+  readiness: WorkflowReadinessResult,
+  needs: ClarificationNeed[],
+  approval?: ProceedWithWarningsApprovalInput,
+): GateDecision {
+  if (readiness.readinessDecision === "ready_for_initial_package") return "no_gate_block_package_allowed";
+  if (readiness.readinessDecision === "ready_for_initial_package_with_warnings") {
+    return approval ? "proceed_with_warnings_approved" : "clarification_required_before_package";
+  }
+  if (readiness.readinessDecision === "needs_review_decision_before_package") return "review_decision_required_before_package";
+  if (readiness.readinessDecision === "needs_more_clarification_before_package") return "clarification_required_before_package";
+  return needs.length > 0 ? "clarification_required_before_package" : "package_blocked_gap_brief_required";
+}
+
+export function runPre6CGateFromReadiness(
+  input: RunPre6CGateInput,
+  repos: RunPre6CGateRepositories = {},
+): RunPre6CGateResult {
+  const readiness = input.workflowReadinessResult;
+  const now = input.now ?? new Date().toISOString();
+  const gateResultId = input.gateResultId ?? `pre_package_gate:${safeIdPart(readiness.resultId)}`;
+  const needs: ClarificationNeed[] = [];
+
+  const conditionRows = SEVEN_CONDITION_KEYS.map((conditionKey) => ({
+    conditionKey,
+    condition: readiness.sevenConditionAssessment.conditions[conditionKey],
+  }));
+
+  for (const row of conditionRows) {
+    if (row.condition.blocksInitialPackage || row.condition.status === "materially_broken" || row.condition.status === "unknown") {
+      needs.push(createClarificationNeedFromIssue({
+        readiness,
+        issueId: `condition:${row.conditionKey}`,
+        issueText: conditionIssueText(row.conditionKey, row.condition),
+        conditionKey: row.conditionKey,
+        blocking: row.condition.blocksInitialPackage || row.condition.status === "materially_broken" || row.condition.status === "unknown",
+        priority: row.condition.blocksInitialPackage ? "high" : "medium",
+      }));
+    }
+  }
+
+  for (const gapId of readiness.gapRiskSummary.gapIds) {
+    needs.push(createClarificationNeedFromIssue({
+      readiness,
+      issueId: gapId,
+      issueText: `${gapId}: ${readiness.gapRiskSummary.summary}`,
+      blocking: !readiness.is6CAllowed,
+      priority: readiness.is6CAllowed ? "medium" : "high",
+    }));
+  }
+
+  for (const difference of input.differences ?? []) {
+    if (difference.differenceType === "factual_conflict" || difference.recommendedRoute === "review_candidate" || difference.recommendedRoute === "blocker_candidate") {
+      needs.push(createClarificationNeedFromIssue({
+        readiness,
+        issueId: `difference:${difference.differenceId}`,
+        issueText: `${difference.differenceId}: ${difference.explanation}`,
+        relatedClaimIds: difference.involvedClaimIds,
+        relatedDifferenceIds: [difference.differenceId],
+        blocking: difference.recommendedRoute === "blocker_candidate" || readiness.readinessDecision === "needs_review_decision_before_package",
+        priority: difference.materiality === "high" ? "high" : "medium",
+      }));
+    }
+  }
+
+  if (readiness.readinessDecision === "ready_for_initial_package_with_warnings" && needs.length === 0) {
+    needs.push(createClarificationNeedFromIssue({
+      readiness,
+      issueId: "proceed-with-warnings",
+      issueText: `Proceed-with-warnings decision required. ${readiness.gapRiskSummary.summary}`,
+      blocking: false,
+      priority: "medium",
+    }));
+  }
+
+  const uniqueNeeds = uniqueBy(needs, (need) => need.clarificationNeedId);
+  for (const need of uniqueNeeds) {
+    const validation = validatePipelineRecord("ClarificationNeed", validateClarificationNeed(need));
+    if (!validation.ok) return { ok: false, error: validation.error };
+  }
+
+  const inquiryPackets = groupInquiryPackets(readiness.caseId, uniqueNeeds, now);
+  for (const packet of inquiryPackets) {
+    const validation = validatePipelineRecord("InquiryPacket", validateInquiryPacket(packet));
+    if (!validation.ok) return { ok: false, error: validation.error };
+  }
+
+  const gateDecision = gateDecisionForReadiness(readiness, uniqueNeeds, input.proceedWithWarningsApproval);
+  const gateResult: PrePackageGateResult = {
+    gateResultId,
+    caseId: readiness.caseId,
+    workflowReadinessResultId: readiness.resultId,
+    gateDecision,
+    clarificationNeeds: uniqueNeeds,
+    inquiryPackets,
+    proceedWithWarningsApproval: input.proceedWithWarningsApproval ? {
+      approvalStatus: "approved",
+      approvedBy: input.proceedWithWarningsApproval.approvedBy,
+      approvedAt: input.proceedWithWarningsApproval.approvedAt ?? now,
+      approvalNote: input.proceedWithWarningsApproval.approvalNote,
+      warningsAccepted: readiness.gapRiskSummary.riskIds.length > 0 ? readiness.gapRiskSummary.riskIds : readiness.routingRecommendations,
+      reasonForProceeding: input.proceedWithWarningsApproval.reasonForProceeding,
+      limitationsToKeepVisible: [
+        readiness.gapRiskSummary.summary,
+        "Proceed-with-warnings does not close the gap and does not convert warning material into evidence.",
+      ],
+      followUpRecommendation: "Keep accepted warnings visible in later 6C output and follow up after package delivery if needed.",
+    } : undefined,
+  };
+  const gateValidation = validatePipelineRecord("PrePackageGateResult", validatePrePackageGateResult(gateResult));
+  if (!gateValidation.ok) return { ok: false, error: gateValidation.error };
+
+  const storedGate: StoredPrePackageGateResult = { ...gateResult, createdAt: now, updatedAt: now };
+  const storedNeeds: StoredClarificationNeed[] = uniqueNeeds.map((need) => ({ ...need, createdAt: now, updatedAt: now }));
+  const storedPackets: StoredInquiryPacket[] = inquiryPackets.map((packet) => ({ ...packet, updatedAt: now }));
+
+  if (input.persist !== false) {
+    repos.prePackageGateResults?.save(storedGate);
+    for (const need of storedNeeds) repos.clarificationNeeds?.save(need);
+    for (const packet of storedPackets) repos.inquiryPackets?.save(packet);
+  }
+
+  return { ok: true, gateResult: storedGate, clarificationNeeds: storedNeeds, inquiryPackets: storedPackets };
+}
+
+export function runPre6CGateFromRepositories(
+  workflowReadinessResultId: string,
+  repos: {
+    workflowReadinessResults: WorkflowReadinessResultRepository;
+    assembledWorkflowDrafts?: AssembledWorkflowDraftRepository;
+    differenceInterpretations?: DifferenceInterpretationRepository;
+  } & RunPre6CGateRepositories,
+  input: Omit<RunPre6CGateInput, "workflowReadinessResult" | "assembledWorkflowDraft" | "differences"> = {},
+): RunPre6CGateResult {
+  const readiness = repos.workflowReadinessResults.findById(workflowReadinessResultId);
+  if (!readiness) return { ok: false, error: `WorkflowReadinessResult '${workflowReadinessResultId}' not found.` };
+  return runPre6CGateFromReadiness({
+    ...input,
+    workflowReadinessResult: readiness,
+    assembledWorkflowDraft: repos.assembledWorkflowDrafts?.findById(readiness.assembledWorkflowDraftId) ?? undefined,
+    differences: repos.differenceInterpretations?.findByCaseId(readiness.caseId) ?? [],
+  }, repos);
 }
 
 // ---------------------------------------------------------------------------

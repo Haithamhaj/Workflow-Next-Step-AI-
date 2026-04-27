@@ -45,7 +45,9 @@ Pass 6 Block 11 — 6B Workflow Assembly and Claim-Basis Map is accepted.
 
 Pass 6 Block 12 — 6B Seven-Condition Evaluation and Workflow Readiness Result is accepted.
 
-Pass 6 Block 13 — 6B Methodology / Analysis Report and Admin Evaluation Surface is the current completed implementation block pending acceptance.
+Pass 6 Block 13 — 6B Methodology / Analysis Report and Admin Evaluation Surface is accepted.
+
+Pass 6 Block 14 — Pre-6C Gap Closure, Inquiry Gate, and Question Generation is the current completed implementation block pending acceptance.
 
 Technical Decomposition v4 is the active Pass 6 build map.
 
@@ -236,6 +238,18 @@ Block 13 is admin/internal report and evaluation surface work only.
 - Admin surface is read-only and does not edit or override readiness.
 - No Pre-6C behavior, Pre-6C question generation, 6C generation, visual-core integration, Copilot runtime behavior, Pass 7 mechanics, readiness override behavior, or provider calls start in Block 13.
 - Next implementation step after acceptance is Block 14 — Pre-6C Gap Closure, Inquiry Gate, and Question Generation.
+
+## Pass 6 Block 14 Acceptance Gate
+
+Block 14 is Pre-6C gate and inquiry draft work only.
+
+- A `WorkflowReadinessResult` can produce a `PrePackageGateResult`.
+- Clarification needs and inquiry packets are deterministic, reviewable, admin-facing drafts only.
+- Questions include target, why it matters, related workflow/gap/condition/claim/difference references, expected answer type, example answer, blocking status, basis, channel, and priority.
+- Proceed-with-warnings approval records accepted warnings and limitations but does not close gaps or create evidence.
+- Admin/API surfaces can list, run, and inspect Pre-6C gate results.
+- No message/email sending, answer collection, participant re-contact execution, evidence update, 6C generation, Workflow Gap Closure Brief generation, visual-core integration, Copilot runtime behavior, Pass 7 mechanics, or provider calls start in Block 14.
+- Next implementation step after acceptance is Block 15 — Cross-Department / External Interface Handling.
 
 ## Active Pass 6 Block Map
 

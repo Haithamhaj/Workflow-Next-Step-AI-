@@ -349,6 +349,13 @@ export type GateDecision =
 
 export interface ClarificationNeed {
   clarificationNeedId: string;
+  questionType:
+    | "open_question"
+    | "open_question_with_helper_choices"
+    | "choice_based_with_optional_explanation"
+    | "meeting_agenda_item"
+    | "formal_email_inquiry"
+    | "admin_review_decision";
   questionText: string;
   targetRecipient?: string;
   targetRole?: string;
@@ -356,6 +363,8 @@ export interface ClarificationNeed {
   relatedWorkflowElementId?: string;
   relatedGapId?: string;
   relatedSevenConditionKey?: SevenConditionKey | "unknown";
+  relatedClaimIds?: string[];
+  relatedDifferenceIds?: string[];
   expectedAnswerType:
     | "free_text"
     | "yes_no"
@@ -397,9 +406,14 @@ export interface PrePackageGateResult {
   clarificationNeeds: ClarificationNeed[];
   inquiryPackets: InquiryPacket[];
   proceedWithWarningsApproval?: {
+    approvalStatus?: "requested" | "approved" | "rejected";
     approvedBy: string;
     approvedAt: string;
     approvalNote: string;
+    warningsAccepted?: string[];
+    reasonForProceeding?: string;
+    limitationsToKeepVisible?: string[];
+    followUpRecommendation?: string;
   };
 }
 
