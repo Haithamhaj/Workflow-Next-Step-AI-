@@ -1,19 +1,24 @@
+"use client";
+
 import styles from "../workspace.module.css";
 import type { WorkspaceDictionary } from "../_i18n";
+import { usePathname } from "next/navigation";
 
 const sections = [
-  { id: "commandCenter", anchor: "commandCenter", labelKey: "commandCenter" },
-  { id: "sources", anchor: "sources", labelKey: "sources" },
-  { id: "hierarchy", anchor: "hierarchy", labelKey: "hierarchy" },
-  { id: "targeting", anchor: "targeting", labelKey: "targeting" },
-  { id: "evidence", anchor: "evidence", labelKey: "evidence" },
-  { id: "analysis", anchor: "analysis", labelKey: "analysis" },
-  { id: "promptStudio", anchor: "promptStudio", labelKey: "promptStudio" },
-  { id: "package", anchor: "package", labelKey: "package" },
-  { id: "advanced", anchor: "advanced", labelKey: "advanced" },
+  { id: "commandCenter", href: "/workspace", labelKey: "commandCenter" },
+  { id: "sources", href: "/workspace/sources", labelKey: "sources" },
+  { id: "hierarchy", href: "/workspace/hierarchy", labelKey: "hierarchy" },
+  { id: "targeting", href: "/workspace/targeting", labelKey: "targeting" },
+  { id: "evidence", href: "/workspace/evidence", labelKey: "evidence" },
+  { id: "analysis", href: "/workspace/analysis", labelKey: "analysis" },
+  { id: "promptStudio", href: "/workspace/prompts", labelKey: "promptStudio" },
+  { id: "package", href: "/workspace/package", labelKey: "package" },
+  { id: "advanced", href: "/workspace/advanced", labelKey: "advanced" },
 ] as const;
 
 export function WorkspaceNav({ dictionary }: { dictionary: WorkspaceDictionary }) {
+  const pathname = usePathname();
+
   return (
     <aside className={styles.workspaceNav} aria-label="Workspace sections">
       <div className={styles.workspaceBrand}>
@@ -24,7 +29,11 @@ export function WorkspaceNav({ dictionary }: { dictionary: WorkspaceDictionary }
         <ul className={styles.workspaceNavList}>
           {sections.map((section) => (
             <li key={section.id}>
-              <a className={styles.workspaceNavLink} href={`#${section.anchor}`}>
+              <a
+                className={pathname === section.href ? `${styles.workspaceNavLink} ${styles.workspaceNavLinkActive}` : styles.workspaceNavLink}
+                href={section.href}
+                aria-current={pathname === section.href ? "page" : undefined}
+              >
                 {dictionary.nav[section.labelKey]}
               </a>
             </li>

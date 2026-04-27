@@ -24,6 +24,15 @@ export const en = {
       "Static placeholder only. Production data, actions, and guided state will be added in later slices.",
     advancedLinksLabel: "advanced links",
   },
+  placeholder: {
+    stageLabel: "Workspace placeholder",
+    futureCapabilities: "Future capabilities",
+    advancedLinks: "Advanced raw routes",
+    noAdvancedLinks: "No advanced links are needed for this placeholder yet.",
+    screenBoundaryTitle: "Screen boundary",
+    displayOnly:
+      "This workspace screen is display and planning only in this slice. It does not own business logic.",
+  },
   nav: {
     commandCenter: "Command Center",
     sources: "Sources",
@@ -94,5 +103,111 @@ export const en = {
     reviewIssues: "Review issues",
     synthesis: "Synthesis",
     evaluations: "Evaluations",
+    pass6Methods: "Pass 6 methods",
+    pass6Configuration: "Pass 6 configuration",
+  },
+  pages: {
+    sources: {
+      eyebrow: "Stage 2",
+      title: "Sources & Context",
+      purpose: "Source and context workbench placeholder.",
+      boundary:
+        "Sources help interpretation but do not become workflow truth by default.",
+      capabilities: [
+        "Registered sources",
+        "Source processing status",
+        "Source role and scope review",
+        "Document signal vs workflow truth",
+      ],
+    },
+    hierarchy: {
+      eyebrow: "Stage 3",
+      title: "Hierarchy",
+      purpose: "Hierarchy reasoning and structural grounding placeholder.",
+      boundary: "Hierarchy approval confirms structure, not workflow truth.",
+      capabilities: [
+        "Approved hierarchy snapshot",
+        "Source-to-role signals",
+        "External interface markers",
+        "Readiness toward targeting",
+      ],
+    },
+    targeting: {
+      eyebrow: "Stage 4",
+      title: "Targeting",
+      purpose: "Participant targeting and rollout planning placeholder.",
+      boundary:
+        "Participant targeting is planning, not workflow truth. Question hints are not fixed questions and are not sent automatically.",
+      capabilities: [
+        "Suggested participants",
+        "Contact readiness",
+        "Rollout order",
+        "Question seeds for later",
+      ],
+    },
+    evidence: {
+      eyebrow: "Stage 5",
+      title: "Evidence",
+      purpose: "Participant evidence and transcript review placeholder.",
+      boundary: "Accepted evidence is not final workflow truth.",
+      capabilities: [
+        "Participant sessions",
+        "Transcript trust review",
+        "Evidence extraction status",
+        "Clarifications, disputes, and boundaries",
+      ],
+    },
+    analysis: {
+      eyebrow: "Stage 6",
+      title: "Analysis",
+      purpose: "Pass 6 preparation, analysis, readiness, and package gate placeholder.",
+      boundary:
+        "Methods explain analysis; they do not invent evidence. Scores cannot approve the package by themselves.",
+      capabilities: [
+        "Prepare evidence folders",
+        "Method and lens analysis",
+        "Readiness dimensions",
+        "Pre-6C gate status",
+      ],
+    },
+    prompts: {
+      eyebrow: "Prompt Studio",
+      title: "Prompt Studio",
+      purpose: "Friendly Prompt Studio placeholder.",
+      boundary:
+        "Prompts can affect wording, extraction behavior, clarification style, drafting style, explanation style, and Copilot answer style. Prompts must not own state transitions, approval gates, package eligibility, release decisions, locked governance, or evidence trust.",
+      capabilities: [
+        "Active prompt profiles",
+        "Draft vs active comparison",
+        "Prompt test results",
+        "Advanced PromptOps links",
+      ],
+    },
+    package: {
+      eyebrow: "Package",
+      title: "Package",
+      purpose: "Package readiness and preview placeholder.",
+      boundary:
+        "Initial Package is not Final Package. Current workflow reality and target-state workflow must remain separate.",
+      capabilities: [
+        "Initial Package readiness",
+        "Gap brief",
+        "Workflow visual preview",
+        "Client-safe package preview",
+      ],
+    },
+    advanced: {
+      eyebrow: "Advanced",
+      title: "Advanced Details",
+      purpose: "Safe escape hatch to raw admin surfaces.",
+      boundary:
+        "Advanced surfaces are for inspection and troubleshooting. They are not the guided workflow path.",
+      capabilities: [
+        "Raw admin routes",
+        "Provider and prompt logs",
+        "Package and admin records",
+        "Debug and proof surfaces",
+      ],
+    },
   },
 } as const;
