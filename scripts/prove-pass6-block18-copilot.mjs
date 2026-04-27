@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 
+import { providerRegistry } from "../packages/integrations/dist/index.js";
 import { createInMemoryStore } from "../packages/persistence/dist/index.js";
 import {
   defaultPass6PromptSpec,
@@ -293,6 +294,7 @@ const beforeCounts = {
   claims: store.workflowClaims.findAll().length,
   gates: store.prePackageGateResults.findAll().length,
   packages: store.initialWorkflowPackages.findAll().length,
+  readiness: store.workflowReadinessResults.findAll().length,
   visuals: store.workflowGraphRecords.findAll().length,
   pass7: store.pass7ReviewCandidates.findAll().length,
 };
@@ -358,5 +360,48 @@ assert.equal(answer.boundary.noAutonomousWrites, true);
 assert.equal(answer.boundary.noParticipantFacingSends, true);
 assert.equal(answer.boundary.noMessageOrEmailSending, true);
 assert.equal(answer.boundary.noPass7Mechanics, true);
+
+assert.equal(providerRegistry.resolveDefaultPromptTextProvider(), "openai", "OpenAI is the default Pass 6 text intelligence provider");
+const realProvider = providerRegistry.getPromptTextProvider("openai");
+if (realProvider) {
+  const realInteraction = await runPass6Copilot({
+    caseId,
+    question: "In one short answer, explain whether 6C is allowed and name one safe next inspection route.",
+    provider: realProvider,
+    providerName: "openai",
+    interactionId: "copilot-real-openai-proof",
+    now: "2026-04-28T02:01:00.000Z",
+  }, store);
+  assert.equal(realInteraction.interaction.status, "succeeded", realInteraction.interaction.failureMessage ?? "real OpenAI Copilot call failed");
+  assert.equal(realInteraction.interaction.providerName, "openai", "real Copilot interaction records OpenAI provider");
+  assert.ok(realInteraction.interaction.answer && realInteraction.interaction.answer.length > 0, "real OpenAI Copilot response is stored");
+  assert.deepEqual(
+    store.pass6CopilotInteractions.findById("copilot-real-openai-proof")?.answer,
+    realInteraction.interaction.answer,
+    "real OpenAI Copilot response is persisted as a Copilot interaction record",
+  );
+  assert.equal(realInteraction.interaction.routedActionRecommendations.every((item) => item.executesAutomatically === false), true, "real Copilot routed actions remain recommendations only");
+  assert.equal(store.synthesisInputBundles.findAll().length, beforeCounts.bundles, "real Copilot must not mutate 6A bundles");
+  assert.equal(store.workflowClaims.findAll().length, beforeCounts.claims, "real Copilot must not mutate claims");
+  assert.equal(store.workflowReadinessResults.findAll().length, beforeCounts.readiness, "real Copilot must not recalculate readiness");
+  assert.equal(store.prePackageGateResults.findAll().length, beforeCounts.gates, "real Copilot must not create gates");
+  assert.equal(store.initialWorkflowPackages.findAll().length, beforeCounts.packages, "real Copilot must not create packages");
+  assert.equal(store.workflowGraphRecords.findAll().length, beforeCounts.visuals, "real Copilot must not create visuals");
+  assert.equal(store.pass7ReviewCandidates.findAll().length, beforeCounts.pass7, "real Copilot must not create Pass 7 records");
+  console.log("Pass 6 Block 18 real OpenAI Copilot success path proved.");
+} else {
+  const unavailable = await runPass6Copilot({
+    caseId,
+    question: "Explain whether 6C is allowed.",
+    provider: null,
+    providerName: "openai",
+    interactionId: "copilot-real-openai-unavailable-proof",
+    now: "2026-04-28T02:01:00.000Z",
+  }, store);
+  assert.equal(unavailable.interaction.status, "failed");
+  assert.equal(unavailable.interaction.failureCode, "provider_not_configured");
+  assert.ok(store.pass6CopilotInteractions.findById("copilot-real-openai-unavailable-proof"), "missing provider failure is persisted visibly");
+  console.log("Pass 6 Block 18 real OpenAI Copilot success path not run: OPENAI_API_KEY unavailable.");
+}
 
 console.log("Pass 6 Block 18 Copilot proof passed.");
