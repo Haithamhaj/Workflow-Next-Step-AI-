@@ -49,6 +49,26 @@ export function WorkspacePanel({
   );
 }
 
+export function WorkspaceCommandSection({
+  title,
+  description,
+  children,
+}: {
+  title: string;
+  description: string;
+  children: ReactNode;
+}) {
+  return (
+    <section className={styles.workspaceCommandSection} aria-label={title}>
+      <div className={styles.workspaceCommandSectionHeader}>
+        <h3>{title}</h3>
+        <p>{description}</p>
+      </div>
+      {children}
+    </section>
+  );
+}
+
 export function PriorityActionBanner({ dictionary }: { dictionary: WorkspaceDictionary }) {
   return (
     <section className={styles.workspacePriorityBanner} aria-label={dictionary.visual.priority.urgency}>
@@ -76,13 +96,7 @@ export function CommandCenterDashboard({ dictionary }: { dictionary: WorkspaceDi
         </div>
         <PriorityActionBanner dictionary={dictionary} />
       </div>
-      <div className={styles.workspaceDashboardBelow}>
-        <CommandSummaryCards dictionary={dictionary} />
-        <div className={styles.workspaceDashboardStack}>
-          <EvidenceMetricRow dictionary={dictionary} compact />
-          <PackageReadinessStrip dictionary={dictionary} compact />
-        </div>
-      </div>
+      <CommandSummaryCards dictionary={dictionary} />
     </section>
   );
 }
@@ -234,6 +248,25 @@ export function PackageReadinessStrip({ dictionary, compact = false }: { diction
         ))}
       </div>
     </WorkspacePanel>
+  );
+}
+
+export function PackageReadinessOverview({ dictionary }: { dictionary: WorkspaceDictionary }) {
+  return (
+    <div className={styles.workspaceSectionGridTwo}>
+      <PackageReadinessStrip dictionary={dictionary} />
+      <WorkspacePanel title={dictionary.visual.screenPanels.package.gapBriefTitle}>
+        <p className={styles.workspaceCardPurpose}>{dictionary.visual.screenPanels.package.gapBrief}</p>
+        <div className={styles.workspaceBlockerList}>
+          <h4>{dictionary.visual.screenPanels.package.blockersTitle}</h4>
+          <ul>
+            {dictionary.visual.screenPanels.package.blockers.map((blocker) => (
+              <li key={blocker}>{blocker}</li>
+            ))}
+          </ul>
+        </div>
+      </WorkspacePanel>
+    </div>
   );
 }
 

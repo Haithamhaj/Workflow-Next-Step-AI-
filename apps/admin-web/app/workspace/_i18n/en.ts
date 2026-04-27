@@ -190,6 +190,32 @@ export const en = {
       "Static orientation map showing how the guided workspace will organize the connected workflow.",
     evidenceIntegrityTitle: "Evidence integrity summary",
     orientationTitle: "Structure map and workflow map are different views.",
+    commandSections: {
+      critical: {
+        title: "Critical Command Summary",
+        description: "What is active, what is blocked, and what to do next.",
+      },
+      evidence: {
+        title: "Evidence & Review State",
+        description: "Why the next safe action is needed.",
+      },
+      package: {
+        title: "Package Readiness",
+        description: "Whether Initial Package can proceed and why the path is blocked.",
+      },
+      journey: {
+        title: "Journey / Stage Progress",
+        description: "Pass 1-6 progress without competing with the first view.",
+      },
+      visual: {
+        title: "Visual Orientation / Maps",
+        description: "Structure and workflow views stay separate.",
+      },
+      static: {
+        title: "Static / Advanced Modules",
+        description: "Connected-later and advanced surfaces without changing workflow truth.",
+      },
+    },
     commandSummary: [
       { label: "Active stage", value: "Participant Evidence", status: "blocked" },
       { label: "Next safe action", value: "Review blockers", status: "needsReview" },

@@ -11,10 +11,13 @@ import { WorkspaceSectionCard } from "./WorkspaceSectionCard";
 import { WorkspaceShell } from "./WorkspaceShell";
 import {
   CommandCenterDashboard,
+  EvidenceMetricRow,
   OrientationVisuals,
+  PackageReadinessOverview,
   ReviewIssueList,
   StageJourneyMap,
   TruthBoundaryCard,
+  WorkspaceCommandSection,
 } from "./WorkspaceVisualSystem";
 import styles from "../workspace.module.css";
 
@@ -52,13 +55,7 @@ const sectionLinks = {
   ],
 } as const;
 
-const sectionOrder = [
-  "commandCenter",
-  "sources",
-  "hierarchy",
-  "targeting",
-  "evidence",
-  "analysis",
+const staticModuleOrder = [
   "promptStudio",
   "package",
   "advanced",
@@ -80,38 +77,69 @@ export function WorkspaceHome() {
       language={language}
       onToggleLanguage={toggleLanguage}
     >
-      <CommandCenterDashboard dictionary={dictionary} />
+      <WorkspaceCommandSection
+        title={dictionary.visual.commandSections.critical.title}
+        description={dictionary.visual.commandSections.critical.description}
+      >
+        <CommandCenterDashboard dictionary={dictionary} />
+      </WorkspaceCommandSection>
 
-      <StageJourneyMap dictionary={dictionary} compact />
+      <WorkspaceCommandSection
+        title={dictionary.visual.commandSections.evidence.title}
+        description={dictionary.visual.commandSections.evidence.description}
+      >
+        <EvidenceMetricRow dictionary={dictionary} />
+        <ReviewIssueList dictionary={dictionary} limit={3} />
+        <TruthBoundaryCard dictionary={dictionary} />
+      </WorkspaceCommandSection>
 
-      <ReviewIssueList dictionary={dictionary} limit={3} />
+      <WorkspaceCommandSection
+        title={dictionary.visual.commandSections.package.title}
+        description={dictionary.visual.commandSections.package.description}
+      >
+        <PackageReadinessOverview dictionary={dictionary} />
+      </WorkspaceCommandSection>
 
-      <OrientationVisuals dictionary={dictionary} />
+      <WorkspaceCommandSection
+        title={dictionary.visual.commandSections.journey.title}
+        description={dictionary.visual.commandSections.journey.description}
+      >
+        <StageJourneyMap dictionary={dictionary} compact />
+      </WorkspaceCommandSection>
 
-      <TruthBoundaryCard dictionary={dictionary} />
+      <WorkspaceCommandSection
+        title={dictionary.visual.commandSections.visual.title}
+        description={dictionary.visual.commandSections.visual.description}
+      >
+        <OrientationVisuals dictionary={dictionary} />
+      </WorkspaceCommandSection>
 
-      <WorkspaceBoundaryNote dictionary={dictionary} />
+      <WorkspaceCommandSection
+        title={dictionary.visual.commandSections.static.title}
+        description={dictionary.visual.commandSections.static.description}
+      >
+        <WorkspaceBoundaryNote dictionary={dictionary} />
+        <div className={styles.workspaceGrid}>
+          {staticModuleOrder.map((sectionId) => {
+            const section = dictionary.sections[sectionId];
+            const links = (sectionLinks[sectionId] ?? []).map((link) => ({
+              href: link.href,
+              label: dictionary.links[link.labelKey],
+            }));
 
-      <div className={styles.workspaceGrid}>
-        {sectionOrder.map((sectionId) => {
-          const section = dictionary.sections[sectionId];
-          const links = (sectionLinks[sectionId as keyof typeof sectionLinks] ?? []).map((link) => ({
-            href: link.href,
-            label: dictionary.links[link.labelKey],
-          }));
-
-          return (
-            <WorkspaceSectionCard
-              key={sectionId}
-              id={sectionId}
-              name={section.name}
-              purpose={section.purpose}
-              dictionary={dictionary}
-              links={links}
-            />
-          );
-        })}
-      </div>
+            return (
+              <WorkspaceSectionCard
+                key={sectionId}
+                id={sectionId}
+                name={section.name}
+                purpose={section.purpose}
+                dictionary={dictionary}
+                links={links}
+              />
+            );
+          })}
+        </div>
+      </WorkspaceCommandSection>
     </WorkspaceShell>
   );
 }
