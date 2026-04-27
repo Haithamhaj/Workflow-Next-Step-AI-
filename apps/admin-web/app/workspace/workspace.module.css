@@ -1,10 +1,11 @@
 .workspaceRoot {
   min-height: calc(100vh - 48px);
   position: relative;
-  width: 100%;
-  max-width: 100%;
-  display: flex;
-  flex-direction: row;
+  width: min(1180px, calc(100vw - 276px));
+  max-width: none;
+  display: grid;
+  grid-template-columns: 208px minmax(0, 1fr);
+  grid-template-areas: "nav main";
   box-sizing: border-box;
   border: 1px solid #1f2b3a;
   border-radius: 14px;
@@ -16,12 +17,13 @@
 
 .workspaceRoot[dir="rtl"] {
   direction: ltr;
+  grid-template-columns: minmax(0, 1fr) 208px;
+  grid-template-areas: "main nav";
 }
 
 .workspaceNav {
-  width: 224px;
-  min-width: 224px;
-  max-width: 224px;
+  grid-area: nav;
+  min-width: 0;
   background: #111827;
   color: #c9d3e2;
   padding: 18px 14px;
@@ -33,6 +35,11 @@
 .workspaceRoot[dir="rtl"] .workspaceNav,
 .workspaceRoot[dir="rtl"] .workspaceMain {
   direction: rtl;
+}
+
+.workspaceRoot[dir="rtl"] .workspaceNav {
+  border-right: none;
+  border-left: 1px solid #263244;
 }
 
 .workspaceBrand {
@@ -94,7 +101,7 @@
 }
 
 .workspaceMain {
-  flex: 1;
+  grid-area: main;
   min-width: 0;
   max-width: 100%;
   overflow-x: hidden;
@@ -295,7 +302,7 @@
 .workspaceDashboardHero {
   min-width: 0;
   display: grid;
-  grid-template-columns: minmax(0, 0.42fr) minmax(0, 0.58fr);
+  grid-template-columns: 1fr;
   gap: 16px;
   align-items: stretch;
   margin-bottom: 14px;
@@ -380,10 +387,10 @@
   min-height: 100%;
   margin: 0;
   padding: 20px;
-  display: flex;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
   align-items: flex-start;
-  justify-content: flex-start;
-  flex-direction: column;
+  justify-content: stretch;
   gap: 18px;
   border: 1px solid #f8c471;
   border-radius: 12px;
@@ -1229,7 +1236,7 @@
 @media (max-width: 1320px) {
   .workspacePriorityBanner {
     align-items: flex-start;
-    flex-direction: column;
+    grid-template-columns: 1fr;
   }
 
   .workspaceStaticAction {
@@ -1237,20 +1244,35 @@
   }
 }
 
+@media (max-width: 900px) {
+  .workspaceRoot {
+    width: calc(100vw - 40px);
+  }
+}
+
 @media (max-width: 640px) {
   .workspaceRoot {
-    display: flex;
-    flex-direction: row;
+    width: calc(100vw - 40px);
+    display: grid;
+    grid-template-columns: 150px minmax(0, 1fr);
+    grid-template-areas: "nav main";
+  }
+
+  .workspaceRoot[dir="rtl"] {
+    grid-template-columns: minmax(0, 1fr) 150px;
+    grid-template-areas: "main nav";
   }
 
   .workspaceNav {
-    width: 150px;
-    min-width: 150px;
-    max-width: 150px;
     border-right: 1px solid #263244;
     border-left: none;
     border-bottom: none;
     padding: 48px 10px 12px;
+  }
+
+  .workspaceRoot[dir="rtl"] .workspaceNav {
+    border-right: none;
+    border-left: 1px solid #263244;
   }
 
   .workspaceBrand {
