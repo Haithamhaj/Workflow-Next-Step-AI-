@@ -126,6 +126,20 @@ Pass 6 Block 7 adds an admin-visible review surface for prepared 6A bundles only
 - Block 7 does not implement provider calls, 6B claim formation, scoring execution, method registry execution, difference interpretation, workflow assembly, seven-condition evaluation, readiness routing, Pre-6C behavior, 6C package generation, visual-core integration, Copilot runtime behavior, or Pass 7 mechanics.
 - Next implementation step after Block 7 acceptance is Block 8 — 6B Method Registry and Analysis Policy.
 
+## Pass 6 Block 8 — 6B Method Registry and Analysis Policy
+
+Pass 6 Block 8 adds the 6B method registry and analysis policy layer only.
+
+- Added admin-visible method registry definitions for BPMN / Process Structure, SIPOC Boundary, Triangulation, Espoused Theory vs Theory-in-Use, RACI / Responsibility, SSM / Multi-Perspective, and APQC Vocabulary.
+- Added default problem-type to primary-method selection rules.
+- Added conditional multi-lens policy representation for unclear, high-materiality, low-confidence, disputed, document-sensitive, and layer-sensitive situations.
+- Added method usage traceability scaffold for later `AnalysisMethodUsage`, including system-selected and admin-forced examples.
+- Added config-backed active/inactive method resolution and draft method toggle support through the existing Pass 6 configuration profile.
+- Added admin API/UI surfaces at `/pass6/methods` and `/pass6/methods/[methodKey]`.
+- Locked method boundaries are visible and not editable as behavior rules.
+- Block 8 does not implement provider calls, workflow unit extraction, workflow claim formation, scoring execution over real claims, difference interpretation execution, workflow assembly, seven-condition evaluation, readiness routing, Pre-6C behavior, 6C package generation, visual-core integration, Copilot runtime behavior, or Pass 7 mechanics.
+- Next implementation step after Block 8 acceptance is Block 9 — 6B Workflow Unit and Claim Pipeline.
+
 **Pass 5 — Participant Session Outreach / Narrative-First Clarification is accepted, closed, integrated, and archived on `main`.**
 
 Final Pass 5 status: `pass5_participant_session_outreach_accepted`

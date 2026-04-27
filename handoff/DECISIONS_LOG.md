@@ -74,6 +74,14 @@ Status: LOCKED | FORMALIZED | IMPL-EXTENSION
 - **Document/source signals remain visibly signal-only in the admin surface** — the UI and review detail output explicitly state that document/source signals are not operational truth by default — LOCKED
 - **Boundary warnings are part of the review surface** — detail output states that 6A preparation has occurred and that no workflow synthesis, workflow readiness evaluation, or package generation has occurred — LOCKED
 
+## Pass 6 Block 8 — 6B Method Registry and Analysis Policy
+
+- **Method registry is metadata and policy only in Block 8** — methods/lenses/tools are defined, versioned, admin-visible, config-resolved, and traceable, but they are not applied to workflow units, claims, differences, drafts, readiness, or packages in this block — LOCKED
+- **Default method selection is represented but not executed** — problem-type mappings identify the primary method for later blocks, while Block 8 performs no workflow unit extraction, claim formation, scoring, or difference interpretation — LOCKED
+- **Conditional multi-lens policy prevents false clean merges** — complementary findings may be merged later, supporting findings may raise confidence later, and conflicting findings must be routed as differences later instead of being merged into fake clean workflow — LOCKED
+- **Method active/inactive state is configurable through Pass 6 configuration profiles** — admins can toggle methods in draft configuration, but locked method boundaries remain visible and not editable as behavior rules — LOCKED
+- **Admin-forced methods are traceability scaffold only** — forcing a method is represented for later analysis traceability and does not execute analysis, approve truth, or override locked governance in Block 8 — LOCKED
+
 ## contracts
 
 - **Ajv 8 + ajv-formats for JSON Schema validation** — industry standard, fast, supports Draft-07, formats plugin needed for `date-time` and `uri` — LOCKED

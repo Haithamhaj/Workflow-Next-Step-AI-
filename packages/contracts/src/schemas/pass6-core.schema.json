@@ -266,6 +266,10 @@
           "type": "string",
           "enum": ["system_selected", "admin_forced"]
         },
+        "methodRole": {
+          "type": "string",
+          "enum": ["primary", "secondary", "supporting", "admin_forced"]
+        },
         "appliedToType": {
           "type": "string",
           "enum": ["bundle", "workflow_unit", "claim", "difference", "workflow_draft", "readiness_assessment", "gap", "package_section"]

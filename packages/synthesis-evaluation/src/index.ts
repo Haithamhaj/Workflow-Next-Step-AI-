@@ -36,6 +36,8 @@ import {
   type EvaluationRecord,
   type EvaluationAxes,
   type EvaluationConditions,
+  type AnalysisMethodKey,
+  type AnalysisMethodUsage,
   type BoundarySignal,
   type ClarificationCandidate,
   type EvidenceAnchor,
@@ -117,6 +119,7 @@ export type {
   Pass6ConfigStatus,
   Pass6LockedGovernanceRule,
   Pass6PolicySet,
+  Pass6MethodConfig,
 } from "@workflow/contracts";
 
 // ---------------------------------------------------------------------------
@@ -1332,6 +1335,404 @@ export function rollbackPass6ConfigurationProfile(
   const stored = { ...draft, rollbackReference: previous.configId };
   repo.save(stored);
   return { ok: true, draft: stored };
+}
+
+// ---------------------------------------------------------------------------
+// Pass 6B Method Registry and Analysis Policy — Block 8
+// ---------------------------------------------------------------------------
+
+export type Pass6AnalysisMethodType =
+  | "methodology"
+  | "lens"
+  | "tool"
+  | "vocabulary_support";
+
+export type Pass6MethodProblemType =
+  | "step_order_process_structure_handoff_sequence"
+  | "start_end_input_output_trigger_use_case_boundary"
+  | "claim_support_repeated_evidence_disagreement_support_map"
+  | "policy_document_management_view_vs_frontline_practice"
+  | "ownership_approval_accountability_handoff_responsibility"
+  | "different_layers_or_departments_see_different_realities"
+  | "process_naming_terminology_process_family_alignment";
+
+export interface Pass6MethodRegistryItem {
+  methodId: string;
+  methodKey: AnalysisMethodKey;
+  displayName: string;
+  methodType: Pass6AnalysisMethodType;
+  shortDefinition: string;
+  normalUseCases: string[];
+  requiredInputs: string[];
+  expectedOutputs: string[];
+  scoringOrClassificationImpact: string[];
+  limitations: string[];
+  hardBoundaries: string[];
+  active: boolean;
+  methodVersion: string;
+  adminFacingDescription: string;
+  defaultPreference: "preferred" | "available" | "off_by_default";
+}
+
+export interface Pass6MethodSelectionRule {
+  ruleId: string;
+  problemType: Pass6MethodProblemType;
+  problemSignals: string[];
+  primaryMethodKey: AnalysisMethodKey;
+  rationale: string;
+}
+
+export interface Pass6ConditionalMultiLensPolicy {
+  policyId: string;
+  steps: string[];
+  additionalLensTriggers: string[];
+  complementaryFindingHandling: string;
+  supportingFindingHandling: string;
+  conflictingFindingHandling: string;
+  hardBoundaries: string[];
+}
+
+export interface Pass6MethodRegistryAdminView {
+  configProfileId: string | null;
+  methods: Pass6MethodRegistryItem[];
+  defaultSelectionRules: Pass6MethodSelectionRule[];
+  conditionalMultiLensPolicy: Pass6ConditionalMultiLensPolicy;
+  lockedBoundaries: string[];
+  adminForcedMethodRule: string;
+  traceabilityShape: {
+    systemSelectedExample: AnalysisMethodUsage;
+    adminForcedExample: AnalysisMethodUsage;
+  };
+}
+
+const METHOD_LOCKED_BOUNDARIES = [
+  "Methods cannot invent evidence.",
+  "Methods cannot override Pass 5 status.",
+  "Methods cannot treat document claims as operational truth by default.",
+  "Methods cannot approve readiness alone.",
+  "Methods cannot rank employees or evaluate employee performance.",
+  "Methods cannot override admin decision for material conflicts.",
+  "Methods cannot run every method on every claim by default.",
+  "Methods cannot hide method selection from admin inspection.",
+  "Methods cannot merge conflicting outputs into a fake clean workflow.",
+];
+
+const PASS6_METHOD_REGISTRY_BASE: readonly Omit<Pass6MethodRegistryItem, "active" | "defaultPreference">[] = [
+  {
+    methodId: "method-bpmn-process-structure-v1",
+    methodKey: "bpmn_process_structure",
+    displayName: "BPMN / Process Structure Lens",
+    methodType: "lens",
+    shortDefinition: "Inspects step order, sequence, handoffs, decisions, and process structure.",
+    normalUseCases: ["step order", "process structure", "handoff sequence", "decision placement"],
+    requiredInputs: ["workflow units or claims with action/sequence/handoff signals", "evidence/source basis references"],
+    expectedOutputs: ["process-structure classification", "sequence and transition notes", "structural caveats"],
+    scoringOrClassificationImpact: ["may affect workflow unit classification later", "may inform sequence clarity later"],
+    limitations: ["Does not prove evidence truth.", "Does not generate BPMN diagrams in Block 8."],
+    hardBoundaries: METHOD_LOCKED_BOUNDARIES,
+    methodVersion: "1.0.0",
+    adminFacingDescription: "Use when the problem is about ordering steps, handoffs, decisions, and process structure.",
+  },
+  {
+    methodId: "method-sipoc-boundary-v1",
+    methodKey: "sipoc_boundary",
+    displayName: "SIPOC Boundary Lens",
+    methodType: "lens",
+    shortDefinition: "Frames suppliers, inputs, process, outputs, customers, triggers, and use-case boundaries.",
+    normalUseCases: ["start/end boundary", "input/output", "trigger", "use-case boundary"],
+    requiredInputs: ["boundary material", "trigger/input/output signals", "role or layer context"],
+    expectedOutputs: ["boundary classification", "input/output notes", "scope caveats"],
+    scoringOrClassificationImpact: ["may affect boundary classification later", "may surface use-case scope risk later"],
+    limitations: ["Does not resolve disputed boundaries by itself."],
+    hardBoundaries: METHOD_LOCKED_BOUNDARIES,
+    methodVersion: "1.0.0",
+    adminFacingDescription: "Use when the problem is about where the workflow starts, ends, and what inputs or outputs define scope.",
+  },
+  {
+    methodId: "method-triangulation-v1",
+    methodKey: "triangulation",
+    displayName: "Triangulation Lens",
+    methodType: "methodology",
+    shortDefinition: "Compares support, repetition, gaps, and disagreements across evidence sources.",
+    normalUseCases: ["claim support", "repeated evidence", "disagreement map", "source corroboration"],
+    requiredInputs: ["evidence/source basis references", "role/layer context", "candidate claim or unit references later"],
+    expectedOutputs: ["support map", "agreement/disagreement notes", "confidence-support caveats"],
+    scoringOrClassificationImpact: ["may support confidence later", "may flag disagreement later"],
+    limitations: ["Does not upgrade unsupported material into truth."],
+    hardBoundaries: METHOD_LOCKED_BOUNDARIES,
+    methodVersion: "1.0.0",
+    adminFacingDescription: "Use when the problem is whether multiple sources support, contradict, or leave gaps around a claim.",
+  },
+  {
+    methodId: "method-espoused-theory-vs-theory-in-use-v1",
+    methodKey: "espoused_theory_vs_theory_in_use",
+    displayName: "Espoused Theory vs Theory-in-Use Lens",
+    methodType: "lens",
+    shortDefinition: "Separates stated policy or management intent from frontline described practice.",
+    normalUseCases: ["policy versus practice", "document view versus frontline practice", "management view mismatch"],
+    requiredInputs: ["document/source signals", "participant practice evidence", "role/layer context"],
+    expectedOutputs: ["normative/reality comparison notes", "document-sensitivity caveats"],
+    scoringOrClassificationImpact: ["may flag normative-reality mismatch later", "may trigger difference handling later"],
+    limitations: ["Document claims remain signals unless supported by operational evidence."],
+    hardBoundaries: METHOD_LOCKED_BOUNDARIES,
+    methodVersion: "1.0.0",
+    adminFacingDescription: "Use when documents, policies, or management descriptions may differ from frontline practice.",
+  },
+  {
+    methodId: "method-raci-responsibility-v1",
+    methodKey: "raci_responsibility",
+    displayName: "RACI / Responsibility Lens",
+    methodType: "tool",
+    shortDefinition: "Inspects responsibility, accountability, consultation, information flow, handoffs, and approvals.",
+    normalUseCases: ["ownership", "approval", "accountability", "handoff responsibility"],
+    requiredInputs: ["role/layer context", "handoff or approval signals", "evidence basis references"],
+    expectedOutputs: ["responsibility classification", "ownership caveats", "handoff responsibility notes"],
+    scoringOrClassificationImpact: ["may affect ownership classification later", "may flag approval responsibility risks later"],
+    limitations: ["Does not assign employee performance responsibility."],
+    hardBoundaries: METHOD_LOCKED_BOUNDARIES,
+    methodVersion: "1.0.0",
+    adminFacingDescription: "Use when the question is who owns, approves, performs, or receives a workflow handoff.",
+  },
+  {
+    methodId: "method-ssm-multi-perspective-v1",
+    methodKey: "ssm_multi_perspective",
+    displayName: "SSM / Multi-Perspective Lens",
+    methodType: "methodology",
+    shortDefinition: "Preserves different stakeholder/layer realities without forcing them into one clean account.",
+    normalUseCases: ["layer-sensitive disagreements", "cross-department variants", "different realities by role"],
+    requiredInputs: ["role/layer context", "differences or candidate conflicts later", "source basis references"],
+    expectedOutputs: ["perspective map", "layer-sensitive caveats", "unmerged conflict notes"],
+    scoringOrClassificationImpact: ["may trigger difference routing later", "may prevent false merge later"],
+    limitations: ["Does not choose the winning reality without admin/review basis."],
+    hardBoundaries: METHOD_LOCKED_BOUNDARIES,
+    methodVersion: "1.0.0",
+    adminFacingDescription: "Use when different departments, layers, or roles describe materially different versions of reality.",
+  },
+  {
+    methodId: "method-apqc-vocabulary-v1",
+    methodKey: "apqc_vocabulary",
+    displayName: "APQC Vocabulary Lens",
+    methodType: "vocabulary_support",
+    shortDefinition: "Supports process naming, terminology normalization, and process-family alignment.",
+    normalUseCases: ["process naming", "terminology", "process-family alignment", "label normalization"],
+    requiredInputs: ["candidate workflow/process labels", "domain or department context", "source vocabulary hints"],
+    expectedOutputs: ["terminology suggestions", "process-family alignment notes", "label caveats"],
+    scoringOrClassificationImpact: ["may affect naming support later", "must not affect truth by itself"],
+    limitations: ["Vocabulary support cannot determine operational truth."],
+    hardBoundaries: METHOD_LOCKED_BOUNDARIES,
+    methodVersion: "1.0.0",
+    adminFacingDescription: "Use when the problem is naming, terminology, or process family alignment, not evidence truth.",
+  },
+] as const;
+
+const PASS6_DEFAULT_METHOD_SELECTION_RULES: readonly Pass6MethodSelectionRule[] = [
+  {
+    ruleId: "select-bpmn-for-process-structure",
+    problemType: "step_order_process_structure_handoff_sequence",
+    problemSignals: ["step order", "process structure", "handoff sequence"],
+    primaryMethodKey: "bpmn_process_structure",
+    rationale: "Sequence and handoff structure are best inspected first through the BPMN / Process Structure Lens.",
+  },
+  {
+    ruleId: "select-sipoc-for-boundary",
+    problemType: "start_end_input_output_trigger_use_case_boundary",
+    problemSignals: ["start", "end", "input", "output", "trigger", "use-case boundary"],
+    primaryMethodKey: "sipoc_boundary",
+    rationale: "Boundary, input, output, and trigger questions are best framed through SIPOC.",
+  },
+  {
+    ruleId: "select-triangulation-for-support",
+    problemType: "claim_support_repeated_evidence_disagreement_support_map",
+    problemSignals: ["claim support", "repeated evidence", "disagreement support map"],
+    primaryMethodKey: "triangulation",
+    rationale: "Support and disagreement questions require source comparison.",
+  },
+  {
+    ruleId: "select-espoused-for-policy-practice",
+    problemType: "policy_document_management_view_vs_frontline_practice",
+    problemSignals: ["policy", "document", "management view", "frontline practice"],
+    primaryMethodKey: "espoused_theory_vs_theory_in_use",
+    rationale: "Normative/document descriptions must be separated from described in-use practice.",
+  },
+  {
+    ruleId: "select-raci-for-responsibility",
+    problemType: "ownership_approval_accountability_handoff_responsibility",
+    problemSignals: ["ownership", "approval", "accountability", "handoff responsibility"],
+    primaryMethodKey: "raci_responsibility",
+    rationale: "Responsibility and approval questions are best inspected through RACI.",
+  },
+  {
+    ruleId: "select-ssm-for-layer-sensitive-reality",
+    problemType: "different_layers_or_departments_see_different_realities",
+    problemSignals: ["different layers", "different departments", "different realities"],
+    primaryMethodKey: "ssm_multi_perspective",
+    rationale: "Layer-sensitive realities should be preserved instead of flattened.",
+  },
+  {
+    ruleId: "select-apqc-for-vocabulary",
+    problemType: "process_naming_terminology_process_family_alignment",
+    problemSignals: ["process naming", "terminology", "process-family alignment"],
+    primaryMethodKey: "apqc_vocabulary",
+    rationale: "Vocabulary and process-family support belongs to APQC vocabulary support.",
+  },
+] as const;
+
+export const PASS6_CONDITIONAL_MULTI_LENS_POLICY: Pass6ConditionalMultiLensPolicy = {
+  policyId: "pass6-conditional-multi-lens-v1",
+  steps: [
+    "Start with the primary method selected by problem type.",
+    "Consider additional lenses only when a trigger is present.",
+    "Record method usage traceability for later analysis; do not execute claim analysis in Block 8.",
+  ],
+  additionalLensTriggers: [
+    "unclear result",
+    "high materiality",
+    "low confidence",
+    "disputed evidence",
+    "document-sensitive material",
+    "layer-sensitive material",
+  ],
+  complementaryFindingHandling: "Complementary findings may be merged later only when they do not conflict.",
+  supportingFindingHandling: "Supporting findings may raise confidence later when traceability and policy allow it.",
+  conflictingFindingHandling: "Conflicting findings must not be merged and must be routed as differences later.",
+  hardBoundaries: METHOD_LOCKED_BOUNDARIES,
+};
+
+function configMethodMap(profile: Pass6ConfigurationProfile | null): Map<AnalysisMethodKey, { active: boolean; defaultPreference: "preferred" | "available" | "off_by_default" }> {
+  const map = new Map<AnalysisMethodKey, { active: boolean; defaultPreference: "preferred" | "available" | "off_by_default" }>();
+  for (const method of profile?.policies.methodRegistryConfig.methods ?? []) {
+    map.set(method.methodKey, {
+      active: method.active,
+      defaultPreference: method.defaultPreference,
+    });
+  }
+  return map;
+}
+
+function preferredMethodConfigProfile(
+  repo: Pass6ConfigurationProfileRepository,
+): StoredPass6ConfigurationProfile | null {
+  return repo.findActive("global", "") ?? repo.findDrafts()[0] ?? repo.findAll()[0] ?? null;
+}
+
+function traceabilityExamples(): Pass6MethodRegistryAdminView["traceabilityShape"] {
+  const systemSelectedExample: AnalysisMethodUsage = {
+    methodUsageId: "method-usage-template-system",
+    methodId: "method-bpmn-process-structure-v1",
+    methodKey: "bpmn_process_structure",
+    methodName: "BPMN / Process Structure Lens",
+    methodType: "process_structure_lens",
+    version: "1.0.0",
+    selectionReason: "Selected by default method-selection policy for step order / process structure.",
+    selectionSource: "system_selected",
+    methodRole: "primary",
+    appliedToType: "workflow_unit",
+    appliedToId: "later-target-id",
+    outputSummary: "Traceability template only; Block 8 does not execute method analysis.",
+    impact: {
+      affectedIds: [],
+      impactSummary: "No impact calculated in Block 8.",
+      changedRouting: false,
+      changedReadiness: false,
+    },
+    suitabilityAssessment: {
+      suitable: true,
+      notes: "Suitability will be assessed by later 6B analysis blocks.",
+      limitations: ["Template only; not a real method execution record."],
+    },
+  };
+  const adminForcedExample: AnalysisMethodUsage = {
+    ...systemSelectedExample,
+    methodUsageId: "method-usage-template-admin-forced",
+    methodId: "method-raci-responsibility-v1",
+    methodKey: "raci_responsibility",
+    methodName: "RACI / Responsibility Lens",
+    methodType: "responsibility_lens",
+    selectionReason: "Admin forced method for responsibility review.",
+    selectionSource: "admin_forced",
+    methodRole: "admin_forced",
+  };
+  return { systemSelectedExample, adminForcedExample };
+}
+
+export function resolvePass6MethodRegistryForAdmin(
+  repo?: Pass6ConfigurationProfileRepository,
+): Pass6MethodRegistryAdminView {
+  const profile = repo ? preferredMethodConfigProfile(repo) : null;
+  const configuredMethods = configMethodMap(profile);
+  const methods = PASS6_METHOD_REGISTRY_BASE.map((method) => {
+    const config = configuredMethods.get(method.methodKey);
+    return {
+      ...method,
+      active: config?.active ?? true,
+      defaultPreference: config?.defaultPreference ?? "available",
+    };
+  });
+  return {
+    configProfileId: profile?.configId ?? null,
+    methods,
+    defaultSelectionRules: PASS6_DEFAULT_METHOD_SELECTION_RULES.map((rule) => ({ ...rule, problemSignals: [...rule.problemSignals] })),
+    conditionalMultiLensPolicy: {
+      ...PASS6_CONDITIONAL_MULTI_LENS_POLICY,
+      steps: [...PASS6_CONDITIONAL_MULTI_LENS_POLICY.steps],
+      additionalLensTriggers: [...PASS6_CONDITIONAL_MULTI_LENS_POLICY.additionalLensTriggers],
+      hardBoundaries: [...PASS6_CONDITIONAL_MULTI_LENS_POLICY.hardBoundaries],
+    },
+    lockedBoundaries: [...METHOD_LOCKED_BOUNDARIES],
+    adminForcedMethodRule: "Admins may force a method for later analysis traceability, but forcing a method does not execute analysis, approve truth, or override locked governance.",
+    traceabilityShape: traceabilityExamples(),
+  };
+}
+
+export function findPass6MethodRegistryItem(
+  methodKey: AnalysisMethodKey,
+  repo?: Pass6ConfigurationProfileRepository,
+): Pass6MethodRegistryItem | null {
+  return resolvePass6MethodRegistryForAdmin(repo).methods.find((method) => method.methodKey === methodKey) ?? null;
+}
+
+export function updatePass6MethodActiveStatus(
+  input: {
+    configId: string;
+    methodKey: AnalysisMethodKey;
+    active: boolean;
+    changedBy: string;
+    changeReason: string;
+    now?: string;
+  },
+  repo: Pass6ConfigurationProfileRepository,
+): { ok: true; profile: StoredPass6ConfigurationProfile } | { ok: false; error: string } {
+  const profile = repo.findById(input.configId);
+  if (!profile) return { ok: false, error: `Config '${input.configId}' not found.` };
+  if (profile.status !== "draft") return { ok: false, error: "Only draft config profiles can change method active/inactive status." };
+  const methodExists = PASS6_METHOD_REGISTRY_BASE.some((method) => method.methodKey === input.methodKey);
+  if (!methodExists) return { ok: false, error: `Unknown Pass 6 method '${input.methodKey}'.` };
+  const found = profile.policies.methodRegistryConfig.methods.some((method) => method.methodKey === input.methodKey);
+  const methods = found
+    ? profile.policies.methodRegistryConfig.methods.map((method) =>
+        method.methodKey === input.methodKey ? { ...method, active: input.active } : method,
+      )
+    : [
+        ...profile.policies.methodRegistryConfig.methods,
+        {
+          methodKey: input.methodKey,
+          label: findPass6MethodRegistryItem(input.methodKey)?.displayName ?? input.methodKey,
+          active: input.active,
+          defaultPreference: "available" as const,
+        },
+      ];
+  return updatePass6ConfigurationDraft(input.configId, {
+    policies: {
+      ...profile.policies,
+      methodRegistryConfig: {
+        ...profile.policies.methodRegistryConfig,
+        methods,
+      },
+    },
+    changedBy: input.changedBy,
+    changeReason: input.changeReason,
+    now: input.now,
+  }, repo);
 }
 
 // ---------------------------------------------------------------------------

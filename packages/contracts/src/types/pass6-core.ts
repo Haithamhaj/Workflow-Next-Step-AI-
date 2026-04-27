@@ -176,6 +176,7 @@ export interface AnalysisMethodUsage {
   version: string;
   selectionReason: string;
   selectionSource: "system_selected" | "admin_forced";
+  methodRole?: "primary" | "secondary" | "supporting" | "admin_forced";
   appliedToType:
     | "bundle"
     | "workflow_unit"

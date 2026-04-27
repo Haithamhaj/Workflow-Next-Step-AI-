@@ -33,7 +33,9 @@ Pass 6 Block 5 — Provider Execution and Prompt Test Harness Foundation is acce
 
 Pass 6 Block 6 — 6A SynthesisInputBundle Builder is accepted.
 
-Pass 6 Block 7 — 6A Admin Bundle Review Surface is the current completed implementation block pending acceptance.
+Pass 6 Block 7 — 6A Admin Bundle Review Surface is accepted.
+
+Pass 6 Block 8 — 6B Method Registry and Analysis Policy is the current completed implementation block pending acceptance.
 
 Technical Decomposition v4 is the active Pass 6 build map.
 
@@ -137,6 +139,20 @@ Block 7 is the 6A admin review surface only.
 - Boundary warnings state that 6A preparation has occurred but no workflow synthesis, readiness evaluation, or package generation has occurred.
 - No approve-as-truth, promote-to-synthesis-truth, claim generation, scoring, readiness, package generation, visual, Copilot, provider, or Pass 7 action is exposed in Block 7.
 - Next implementation step after acceptance is Block 8 — 6B Method Registry and Analysis Policy.
+
+## Pass 6 Block 8 Acceptance Gate
+
+Block 8 is method registry and analysis policy only.
+
+- All seven required methods/lenses/tools are listed and admin-visible.
+- Each method has method ID/key, display name, type, definition, use cases, required inputs, expected outputs, impact mapping, limitations, hard boundaries, active/inactive status, version, and admin-facing description.
+- Default method selection rules are represented for process structure, boundary, triangulation, policy-vs-practice, responsibility, multi-perspective, and vocabulary problem types.
+- Conditional multi-lens policy is represented without executing analysis.
+- Method active/inactive state is configurable through the existing Pass 6 configuration profile.
+- Method usage traceability shape supports system-selected and admin-forced markers for later blocks.
+- Locked method boundaries are visible and not editable as behavior rules.
+- No workflow unit extraction, claim formation, scoring execution, difference interpretation, workflow assembly, seven-condition evaluation, readiness routing, Pre-6C behavior, 6C generation, visual-core integration, Copilot runtime behavior, Pass 7 mechanics, or provider calls start in Block 8.
+- Next implementation step after acceptance is Block 9 — 6B Workflow Unit and Claim Pipeline.
 
 ## Active Pass 6 Block Map
 
