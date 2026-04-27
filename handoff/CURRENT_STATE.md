@@ -244,6 +244,21 @@ Pass 6 Block 15 adds explicit cross-department/external interface records only.
 - Block 15 does not implement provider calls, external outreach/message/email sending, scope expansion, external department internal workflow analysis, 6C package generation, Workflow Gap Closure Brief generation, visual-core integration, Copilot runtime behavior, or Pass 7 mechanics.
 - Next implementation step after Block 15 acceptance is Block 16 — 6C Output Governance and Package Generation.
 
+## Pass 6 Block 16 — 6C Output Governance and Package Generation
+
+Pass 6 Block 16 adds governed 6C output generation only.
+
+- Added deterministic Pass 6 output generation in `packages/packages-output` from readiness, assembled workflow draft, Pre-6C gate, and external interface records.
+- Generates `InitialWorkflowPackage` only when readiness allows it or a valid admin proceed-with-warnings approval exists.
+- Generates `WorkflowGapClosureBrief` when Initial Package generation is not allowed.
+- Generates `DraftOperationalDocument` only when explicitly requested and eligible.
+- Client-facing package sections keep workflow summary, scope/boundary, narrative, evidence summary, readiness summary, warnings/caveats, interfaces/dependencies, document/reference implications, next actions, and metadata readable without exposing full internal method/claim complexity by default.
+- Admin/internal appendix keeps traceability summary and audit context.
+- Added minimal admin API and UI surfaces at `/pass6/packages`.
+- Added a focused proof script: `scripts/prove-pass6-block16-package-generation.mjs`.
+- Block 16 does not implement provider calls, visual-core integration, WorkflowGraph JSON generation, Mermaid generation, React Flow model generation, Copilot runtime behavior, Pass 7 mechanics, Final Package generation, release behavior, actual message/email sending, or participant re-contact execution.
+- Next implementation step after Block 16 acceptance is Block 17 — Visual Core Integration.
+
 **Pass 5 — Participant Session Outreach / Narrative-First Clarification is accepted, closed, integrated, and archived on `main`.**
 
 Final Pass 5 status: `pass5_participant_session_outreach_accepted`

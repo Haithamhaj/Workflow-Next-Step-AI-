@@ -219,6 +219,15 @@ Status: LOCKED | FORMALIZED | IMPL-EXTENSION
 
 ---
 
+## Pass 6 Block 16 — 6C Output Governance
+
+- **6C package generation is readiness/gate governed** — `InitialWorkflowPackage` is generated only for ready/readiness-with-warnings outcomes or explicit proceed-with-warnings approval; otherwise 6C produces a `WorkflowGapClosureBrief` — LOCKED
+- **Optional operational drafts are draft-only and separately eligible** — `DraftOperationalDocument` requires explicit request, a known draft type, and sufficient basis. It is labeled draft/pre-review/not final/not released/not implementation-ready — LOCKED
+- **Client-facing output is intentionally simpler than admin/internal analysis** — client-facing sections carry readable workflow, scope, caveats, interfaces, evidence summary, and next actions; detailed method/claim/scoring complexity stays in the admin/internal appendix — LOCKED
+- **6C does not release, finalize, visualize, or escalate** — Block 16 creates no Final Package, release record, visual graph/Mermaid/React Flow output, Copilot state, provider call, sending action, or Pass 7 mechanics — LOCKED
+
+---
+
 - **Output formalization adopted as non-governing enhancement; prompt reinforcement deferred** — enterprise-facing wording refinement, targeted document naming, section-label normalization, and final deliverable presentation are documentation-first improvements that do not require mechanics changes. Adopted as a non-governing enhancement layer. Pass 8 may consume output wording/naming/presentation improvements on client-facing surfaces (`packages/packages-output`, `apps/admin-web` output surfaces). Prompt reinforcement (rewriting or rebuilding prompt-chain logic) belongs to a separate later prompt-rebuild/analysis-improvement track and is outside Pass 8 scope. This decision does not alter state logic, package-entry conditions, review/release gates, blocking thresholds, or governance contracts — FORMALIZED
 
 ---

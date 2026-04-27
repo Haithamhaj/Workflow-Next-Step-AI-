@@ -265,6 +265,20 @@ Block 15 is cross-department/external interface handling only.
 - No provider calls, external outreach/message/email sending, scope expansion, external department internal workflow analysis, 6C generation, Workflow Gap Closure Brief generation, visual-core integration, Copilot runtime behavior, or Pass 7 mechanics start in Block 15.
 - Next implementation step after acceptance is Block 16 — 6C Output Governance and Package Generation.
 
+## Pass 6 Block 16 Acceptance Gate
+
+Block 16 is 6C output governance and package generation only.
+
+- Initial Workflow Package generation is allowed only when readiness allows it or valid admin proceed-with-warnings approval exists.
+- Not-ready workflows generate Workflow Gap Closure Brief instead of package content.
+- Optional Draft Operational Document generation requires explicit request and eligibility.
+- Client-facing package sections avoid full internal method/claim/scoring complexity by default.
+- Admin/internal appendix preserves traceability and audit context.
+- External interface records appear as interface/dependency notes without expanding scope or inventing external workflows.
+- Document/reference implication wording remains careful and non-final.
+- No provider calls, visual-core integration, WorkflowGraph JSON generation, Mermaid generation, React Flow generation, Copilot runtime behavior, Pass 7 mechanics, Final Package generation, release behavior, actual sending, or participant re-contact start in Block 16.
+- Next implementation step after acceptance is Block 17 — Visual Core Integration.
+
 ## Active Pass 6 Block Map
 
 0. Pass 6 Build Readiness and Spec Cleanup.

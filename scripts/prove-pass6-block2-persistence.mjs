@@ -499,6 +499,7 @@ const allowedPrefixes = [
   "packages/synthesis-evaluation/",
   "packages/prompts/",
   "packages/integrations/",
+  "packages/packages-output/",
   "apps/admin-web/",
   "scripts/prove-pass6-block1-contracts.mjs",
   "scripts/prove-pass6-block2-persistence.mjs",
@@ -515,6 +516,7 @@ const allowedPrefixes = [
   "scripts/prove-pass6-block13-analysis-report.mjs",
   "scripts/prove-pass6-block14-pre6c-gate.mjs",
   "scripts/prove-pass6-block15-external-interfaces.mjs",
+  "scripts/prove-pass6-block16-package-generation.mjs",
   "handoff/",
 ];
 for (const file of changedFiles) {
