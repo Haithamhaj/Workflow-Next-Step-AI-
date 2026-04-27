@@ -102,9 +102,11 @@ export function CommandCenterDashboard({ dictionary }: { dictionary: WorkspaceDi
 }
 
 export function CommandSummaryCards({ dictionary }: { dictionary: WorkspaceDictionary }) {
+  const criticalItems = dictionary.visual.commandSummary.filter((_, index) => index === 0 || index === 2 || index === 3 || index === 4);
+
   return (
     <div className={styles.workspaceCommandSummary}>
-      {dictionary.visual.commandSummary.map((item) => (
+      {criticalItems.map((item) => (
         <article key={item.label} className={styles.workspaceCommandSummaryCard}>
           <span>{item.label}</span>
           <strong>{item.value}</strong>
