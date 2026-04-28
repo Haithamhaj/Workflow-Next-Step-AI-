@@ -68,3 +68,11 @@ export {
   type StageCopilotSystemPromptVersion,
   type StageCopilotSystemPromptVersionTransition,
 } from "./editable-system-prompts.js";
+
+export {
+  PROMPT_STUDIO_STATIC_CONTEXT_BOUNDARY_STATUS,
+  PROMPT_STUDIO_STATIC_CONTEXT_STAGE_KEY,
+  createPromptStudioCopilotContextEnvelope,
+  createPromptStudioStaticContextFixture,
+  summarizePromptStudioCopilotContext,
+} from "./prompt-studio-context.js";
