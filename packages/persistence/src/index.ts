@@ -85,6 +85,7 @@ import type {
   Pass6PromptSpec,
   Pass6PromptTestCase,
   Pass6PromptTestExecutionResult,
+  StageCopilotStageKey,
 } from "@workflow/contracts";
 
 import { mkdirSync } from "node:fs";
@@ -329,6 +330,44 @@ export interface StoredPass6PromptSpec extends Pass6PromptSpec {}
 export interface StoredPass6PromptTestCase extends Pass6PromptTestCase {}
 export interface StoredPass6PromptTestExecutionResult extends Pass6PromptTestExecutionResult {}
 
+export type StoredStageCopilotSystemPromptKind = "stage_copilot_system_prompt";
+export type StoredStageCopilotSystemPromptStatus = "current" | "superseded";
+export type StoredStageCopilotSystemPromptSource = "static_default" | "admin_custom";
+
+export interface StoredStageCopilotSystemPromptAuthorityBoundary {
+  conversationOnly: true;
+  customInstructionsOnly: true;
+  modifiesCapabilityPromptSpecs: false;
+  grantsWriteAuthority: false;
+  runsOfficialAnalysis: false;
+  providerExecutionAllowed: false;
+  promptMutationAllowed: false;
+  promptPromotionAllowed: false;
+  readinessMutationAllowed: false;
+  packageEligibilityMutationAllowed: false;
+  evidenceTranscriptGateApprovalAllowed: false;
+  overridesSystemOrStageBoundaries: false;
+}
+
+export interface StoredStageCopilotSystemPromptRecord {
+  systemPromptId: string;
+  stageKey: StageCopilotStageKey;
+  promptKey: string;
+  kind: StoredStageCopilotSystemPromptKind;
+  status: StoredStageCopilotSystemPromptStatus;
+  version: number;
+  systemPrompt: string;
+  source: StoredStageCopilotSystemPromptSource;
+  defaultRefId: string;
+  createdAt: string;
+  createdBy: string;
+  updatedAt: string;
+  updatedBy: string;
+  changeNote: string;
+  separatesFromCapabilityPromptSpecs: true;
+  authorityBoundary: StoredStageCopilotSystemPromptAuthorityBoundary;
+}
+
 // ---------------------------------------------------------------------------
 // Repository interfaces — backend-agnostic
 // ---------------------------------------------------------------------------
@@ -351,6 +390,18 @@ export interface PromptRepository {
   findById(promptId: string): PromptRecord | null;
   findByRole(role: string): PromptRecord[];
   findAll(): PromptRecord[];
+}
+
+export interface StageCopilotSystemPromptRepository {
+  save(record: StoredStageCopilotSystemPromptRecord): void;
+  findById(systemPromptId: string): StoredStageCopilotSystemPromptRecord | null;
+  findCurrentByStage(stageKey: StageCopilotStageKey): StoredStageCopilotSystemPromptRecord | null;
+  findCurrentByStageOrDefault(
+    stageKey: StageCopilotStageKey,
+    fallback: StoredStageCopilotSystemPromptRecord,
+  ): StoredStageCopilotSystemPromptRecord;
+  listHistoryByStage(stageKey: StageCopilotStageKey): StoredStageCopilotSystemPromptRecord[];
+  findAll(): StoredStageCopilotSystemPromptRecord[];
 }
 
 export interface SessionRepository {
@@ -836,6 +887,116 @@ class InMemoryPromptRepository implements PromptRepository {
 
   findAll(): PromptRecord[] {
     return Array.from(this.store.values());
+  }
+}
+
+const stageCopilotAnalysisPromptKeys = new Set<string>([
+  "admin_assistant_prompt",
+  "pass5.admin_assistant",
+  "pass6_analysis_copilot",
+  "pass5_participant_session_prompt_family",
+  "PASS5_PROMPT_FAMILY",
+  "PASS6_PROMPT_CAPABILITY_KEYS",
+]);
+
+const stageCopilotPromptAuthorityPatterns: readonly [string, RegExp][] = [
+  ["claims_write_authority", /\b(can|may|will|should|allowed to)\s+(mutate|write|update|delete|alter)\s+(records?|source-of-truth|state)\b/i],
+  ["claims_official_analysis_authority", /\b(can|may|will|should|allowed to)\s+(run|rerun|execute)\s+official\s+analysis\b/i],
+  ["claims_provider_execution_authority", /\b(can|may|will|should|allowed to)\s+(call|run|execute)\s+(providers?|tools?)\b/i],
+  ["claims_prompt_mutation_authority", /\b(can|may|will|should|allowed to)\s+(alter|change|mutate|modify|promote)\s+(capability\s+)?prompts?/i],
+  ["claims_readiness_mutation_authority", /\b(can|may|will|should|allowed to)\s+change\s+readiness\b/i],
+  ["claims_package_eligibility_mutation_authority", /\b(can|may|will|should|allowed to)\s+change\s+package\s+eligibility\b/i],
+  ["claims_approval_authority", /\b(can|may|will|should|allowed to)\s+approve\s+(evidence|transcripts?|gates?)\b/i],
+  ["claims_boundary_override_authority", /\b(can|may|will|should|allowed to)\s+override\s+(system|stage|guardrail)\s+boundaries\b/i],
+  ["claims_package_generation_authority", /\b(can|may|will|should|allowed to)\s+(generate|create|draft)\s+packages?\b/i],
+  ["claims_message_sending_authority", /\b(can|may|will|should|allowed to)\s+send\s+messages?\b/i],
+  ["claims_source_of_truth_mutation_authority", /\b(can|may|will|should|allowed to)\s+(alter|change|mutate|modify|update)\s+source-of-truth\s+records?\b/i],
+];
+
+function validateStageCopilotSystemPromptRecord(record: StoredStageCopilotSystemPromptRecord): string[] {
+  const violations: string[] = [];
+  const boundary = record.authorityBoundary;
+
+  if (record.kind !== "stage_copilot_system_prompt") violations.push("not_stage_copilot_system_prompt");
+  if (record.status !== "current" && record.status !== "superseded") violations.push("invalid_status");
+  if (record.source !== "static_default" && record.source !== "admin_custom") violations.push("invalid_source");
+  if (!Number.isInteger(record.version) || record.version < 1) violations.push("invalid_version");
+  if (!record.defaultRefId) violations.push("missing_default_ref");
+  if (record.separatesFromCapabilityPromptSpecs !== true) violations.push("not_separated_from_capability_prompts");
+  if (stageCopilotAnalysisPromptKeys.has(record.promptKey)) violations.push("known_analysis_prompt_key_not_allowed");
+  if (boundary.conversationOnly !== true || boundary.customInstructionsOnly !== true) violations.push("not_conversation_only");
+  if (boundary.modifiesCapabilityPromptSpecs !== false) violations.push("claims_prompt_mutation_authority");
+  if (boundary.grantsWriteAuthority !== false) violations.push("claims_write_authority");
+  if (boundary.runsOfficialAnalysis !== false) violations.push("claims_official_analysis_authority");
+  if (boundary.providerExecutionAllowed !== false) violations.push("claims_provider_execution_authority");
+  if (boundary.promptMutationAllowed !== false || boundary.promptPromotionAllowed !== false) {
+    violations.push("claims_prompt_mutation_authority");
+  }
+  if (boundary.readinessMutationAllowed !== false) violations.push("claims_readiness_mutation_authority");
+  if (boundary.packageEligibilityMutationAllowed !== false) violations.push("claims_package_eligibility_mutation_authority");
+  if (boundary.evidenceTranscriptGateApprovalAllowed !== false) violations.push("claims_approval_authority");
+  if (boundary.overridesSystemOrStageBoundaries !== false) violations.push("claims_boundary_override_authority");
+
+  for (const [violation, pattern] of stageCopilotPromptAuthorityPatterns) {
+    if (pattern.test(record.systemPrompt)) violations.push(violation);
+  }
+
+  return [...new Set(violations)];
+}
+
+export class InMemoryStageCopilotSystemPromptRepository implements StageCopilotSystemPromptRepository {
+  private readonly store = new Map<string, StoredStageCopilotSystemPromptRecord>();
+
+  save(record: StoredStageCopilotSystemPromptRecord): void {
+    const violations = validateStageCopilotSystemPromptRecord(record);
+    if (violations.length > 0) {
+      throw new Error(`Invalid Stage Copilot System Prompt record: ${violations.join(", ")}`);
+    }
+
+    if (record.status === "current") {
+      for (const existing of this.store.values()) {
+        if (existing.stageKey === record.stageKey && existing.status === "current" && existing.systemPromptId !== record.systemPromptId) {
+          this.store.set(existing.systemPromptId, cloneRecord({
+            ...existing,
+            status: "superseded",
+            updatedAt: record.updatedAt,
+            updatedBy: record.updatedBy,
+          }));
+        }
+      }
+    }
+
+    this.store.set(record.systemPromptId, cloneRecord(record));
+  }
+
+  findById(systemPromptId: string): StoredStageCopilotSystemPromptRecord | null {
+    const record = this.store.get(systemPromptId);
+    return record ? cloneRecord(record) : null;
+  }
+
+  findCurrentByStage(stageKey: StageCopilotStageKey): StoredStageCopilotSystemPromptRecord | null {
+    const record = Array.from(this.store.values())
+      .filter((item) => item.stageKey === stageKey && item.status === "current")
+      .sort((a, b) => b.version - a.version)[0];
+    return record ? cloneRecord(record) : null;
+  }
+
+  findCurrentByStageOrDefault(
+    stageKey: StageCopilotStageKey,
+    fallback: StoredStageCopilotSystemPromptRecord,
+  ): StoredStageCopilotSystemPromptRecord {
+    return this.findCurrentByStage(stageKey) ?? cloneRecord(fallback);
+  }
+
+  listHistoryByStage(stageKey: StageCopilotStageKey): StoredStageCopilotSystemPromptRecord[] {
+    return Array.from(this.store.values())
+      .filter((record) => record.stageKey === stageKey)
+      .sort((a, b) => a.version - b.version)
+      .map((record) => cloneRecord(record));
+  }
+
+  findAll(): StoredStageCopilotSystemPromptRecord[] {
+    return Array.from(this.store.values()).map((record) => cloneRecord(record));
   }
 }
 
@@ -3811,6 +3972,7 @@ export interface InMemoryStore extends Pass6PersistenceRepositories {
   cases: CaseRepository;
   sources: SourceRepository;
   prompts: PromptRepository;
+  stageCopilotSystemPrompts: StageCopilotSystemPromptRepository;
   sessions: SessionRepository;
   synthesis: SynthesisRepository;
   evaluations: EvaluationRepository;
@@ -3893,6 +4055,7 @@ export function createInMemoryStore(): InMemoryStore {
     cases: new InMemoryCaseRepository(),
     sources: new InMemorySourceRepository(),
     prompts: new InMemoryPromptRepository(),
+    stageCopilotSystemPrompts: new InMemoryStageCopilotSystemPromptRepository(),
     sessions: new InMemorySessionRepository(),
     synthesis: new InMemorySynthesisRepository(),
     evaluations: new InMemoryEvaluationRepository(),
