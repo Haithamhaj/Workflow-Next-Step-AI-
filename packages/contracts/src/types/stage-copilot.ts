@@ -14,12 +14,47 @@ export type StageCopilotRuntimeMode =
   | "deterministic_mock"
   | "provider_backed";
 
-export type StageCopilotPromptSpecRefKind = "capability" | "stage_copilot";
+export type StageCopilotPromptSpecKind =
+  | "capability"
+  | "stage_copilot"
+  | "legacy_copilot_like"
+  | "unknown_or_unclassified";
+
+export type StageCopilotPromptSpecRefKind = StageCopilotPromptSpecKind;
+
+export type StageCopilotPromptSpecTaxonomyStatus =
+  | "native_current"
+  | "legacy_current"
+  | "planned"
+  | "unknown_or_unclassified";
+
+export interface StageCopilotPromptSpecLegacyMapping {
+  existingPromptKey: string;
+  existingLinkedModule?: string;
+  sourceRegistry:
+    | "structured_prompt_spec"
+    | "pass5_prompt_family"
+    | "pass6_prompt_workspace"
+    | "stage_copilot_profile"
+    | "external_or_unknown";
+  migrationStatus: "legacy_current" | "metadata_only";
+  notes?: string;
+}
+
+export interface StageCopilotPromptSpecClassification {
+  kind: StageCopilotPromptSpecKind;
+  taxonomyStatus: StageCopilotPromptSpecTaxonomyStatus;
+  stageKey: StageCopilotStageKey;
+  preservesExistingKey: boolean;
+  legacyMapping?: StageCopilotPromptSpecLegacyMapping;
+  notes?: string;
+}
 
 export interface StageCopilotPromptSpecRef {
   refId: string;
-  kind: StageCopilotPromptSpecRefKind;
   promptSpecKey: string;
+  kind: StageCopilotPromptSpecRefKind;
+  classification?: StageCopilotPromptSpecClassification;
   linkedStage: StageCopilotStageKey;
   status?: "draft" | "active" | "previous" | "archived";
   version?: number;

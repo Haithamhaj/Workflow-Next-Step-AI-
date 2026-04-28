@@ -43,6 +43,13 @@ function baseProfile(stageKey, overrides = {}) {
     refId: `${stageKey}-stage-copilot-prompt`,
     kind: "stage_copilot",
     promptSpecKey: `${stageKey}.copilot`,
+    classification: {
+      kind: "stage_copilot",
+      taxonomyStatus: "planned",
+      stageKey,
+      preservesExistingKey: true,
+      notes: "Native Stage Copilot PromptSpec classification reference only.",
+    },
     linkedStage: stageKey,
     status: "draft",
     version: 1,
@@ -52,6 +59,13 @@ function baseProfile(stageKey, overrides = {}) {
     refId: `${stageKey}-capability-prompt`,
     kind: "capability",
     promptSpecKey: `${stageKey}.capability.reference`,
+    classification: {
+      kind: "capability",
+      taxonomyStatus: "native_current",
+      stageKey,
+      preservesExistingKey: true,
+      notes: "Capability PromptSpec classification reference only.",
+    },
     linkedStage: stageKey,
     status: "active",
     version: 1,
@@ -246,8 +260,35 @@ const participantEvidenceProfile = baseProfile("participant_evidence", {
       refId: "participant-evidence-copilot-future-ref",
       kind: "stage_copilot",
       promptSpecKey: "participant_evidence.copilot.future",
+      classification: {
+        kind: "stage_copilot",
+        taxonomyStatus: "planned",
+        stageKey: "participant_evidence",
+        preservesExistingKey: true,
+      },
       linkedStage: "participant_evidence",
       status: "draft",
+    },
+    {
+      refId: "pass5-admin-assistant-legacy-copilot-like",
+      kind: "legacy_copilot_like",
+      promptSpecKey: "admin_assistant_prompt",
+      classification: {
+        kind: "legacy_copilot_like",
+        taxonomyStatus: "legacy_current",
+        stageKey: "participant_evidence",
+        preservesExistingKey: true,
+        legacyMapping: {
+          existingPromptKey: "admin_assistant_prompt",
+          existingLinkedModule: "pass5.admin_assistant",
+          sourceRegistry: "pass5_prompt_family",
+          migrationStatus: "legacy_current",
+          notes: "Existing Pass 5 assistant prompt key is referenced only; no rename or migration.",
+        },
+      },
+      linkedStage: "participant_evidence",
+      status: "active",
+      notes: "Legacy/current copilot-like PromptSpec reference only.",
     },
   ],
   caseContextRefs: [
@@ -320,8 +361,20 @@ const analysisPackageProfile = baseProfile("analysis_package", {
   stageCopilotPromptSpecRefs: [
     {
       refId: "pass6-analysis-copilot-current-reference",
-      kind: "stage_copilot",
+      kind: "legacy_copilot_like",
       promptSpecKey: "pass6_analysis_copilot",
+      classification: {
+        kind: "legacy_copilot_like",
+        taxonomyStatus: "legacy_current",
+        stageKey: "analysis_package",
+        preservesExistingKey: true,
+        legacyMapping: {
+          existingPromptKey: "pass6_analysis_copilot",
+          sourceRegistry: "pass6_prompt_workspace",
+          migrationStatus: "legacy_current",
+          notes: "Existing Pass 6 Copilot key is referenced only; no rename or migration.",
+        },
+      },
       linkedStage: "analysis_package",
       status: "active",
       notes: "References existing Pass 6 Copilot behavior only; no runtime import or execution.",
@@ -409,6 +462,14 @@ const unknownStage = clone(sourcesProfile);
 unknownStage.stageKey = "workspace_generic";
 assertInvalid("unknown stage key", unknownStage);
 
+const unknownPromptKind = clone(sourcesProfile);
+unknownPromptKind.promptSpecRefs[0].kind = "generic_chatbot";
+assertInvalid("unknown prompt kind", unknownPromptKind);
+
+const missingPromptKey = clone(sourcesProfile);
+delete missingPromptKey.promptSpecRefs[0].promptSpecKey;
+assertInvalid("prompt reference missing key", missingPromptKey);
+
 const missingRefusal = clone(sourcesProfile);
 delete missingRefusal.refusalPolicy;
 assertInvalid("missing refusal policy", missingRefusal);
@@ -436,6 +497,14 @@ assertInvalid("provider-backed profile missing audit requirements", providerBack
 const extraUnknownProperty = clone(sourcesProfile);
 extraUnknownProperty.genericChatbot = true;
 assertInvalid("extra unknown profile property", extraUnknownProperty);
+
+const renameAttempt = clone(participantEvidenceProfile);
+renameAttempt.stageCopilotPromptSpecRefs[1].classification.legacyMapping.replacementPromptSpecKey = "participant_evidence.copilot.renamed";
+assertInvalid("legacy mapping rename attempt", renameAttempt);
+
+const migratedLegacyClaim = clone(analysisPackageProfile);
+migratedLegacyClaim.stageCopilotPromptSpecRefs[0].classification.legacyMapping.migrationStatus = "migrated";
+assertInvalid("legacy/current mapping claims migration occurred", migratedLegacyClaim);
 
 const packageEligibilityMutation = clone(analysisPackageProfile);
 packageEligibilityMutation.forbiddenActions = packageEligibilityMutation.forbiddenActions.filter((item) => item !== "change_package_eligibility");
@@ -467,6 +536,8 @@ console.log(JSON.stringify({
   ],
   rejectedInvalidFixtures: [
     "unknown_stage_key",
+    "unknown_prompt_kind",
+    "prompt_reference_missing_key",
     "missing_refusal_policy",
     "autonomous_writes_allowed",
     "routed_recommendation_executes_automatically",
@@ -474,6 +545,8 @@ console.log(JSON.stringify({
     "provider_backed_missing_read_write_boundary",
     "provider_backed_missing_audit_requirements",
     "extra_unknown_properties",
+    "legacy_mapping_rename_attempt",
+    "legacy_current_mapping_claims_migration",
     "package_eligibility_mutation_allowed",
     "provider_execution_direct_action_allowed",
     "live_retrieval_execution_claim",

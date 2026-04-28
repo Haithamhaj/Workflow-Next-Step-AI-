@@ -126,7 +126,7 @@
           { "$ref": "#/definitions/promptSpecRef" },
           {
             "type": "object",
-            "properties": { "kind": { "const": "stage_copilot" } }
+            "properties": { "kind": { "type": "string", "enum": ["stage_copilot", "legacy_copilot_like"] } }
           }
         ]
       }
@@ -184,11 +184,48 @@
       "required": ["refId", "kind", "promptSpecKey", "linkedStage"],
       "properties": {
         "refId": { "type": "string", "minLength": 1 },
-        "kind": { "type": "string", "enum": ["capability", "stage_copilot"] },
+        "kind": { "$ref": "#/definitions/promptSpecKind" },
         "promptSpecKey": { "type": "string", "minLength": 1 },
+        "classification": { "$ref": "#/definitions/promptSpecClassification" },
         "linkedStage": { "$ref": "#/definitions/stageKey" },
         "status": { "type": "string", "enum": ["draft", "active", "previous", "archived"] },
         "version": { "type": "integer", "minimum": 1 },
+        "notes": { "type": "string" }
+      }
+    },
+    "promptSpecKind": {
+      "type": "string",
+      "enum": ["capability", "stage_copilot", "legacy_copilot_like", "unknown_or_unclassified"]
+    },
+    "promptSpecTaxonomyStatus": {
+      "type": "string",
+      "enum": ["native_current", "legacy_current", "planned", "unknown_or_unclassified"]
+    },
+    "promptSpecLegacyMapping": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["existingPromptKey", "sourceRegistry", "migrationStatus"],
+      "properties": {
+        "existingPromptKey": { "type": "string", "minLength": 1 },
+        "existingLinkedModule": { "type": "string", "minLength": 1 },
+        "sourceRegistry": {
+          "type": "string",
+          "enum": ["structured_prompt_spec", "pass5_prompt_family", "pass6_prompt_workspace", "stage_copilot_profile", "external_or_unknown"]
+        },
+        "migrationStatus": { "type": "string", "enum": ["legacy_current", "metadata_only"] },
+        "notes": { "type": "string" }
+      }
+    },
+    "promptSpecClassification": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "taxonomyStatus", "stageKey", "preservesExistingKey"],
+      "properties": {
+        "kind": { "$ref": "#/definitions/promptSpecKind" },
+        "taxonomyStatus": { "$ref": "#/definitions/promptSpecTaxonomyStatus" },
+        "stageKey": { "$ref": "#/definitions/stageKey" },
+        "preservesExistingKey": { "const": true },
+        "legacyMapping": { "$ref": "#/definitions/promptSpecLegacyMapping" },
         "notes": { "type": "string" }
       }
     },
