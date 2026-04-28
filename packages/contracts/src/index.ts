@@ -71,6 +71,7 @@ export {
   pass6PromptSpecSchema,
   pass6PromptTestCaseSchema,
   pass6PromptTestExecutionResultSchema,
+  stageCopilotProfileSchema,
 } from "./schemas/index.js";
 
 import { makeValidator } from "./validate.js";
@@ -144,6 +145,7 @@ import {
   pass6PromptSpecSchema,
   pass6PromptTestCaseSchema,
   pass6PromptTestExecutionResultSchema,
+  stageCopilotProfileSchema,
 } from "./schemas/index.js";
 import type { CaseConfiguration } from "./types/case-configuration.js";
 import type { SourceRegistration } from "./types/source-registration.js";
@@ -206,6 +208,7 @@ import type {
   Pass6PromptTestCase,
   Pass6PromptTestExecutionResult,
 } from "./types/pass6-prompt-workspace.js";
+import type { StageCopilotProfile } from "./types/stage-copilot.js";
 import {
   SessionState,
   ParticipantSessionState,
@@ -440,3 +443,6 @@ export const validatePass6PromptTestCase =
 
 export const validatePass6PromptTestExecutionResult =
   makeValidator<Pass6PromptTestExecutionResult>(pass6PromptTestExecutionResultSchema);
+
+export const validateStageCopilotProfile =
+  makeValidator<StageCopilotProfile>(stageCopilotProfileSchema);

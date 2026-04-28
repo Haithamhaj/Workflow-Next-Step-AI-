@@ -27,6 +27,7 @@ import participantSessionSchema from "./participant-session.schema.json" with { 
 import pass6CoreSchema from "./pass6-core.schema.json" with { type: "json" };
 import pass6ConfigurationSchema from "./pass6-configuration.schema.json" with { type: "json" };
 import pass6PromptWorkspaceSchema from "./pass6-prompt-workspace.schema.json" with { type: "json" };
+import stageCopilotProfileSchema from "./stage-copilot-profile.schema.json" with { type: "json" };
 
 function pass5Schema(title: string, definitionName: string) {
   return {
@@ -168,4 +169,5 @@ export {
   pass6PromptSpecSchema,
   pass6PromptTestCaseSchema,
   pass6PromptTestExecutionResultSchema,
+  stageCopilotProfileSchema,
 };

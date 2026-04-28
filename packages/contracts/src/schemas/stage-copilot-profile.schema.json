@@ -1,0 +1,518 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://workflow.local/schemas/stage-copilot-profile.json",
+  "title": "StageCopilotProfile",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "profileId",
+    "stageKey",
+    "displayName",
+    "runtimeMode",
+    "promptSpecRefs",
+    "capabilityPromptSpecRefs",
+    "stageCopilotPromptSpecRefs",
+    "contextBundleRefs",
+    "systemKnowledgeRefs",
+    "caseContextRefs",
+    "retrievalScope",
+    "contextDataAccessStrategy",
+    "refusalPolicy",
+    "conversationalBehaviorProfile",
+    "advisoryModePolicy",
+    "routedRecommendationTypes",
+    "forbiddenActions",
+    "readWriteBoundary",
+    "evidenceAccessPolicy",
+    "auditRequirements",
+    "createdAt",
+    "updatedAt"
+  ],
+  "allOf": [
+    {
+      "properties": {
+        "forbiddenActions": { "type": "array", "contains": { "const": "approve_gates" } }
+      }
+    },
+    {
+      "properties": {
+        "forbiddenActions": { "type": "array", "contains": { "const": "approve_transcripts" } }
+      }
+    },
+    {
+      "properties": {
+        "forbiddenActions": { "type": "array", "contains": { "const": "approve_reject_evidence" } }
+      }
+    },
+    {
+      "properties": {
+        "forbiddenActions": { "type": "array", "contains": { "const": "mutate_records" } }
+      }
+    },
+    {
+      "properties": {
+        "forbiddenActions": { "type": "array", "contains": { "const": "run_providers" } }
+      }
+    },
+    {
+      "properties": {
+        "forbiddenActions": { "type": "array", "contains": { "const": "generate_packages" } }
+      }
+    },
+    {
+      "properties": {
+        "forbiddenActions": { "type": "array", "contains": { "const": "send_messages" } }
+      }
+    },
+    {
+      "properties": {
+        "forbiddenActions": { "type": "array", "contains": { "const": "change_readiness" } }
+      }
+    },
+    {
+      "properties": {
+        "forbiddenActions": { "type": "array", "contains": { "const": "change_package_eligibility" } }
+      }
+    },
+    {
+      "properties": {
+        "forbiddenActions": { "type": "array", "contains": { "const": "promote_prompts" } }
+      }
+    },
+    {
+      "properties": {
+        "forbiddenActions": { "type": "array", "contains": { "const": "release_final_package" } }
+      }
+    },
+    {
+      "properties": {
+        "forbiddenActions": { "type": "array", "contains": { "const": "execute_pass7_review_actions" } }
+      }
+    },
+    {
+      "properties": {
+        "forbiddenActions": { "type": "array", "contains": { "const": "alter_source_of_truth_records" } }
+      }
+    }
+  ],
+  "properties": {
+    "profileId": { "type": "string", "minLength": 1 },
+    "stageKey": { "$ref": "#/definitions/stageKey" },
+    "displayName": { "type": "string", "minLength": 1 },
+    "runtimeMode": {
+      "type": "string",
+      "enum": ["disabled", "static_profile", "deterministic_mock", "provider_backed"]
+    },
+    "promptSpecRefs": {
+      "type": "array",
+      "items": { "$ref": "#/definitions/promptSpecRef" }
+    },
+    "capabilityPromptSpecRefs": {
+      "type": "array",
+      "items": {
+        "allOf": [
+          { "$ref": "#/definitions/promptSpecRef" },
+          {
+            "type": "object",
+            "properties": { "kind": { "const": "capability" } }
+          }
+        ]
+      }
+    },
+    "stageCopilotPromptSpecRefs": {
+      "type": "array",
+      "items": {
+        "allOf": [
+          { "$ref": "#/definitions/promptSpecRef" },
+          {
+            "type": "object",
+            "properties": { "kind": { "const": "stage_copilot" } }
+          }
+        ]
+      }
+    },
+    "contextBundleRefs": {
+      "type": "array",
+      "items": { "$ref": "#/definitions/contextBundleRef" }
+    },
+    "systemKnowledgeRefs": {
+      "type": "array",
+      "items": { "$ref": "#/definitions/systemKnowledgeRef" }
+    },
+    "caseContextRefs": {
+      "type": "array",
+      "items": { "$ref": "#/definitions/caseContextRef" }
+    },
+    "retrievalScope": { "$ref": "#/definitions/retrievalScope" },
+    "contextDataAccessStrategy": { "$ref": "#/definitions/contextDataAccessStrategy" },
+    "refusalPolicy": { "$ref": "#/definitions/refusalPolicy" },
+    "conversationalBehaviorProfile": { "$ref": "#/definitions/conversationalBehaviorProfile" },
+    "advisoryModePolicy": { "$ref": "#/definitions/advisoryModePolicy" },
+    "routedRecommendationTypes": {
+      "type": "array",
+      "items": { "$ref": "#/definitions/routedRecommendation" }
+    },
+    "forbiddenActions": {
+      "type": "array",
+      "minItems": 13,
+      "uniqueItems": true,
+      "items": { "$ref": "#/definitions/forbiddenAction" }
+    },
+    "readWriteBoundary": { "$ref": "#/definitions/readWriteBoundary" },
+    "evidenceAccessPolicy": { "$ref": "#/definitions/evidenceAccessPolicy" },
+    "auditRequirements": { "$ref": "#/definitions/auditRequirements" },
+    "createdAt": { "type": "string", "minLength": 1 },
+    "updatedAt": { "type": "string", "minLength": 1 }
+  },
+  "definitions": {
+    "stageKey": {
+      "type": "string",
+      "enum": [
+        "sources_context",
+        "hierarchy",
+        "targeting",
+        "participant_evidence",
+        "analysis_package",
+        "prompt_studio",
+        "advanced_debug",
+        "future_finalization"
+      ]
+    },
+    "promptSpecRef": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["refId", "kind", "promptSpecKey", "linkedStage"],
+      "properties": {
+        "refId": { "type": "string", "minLength": 1 },
+        "kind": { "type": "string", "enum": ["capability", "stage_copilot"] },
+        "promptSpecKey": { "type": "string", "minLength": 1 },
+        "linkedStage": { "$ref": "#/definitions/stageKey" },
+        "status": { "type": "string", "enum": ["draft", "active", "previous", "archived"] },
+        "version": { "type": "integer", "minimum": 1 },
+        "notes": { "type": "string" }
+      }
+    },
+    "contextBundleRef": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["refId", "bundleKey", "linkedStage", "scope"],
+      "properties": {
+        "refId": { "type": "string", "minLength": 1 },
+        "bundleKey": { "type": "string", "minLength": 1 },
+        "linkedStage": { "$ref": "#/definitions/stageKey" },
+        "scope": { "type": "string", "enum": ["stage", "case", "session", "selected_records", "operator"] },
+        "version": { "type": "integer", "minimum": 1 },
+        "notes": { "type": "string" }
+      }
+    },
+    "systemKnowledgeRef": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["refId", "refType", "label", "sourceRef"],
+      "properties": {
+        "refId": { "type": "string", "minLength": 1 },
+        "refType": {
+          "type": "string",
+          "enum": [
+            "stage_purpose",
+            "stage_boundary",
+            "stage_rule",
+            "contract",
+            "gate",
+            "allowed_action",
+            "forbidden_action",
+            "capability_prompt",
+            "stage_copilot_prompt",
+            "proof_or_validation_logic",
+            "feature_behavior"
+          ]
+        },
+        "label": { "type": "string", "minLength": 1 },
+        "sourceRef": { "type": "string", "minLength": 1 },
+        "notes": { "type": "string" }
+      }
+    },
+    "caseContextFamily": {
+      "type": "string",
+      "enum": [
+        "sources",
+        "extraction_jobs",
+        "source_role_scope_suggestions",
+        "hierarchy",
+        "targeting_packet",
+        "question_hint_seeds",
+        "participant_sessions",
+        "transcripts",
+        "clarification_answers",
+        "boundary_dispute_signals",
+        "synthesis_outputs",
+        "readiness_blockers",
+        "package_gate_state",
+        "prompt_test_results",
+        "provider_jobs",
+        "review_candidates"
+      ]
+    },
+    "caseContextRef": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["refId", "family", "linkedStage", "scope"],
+      "properties": {
+        "refId": { "type": "string", "minLength": 1 },
+        "family": { "$ref": "#/definitions/caseContextFamily" },
+        "linkedStage": { "$ref": "#/definitions/stageKey" },
+        "scope": { "type": "string", "enum": ["case", "session", "selected_records", "stage", "operator"] },
+        "recordType": { "type": "string" },
+        "notes": { "type": "string" }
+      }
+    },
+    "retrievalScope": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["scopeId", "allowedModes", "allowedRecordFamilies", "citationRequired", "auditRequired", "executionMode"],
+      "properties": {
+        "scopeId": { "type": "string", "minLength": 1 },
+        "allowedModes": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "enum": [
+              "direct_id_lookup",
+              "evidence_anchor_lookup",
+              "stage_scoped_keyword_lookup",
+              "hybrid_exact_anchor_keyword_lookup",
+              "semantic_vector_lookup_future_optional"
+            ]
+          }
+        },
+        "allowedRecordFamilies": {
+          "type": "array",
+          "items": { "$ref": "#/definitions/caseContextFamily" }
+        },
+        "citationRequired": { "type": "boolean" },
+        "auditRequired": { "type": "boolean" },
+        "executionMode": { "const": "declarative_only" },
+        "notes": { "type": "string" }
+      }
+    },
+    "contextDataAccessStrategy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["strategyId", "intendedContextModel", "allowedModes", "executionMode"],
+      "properties": {
+        "strategyId": { "type": "string", "minLength": 1 },
+        "intendedContextModel": {
+          "type": "string",
+          "enum": ["db_only", "retrieval_only", "anchor_based_evidence", "hybrid_db_retrieval", "future_semantic_retrieval"]
+        },
+        "allowedModes": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "enum": [
+              "database_repository_lookup",
+              "scoped_record_reference_lookup",
+              "evidence_anchor_lookup",
+              "retrieval_search_index_lookup",
+              "hybrid_database_retrieval_lookup",
+              "semantic_vector_lookup_future_optional"
+            ]
+          }
+        },
+        "executionMode": { "const": "declarative_only" },
+        "notes": { "type": "string" }
+      }
+    },
+    "refusalPolicy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["policyId", "categories", "redirectToOwningStageAllowed", "explainBoundary"],
+      "properties": {
+        "policyId": { "type": "string", "minLength": 1 },
+        "categories": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "enum": [
+              "out_of_stage_topic",
+              "unrelated_topic",
+              "mutation_request",
+              "restricted_evidence_request",
+              "provider_execution_request",
+              "business_decision_request",
+              "package_release_authority_request",
+              "prompt_promotion_request",
+              "transcript_evidence_approval_request"
+            ]
+          }
+        },
+        "redirectToOwningStageAllowed": { "type": "boolean" },
+        "explainBoundary": { "type": "boolean" }
+      }
+    },
+    "conversationalBehaviorProfile": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "profileId",
+        "supportsMultiTurnDiscussion",
+        "supportsAdvisoryWhatIfReasoning",
+        "supportsChallengeCritique",
+        "supportsMethodLensExplanation",
+        "separatesRecommendationFromDecision",
+        "explanationDepth",
+        "challengeLevel",
+        "directness",
+        "alternativesBehavior",
+        "uncertaintyHandling",
+        "citationBehavior"
+      ],
+      "properties": {
+        "profileId": { "type": "string", "minLength": 1 },
+        "supportsMultiTurnDiscussion": { "type": "boolean" },
+        "supportsAdvisoryWhatIfReasoning": { "type": "boolean" },
+        "supportsChallengeCritique": { "type": "boolean" },
+        "supportsMethodLensExplanation": { "type": "boolean" },
+        "separatesRecommendationFromDecision": { "type": "boolean" },
+        "explanationDepth": { "type": "string", "enum": ["brief", "standard", "deep"] },
+        "challengeLevel": { "type": "string", "enum": ["none", "light", "moderate", "strong"] },
+        "directness": { "type": "string", "enum": ["soft", "balanced", "direct"] },
+        "alternativesBehavior": { "type": "string", "enum": ["none", "on_request", "proactive_when_useful"] },
+        "uncertaintyHandling": { "type": "string", "enum": ["state_limits", "highlight_uncertainty", "challenge_unsupported_assumptions"] },
+        "citationBehavior": { "type": "string", "enum": ["none", "cite_when_available", "cite_or_request_evidence"] }
+      }
+    },
+    "advisoryModePolicy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["policyId", "advisoryWhatIfAllowed", "advisoryOnly", "labelHypotheticals", "prohibitedOutcomes"],
+      "properties": {
+        "policyId": { "type": "string", "minLength": 1 },
+        "advisoryWhatIfAllowed": { "type": "boolean" },
+        "advisoryOnly": { "const": true },
+        "labelHypotheticals": { "type": "boolean" },
+        "prohibitedOutcomes": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": { "$ref": "#/definitions/forbiddenAction" }
+        }
+      }
+    },
+    "targetReference": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["referenceType", "referenceId"],
+      "properties": {
+        "referenceType": { "type": "string", "minLength": 1 },
+        "referenceId": { "type": "string", "minLength": 1 },
+        "label": { "type": "string" }
+      }
+    },
+    "routedRecommendation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["actionKey", "label", "reason", "owningArea", "requiresAdminConfirmation", "executesAutomatically"],
+      "properties": {
+        "actionKey": { "type": "string", "minLength": 1 },
+        "label": { "type": "string", "minLength": 1 },
+        "reason": { "type": "string", "minLength": 1 },
+        "owningArea": { "type": "string", "minLength": 1 },
+        "targetReference": { "$ref": "#/definitions/targetReference" },
+        "requiresAdminConfirmation": { "const": true },
+        "executesAutomatically": { "const": false }
+      }
+    },
+    "forbiddenAction": {
+      "type": "string",
+      "enum": [
+        "approve_gates",
+        "approve_transcripts",
+        "approve_reject_evidence",
+        "mutate_records",
+        "run_providers",
+        "generate_packages",
+        "send_messages",
+        "change_readiness",
+        "change_package_eligibility",
+        "promote_prompts",
+        "release_final_package",
+        "execute_pass7_review_actions",
+        "alter_source_of_truth_records"
+      ]
+    },
+    "readWriteBoundary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "readableScopes",
+        "writePolicy",
+        "autonomousWritesAllowed",
+        "noAutonomousWrites",
+        "routedRecommendationsOnly",
+        "adminConfirmationRequired"
+      ],
+      "properties": {
+        "readableScopes": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "type": "string", "minLength": 1 }
+        },
+        "writePolicy": { "const": "no_writes" },
+        "autonomousWritesAllowed": { "const": false },
+        "noAutonomousWrites": { "const": true },
+        "routedRecommendationsOnly": { "const": true },
+        "adminConfirmationRequired": { "const": true }
+      }
+    },
+    "evidenceAccessPolicy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["policyId", "accessLevel", "rawEvidenceRequiresAdminScope", "citationRequiredForEvidence", "restrictedEvidenceCategories"],
+      "properties": {
+        "policyId": { "type": "string", "minLength": 1 },
+        "accessLevel": {
+          "type": "string",
+          "enum": ["none", "summary_only", "anchored_evidence", "restricted_raw_evidence", "admin_approved_raw_evidence"]
+        },
+        "rawEvidenceRequiresAdminScope": { "type": "boolean" },
+        "citationRequiredForEvidence": { "type": "boolean" },
+        "restrictedEvidenceCategories": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 }
+        },
+        "notes": { "type": "string" }
+      }
+    },
+    "auditRequirements": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "auditId",
+        "interactionRecordingRequired",
+        "contextReferenceRecordingRequired",
+        "providerModelRecordingRequired",
+        "routedRecommendationAuditRequired",
+        "refusalAuditRequired",
+        "dataAccessStrategyAuditRequired",
+        "retrievalCitationAuditRequired"
+      ],
+      "properties": {
+        "auditId": { "type": "string", "minLength": 1 },
+        "interactionRecordingRequired": { "type": "boolean" },
+        "contextReferenceRecordingRequired": { "type": "boolean" },
+        "providerModelRecordingRequired": { "type": "boolean" },
+        "routedRecommendationAuditRequired": { "type": "boolean" },
+        "refusalAuditRequired": { "type": "boolean" },
+        "dataAccessStrategyAuditRequired": { "type": "boolean" },
+        "retrievalCitationAuditRequired": { "type": "boolean" }
+      }
+    }
+  }
+}

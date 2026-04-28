@@ -17,3 +17,4 @@ export * from "./participant-session.js";
 export * from "./pass6-core.js";
 export * from "./pass6-configuration.js";
 export * from "./pass6-prompt-workspace.js";
+export * from "./stage-copilot.js";
