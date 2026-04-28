@@ -1,6 +1,7 @@
 import {
   createInMemoryStore,
   createSQLiteIntakeRepositories,
+  createSQLiteStageCopilotRepositories,
   type InMemoryStore,
 } from "@workflow/persistence";
 
@@ -8,9 +9,11 @@ import {
 declare const globalThis: typeof global & { __workflowStore__?: InMemoryStore };
 
 const intakeRepositories = createSQLiteIntakeRepositories();
+const stageCopilotRepositories = createSQLiteStageCopilotRepositories();
 
 export const store: InMemoryStore = globalThis.__workflowStore__ ?? (globalThis.__workflowStore__ = {
   ...createInMemoryStore(),
+  stageCopilotSystemPrompts: stageCopilotRepositories.stageCopilotSystemPrompts,
   intakeSessions: intakeRepositories.intakeSessions,
   intakeSources: intakeRepositories.intakeSources,
   providerJobs: intakeRepositories.providerJobs,
