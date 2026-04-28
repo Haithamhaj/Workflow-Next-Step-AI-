@@ -2432,6 +2432,21 @@ function openIntakeDatabase(dbPath?: string): DatabaseSync {
       scope_ref TEXT,
       payload TEXT NOT NULL
     );
+    CREATE TABLE IF NOT EXISTS stage_copilot_system_prompts (
+      id TEXT PRIMARY KEY,
+      stage_key TEXT NOT NULL,
+      prompt_key TEXT NOT NULL,
+      kind TEXT NOT NULL,
+      status TEXT NOT NULL,
+      version INTEGER NOT NULL,
+      source TEXT NOT NULL,
+      default_ref_id TEXT NOT NULL,
+      created_at TEXT NOT NULL,
+      created_by TEXT NOT NULL,
+      updated_at TEXT NOT NULL,
+      updated_by TEXT NOT NULL,
+      payload TEXT NOT NULL
+    );
     CREATE INDEX IF NOT EXISTS idx_provider_jobs_source_id ON provider_extraction_jobs(source_id);
     CREATE INDEX IF NOT EXISTS idx_provider_jobs_session_id ON provider_extraction_jobs(session_id);
     CREATE INDEX IF NOT EXISTS idx_text_artifacts_source_id ON text_artifacts(source_id);
@@ -2505,6 +2520,11 @@ function openIntakeDatabase(dbPath?: string): DatabaseSync {
     CREATE INDEX IF NOT EXISTS idx_pass6_core_records_case_id ON pass6_core_records(record_type, case_id);
     CREATE INDEX IF NOT EXISTS idx_pass6_configuration_profiles_status ON pass6_configuration_profiles(status);
     CREATE INDEX IF NOT EXISTS idx_pass6_configuration_profiles_scope ON pass6_configuration_profiles(scope, scope_ref);
+    CREATE INDEX IF NOT EXISTS idx_stage_copilot_system_prompts_stage_key ON stage_copilot_system_prompts(stage_key);
+    CREATE INDEX IF NOT EXISTS idx_stage_copilot_system_prompts_stage_status ON stage_copilot_system_prompts(stage_key, status);
+    CREATE INDEX IF NOT EXISTS idx_stage_copilot_system_prompts_stage_version ON stage_copilot_system_prompts(stage_key, version);
+    CREATE UNIQUE INDEX IF NOT EXISTS idx_stage_copilot_system_prompts_one_current ON stage_copilot_system_prompts(stage_key)
+      WHERE status = 'current';
   `);
   return db;
 }
@@ -2521,6 +2541,101 @@ function parseStoredList<T>(rows: unknown[]): T[] {
     const parsed = parseStored<T>(row);
     return parsed ? [parsed] : [];
   });
+}
+
+export class SQLiteStageCopilotSystemPromptRepository implements StageCopilotSystemPromptRepository {
+  private readonly db: DatabaseSync;
+
+  constructor(dbPath?: string) {
+    this.db = openIntakeDatabase(dbPath);
+  }
+
+  save(record: StoredStageCopilotSystemPromptRecord): void {
+    const cloned = cloneRecord(record);
+    const violations = validateStageCopilotSystemPromptRecord(cloned);
+    if (violations.length > 0) {
+      throw new Error(`Invalid Stage Copilot System Prompt record: ${violations.join(", ")}`);
+    }
+
+    this.db.exec("BEGIN IMMEDIATE");
+    try {
+      if (cloned.status === "current") {
+        const rows = this.db.prepare(
+          "SELECT payload FROM stage_copilot_system_prompts WHERE stage_key = ? AND status = 'current' AND id != ?",
+        ).all(cloned.stageKey, cloned.systemPromptId);
+        const existingCurrentRecords = parseStoredList<StoredStageCopilotSystemPromptRecord>(rows);
+
+        for (const existing of existingCurrentRecords) {
+          const superseded = cloneRecord({
+            ...existing,
+            status: "superseded" as const,
+            updatedAt: cloned.updatedAt,
+            updatedBy: cloned.updatedBy,
+          });
+          this.db.prepare(
+            "UPDATE stage_copilot_system_prompts SET status = ?, updated_at = ?, updated_by = ?, payload = ? WHERE id = ?",
+          ).run(superseded.status, superseded.updatedAt, superseded.updatedBy, JSON.stringify(superseded), superseded.systemPromptId);
+        }
+      }
+
+      this.db.prepare(
+        "INSERT INTO stage_copilot_system_prompts (id, stage_key, prompt_key, kind, status, version, source, default_ref_id, created_at, created_by, updated_at, updated_by, payload) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) ON CONFLICT(id) DO UPDATE SET stage_key = excluded.stage_key, prompt_key = excluded.prompt_key, kind = excluded.kind, status = excluded.status, version = excluded.version, source = excluded.source, default_ref_id = excluded.default_ref_id, created_at = excluded.created_at, created_by = excluded.created_by, updated_at = excluded.updated_at, updated_by = excluded.updated_by, payload = excluded.payload",
+      ).run(
+        cloned.systemPromptId,
+        cloned.stageKey,
+        cloned.promptKey,
+        cloned.kind,
+        cloned.status,
+        cloned.version,
+        cloned.source,
+        cloned.defaultRefId,
+        cloned.createdAt,
+        cloned.createdBy,
+        cloned.updatedAt,
+        cloned.updatedBy,
+        JSON.stringify(cloned),
+      );
+      this.db.exec("COMMIT");
+    } catch (error) {
+      this.db.exec("ROLLBACK");
+      throw error;
+    }
+  }
+
+  findById(systemPromptId: string): StoredStageCopilotSystemPromptRecord | null {
+    const row = this.db.prepare("SELECT payload FROM stage_copilot_system_prompts WHERE id = ?").get(systemPromptId);
+    const record = parseStored<StoredStageCopilotSystemPromptRecord>(row);
+    return record ? cloneRecord(record) : null;
+  }
+
+  findCurrentByStage(stageKey: StageCopilotStageKey): StoredStageCopilotSystemPromptRecord | null {
+    const row = this.db.prepare(
+      "SELECT payload FROM stage_copilot_system_prompts WHERE stage_key = ? AND status = 'current' ORDER BY version DESC LIMIT 1",
+    ).get(stageKey);
+    const record = parseStored<StoredStageCopilotSystemPromptRecord>(row);
+    return record ? cloneRecord(record) : null;
+  }
+
+  findCurrentByStageOrDefault(
+    stageKey: StageCopilotStageKey,
+    fallback: StoredStageCopilotSystemPromptRecord,
+  ): StoredStageCopilotSystemPromptRecord {
+    return this.findCurrentByStage(stageKey) ?? cloneRecord(fallback);
+  }
+
+  listHistoryByStage(stageKey: StageCopilotStageKey): StoredStageCopilotSystemPromptRecord[] {
+    const rows = this.db.prepare(
+      "SELECT payload FROM stage_copilot_system_prompts WHERE stage_key = ? ORDER BY version ASC",
+    ).all(stageKey);
+    return parseStoredList<StoredStageCopilotSystemPromptRecord>(rows).map((record) => cloneRecord(record));
+  }
+
+  findAll(): StoredStageCopilotSystemPromptRecord[] {
+    const rows = this.db.prepare(
+      "SELECT payload FROM stage_copilot_system_prompts ORDER BY stage_key ASC, version ASC",
+    ).all();
+    return parseStoredList<StoredStageCopilotSystemPromptRecord>(rows).map((record) => cloneRecord(record));
+  }
 }
 
 export class SQLiteIntakeSessionRepository implements IntakeSessionRepository {
