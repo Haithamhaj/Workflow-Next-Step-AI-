@@ -78,11 +78,15 @@ export {
 } from "./prompt-studio-context.js";
 
 export {
+  buildPromptStudioCopilotProviderPrompt,
   createPromptStudioCopilotChatResponse,
+  createPromptStudioCopilotFallbackResponse,
+  createPromptStudioCopilotProviderResponse,
   type PromptStudioCopilotChatContextSummary,
   type PromptStudioCopilotChatInput,
   type PromptStudioCopilotChatMessage,
   type PromptStudioCopilotChatResponse,
   type PromptStudioCopilotChatRole,
+  type PromptStudioCopilotProviderOutput,
   type PromptStudioCopilotProviderStatus,
 } from "./prompt-studio-chat.js";

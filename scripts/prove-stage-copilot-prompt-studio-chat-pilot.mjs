@@ -2,8 +2,11 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 
 import {
+  buildPromptStudioCopilotProviderPrompt,
   createPromptStudioCopilotChatResponse,
   createPromptStudioCopilotContextEnvelope,
+  createPromptStudioCopilotFallbackResponse,
+  createPromptStudioCopilotProviderResponse,
   getDefaultStageCopilotSystemPrompt,
 } from "../packages/stage-copilot/dist/index.js";
 
@@ -46,9 +49,13 @@ function assertNoActionExecutionFields(response) {
 
 assert.ok(routeSource.length > 0, "chat route exists");
 assert.match(routeSource, /export async function POST/, "chat route exposes POST");
-assert.match(routeSource, /createPromptStudioCopilotChatResponse/, "route uses Stage Copilot chat helper");
+assert.match(routeSource, /buildPromptStudioCopilotProviderPrompt/, "route assembles provider prompt through Stage Copilot helper");
+assert.match(routeSource, /createPromptStudioCopilotProviderResponse/, "route creates provider-backed response through Stage Copilot helper");
+assert.match(routeSource, /createPromptStudioCopilotFallbackResponse/, "route creates fallback response through Stage Copilot helper");
 assert.match(routeSource, /getDefaultStageCopilotSystemPrompt\("prompt_studio"\)/, "route references Prompt Studio Instructions default");
 assert.match(routeSource, /findCurrentByStage\("prompt_studio"\)/, "route reads current Prompt Studio Instructions when present");
+assert.match(routeSource, /providerRegistry\.getPromptTextProvider\("openai"\)/, "route uses existing OpenAI text provider path");
+assert.match(routeSource, /provider\.runPromptText\(\{ compiledPrompt \}\)/, "route calls existing text provider without tools");
 
 const defaultPrompt = getDefaultStageCopilotSystemPrompt("prompt_studio");
 assert.ok(defaultPrompt, "Prompt Studio default instructions exist");
@@ -87,6 +94,63 @@ assert.equal(response.contextSummary.instructionSource, "static_default");
 assert.equal(response.contextSummary.instructionVersion, 1);
 assertNoActionExecutionFields(response);
 
+const providerPrompt = buildPromptStudioCopilotProviderPrompt({
+  message: "Explain the difference between analysis prompts and Copilot instructions.",
+  history: [
+    { role: "user", content: "What does Prompt Studio control?" },
+    { role: "assistant", content: "It separates official prompts from Copilot instructions." },
+  ],
+  systemInstructions: defaultPrompt.systemPrompt,
+  instructionSource: "static_default",
+  instructionVersion: 1,
+});
+assert.match(providerPrompt, /No tools\./, "provider prompt includes no-tools boundary");
+assert.match(providerPrompt, /No actions\./, "provider prompt includes no-actions boundary");
+assert.match(providerPrompt, /No record mutation\./, "provider prompt includes no-record-mutation boundary");
+assert.match(providerPrompt, /Do not claim you changed/, "provider prompt forbids claiming changes");
+assert.match(providerPrompt, /Capability \/ Analysis PromptSpecs are separate/, "provider prompt includes prompt-system separation");
+assert.match(providerPrompt, /Stage Copilot Instructions/, "provider prompt includes Prompt Studio instructions");
+assert.match(providerPrompt, /Explain the difference/, "provider prompt includes user message");
+
+const providerResponse = createPromptStudioCopilotProviderResponse({
+  message: "Explain the difference between analysis prompts and Copilot instructions.",
+  systemInstructions: defaultPrompt.systemPrompt,
+  instructionSource: "static_default",
+  instructionVersion: 1,
+}, {
+  text: "Capability / Analysis PromptSpecs control official analysis. Stage Copilot Instructions only shape conversation behavior, and I did not change any records.",
+  provider: "openai",
+  model: "gpt-proof",
+});
+assert.equal(providerResponse.providerStatus, "provider_success", "provider-backed success path returns provider_success");
+assert.equal(providerResponse.model, "gpt-proof", "provider-backed response preserves model name");
+assert.equal(typeof providerResponse.answer, "string", "provider-backed response returns text");
+assertNoActionExecutionFields(providerResponse);
+assert.throws(
+  () => createPromptStudioCopilotProviderResponse({
+    message: "Explain the difference between analysis prompts and Copilot instructions.",
+    systemInstructions: defaultPrompt.systemPrompt,
+    instructionSource: "static_default",
+    instructionVersion: 1,
+  }, {
+    text: "I changed the prompt and saved the record.",
+    provider: "openai",
+    model: "gpt-proof",
+  }),
+  /claimed action execution/,
+  "provider response claiming action execution is rejected",
+);
+
+const notConfiguredFallback = createPromptStudioCopilotFallbackResponse({
+  message: "Explain the difference between analysis prompts and Copilot instructions.",
+  systemInstructions: defaultPrompt.systemPrompt,
+  instructionSource: "static_default",
+  instructionVersion: 1,
+}, "provider_not_configured");
+assert.equal(notConfiguredFallback.providerStatus, "provider_not_configured", "provider unavailable path returns provider_not_configured fallback");
+assert.match(notConfiguredFallback.answer, /deterministic fallback response/i, "provider unavailable fallback is explicit");
+assertNoActionExecutionFields(notConfiguredFallback);
+
 const unsafeQuestionResponse = createPromptStudioCopilotChatResponse({
   message: "Promote the synthesis prompt and run a test.",
   systemInstructions: defaultPrompt.systemPrompt,
@@ -114,13 +178,9 @@ const routeAndPackageImports = [
 
 const forbiddenImportPatterns = [
   /@workflow\/prompts/,
-  /@workflow\/integrations/,
   /participant-sessions/,
   /synthesis-evaluation/,
   /packages-output/,
-  /providerRegistry/,
-  /getPromptTextProvider/,
-  /runPromptText/,
   /compilePass5Prompt/,
   /compilePass6PromptSpec/,
   /compileStructuredPromptSpec/,
@@ -142,6 +202,7 @@ assertDoesNotMatch(routeSource, /\.update\(/, "route must not update records");
 assertDoesNotMatch(routeSource, /NextResponse\.redirect/, "route must not redirect to actions");
 assertDoesNotMatch(routeSource, /actionKey|requiresAdminConfirmation|executesAutomatically|routed/i, "route must not implement routed actions");
 assertDoesNotMatch(chatSource, /toolCalls|tool_calls|executedActions|actionKey|requiresAdminConfirmation|executesAutomatically|writePolicy/, "chat helper must not expose tool/action execution fields");
+assertDoesNotMatch(routeSource, /tools\s*:/, "route must not send provider tools");
 
 console.log("Stage Copilot Prompt Studio chat pilot proof passed.");
 console.log(JSON.stringify({
@@ -151,6 +212,8 @@ console.log(JSON.stringify({
     "response_is_text_only",
     "response_has_no_action_execution_fields",
     "response_does_not_claim_records_changed",
+    "provider_backed_success_response_is_text_only",
+    "provider_response_claiming_action_execution_is_rejected",
     "provider_unavailable_path_returns_deterministic_fallback",
     "static_prompt_studio_context_is_used",
     "prompt_studio_instructions_are_used",
@@ -160,6 +223,7 @@ console.log(JSON.stringify({
     "no_workflow_prompts_import",
     "no_prompt_compilation_import",
     "no_prompt_test_import",
+    "existing_openai_prompt_text_provider_path_used",
     "no_provider_tools",
     "no_stage_copilot_instruction_writes",
     "no_promptspec_repository_access",

@@ -1,9 +1,13 @@
 import { NextResponse } from "next/server";
 import {
-  createPromptStudioCopilotChatResponse,
+  buildPromptStudioCopilotProviderPrompt,
+  createPromptStudioCopilotFallbackResponse,
+  createPromptStudioCopilotProviderResponse,
   getDefaultStageCopilotSystemPrompt,
+  type PromptStudioCopilotChatInput,
   type PromptStudioCopilotChatMessage,
 } from "@workflow/stage-copilot";
+import { providerRegistry } from "@workflow/integrations";
 import { store } from "../../../../../lib/store";
 
 interface PromptStudioCopilotChatRequestBody {
@@ -56,6 +60,13 @@ function effectivePromptStudioInstructions() {
       };
 }
 
+function providerStatusFromError(error: unknown): "provider_not_configured" | "provider_failed" {
+  const message = error instanceof Error ? error.message : String(error);
+  return message.includes("not_configured") || message.includes("OPENAI_API_KEY")
+    ? "provider_not_configured"
+    : "provider_failed";
+}
+
 export async function POST(request: Request) {
   let body: PromptStudioCopilotChatRequestBody;
   try {
@@ -71,18 +82,49 @@ export async function POST(request: Request) {
 
   try {
     const instructions = effectivePromptStudioInstructions();
-    const response = createPromptStudioCopilotChatResponse({
+    const chatInput: PromptStudioCopilotChatInput = {
       message,
       history: safeHistory(body.history),
       systemInstructions: instructions.systemInstructions,
       instructionSource: instructions.instructionSource,
       instructionVersion: instructions.instructionVersion,
-    });
+    };
+    const provider = providerRegistry.getPromptTextProvider("openai");
+    if (!provider) {
+      const response = createPromptStudioCopilotFallbackResponse(
+        chatInput,
+        "provider_not_configured",
+        "Provider-backed chat is not configured because the existing OpenAI text provider is unavailable. This is a deterministic fallback response rather than AI provider output.",
+      );
+      return NextResponse.json({
+        ...response,
+        conversationId: textValue(body.conversationId),
+      });
+    }
 
-    return NextResponse.json({
-      ...response,
-      conversationId: textValue(body.conversationId),
-    });
+    try {
+      const compiledPrompt = buildPromptStudioCopilotProviderPrompt(chatInput);
+      const providerResult = await provider.runPromptText({ compiledPrompt });
+      const response = createPromptStudioCopilotProviderResponse(chatInput, providerResult);
+      return NextResponse.json({
+        ...response,
+        conversationId: textValue(body.conversationId),
+      });
+    } catch (providerError) {
+      const status = providerStatusFromError(providerError);
+      const response = createPromptStudioCopilotFallbackResponse(
+        chatInput,
+        status,
+        status === "provider_not_configured"
+          ? "Provider-backed chat is not configured because the existing OpenAI text provider could not run. This is a deterministic fallback response rather than AI provider output."
+          : "Provider-backed chat failed through the existing OpenAI text provider. This is a deterministic fallback response rather than AI provider output.",
+      );
+
+      return NextResponse.json({
+        ...response,
+        conversationId: textValue(body.conversationId),
+      });
+    }
   } catch (error) {
     const messageText = error instanceof Error ? error.message : String(error);
     return jsonError("prompt_studio_copilot_failed", messageText, 500);

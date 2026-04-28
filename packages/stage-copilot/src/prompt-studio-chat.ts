@@ -44,6 +44,12 @@ export interface PromptStudioCopilotChatResponse {
   contextSummary: PromptStudioCopilotChatContextSummary;
 }
 
+export interface PromptStudioCopilotProviderOutput {
+  text: string;
+  provider: string;
+  model: string;
+}
+
 function compactWhitespace(value: string): string {
   return value.trim().replace(/\s+/g, " ");
 }
@@ -56,6 +62,10 @@ function firstSentence(value: string): string {
 
 function unsafeIntent(message: string): boolean {
   return /\b(change|modify|mutate|save|promote|archive|compile|run|test|execute|approve|reject|generate)\b/i.test(message);
+}
+
+function claimsCompletedAction(answer: string): boolean {
+  return /\b(I|we)\s+(changed|saved|promoted|compiled|tested|executed|mutated|updated|approved|rejected|generated)\b/i.test(answer);
 }
 
 function contextSummaryFrom(
@@ -73,16 +83,23 @@ function contextSummaryFrom(
   };
 }
 
-export function createPromptStudioCopilotChatResponse(
-  input: PromptStudioCopilotChatInput,
-): PromptStudioCopilotChatResponse {
+function validateChatInput(input: PromptStudioCopilotChatInput): {
+  message: string;
+  instructions: string;
+} {
   const message = compactWhitespace(input.message);
   const instructions = compactWhitespace(input.systemInstructions);
   if (!message) throw new Error("Prompt Studio Copilot chat message is required.");
   if (!instructions) throw new Error("Prompt Studio Copilot system instructions are required.");
+  return { message, instructions };
+}
 
-  const envelope = createPromptStudioCopilotContextEnvelope();
-  const summary = summarizePromptStudioCopilotContext(envelope);
+function fallbackAnswer(
+  input: PromptStudioCopilotChatInput,
+  message: string,
+  instructions: string,
+  reason: string,
+): string {
   const historyCount = input.history?.length ?? 0;
   const instructionBasis = firstSentence(instructions);
   const safetyResponse = unsafeIntent(message)
@@ -90,7 +107,7 @@ export function createPromptStudioCopilotChatResponse(
     : "I can discuss the Prompt Studio boundary and help reason about the prompt systems without changing anything.";
 
   const answer = [
-    "Provider-backed chat is not configured for this pilot, so this is a deterministic fallback response rather than AI provider output.",
+    reason,
     "Prompt Studio Copilot is a no-tool, no-action conversational assistant. It cannot mutate records, save prompts, promote PromptSpecs, compile prompts, run prompt tests, call providers, run official analysis, change readiness, change package eligibility, or generate packages.",
     `Current Prompt Studio Copilot Instructions are used as conversation guidance (${input.instructionSource}, version ${input.instructionVersion}): ${instructionBasis}`,
     "The static Prompt Studio context says there are two separate prompt systems: Capability / Analysis PromptSpecs control official analysis behavior, while Stage Copilot Instructions control only how a stage Copilot speaks and reasons.",
@@ -101,12 +118,97 @@ export function createPromptStudioCopilotChatResponse(
       : "No prior conversation history was provided.",
   ].join("\n\n");
 
+  return answer;
+}
+
+export function buildPromptStudioCopilotProviderPrompt(input: PromptStudioCopilotChatInput): string {
+  const { message, instructions } = validateChatInput(input);
+  const envelope = createPromptStudioCopilotContextEnvelope();
+  const summary = summarizePromptStudioCopilotContext(envelope);
+  const history = (input.history ?? [])
+    .map((item) => `${item.role.toUpperCase()}: ${compactWhitespace(item.content)}`)
+    .join("\n");
+
+  return [
+    "You are Prompt Studio Copilot, a scoped conversational assistant.",
+    "",
+    "## Hard Boundary",
+    "- No tools.",
+    "- No actions.",
+    "- No routed actions.",
+    "- No record mutation.",
+    "- Do not claim you changed, saved, promoted, compiled, tested, approved, rejected, generated, or executed anything.",
+    "- Do not run official analysis.",
+    "- Do not change readiness, evidence trust, synthesis, evaluation, package eligibility, or package output.",
+    "- Answer with text only.",
+    "",
+    "## Stage Copilot Instructions",
+    instructions,
+    "",
+    "## Static Prompt Studio Context Summary",
+    "source=prompt_studio_static_context",
+    `stageKey=${summary.stageKey}`,
+    `readOnly=${String(summary.readOnly)}`,
+    `promptSpecRefCount=${summary.promptSpecRefCount}`,
+    `systemKnowledgeRefCount=${summary.systemKnowledgeRefCount}`,
+    `warningCount=${summary.warningCount}`,
+    "Context rule: Capability / Analysis PromptSpecs are separate from Stage Copilot Instructions. Copilot Instructions change conversation behavior only.",
+    "",
+    history ? "## Conversation History" : "",
+    history,
+    history ? "" : "",
+    "## Admin Message",
+    message,
+    "",
+    "## Response Instructions",
+    "Explain, discuss, compare, challenge assumptions, and advise on prompt-system separation. Do not propose executable actions as if you can run them. If asked to change anything, say you cannot do that from chat and explain the safe boundary.",
+  ].filter((line) => line !== "").join("\n");
+}
+
+export function createPromptStudioCopilotProviderResponse(
+  input: PromptStudioCopilotChatInput,
+  providerOutput: PromptStudioCopilotProviderOutput,
+): PromptStudioCopilotChatResponse {
+  validateChatInput(input);
+  const envelope = createPromptStudioCopilotContextEnvelope();
+  const summary = summarizePromptStudioCopilotContext(envelope);
+  const answer = compactWhitespace(providerOutput.text);
+  if (!answer) throw new Error("Prompt Studio Copilot provider response did not include text.");
+  if (claimsCompletedAction(answer)) {
+    throw new Error("Prompt Studio Copilot provider response claimed action execution.");
+  }
+
   return {
     ok: true,
     stageKey: "prompt_studio",
     answer,
-    model: "deterministic-prompt-studio-copilot-v0",
-    providerStatus: "deterministic_fallback",
+    model: providerOutput.model,
+    providerStatus: "provider_success",
     contextSummary: contextSummaryFrom(summary, input),
   };
+}
+
+export function createPromptStudioCopilotFallbackResponse(
+  input: PromptStudioCopilotChatInput,
+  providerStatus: Exclude<PromptStudioCopilotProviderStatus, "provider_success"> = "deterministic_fallback",
+  providerMessage = "Provider-backed chat is not configured for this pilot, so this is a deterministic fallback response rather than AI provider output.",
+): PromptStudioCopilotChatResponse {
+  const { message, instructions } = validateChatInput(input);
+  const envelope = createPromptStudioCopilotContextEnvelope();
+  const summary = summarizePromptStudioCopilotContext(envelope);
+
+  return {
+    ok: true,
+    stageKey: "prompt_studio",
+    answer: fallbackAnswer(input, message, instructions, providerMessage),
+    model: "deterministic-prompt-studio-copilot-v0",
+    providerStatus,
+    contextSummary: contextSummaryFrom(summary, input),
+  };
+}
+
+export function createPromptStudioCopilotChatResponse(
+  input: PromptStudioCopilotChatInput,
+): PromptStudioCopilotChatResponse {
+  return createPromptStudioCopilotFallbackResponse(input);
 }
