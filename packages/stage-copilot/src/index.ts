@@ -1,0 +1,16 @@
+export {
+  STAGE_COPILOT_ANALYSIS_MUTATION_ACTIONS,
+  STAGE_COPILOT_FORBIDDEN_BOUNDARY_ACTIONS,
+  assertStageCopilotNoAnalysisMutation,
+  assertStageCopilotNoProviderExecution,
+  assertStageCopilotReadOnlyBoundary,
+  assertStageCopilotRuntimeModeSafeForFoundation,
+  isStageCopilotForbiddenAction,
+  labelStageCopilotAdvisoryWhatIf,
+  validateStageCopilotRoutedRecommendationSafety,
+  type StageCopilotAdvisoryWhatIfLabel,
+  type StageCopilotBoundaryAction,
+  type StageCopilotBoundaryCheck,
+  type StageCopilotBoundaryViolationCode,
+  type StageCopilotRuntimeIntent,
+} from "./boundary.js";

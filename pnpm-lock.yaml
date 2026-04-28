@@ -275,6 +275,16 @@ importers:
         specifier: ^5.4.5
         version: 5.9.3
 
+  packages/stage-copilot:
+    dependencies:
+      '@workflow/contracts':
+        specifier: workspace:*
+        version: link:../contracts
+    devDependencies:
+      typescript:
+        specifier: ^5.4.5
+        version: 5.9.3
+
   packages/synthesis-evaluation:
     dependencies:
       '@workflow/contracts':
