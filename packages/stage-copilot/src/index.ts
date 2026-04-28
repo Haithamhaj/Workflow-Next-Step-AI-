@@ -76,3 +76,13 @@ export {
   createPromptStudioStaticContextFixture,
   summarizePromptStudioCopilotContext,
 } from "./prompt-studio-context.js";
+
+export {
+  createPromptStudioCopilotChatResponse,
+  type PromptStudioCopilotChatContextSummary,
+  type PromptStudioCopilotChatInput,
+  type PromptStudioCopilotChatMessage,
+  type PromptStudioCopilotChatResponse,
+  type PromptStudioCopilotChatRole,
+  type PromptStudioCopilotProviderStatus,
+} from "./prompt-studio-chat.js";
