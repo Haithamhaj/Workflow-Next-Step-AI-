@@ -33,3 +33,18 @@ export {
   type StageCopilotEvidenceSourceRef,
   type StageCopilotPromptTestReferenceSummary,
 } from "./context-envelope.js";
+
+export {
+  assertStageCopilotSystemPromptDoesNotClaimAuthority,
+  assertStageCopilotSystemPromptIsConversationOnly,
+  getDefaultStageCopilotSystemPrompt,
+  listDefaultStageCopilotSystemPrompts,
+  type StageCopilotSystemPromptAuthorityBoundary,
+  type StageCopilotSystemPromptCheck,
+  type StageCopilotSystemPromptDefault,
+  type StageCopilotSystemPromptKind,
+  type StageCopilotSystemPromptRef,
+  type StageCopilotSystemPromptStatus,
+  type StageCopilotSystemPromptStageKey,
+  type StageCopilotSystemPromptViolationCode,
+} from "./system-prompts.js";
