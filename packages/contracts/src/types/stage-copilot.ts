@@ -28,6 +28,12 @@ export type StageCopilotPromptSpecTaxonomyStatus =
   | "planned"
   | "unknown_or_unclassified";
 
+export type StageCopilotPromptSpecProjectionStatus =
+  | "current"
+  | "legacy"
+  | "future"
+  | "unknown";
+
 export interface StageCopilotPromptSpecLegacyMapping {
   existingPromptKey: string;
   existingLinkedModule?: string;
@@ -46,6 +52,12 @@ export interface StageCopilotPromptSpecClassification {
   taxonomyStatus: StageCopilotPromptSpecTaxonomyStatus;
   stageKey: StageCopilotStageKey;
   preservesExistingKey: boolean;
+  projectionStatus?: StageCopilotPromptSpecProjectionStatus;
+  migrated?: false;
+  renameAllowed?: false;
+  runtimeBehaviorChanged?: false;
+  displayLabel?: string;
+  displayWarning?: string;
   legacyMapping?: StageCopilotPromptSpecLegacyMapping;
   notes?: string;
 }

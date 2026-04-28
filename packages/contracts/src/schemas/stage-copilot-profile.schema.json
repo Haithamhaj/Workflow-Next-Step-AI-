@@ -201,6 +201,10 @@
       "type": "string",
       "enum": ["native_current", "legacy_current", "planned", "unknown_or_unclassified"]
     },
+    "promptSpecProjectionStatus": {
+      "type": "string",
+      "enum": ["current", "legacy", "future", "unknown"]
+    },
     "promptSpecLegacyMapping": {
       "type": "object",
       "additionalProperties": false,
@@ -219,12 +223,28 @@
     "promptSpecClassification": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["kind", "taxonomyStatus", "stageKey", "preservesExistingKey"],
+      "required": [
+        "kind",
+        "taxonomyStatus",
+        "stageKey",
+        "preservesExistingKey",
+        "projectionStatus",
+        "migrated",
+        "renameAllowed",
+        "runtimeBehaviorChanged",
+        "displayLabel"
+      ],
       "properties": {
         "kind": { "$ref": "#/definitions/promptSpecKind" },
         "taxonomyStatus": { "$ref": "#/definitions/promptSpecTaxonomyStatus" },
         "stageKey": { "$ref": "#/definitions/stageKey" },
         "preservesExistingKey": { "const": true },
+        "projectionStatus": { "$ref": "#/definitions/promptSpecProjectionStatus" },
+        "migrated": { "const": false },
+        "renameAllowed": { "const": false },
+        "runtimeBehaviorChanged": { "const": false },
+        "displayLabel": { "type": "string", "minLength": 1 },
+        "displayWarning": { "type": "string", "minLength": 1 },
         "legacyMapping": { "$ref": "#/definitions/promptSpecLegacyMapping" },
         "notes": { "type": "string" }
       }
