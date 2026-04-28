@@ -3920,6 +3920,16 @@ export class SQLitePass6PromptTestExecutionResultRepository
   }
 }
 
+export interface SQLiteStageCopilotRepositories {
+  stageCopilotSystemPrompts: StageCopilotSystemPromptRepository;
+}
+
+export function createSQLiteStageCopilotRepositories(dbPath?: string): SQLiteStageCopilotRepositories {
+  return {
+    stageCopilotSystemPrompts: new SQLiteStageCopilotSystemPromptRepository(dbPath),
+  };
+}
+
 function createSQLitePass6Repositories(dbPath?: string): Pass6PersistenceRepositories {
   return {
     pass6ConfigurationProfiles: new SQLitePass6ConfigurationProfileRepository(dbPath),
