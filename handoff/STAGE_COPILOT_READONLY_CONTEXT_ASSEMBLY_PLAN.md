@@ -2,457 +2,646 @@
 
 ## 1. Executive Summary
 
-The codebase is ready to plan read-only Stage Copilot context assembly, but not ready to implement a live context assembler that reads repositories directly. The current `@workflow/stage-copilot` package is intentionally small and safe: it imports only Stage Copilot contract types and exposes pure boundary guards for no-write behavior, forbidden action detection, routed recommendation safety, advisory what-if labeling, runtime mode safety, provider execution prohibition, prompt mutation prohibition, analysis record mutation prohibition, and package eligibility mutation prohibition.
+The Stage Copilot Instructions foundation is ready for the next planning step: read-only context assembly. The next work should define how each stage Copilot receives scoped stage context for discussion without becoming an analysis engine, provider runner, prompt compiler, package generator, or persistence writer.
 
-The safest next architecture is a hybrid model:
+Recommended architecture: use a hybrid ownership model.
 
-- Stage/domain packages remain the owners of official analysis truth and later expose narrow read-only stage read models.
-- `packages/stage-copilot` validates, normalizes, and guards already-scoped context inputs, but does not own official analysis execution, DB access, provider execution, PromptSpecs, retrieval, or business logic.
-- Context bundles contain references, summaries, IDs, evidence anchors, and provenance metadata. They do not contain writable repository handles, mutable records with write authority, provider execution paths, prompt mutation authority, or package eligibility authority.
+- Stage packages later expose narrow read-only read models for the records and outputs they already own.
+- `packages/stage-copilot` normalizes those read models into the existing read-only context envelope and applies boundary guards.
+- `apps/admin-web` uses prepared context through future routes or services but does not own analysis truth.
 
-The primary risk is accidental coupling to existing mixed read/write repositories or old Copilot-like runtimes. Many repository interfaces in `packages/persistence` expose both read and write methods, and many stage packages expose capability functions that save records or run providers. Future context assembly must use read-only facades or precomputed read models, not full repositories or capability runtime functions.
+Recommended first pilot: **Prompt Studio Copilot context**. It has high product value, low analysis-engine risk, and can begin with prompt/instruction/taxonomy references without reading participant evidence, rerunning official analysis, or touching package eligibility.
 
-The recommended first implementation after this plan is not a stage-specific assembler. It should be a small local type/proof slice in `packages/stage-copilot` for a generic read-only context bundle envelope and boundary checks over deterministic fixtures. Prompt Studio context is the safest first real pilot after that because it can start with prompt/taxonomy metadata and does not need to inspect participant evidence or mutate analysis outputs.
+Do not start provider-backed runtime/chat, retrieval, prompt compilation, Capability PromptSpec mutation, Pass 5 behavior changes, or Pass 6 behavior changes as part of context assembly.
 
-## 2. Context Assembly Definition
+## 2. Context Assembly Purpose
 
-A Stage Copilot Context Bundle is a read-only, stage-scoped conversation input package. It gives a future Stage Copilot enough structured information to discuss the active stage as a decision-support partner without becoming the owner of official analysis behavior.
+Stage Copilot context assembly is the process of collecting and normalizing read-only stage facts, references, summaries, warnings, and audit sources into a conversation-safe context envelope for a future Stage Copilot.
 
-It should include:
+It should be:
 
-- Stage System Knowledge references: stage purpose, boundaries, contracts, gates, allowed actions, forbidden actions, relevant Capability PromptSpecs, relevant Stage Copilot PromptSpec, proof/validation logic, and known workflow steps.
-- Stage Case Data Context references: scoped case/company/stage IDs, current stage status, read-only stage state, blockers, warnings, admin-visible decisions, and selected official outputs.
-- Relevant prompt references: Capability PromptSpec references and Stage Copilot PromptSpec references as references only.
-- Relevant evidence/source references: source IDs, transcript refs, participant answer refs, raw evidence refs, synthesis/evaluation refs, package refs, and evidence anchors.
-- Retrieval/data access declarations: future direct ID lookup, evidence-anchor lookup, scoped keyword lookup, hybrid lookup, or semantic/vector lookup declarations only.
-- Audit/context source references: which read model, source record, evidence anchor, prompt ref, or stage package produced each summary.
+- read-only
+- stage-scoped
+- based on existing records and official outputs
+- wrapped in the existing `StageCopilotContextEnvelope`
+- safe for explanation, comparison, challenge, and advisory discussion
+- auditable back to record IDs, evidence anchors, prompt refs, or stage read models
 
-It must not include:
+It is not:
 
-- Full repository objects with `save`, `update`, approval, transition, or provider-run methods.
-- Mutable records by reference where the Copilot path can write back.
-- Direct provider execution functions.
-- Direct official analysis execution functions.
-- Prompt compile, prompt test, prompt promotion, or prompt mutation authority.
-- Package generation, readiness mutation, package eligibility mutation, or gate approval authority.
-- Old Pass 5 or Pass 6 Copilot runtime request/response objects as authoritative future shapes.
+- official analysis execution
+- provider execution
+- retrieval/search execution
+- prompt compilation
+- prompt testing
+- prompt mutation or promotion
+- evidence, transcript, gate, readiness, or package approval
+- package generation
+- stage transition logic
+- persistence write behavior
 
-The context bundle is conversation input, not business logic. It can support explanation, challenge, alternative discussion, and advisory what-if reasoning, but it cannot change the source-of-truth records it discusses.
+The current envelope in `packages/stage-copilot/src/context-envelope.ts` already encodes the correct shape: scope refs, system knowledge refs, case context refs, evidence/source refs, prompt refs, blocker/warning summaries, advisory notes, audit refs, declarative data/retrieval strategies, and boundary flags proving no writes, providers, retrieval execution, DB execution, prompt compilation, official analysis rerun, or package eligibility mutation.
 
-## 3. Ownership Options
+## 3. Ownership Model Options
 
-### Option A - Context assembly inside `packages/stage-copilot`
+### Option A - Stage packages expose read-only read models, `packages/stage-copilot` wraps/guards them
 
-This would put stage context assemblers directly in the new package.
-
-- Dependency direction: `packages/stage-copilot` would need to import stage packages and possibly persistence interfaces.
-- Risk level: high.
-- Compatibility risk: high, because the package could drift into owning stage business logic or importing mixed read/write repositories.
-- Proof strategy: strict import-deny checks, no-write repository fakes, no provider/import scans, existing Pass 5/6 proof runs.
-- Why not use now: it would make the boundary package too powerful too early and increase the chance of coupling to analysis execution paths.
-
-### Option B - Context assembly inside each stage package
-
-Each stage package would expose its own read-only context bundle builder.
-
-- Dependency direction: stage packages depend on their existing domain models and persistence interfaces; `packages/stage-copilot` consumes outputs.
-- Risk level: medium.
-- Compatibility risk: medium, because stage packages understand their truth but may accidentally reuse mutating capability functions.
-- Proof strategy: per-stage read-only tests, repository facades with no write methods, no provider-call assertions, before/after record count checks.
-- Why not use alone: it can lead to inconsistent bundle shapes and duplicate Stage Copilot boundary logic across stage packages.
-
-### Option C - Hybrid: stage packages expose read models, `packages/stage-copilot` normalizes
-
-Stage packages expose narrow read-only projections or read-model inputs. `packages/stage-copilot` validates boundary safety, normalizes context envelopes, labels advisory sections, and enforces no-write/no-provider/no-analysis-rerun constraints.
-
-- Dependency direction: stage packages produce data; `packages/stage-copilot` consumes typed read-only inputs and contract refs.
+- Dependency direction: stage packages know their own records and expose read-only projections; `packages/stage-copilot` consumes prepared inputs and returns guarded envelopes.
 - Risk level: low to medium.
-- Compatibility risk: low if the boundary package never imports official capability execution functions or persistence implementations directly.
-- Proof strategy: deterministic fixture outputs, import-deny checks, no-write facade checks, boundary guard proof, existing analysis proof scripts.
-- Why use: it keeps analysis truth with stage owners while giving Stage Copilot a consistent, isolated context shape.
+- Analysis-engine risk: low if read models are narrow and do not call capability functions.
+- Proof strategy: fixture read models, no-write repository facades, import scans, before/after repository row checks, existing Pass 5/6 proofs.
+- Why use: it keeps analysis truth with its owning stage while enforcing a common Stage Copilot safety shape.
 
-### Option D - Future API/app layer only
+### Option B - `packages/stage-copilot` directly imports stage packages and assembles everything
 
-The app/API layer would assemble context directly for a future dock/runtime.
-
-- Dependency direction: app imports many domain packages and repositories.
+- Dependency direction: `packages/stage-copilot` imports sources, hierarchy, targeting, participant evidence, synthesis/evaluation, packages-output, and possibly persistence.
 - Risk level: high.
-- Compatibility risk: high, because UI/API code can become the place where business logic and Copilot behavior mix.
-- Proof strategy: route-level tests, no-write DB assertions, provider-call mocks, visual/API regression checks.
-- Why not use now: it would skip package-level safety and make non-interference harder to prove.
+- Analysis-engine risk: high because many stage packages expose mutating and provider-backed functions alongside read helpers.
+- Proof strategy: heavy import-deny checks, fake repositories that throw on writes, provider-call traps, existing proof stack.
+- Why not use now: it would make the safety package own too much and blur the boundary between advisory Copilot context and official stage logic.
+
+### Option C - Admin-web app layer assembles context
+
+- Dependency direction: `apps/admin-web` imports many stage packages/repositories and builds context in route handlers.
+- Risk level: high.
+- Analysis-engine risk: high because app routes can accidentally become orchestration/business-logic owners.
+- Proof strategy: route-level no-write checks, API tests, static import scans, DB table diff checks.
+- Why not use now: admin-web should display and route, not own stage truth or context semantics.
+
+### Option D - Context assembly is deferred until runtime
+
+- Dependency direction: future runtime chooses its own context sources.
+- Risk level: high.
+- Analysis-engine risk: high because runtime pressure can lead to shortcuts, direct repository access, or provider-coupled context fetching.
+- Proof strategy: would need runtime tests before the read model is stable.
+- Why not use now: context boundaries should be proven before runtime/chat exists.
+
+### Option E - One generic context assembler for all stages
+
+- Dependency direction: a single package/service reads every record family and emits generic envelopes.
+- Risk level: medium to high.
+- Analysis-engine risk: medium to high because stage-specific truth rules are easy to flatten incorrectly.
+- Proof strategy: broad fixture matrix across stages, no-write checks, import scans, existing Pass 2-6 proofs.
+- Why not use first: generic assembly will under-model stage-specific risks, especially participant evidence and Pass 6 package eligibility.
 
 ## 4. Recommended Ownership Model
 
-Use Option C.
+Use **Option A** as the long-term ownership model.
 
-Stage packages should own stage-specific read truth because they already own the official data and capability outputs:
+Stage packages should later expose small read-only read models because they already own the official records and stage semantics:
 
-- `packages/sources-context` owns source/intake/crawl/structured context and pre-hierarchy readiness truth.
-- `packages/hierarchy-intake` owns hierarchy intakes, manual drafts, source-to-hierarchy triage suggestions, and hierarchy readiness snapshots.
-- `packages/targeting-rollout` owns targeting plans, candidate decisions, participant contact profiles, and question-hint seeds.
-- `packages/participant-sessions` owns participant sessions, transcript evidence review, raw evidence, extraction outputs, clarification candidates, answers, rechecks, disputes, boundary signals, and Pass 6 handoff candidates.
-- `packages/synthesis-evaluation` owns synthesis input bundles, workflow units/claims, method usage, difference interpretation, assembled workflow drafts, readiness, gates, inquiry packets, external interfaces, and Pass 7 review candidates.
-- `packages/packages-output` owns initial package output, final package output, workflow graph output, visuals, and package-related artifacts.
-- `packages/prompts` owns PromptSpecs, compile/test/promotion behavior, prompt lifecycle, and prompt workspace behavior.
+- `packages/sources-context` owns source intake, crawl/source material, structured context, department framing, and pre-hierarchy readiness.
+- `packages/hierarchy-intake` owns hierarchy intake, drafts, source-to-hierarchy triage, corrections, approved snapshots, and readiness snapshots.
+- `packages/targeting-rollout` owns targeting plans, candidate decisions, contact readiness, rollout state, and question-hint seeds.
+- `packages/participant-sessions` owns participant sessions, evidence, transcripts, extraction outputs, clarification candidates, answer rechecks, disputes, boundary signals, and Pass 6 handoff candidates.
+- `packages/synthesis-evaluation` owns synthesis bundles, workflow units/claims, method usage, differences, assembled drafts, readiness, Pre-6C gates, inquiries, external interfaces, and Pass 7 candidates.
+- `packages/packages-output` owns initial/final package records, workflow graphs, visuals, and package output artifacts.
+- `packages/prompts` owns Capability / Analysis PromptSpecs, prompt lifecycle, compilation, tests, and prompt registry behavior.
 
-`packages/stage-copilot` should not import these packages' mutating capability functions directly. Its role should be:
+`packages/stage-copilot` should remain the safety/orchestration boundary:
 
-- Define or consume local read-only context envelope types later.
-- Validate that the envelope follows Stage Copilot profile boundaries.
-- Normalize references into a shared conversation-safe shape.
-- Label advisory what-if sections as non-official.
-- Reject any context assembly intent that implies writes, provider calls, prompt mutation, official analysis reruns, package generation, readiness changes, or package eligibility changes.
+- accept already-scoped read-only data
+- normalize it into `StageCopilotContextEnvelope`
+- enforce read-only boundary status
+- label advisory notes
+- reject executable content
+- reject implied writes/provider/retrieval/prompt/analysis/package authority
 
-This model avoids duplicating analysis logic and avoids elevating old Copilot-like runtimes into strategic foundations.
+`apps/admin-web` should not own analysis truth. It may later call a route/service that uses read models and stage-copilot guards, but route code should remain thin.
 
-## 5. Read-Only Data Source Strategy
+## 5. Stage-by-Stage Context Plan
 
-Future context assembly should treat all data access as scoped, auditable, and non-executable from the Copilot's perspective.
-
-Safe reference forms:
-
-- DB/repository records: read through narrow facades or precomputed read models, never through full mixed read/write repositories.
-- Scoped record IDs: case ID, company ID, source ID, hierarchy node ID, targeting plan ID, participant session ID, evidence ID, clarification candidate ID, synthesis bundle ID, readiness result ID, package ID, prompt spec ID, prompt test result ID.
-- Evidence anchors: stable pointers to source text, transcript segments, raw evidence excerpts, answer spans, synthesis claims, difference interpretations, and package caveats.
-- Source snippets: short excerpts with source IDs and extraction provenance, not full documents unless a future evidence policy allows raw access.
-- Transcript refs: participant/session/transcript segment refs, not approval authority.
-- Participant answer refs: answer IDs, question IDs, recheck status, uncertainty markers, and dispute refs.
-- Synthesis/evaluation refs: workflow unit IDs, claim IDs, method usage IDs, difference interpretation IDs, readiness result IDs, gate IDs, package caveat refs.
-- Prompt/test result refs: prompt spec IDs, lifecycle/status labels, test case/result IDs, and taxonomy classification refs.
-- Retrieval/search refs: declarative retrieval scope references only until a retrieval seam is implemented.
-- Hybrid data access declarations: profile-level declarations such as DB-only, anchor-based, retrieval-only, hybrid DB plus retrieval, or future semantic lookup.
-
-Unsafe forms:
-
-- Repositories with write methods.
-- Capability provider functions.
-- Prompt compile/test/promotion functions.
-- Stage transition functions.
-- Approval functions.
-- Package generation functions.
-- Old Pass 5/6 Copilot runtime context builders as future authorities.
-
-## 6. Stage-by-Stage Context Needs
-
-### Sources / Context
+### A. Sources / Context Copilot
 
 May read:
 
-- Registered sources, source type/trust/status summaries, intake sessions, intake sources, extracted text refs, crawl session/page refs, crawl content chunk refs, structured context summaries, department framing, primary department/use-case selections, pre-hierarchy readiness/review refs.
+- intake sessions
+- intake sources
+- source type/status/trust summaries
+- extracted text refs and source snippets
+- website crawl plans, page refs, content chunk refs, site summary refs
+- audio transcript review refs
+- department framing
+- structured context records
+- final pre-hierarchy review/readiness summaries
+- source-role/scope suggestion refs when available
 
 Must not mutate:
 
-- Source registration, intake status, extracted text, crawl page approvals, crawl status, structured context, department framing, final pre-hierarchy review confirmation, crawl plan approval, audio transcript review approval.
+- source registrations
+- intake/source processing status
+- extracted text
+- crawl approvals or crawl status
+- structured context
+- department framing
+- pre-hierarchy review confirmation
+- provider jobs or extraction jobs
 
-Official outputs it may discuss:
+Records/packages involved:
 
-- Source role/scope suggestions, structured context, available material summaries, pre-hierarchy readiness, limited-value/context-only source rationale.
+- `packages/sources-context`
+- persistence repositories: intake sessions/sources, provider jobs, text artifacts, crawls, chunks, audio transcript reviews, department framing, structured contexts, final pre-hierarchy reviews
 
-Risks:
+Risk level: low to medium.
 
-- Source/context package exposes mutating functions such as `updateIntakeSourceStatus`, `updateIntakeSourceExtractedText`, `approveCrawlPages`, `setStructuredContext`, `saveDepartmentFraming`, and `confirmFinalPreHierarchyReview`. Future context assembly must avoid these paths.
+Primary risk: `packages/sources-context` includes provider-backed and mutating helpers such as provider extraction, crawl approval, source updates, structured context saves, and final review confirmation. Context assembly must consume read-only projections only.
 
-### Hierarchy
+### B. Hierarchy Copilot
 
 May read:
 
-- Hierarchy foundation state, pasted/uploaded/manual hierarchy intake refs, hierarchy node refs, source-to-hierarchy triage suggestions, source hierarchy links, readiness snapshots, admin corrections, structural review status.
+- hierarchy intake refs
+- hierarchy draft refs
+- hierarchy node and relationship summaries
+- correction event refs
+- approved hierarchy snapshots
+- readiness snapshots
+- source-to-hierarchy triage job/suggestion refs
+- source evidence status and linked source basis summaries
 
 Must not mutate:
 
-- Pasted/uploaded/manual intake creation, manual draft saves, source hierarchy link creation, triage suggestion updates, structural hierarchy approval.
+- hierarchy intakes
+- manual hierarchy drafts
+- correction events
+- approved snapshots
+- readiness snapshots
+- source-to-hierarchy triage suggestions or admin decisions
 
-Official outputs it may discuss:
+Records/packages involved:
 
-- Hierarchy drafts, role/source relationships, reporting/interface confidence, inferred vs confirmed structure, readiness blockers.
+- `packages/hierarchy-intake`
+- persistence repositories: hierarchy intakes, hierarchy drafts, hierarchy corrections, approved hierarchy snapshots, readiness snapshots, source hierarchy triage jobs/suggestions
 
-Risks:
+Risk level: medium.
 
-- Functions such as `createPastedHierarchyIntake`, `saveManualHierarchyDraft`, `updateSourceHierarchyTriageSuggestion`, and `approveStructuralHierarchy` must not be reachable from Copilot context assembly.
+Primary risk: hierarchy read models must not call helpers that create intakes, save drafts, run provider draft generation, update triage suggestions, or approve structure.
 
-### Targeting
+### C. Targeting Copilot
 
 May read:
 
-- Targeting rollout plan refs, participant candidate summaries, candidate status, contact completeness, question-hint seed refs, targeting recommendation packet refs, rollout state, suggested order/rationale.
+- targeting rollout plans
+- target candidate summaries
+- participant contact profile readiness
+- rollout order/status
+- question-hint seeds
+- targeting recommendation packet refs
+- source signals used for targeting
+- approved hierarchy/readiness refs used as basis
 
 Must not mutate:
 
-- Candidate decisions, participant contact profiles, question-hint seeds, targeting plan transitions, rollout plan creation if it writes.
+- targeting plan creation or state
+- candidate admin decisions
+- contact profile updates
+- question-hint seeds
+- participant session creation
+- outreach readiness
 
-Official outputs it may discuss:
+Records/packages involved:
 
-- Targeting recommendations, participant selection rationale, supervisor vs frontline trade-offs, question-hint origin, contact-data gaps.
+- `packages/targeting-rollout`
+- persistence repositories: targeting rollout plans, approved hierarchy snapshots, hierarchy readiness snapshots, source hierarchy triage suggestions, structured PromptSpecs only as refs
 
-Risks:
+Risk level: medium.
 
-- `createOrLoadTargetingRolloutPlan` may write if a plan is missing. Future read-only assembly should require an existing plan ID or a read-only getter, not create-on-read behavior.
+Primary risk: `createOrLoadTargetingRolloutPlan` writes when a plan does not exist. A read-only context pilot must require an existing plan or a separate read-only getter.
 
-### Participant Evidence
+### D. Participant Evidence Copilot
 
 May read:
 
-- Participant session refs, channel/session state, transcript/evidence review refs, raw evidence refs, extraction output refs, clarification candidates, clarification answers, answer recheck refs, boundary signals, evidence disputes, next actions, Pass 6 handoff candidate refs.
+- participant session refs and current state
+- selected channel and participation mode summaries
+- raw evidence refs
+- transcript refs
+- first-pass extraction output refs
+- extracted item summaries and evidence anchors
+- clarification candidates and answers
+- answer recheck refs
+- boundary signals
+- evidence disputes
+- session next actions
+- Pass 6 handoff candidates
 
 Must not mutate:
 
-- Session creation, message submission, Telegram handlers, transcript evidence creation/approval/rejection, extraction execution, clarification formulation, asking/dismissing candidates, answer recording, answer recheck execution, boundary signal creation, Pass 6 handoff candidate creation/decision.
+- participant sessions
+- access tokens
+- message dispatch/send state
+- Telegram identity bindings
+- raw evidence
+- transcript approvals/rejections
+- extraction outputs
+- clarification question formulation
+- answer recording/recheck execution
+- evidence dispute decisions
+- boundary signal creation
+- Pass 6 handoff candidate decisions
 
-Official outputs it may discuss:
+Records/packages involved:
 
-- What the participant actually said, evidence extraction basis, clarification gaps, disputed evidence, boundary signals, handoff readiness, next question rationale.
+- `packages/participant-sessions`
+- persistence repositories: participant sessions, session tokens, Telegram bindings, raw evidence, first-pass extraction outputs, clarification candidates, boundary signals, evidence disputes, session next actions, Pass 6 handoff candidates
+- Capability prompts in `packages/prompts` only as references, not compilation targets
 
-Risks:
+Risk level: high.
 
-- This stage has the highest write/provider density. `runFirstPassExtractionForSession`, `formulateClarificationQuestion`, and `runClarificationAnswerRecheck` compile prompts, call providers, save provider jobs, and write analysis records. Context assembly must read outputs only.
+Primary risk: this stage has provider-backed prompt compilation and official analysis helpers. Read-only context must discuss existing outputs only and never run extraction, clarification, answer recheck, or evidence approval.
 
-### Analysis / Package
+### E. Analysis / Package Copilot
 
 May read:
 
-- Pass 6 handoff candidate refs, synthesis input bundle refs, workflow units/claims, method usage refs, difference interpretation refs, assembled workflow draft refs, readiness results, pre-package gate refs, inquiry packet refs, external interface refs, initial/final package refs, workflow graph/visual refs, package caveats, Pass 7 candidate refs.
+- Pass 6 handoff candidate refs
+- synthesis input bundles
+- workflow units
+- workflow claims
+- analysis method usage
+- difference interpretations
+- assembled workflow drafts
+- readiness results
+- Pre-6C gate results
+- clarification needs and inquiry packets
+- external interface records
+- initial workflow packages
+- workflow gap closure briefs
+- draft operational documents
+- workflow graph records
+- Pass 7 review candidates
 
 Must not mutate:
 
-- Synthesis input bundle creation, synthesis creation, Pass 6 configuration updates/promotions, method registry changes, workflow unit/claim generation, difference interpretation, draft assembly, readiness evaluation, pre-6C gate execution, external interface registration, Pass 7 candidate creation, evaluation creation, package generation, package visual generation, final package updates.
+- synthesis bundles
+- claims/units
+- method configuration
+- difference interpretations
+- assembled drafts
+- readiness results
+- Pre-6C gates
+- inquiry packets
+- external interfaces
+- package generation
+- visuals
+- Pass 7 candidates
+- final package/release state
 
-Official outputs it may discuss:
+Records/packages involved:
 
-- Method/lens selection, readiness blockers, warnings, caveats, package eligibility, evidence basis, difference interpretation, workflow boundary effects, advisory what-if alternatives.
+- `packages/synthesis-evaluation`
+- `packages/packages-output`
+- persistence repositories for Pass 6 core records, package records, workflow graphs, and Pass 7 candidates
 
-Risks:
+Risk level: high.
 
-- This stage is closest to official package authority. Context assembly must not call `buildWorkflowUnitsAndClaimsFromBundle`, `interpretWorkflowClaimDifferences`, `evaluateWorkflowReadinessFromDraft`, `runPre6CGateFromReadiness`, or `generatePass6Output`.
+Primary risk: this stage sits nearest readiness and package eligibility. The Copilot may discuss readiness outputs, blockers, caveats, and routing recommendations, but must not rerun readiness, decide package eligibility, or generate packages.
 
-### Prompt Studio
+### F. Prompt Studio Copilot
 
 May read:
 
-- PromptSpec refs, taxonomy classification refs, lifecycle/status labels, draft/active/previous/archived refs, prompt test result refs, compiled preview refs if already stored or produced by an existing safe view, Stage Copilot PromptSpec refs, Capability PromptSpec refs.
+- Capability / Analysis PromptSpec refs and lifecycle/status metadata
+- PromptSpec taxonomy classification refs
+- Stage Copilot Instructions defaults/current/history metadata
+- prompt test result refs and summaries
+- compiled preview refs where already stored/displayed by Prompt Studio
+- separation warnings between Capability PromptSpecs and Stage Copilot Instructions
 
 Must not mutate:
 
-- Prompt drafts, active promotion, archival, rollback, compile/test execution, provider-backed prompt tests, PromptSpec keys, prompt families.
+- Capability PromptSpecs
+- PromptSpec lifecycle status
+- prompt promotion/archive
+- prompt compilation
+- prompt test execution
+- Stage Copilot Instructions unless the existing Instructions API is explicitly invoked by the Instructions UI/control surface
 
-Official outputs it may discuss:
+Records/packages involved:
 
-- Difference between Capability PromptSpecs and Stage Copilot PromptSpecs, taxonomy status, why a prompt test failed if result data already exists, what changing a Copilot prompt changes vs does not change.
+- `packages/prompts` for PromptSpec metadata/read-only projection only
+- `packages/stage-copilot` for instruction defaults/editable metadata
+- `packages/persistence` for prompt repositories and Stage Copilot System Prompt repository
 
-Risks:
+Risk level: low to medium.
 
-- Prompt compile/test paths in `packages/prompts` are runtime-adjacent and may call providers. Prompt Studio context should start from static taxonomy and stored/test-result references, not live compilation.
+Primary risk: admin confusion. The context must clearly state whether it is discussing Capability / Analysis PromptSpecs or Stage Copilot Instructions.
 
-### Advanced / Debug
+### G. Advanced / Debug Copilot
 
 May read:
 
-- Provider job refs, proof output refs, route/action ownership refs, debug-only diagnostics, contract/schema validation refs, audit refs, non-sensitive failure summaries.
+- proof script refs
+- provider job refs/statuses
+- debug-only route ownership summaries
+- persistence table/repository summaries
+- build/module-resolution notes
+- non-production diagnostics
+- package boundary descriptions
 
 Must not mutate:
 
-- Provider jobs, replay behavior, persistence, route execution, official analysis records, proof baselines, prompt/provider settings.
+- provider jobs
+- DB records
+- route behavior
+- build config
+- package code
+- prompt records
+- analysis outputs
 
-Official outputs it may discuss:
+Records/packages involved:
 
-- Whether a failure is provider, persistence, contract, route, or business-logic related; which route owns an action; whether an output is debug-only or domain-authoritative.
+- `packages/persistence`
+- app route/source references
+- proof scripts as source refs
+- provider job repositories as read-only status refs
 
-Risks:
+Risk level: medium.
 
-- Debug context can expose raw sensitive data or accidentally give the Copilot operational authority. It should remain internal and deferred until evidence/security policy is mature.
+Primary risk: debug context can become too broad and leak operational authority. Keep it diagnostic and read-only.
 
-## 7. Analysis Engine Protection
-
-Future context assembly must not rerun, mutate, approve, transition, or own these analysis flows:
-
-- Source-role and source-scope suggestions.
-- Source/context extraction and structured context formation.
-- Hierarchy drafting, hierarchy intake creation, source-to-hierarchy triage, and structural hierarchy approval.
-- Targeting recommendation packets, participant candidate decisions, contact profile updates, rollout transitions, and question-hint seed updates.
-- Evidence extraction, raw evidence review, transcript approval/rejection, clarification question formulation, clarification answer recording, answer recheck, evidence disputes, boundary signals, and Pass 6 handoff decisions.
-- Synthesis input bundle creation, synthesis, workflow unit/claim generation, analysis method selection/use, difference interpretation, assembled workflow drafts, readiness evaluation, pre-package gate execution, external interface registration, inquiry packet creation, and evaluation.
-- Package drafting/generation, package visuals, workflow graph generation, final package creation/update, Pass 7 candidate creation, and package/release authority.
-- Capability PromptSpec creation, compile, test, promotion, archival, rollback, active/draft lifecycle changes, and key/family changes.
-
-The Copilot may explain these outputs and discuss alternatives using read-only references. It must never become the execution path that creates or changes them.
-
-## 8. Context Bundle Contract Strategy
-
-Do not add concrete stage-specific context bundle contracts next.
-
-Recommended next step:
-
-- Add local package-level generic context bundle types in `packages/stage-copilot` only after this report is accepted.
-- Keep them small and read-only: bundle ID, stage key, profile ref, system knowledge refs, case context refs, source refs, evidence refs, prompt refs, advisory sections, retrieval/data access declarations, and audit refs.
-- Use existing `StageCopilotProfile` contract refs rather than creating `SourcesCopilotContextBundle`, `HierarchyCopilotContextBundle`, `TargetingCopilotContextBundle`, `ParticipantEvidenceCopilotContextBundle`, `AnalysisPackageCopilotContextBundle`, `PromptStudioCopilotContextBundle`, or `AdvancedDebugCopilotContextBundle` schemas now.
-
-Defer:
-
-- Stage-specific context bundle schemas in `packages/contracts`.
-- DB/repository assembly implementations.
-- Retrieval/search/semantic interfaces.
-- Prompt registry live projection.
-- UI/API request/response contracts.
-- Provider-backed Stage Copilot runtime contracts.
-
-Reason:
-
-The repository already has broad, mixed read/write persistence interfaces and many mutating capability functions. A generic local envelope plus proof fixtures lets the team prove no-write/non-interference before connecting real stage data.
-
-## 9. First Context Assembly Pilot Recommendation
+## 6. First Context Pilot Recommendation
 
 ### Prompt Studio Copilot context
 
-- Value: medium to high. It explains PromptSpec taxonomy, lifecycle, current vs legacy/copilot-like classification, and prompt test result refs.
-- Risk to analysis engine: low if it avoids compile/test/promotion.
-- Dependencies: existing Stage Copilot taxonomy fixtures and prompt metadata refs.
-- Proof difficulty: low to medium.
-- Recommendation: first real context assembly pilot after generic context envelope proof.
+- Product value: high for admin clarity because it explains the two prompt systems and prompt/instruction separation.
+- Safety risk: low to medium.
+- Dependency complexity: low to medium.
+- Proof difficulty: low.
+- Analysis behavior impact: low if it reads metadata only and does not compile/test/promote prompts.
 
 ### Sources / Context Copilot context
 
-- Value: high. It helps admins understand source value, source roles, document origin, and pre-hierarchy readiness.
-- Risk to analysis engine: medium because source/intake/crawl packages expose write and approval functions.
-- Dependencies: read-only source/intake/crawl/structured context projections.
+- Product value: high because early-stage source/context discussion is useful.
+- Safety risk: medium.
+- Dependency complexity: medium.
 - Proof difficulty: medium.
-- Recommendation: second pilot after read-only facade pattern is proven.
+- Analysis behavior impact: low to medium if read-only; risk comes from source package provider/update helpers.
+
+### Hierarchy Copilot context
+
+- Product value: medium to high for explaining hierarchy basis and uncertainty.
+- Safety risk: medium.
+- Dependency complexity: medium.
+- Proof difficulty: medium.
+- Analysis behavior impact: medium if read-only boundaries are weak because hierarchy approval/readiness are nearby.
 
 ### Participant Evidence Copilot context
 
-- Value: very high. It can explain what participants actually said, evidence gaps, disputes, and clarifications.
-- Risk to analysis engine: high because extraction/clarification/recheck functions call providers and write records.
-- Dependencies: evidence access policy, anchored evidence refs, raw evidence restrictions, read-only participant session projections.
+- Product value: high.
+- Safety risk: high.
+- Dependency complexity: high.
 - Proof difficulty: high.
-- Recommendation: defer until source/context and generic evidence-anchor patterns are proven.
+- Analysis behavior impact: high if boundaries fail because extraction, clarification, evidence trust, and disputes are official analysis surfaces.
 
 ### Analysis / Package Copilot context
 
-- Value: very high. It can explain method/lens choices, readiness blockers, package caveats, and what-if alternatives.
-- Risk to analysis engine: highest because this stage is close to official package generation and eligibility.
-- Dependencies: mature read-only Pass 6 projections, strict advisory labeling, no package authority proof, evidence/citation strategy.
+- Product value: high.
+- Safety risk: high.
+- Dependency complexity: high.
 - Proof difficulty: high.
-- Recommendation: defer until read-only context and advisory-only proofs are strong.
+- Analysis behavior impact: high because readiness, gates, package eligibility, and package output are nearby.
+
+Recommended first pilot: **Prompt Studio Copilot context**.
+
+Reason: it exercises the two-prompt-system separation and Stage Copilot envelope without reading participant evidence or touching official analysis execution. It can start as metadata-only read context over prompt refs, instruction refs, taxonomy classification, and proof/status summaries.
+
+## 7. Minimal Context Shape
+
+The first implementation should produce a `StageCopilotContextEnvelope` or an input that can be passed into `createStageCopilotContextEnvelope`.
+
+Minimal shape:
+
+- `envelopeId`
+- `stageKey`
+- `createdAt`
+- `scopeRefs`
+  - case/session/stage/operator refs as applicable
+- `systemKnowledgeRefs`
+  - stage purpose
+  - stage boundary
+  - contract refs
+  - forbidden action refs
+  - Capability PromptSpec refs
+  - Stage Copilot Instruction refs
+- `caseContextRefs`
+  - stage-owned record families relevant to the selected stage
+- `contextBundleRefs`
+  - prepared read-model refs where available
+- `dataAccessStrategy`
+  - `executionMode: "declarative_only"`
+- `retrievalScope`
+  - `executionMode: "declarative_only"`
+- `evidenceSourceRefs`
+  - source/evidence refs only, stage-dependent
+- `promptSpecRefs`
+  - Capability PromptSpec refs and Stage Copilot PromptSpec taxonomy refs
+- `promptTestReferenceSummaries`
+  - prompt test result refs where relevant
+- `blockerWarningSummaries`
+  - current blockers/warnings as advisory-only summaries
+- `advisorySafeNotes`
+  - notes that explicitly do not mutate official records, rerun analysis, change readiness/package eligibility, or generate package output
+- `auditSourceRefs`
+  - read model, record ID, proof fixture, evidence anchor, prompt ref, or operator summary refs
+- `boundaryStatus`
+  - `readOnly: true`
+  - `writesAllowed: false`
+  - `providerExecutionAllowed: false`
+  - `retrievalExecutionAllowed: false`
+  - `databaseExecutionAllowed: false`
+  - `promptCompilationAllowed: false`
+  - `promptMutationAllowed: false`
+  - `officialAnalysisRerunAllowed: false`
+  - `packageEligibilityMutationAllowed: false`
+  - `sourceOfTruthMutationAllowed: false`
+  - `unrestrictedRawEvidenceExecutionAllowed: false`
+
+The envelope should contain summaries and references, not writable handles or executable functions.
+
+## 8. Data Access Strategy
+
+Future data access should happen through explicit read-only seams.
+
+Allowed later:
+
+- read-only repository facades
+- stage-owned read model functions
+- scoped record IDs
+- existing persisted records
+- source refs
+- evidence anchors
+- prompt/test refs
+- static Stage Copilot Instruction refs
+- future retrieval/search declarations
+
+Not allowed in the first context assembly work:
+
+- live retrieval/RAG/vector search
+- provider calls
+- prompt compilation
+- prompt test execution
+- official analysis reruns
+- writes to any repository
+- mutation-capable repository handles in the envelope
+
+For app usage, admin-web should eventually call a thin route/service that asks the stage owner for a read model, passes the read model through `packages/stage-copilot` normalization/guards, and returns a safe serialized envelope. It should not assemble official truth itself.
+
+## 9. Guard / Safety Model
+
+Future implementation must prove:
+
+- no writes occurred
+- no provider calls occurred
+- no retrieval execution occurred
+- no prompt compilation occurred
+- no prompt mutation/promotion occurred
+- no official analysis rerun occurred
+- no package eligibility/readiness mutation occurred
+- no evidence/transcript/gate approval occurred
+- no Pass 5 behavior changed
+- no Pass 6 behavior changed
+- no Capability PromptSpec keys changed
+- no `packages/prompts` behavior changed
+
+Required guard layers:
+
+1. Stage read model returns references/summaries only.
+2. Stage Copilot context normalization creates `StageCopilotContextEnvelope`.
+3. `assertStageCopilotContextEnvelopeReadOnly` rejects unsafe boundary flags, executable content, DB/retrieval execution, prompt compilation, prompt mutation, official analysis rerun, package eligibility mutation, source-of-truth mutation, or unrestricted raw evidence execution.
+4. Proof scripts verify before/after persistence state for relevant tables/repositories.
+5. Static import checks confirm no provider/prompt compilation/runtime/chat imports are introduced.
 
 ## 10. Recommended Build Order
 
-### Slice 1 - Generic read-only context envelope in `packages/stage-copilot`
+### Slice 1 - Prompt Studio Read-Only Context Plan Closure
 
-- Purpose: define a small local envelope for context refs and advisory sections.
-- Files/packages likely touched: `packages/stage-copilot/src/*`, proof script under `scripts/`.
-- Produces: generic local context types and pure validation helpers.
-- Must not do: DB access, retrieval, APIs, providers, PromptSpec changes, stage-specific schemas.
-- Proof strategy: deterministic fixtures, frozen inputs, no-write/no-provider/no-analysis-rerun checks.
+- Purpose: confirm exact Prompt Studio context scope and read model inputs before code.
+- Files/packages likely touched: handoff docs only.
+- Produces: final pilot spec for Prompt Studio context.
+- Must not do: code, routes, UI, providers, prompt compilation, prompt mutation.
+- Proof strategy: no build required unless code is changed.
 - Risk level: low.
 
-### Slice 2 - Context boundary proof fixtures
+### Slice 2 - Prompt Studio Context Fixture Proof
 
-- Purpose: prove unsafe context inputs are rejected.
-- Files/packages likely touched: `packages/stage-copilot/src/*`, `scripts/prove-stage-copilot-readonly-context-boundary.mjs`.
-- Produces: proof for no repository write handles, no execution intents, no prompt mutation authority, no package eligibility authority.
-- Must not do: import stage packages or persistence.
-- Proof strategy: fixture-only proof plus import summary.
+- Purpose: prove a deterministic Prompt Studio context envelope can represent prompt refs, instruction refs, taxonomy refs, warnings, and audit refs.
+- Files/packages likely touched: `packages/stage-copilot/src/*` only if local helper types are needed; proof script under `scripts/`.
+- Produces: static fixture/proof for Prompt Studio context envelope.
+- Must not do: import `packages/prompts`, read repositories, compile prompts, call providers, modify UI/API.
+- Proof strategy: envelope safety proof, unknown executable-content rejection, no-write/no-provider/no-prompt-compile assertions.
 - Risk level: low.
 
-### Slice 3 - Prompt Studio static context pilot
+### Slice 3 - Prompt Studio Stage Read Model Plan
 
-- Purpose: assemble a read-only Prompt Studio context from static taxonomy and prompt refs.
-- Files/packages likely touched: likely `packages/stage-copilot` first; possibly contracts only if a later operator decision requires shared schemas.
-- Produces: display/conversation-safe prompt taxonomy context.
-- Must not do: import `packages/prompts` compile/test functions, promote prompts, modify PromptSpecs, run providers.
-- Proof strategy: key preservation, no compile/provider imports, legacy/current labels, unknown/unclassified labels.
-- Risk level: low to medium.
+- Purpose: decide whether the first live read model should live in `packages/prompts`, `packages/stage-copilot`, or a narrow adapter.
+- Files/packages likely touched: handoff docs only.
+- Produces: implementation plan for a read-only Prompt Studio read model.
+- Must not do: code or PromptSpec mutation.
+- Proof strategy: no build required unless code is changed.
+- Risk level: low.
 
-### Slice 4 - Sources / Context read-model plan or facade
+### Slice 4 - Prompt Studio Read-Only Projection Helper
 
-- Purpose: define a narrow read-only source/context projection owned by `packages/sources-context`.
-- Files/packages likely touched: future `packages/sources-context` read-model files and `packages/stage-copilot` normalization.
-- Produces: source/intake/crawl/structured-context refs and summaries.
-- Must not do: crawl, extract, approve pages, set structured context, confirm reviews.
-- Proof strategy: read-only facade tests, before/after repository snapshots, no provider calls.
+- Purpose: create the first actual read-only projection over prompt/instruction metadata.
+- Files/packages likely touched: likely `packages/prompts` for Capability PromptSpec read-only projection and/or `packages/stage-copilot` for normalization; exact scope should be approved separately.
+- Produces: display/context-safe prompt metadata, not compiled prompts.
+- Must not do: compile prompts, run tests, promote/archive PromptSpecs, change prompt keys, mutate repositories, call providers.
+- Proof strategy: no key rename checks, no repository writes, no provider imports, no compile/test imports, existing Stage Copilot and PromptSpec proofs.
 - Risk level: medium.
 
-### Slice 5 - Stage package read-model interface pattern
+### Slice 5 - Sources / Context Read-Only Context Plan
 
-- Purpose: repeat a consistent read-only facade pattern for hierarchy, targeting, participant evidence, and analysis/package stages.
-- Files/packages likely touched: relevant stage packages plus `packages/stage-copilot`.
-- Produces: stage-owned projections that can be normalized without sharing write authority.
-- Must not do: execute capability functions or mutate records.
-- Proof strategy: per-stage import-deny and no-write proofs.
+- Purpose: define first case/session-scoped source context read model after Prompt Studio is proven.
+- Files/packages likely touched: handoff docs only.
+- Produces: stage-specific source/context pilot plan.
+- Must not do: retrieval, provider extraction, source mutation, structured context mutation.
+- Proof strategy: no build required unless code is changed.
 - Risk level: medium.
-
-### Slice 6 - Evidence anchor and retrieval seam design
-
-- Purpose: define how original text/evidence can be referenced and retrieved later.
-- Files/packages likely touched: planning/contracts only at first, then stage packages when approved.
-- Produces: anchor/ref strategy, not retrieval execution.
-- Must not do: keyword search, vector search, RAG, DB/retrieval APIs.
-- Proof strategy: anchor fixtures and access-policy validation.
-- Risk level: medium.
-
-### Slice 7 - Shared dock/API/runtime after package proofs
-
-- Purpose: connect context bundles to a future Stage Copilot conversation surface.
-- Files/packages likely touched: app/API/UI packages after explicit approval.
-- Produces: runtime integration.
-- Must not do initially: provider-backed chat without context/refusal/action boundaries.
-- Proof strategy: visual baseline, route no-write tests, provider gating, audit validation.
-- Risk level: high.
 
 ## 11. Proof Strategy
 
-Future context assembly proof should establish non-interference before any provider-backed Copilot is built.
+Future implementation should run targeted proof plus existing guard rails:
 
-Required proof classes:
+- context assembly is read-only:
+  - use read-only facades or fixture inputs
+  - assert no repository write methods are called
+  - compare row counts before/after where repositories are involved
 
-- Read-only behavior: context assembly uses immutable fixtures or read-only facades; no `save`, `update`, approval, transition, promotion, or package generation methods are available.
-- No DB writes: before/after record counts or write-method spies for any future in-memory repository proof.
-- No provider calls: provider registry/integration imports are absent, and provider-call fakes are not invoked.
-- No prompt compilation: prompt compile/test/promotion functions are not imported or called.
-- No prompt mutation: PromptSpec keys/families/lifecycle records remain unchanged.
-- No official analysis reruns: protected functions for extraction, clarification, answer recheck, synthesis, difference interpretation, evaluation, readiness, and package drafting are not imported or called.
-- No old runtime imports: future proofs should reject imports from old Pass 5 assistant and Pass 6 Copilot runtime paths.
-- Boundary guard use: `@workflow/stage-copilot` guards are applied to profile/read-write/action/recommendation inputs.
-- Deterministic fixture output: same input refs produce same context envelope without side effects.
-- Existing proofs still pass: contracts proof, static taxonomy proof, Stage Copilot foundation package proof, and relevant Pass 5/Pass 6 analysis proofs.
-- Import summary: proof scripts should visibly state imports are limited to contracts, the stage-copilot package, and deterministic fixtures for the slice under test.
+- context envelope guards are used:
+  - call `createStageCopilotContextEnvelope`
+  - prove unsafe boundary flags are rejected
+  - prove executable function/callback content is rejected
+
+- no DB writes:
+  - temporary DB table diffs for involved repositories
+  - no inserts/updates outside expected proof fixtures
+
+- no provider calls:
+  - static import scans
+  - provider traps/mocks if any provider package could be reachable
+
+- no prompt compilation:
+  - static import scans for `compile*Prompt*`
+  - no prompt test execution helpers imported
+
+- no prompt mutations:
+  - no writes to `structured_prompt_specs`
+  - no writes to Pass 6 PromptSpec records
+  - no PromptSpec lifecycle status changes
+
+- no official analysis rerun:
+  - no calls to extraction, clarification, answer recheck, synthesis, difference interpretation, readiness, gate, package, or visual generation helpers
+
+- no runtime/chat behavior:
+  - no chat route, provider-backed endpoint, model selector, stream handler, or runtime transcript persistence
+
+- existing proof stack:
+  - Stage Copilot Instructions proof stack should continue to pass.
+  - Relevant Pass 5 proof scripts should pass for participant-evidence-adjacent work.
+  - Relevant Pass 6 proof scripts should pass for analysis/package-adjacent work.
 
 ## 12. Risks, Open Questions, and Required Decisions
 
 Critical risks:
 
-- Passing full mixed read/write repositories into context assembly.
-- Reusing old Pass 5 admin assistant or Pass 6 Copilot context builders as future architecture authority.
-- Calling create/load functions that write when data is missing.
-- Letting advisory what-if output change readiness, package eligibility, official analysis results, or package output.
-- Allowing context assembly to compile prompts, run prompt tests, or call providers.
-- Exposing restricted raw participant data before evidence access policy and anchors are implemented.
+- Accidentally calling a stage capability helper that writes records or runs providers while “assembling context.”
+- Passing full repositories or mutable records into the envelope.
+- Letting a Copilot discuss readiness/package eligibility in a way that sounds like an official decision.
+- Mixing Stage Copilot Instructions with Capability / Analysis PromptSpecs.
 
 Non-critical risks:
 
-- Duplicating summary logic across stage packages before a common envelope exists.
-- Creating too many stage-specific schemas before the first read-only proof.
-- Over-labeling legacy prompt or Copilot references as migrated/runtime-ready.
+- Overly generic context shape may lose stage-specific nuance.
+- Too much raw evidence may increase privacy/sensitivity risk.
+- Prompt Studio context may still confuse admins if labels do not consistently separate analysis prompts from Copilot instructions.
+- Proof burden grows quickly if the first pilot starts with participant evidence or analysis/package context.
 
 Required operator decisions:
 
-- Whether the next implementation should define generic local context envelope types in `packages/stage-copilot` before any stage package read model work.
-- Whether Prompt Studio context is accepted as the first real read-only context pilot.
-- Whether stage packages should expose read-only facades directly, or whether the app layer should provide pre-scoped data to stage-copilot helpers.
-- Which evidence classes require summary-only access vs anchored/raw access in future participant and analysis contexts.
+- Confirm Prompt Studio Copilot context as the first pilot.
+- Decide whether Prompt Studio read-only projection may later live in `packages/prompts` or must remain static in `packages/stage-copilot` first.
+- Decide whether first live context API should be route-based or service-only after fixture proof.
 
 Deferred items:
 
-- Retrieval/search implementation.
-- Vector/semantic retrieval.
-- Stage-specific context bundle schemas.
-- Provider-backed Stage Copilot runtime.
-- Shared dock UI.
-- APIs and persistence for Copilot interactions.
-- Old Copilot runtime migration or deprecation.
+- provider-backed runtime/chat
+- retrieval/RAG/vector search
+- live semantic search
+- participant evidence raw transcript access policy
+- runtime message persistence
+- routed action execution
+- package/release decision support beyond advisory discussion
 
 ## 13. Final Recommendation
 
-Build the next slice as a small `packages/stage-copilot` generic read-only context envelope and fixture proof. It should prove context bundles can carry stage system knowledge refs, case data refs, prompt refs, evidence refs, retrieval/data access declarations, and advisory sections while rejecting write authority, provider execution, prompt mutation, official analysis reruns, package eligibility changes, and package generation.
+Proceed with **Prompt Studio Copilot read-only context** as the first pilot, starting with a static fixture/proof slice before any live registry or repository projection.
 
-Do not start with Pass 5 or Pass 6 context assembly. Do not import old Copilot runtimes. Do not connect DB repositories, retrieval, providers, APIs, or UI yet.
+Keep the ownership model hybrid:
 
-After the generic envelope proof, pilot read-only context assembly with Prompt Studio context first, then Sources / Context. Defer Participant Evidence and Analysis / Package contexts until the read-only facade pattern, evidence-anchor policy, and advisory-only boundaries are proven.
+- stage packages own stage-specific read models;
+- `packages/stage-copilot` owns envelope normalization and guard enforcement;
+- admin-web remains a thin consumer;
+- `packages/prompts` remains the owner of Capability / Analysis PromptSpecs and must not be mutated by Copilot context assembly.
+
+Do not build runtime/chat, retrieval, provider execution, prompt compilation, or any Pass 5/6 analysis behavior in the next slice.
