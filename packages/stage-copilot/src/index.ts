@@ -48,3 +48,23 @@ export {
   type StageCopilotSystemPromptStageKey,
   type StageCopilotSystemPromptViolationCode,
 } from "./system-prompts.js";
+
+export {
+  assertEditableStageCopilotSystemPromptDoesNotClaimAuthority,
+  createEditableStageCopilotSystemPromptFromDefault,
+  createNextStageCopilotSystemPromptVersion,
+  getCurrentStageCopilotSystemPrompt,
+  resetStageCopilotSystemPromptToDefault,
+  validateEditableStageCopilotSystemPromptRecord,
+  type CreateEditableStageCopilotSystemPromptInput,
+  type CreateNextStageCopilotSystemPromptVersionInput,
+  type EditableStageCopilotSystemPromptCheck,
+  type EditableStageCopilotSystemPromptRecord,
+  type EditableStageCopilotSystemPromptStatus,
+  type EditableStageCopilotSystemPromptViolationCode,
+  type StageCopilotSystemPromptAuditMetadata,
+  type StageCopilotSystemPromptChangeReason,
+  type StageCopilotSystemPromptSource,
+  type StageCopilotSystemPromptVersion,
+  type StageCopilotSystemPromptVersionTransition,
+} from "./editable-system-prompts.js";
