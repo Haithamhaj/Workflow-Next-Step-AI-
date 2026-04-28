@@ -13,6 +13,16 @@ Status: LOCKED | FORMALIZED | IMPL-EXTENSION
 - **`tsconfig.base.json` with `strict`, `noUncheckedIndexedAccess`, `Bundler` moduleResolution** — maximum type safety from day one; harder to add later than to loosen — LOCKED
 - **`shared-utils` has zero `@workflow/*` dependencies** — prevents circular dependency chains; domain knowledge must stay in domain packages — LOCKED
 
+## Stage Copilot Instructions Accepted Foundation
+
+- **There are two separate prompt systems** — Capability / Analysis System Prompts control official analysis capabilities; Stage Copilot System Prompts / Stage Copilot Instructions control only future stage Copilot conversation/personality/custom-instruction behavior — LOCKED
+- **Capability / Analysis System Prompts remain untouched and separate** — Stage Copilot Instructions must not modify, rename, simplify, merge, or affect existing PromptSpecs, prompt families, PromptSpec keys, PromptOps lifecycle, extraction, clarification, synthesis, evaluation, package drafting, readiness, evidence trust, or package eligibility — LOCKED
+- **Stage Copilot Instructions are separate from Capability / Analysis PromptSpecs** — Stage Copilot prompt records use `stage_copilot_system_prompt` semantics and are not `capability` PromptSpecs; edits affect only Copilot conversation instructions — LOCKED
+- **Stage Copilot Instructions use dedicated SQLite persistence** — durable records are stored in the dedicated `stage_copilot_system_prompts` table through `StageCopilotSystemPromptRepository`; PromptSpec repositories and PromptSpec tables are not reused — LOCKED
+- **The first admin control surface is `/workspace/copilot-instructions`** — it is intentionally separate from `/workspace/prompts` to avoid making admins think Copilot Instructions alter Capability / Analysis PromptSpecs — LOCKED
+- **`@workflow/stage-copilot` Next.js build alias is accepted as a local package-resolution workaround** — admin-web resolves `@workflow/stage-copilot` to built `packages/stage-copilot/dist/index.js` and keeps it out of `transpilePackages`; this is accepted technical debt until a cleaner monorepo-wide package resolution pattern is adopted — IMPL-EXTENSION
+- **`admin_operator` is the temporary actor fallback** — Stage Copilot Instructions API save/reset operations may use `admin_operator` until real auth/actor attribution is explicitly scoped — IMPL-EXTENSION
+
 ## Pass 6 Block 0 — Build Readiness and Spec Cleanup
 
 - **Technical Decomposition v4 is the active Pass 6 build map** — Pass 6 restarts from the current live reference after the Pass 5 final archive. Older Pass 6 / 7 / 8 / 9 block maps and branch-era records are historical only when they conflict with this active map — LOCKED

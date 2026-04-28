@@ -15,6 +15,29 @@ Final Pass 5 archive/reference document:
 - `handoff/PASS5_FINAL_ARCHIVE_REFERENCE.md`
 - safe for later Project Resource upload
 
+## Stage Copilot Next Work
+
+The Stage Copilot Instructions track is accepted as a closed foundation.
+
+- Closure commit: `a54dc14dc2390e71d1032623a16941bf8f931a73`.
+- Implementation final UI commit: `1d574386132ca8bddf71b72ddef3eb900c255d76`.
+- Closure review: `handoff/STAGE_COPILOT_INSTRUCTIONS_TRACK_CLOSURE_REVIEW.md`.
+- Archive reference: `handoff/STAGE_COPILOT_INSTRUCTIONS_ACCEPTED_FOUNDATION_ARCHIVE.md`.
+
+Next recommended work:
+
+**Stage Copilot Read-Only Context Assembly Planning**
+
+Guardrails for the next Stage Copilot step:
+
+- Do not jump directly to provider-backed runtime/chat.
+- Do not build retrieval yet.
+- Do not mutate Capability / Analysis PromptSpecs.
+- Do not change Pass 5 or Pass 6 analysis behavior.
+- Do not change readiness, package eligibility, synthesis, evaluation, package drafting, provider behavior, or persistence semantics.
+- Start with no-code planning for read-only context assembly.
+- Candidate low-risk pilots: Prompt Studio Copilot context or Sources / Context Copilot context.
+
 ## Next Pass
 
 The active pass is Pass 6.

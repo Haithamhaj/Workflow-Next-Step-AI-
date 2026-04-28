@@ -14,6 +14,28 @@ Pass 6 supplemental planning/reference files have been archived under `handoff/p
 These files do not reopen Pass 6 and do not alter runtime behavior. The accepted Pass 6 archive remains authoritative:
 `handoff/PASS6_SYNTHESIS_EVALUATION_INITIAL_PACKAGE_ARCHIVE_REFERENCE.md`.
 
+## Stage Copilot Instructions Accepted Foundation
+
+Stage Copilot Instructions are accepted as a closed foundation.
+
+- Final accepted closure commit: `a54dc14dc2390e71d1032623a16941bf8f931a73`.
+- Implementation final UI commit: `1d574386132ca8bddf71b72ddef3eb900c255d76`.
+- Closure review: `handoff/STAGE_COPILOT_INSTRUCTIONS_TRACK_CLOSURE_REVIEW.md`.
+- Archive reference: `handoff/STAGE_COPILOT_INSTRUCTIONS_ACCEPTED_FOUNDATION_ARCHIVE.md`.
+- `/workspace/copilot-instructions` exists as the no-runtime Stage Copilot Instructions control surface.
+- `/api/stage-copilot/instructions` exists for read/save/reset of Stage Copilot Instructions.
+- `packages/stage-copilot` exists as an isolated foundation package for guards, context envelope types, system prompt defaults, and editable prompt helpers.
+- Dedicated Stage Copilot System Prompt persistence exists through `stage_copilot_system_prompts`, in-memory repository support, SQLite repository support, and a dedicated SQLite factory.
+- No live Stage Copilot runtime/chat was built.
+- No provider execution, retrieval, or context assembly was built.
+- No Capability / Analysis PromptSpecs were modified, renamed, merged, or simplified.
+- No Pass 5 behavior, Pass 6 behavior, analysis logic, package eligibility, readiness, synthesis, evaluation, or package drafting behavior was changed by this track.
+
+Critical prompt-system decision:
+
+- **System 1 — Capability / Analysis System Prompts** remain the official analysis prompt system for extraction, clarification, synthesis, evaluation, package drafting, and related analysis capabilities.
+- **System 2 — Stage Copilot System Prompts / Stage Copilot Instructions** are separate stage-specific conversation/personality/custom-instruction records. They control how a future Copilot speaks, reasons, challenges, and discusses. They do not run official analysis, modify Capability PromptSpecs, or alter readiness, evidence trust, synthesis, evaluation, package eligibility, or package output.
+
 ## Pass 6 Block 0 Acceptance Gate
 
 Pass 6 Block 0 — Build Readiness and Spec Cleanup is documentation-only.
