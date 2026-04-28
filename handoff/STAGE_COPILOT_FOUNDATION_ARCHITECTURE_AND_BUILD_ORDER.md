@@ -23,6 +23,52 @@ Recommended target model:
 
 `Shared Copilot Dock UI + Stage-specific Copilot Profiles + Stage-specific Context Bundles + Stage-specific Copilot PromptSpecs + Stage-scoped Original Evidence Retrieval Seam + Strict read/write/action boundaries`
 
+### Conversational product definition
+
+A Stage Copilot is a **stage-scoped conversational decision-support partner**. It is not only a help drawer, answer endpoint, BI explanation layer, or FAQ over stage data. The admin should be able to hold a multi-turn reasoning conversation with the active Stage Copilot, similar to discussing a project with a capable analysis partner, while the Copilot remains strictly scoped to the active workspace stage.
+
+The Copilot must be **discussable, not merely answerable**. It should support follow-up questions, challenge weak assumptions, compare alternatives, explain trade-offs, and reason through advisory what-if scenarios using the active stage's rules, data, evidence, contracts, gates, prompts, and proof logic.
+
+It must support:
+
+- Multi-turn discussion.
+- Explanation of recommendations.
+- Explanation of why a method/lens was selected.
+- Explanation of why another method/lens was not selected.
+- Critique/challenge when evidence does not support the admin's assumption.
+- Alternative analysis paths.
+- What-if scenarios inside the stage boundary.
+- Comparison of possible admin choices and likely effects.
+- Evidence/source origin explanation.
+- Future original text/evidence retrieval through the retrieval seam.
+- Discussion of the stage's rules, contracts, gates, PromptSpecs, features, and proof logic.
+- Strict refusal of unrelated or out-of-stage questions.
+
+### Not just Q&A
+
+Wrong model:
+
+`question -> answer`
+
+Correct model:
+
+`stage-scoped reasoning conversation`
+
+The Copilot should be able to handle questions such as:
+
+- Why did you choose this recommendation?
+- Why was this method selected?
+- Why was this blocker treated as blocker and not warning?
+- What if we used another method?
+- What would change if this workflow boundary changed?
+- Can you challenge my interpretation?
+- Which evidence is weak?
+- Which path would likely produce a stronger result?
+- What did the participant/source actually say?
+- What data was used and where did it come from?
+
+These questions are conversational and reasoning-oriented. They require the Copilot to combine stage system knowledge with current case data, evidence pointers, and refusal boundaries. They cannot be satisfied by static help text or a single answer template.
+
 ## B. Stage Copilot Family Architecture
 
 ### Shared Copilot dock / shell
@@ -61,8 +107,15 @@ Profile fields should eventually include:
 - Stage purpose.
 - Stage Copilot PromptSpec key.
 - Context bundle type.
+- Conversational behavior profile reference.
+- Challenge level / explanation depth / discussion style policy reference.
+- Stage system knowledge reference.
+- Stage data context reference.
 - Allowed record families.
 - Allowed retrieval scopes.
+- Retrieval scope reference.
+- Refusal policy reference.
+- Advisory what-if mode boundary.
 - Allowed routed recommendation types.
 - Forbidden actions.
 - Refusal policy.
@@ -74,7 +127,7 @@ Profile fields should eventually include:
 
 A Stage Copilot PromptSpec controls conversational admin support inside one stage. It is separate from Capability PromptSpecs that perform stage work.
 
-It should define:
+It should define allowed topics and conversational behavior:
 
 - What the Copilot may discuss.
 - What context it can read.
@@ -84,8 +137,95 @@ It should define:
 - What navigation/action chips it may expose.
 - What requires admin confirmation.
 - What must remain advanced/internal.
+- Depth of explanation.
+- Challenge level.
+- Reasoning style.
+- Directness.
+- Whether it proactively suggests alternatives.
+- How it handles uncertainty.
+- How it structures trade-offs.
+- How it refuses out-of-stage topics.
+- How it separates recommendation from decision.
+- How it cites or requests original evidence.
+- How much it behaves like a critical thinking partner versus a neutral explainer.
 - How to explain uncertainty, missing data, and data origin.
 - How to avoid becoming a generic chatbot.
+
+Changing a Stage Copilot PromptSpec changes conversational support behavior. It does not change underlying business logic.
+
+It must not change:
+
+- State transitions.
+- Approval gates.
+- Package eligibility.
+- Evidence trust.
+- Provider execution.
+- Official analysis results.
+- Source-of-truth records.
+
+### Two knowledge layers per Stage Copilot
+
+Each Stage Copilot needs two knowledge layers and must combine them during discussion.
+
+1. **Stage System Knowledge**
+   - Stage purpose.
+   - Stage boundaries.
+   - Rules.
+   - Contracts.
+   - Gates.
+   - Allowed actions.
+   - Forbidden actions.
+   - Workflow steps.
+   - Feature behavior.
+   - Relevant Capability PromptSpecs.
+   - Relevant Stage Copilot PromptSpec.
+   - Proof/validation logic.
+
+2. **Stage Case Data Context**
+   - Current company/case/stage data, scoped to the active stage.
+   - Sources.
+   - Extraction jobs.
+   - Source role/scope suggestions.
+   - Hierarchy records.
+   - Targeting packets.
+   - Question-hint seeds.
+   - Participant sessions.
+   - Transcripts.
+   - Clarification answers.
+   - Boundary/dispute signals.
+   - Synthesis outputs.
+   - Readiness blockers.
+   - Package/gate state.
+   - Prompt test results where relevant.
+
+Stage System Knowledge tells the Copilot how the stage works. Stage Case Data Context tells it what is true, missing, disputed, or pending in the current case. A useful Stage Copilot conversation requires both layers. Without system knowledge, the Copilot becomes a data summarizer. Without case context, it becomes static help.
+
+### What-if and alternative analysis boundary
+
+The Copilot may discuss hypothetical alternatives inside the active stage boundary. This is part of the product model, not a loophole for writes.
+
+It may discuss:
+
+- Using a different analysis method/lens.
+- Interpreting a gap differently.
+- Treating a blocker as a warning hypothetically.
+- Changing workflow boundary assumptions.
+- Choosing a different next admin action.
+- Comparing multiple possible routes.
+
+These discussions are advisory only. The Copilot must clearly label them as hypothetical or non-authoritative.
+
+It must not:
+
+- Mutate records.
+- Rerun official analysis.
+- Change readiness.
+- Change package eligibility.
+- Rewrite official outputs.
+- Approve anything.
+- Execute provider actions.
+
+The only exception is a future governed route that explicitly allows a specific action and requires admin confirmation through the appropriate surface.
 
 ### Stage context bundle
 
@@ -185,6 +325,14 @@ Stage Copilots may explain, retrieve, cite, and recommend. They must not autonom
 - Document signal vs workflow truth.
 - Why a source is or is not useful for later stages.
 
+**Discussion examples:**
+
+- "Why was this source classified as limited value?"
+- "What if we treat this source as context-only?"
+- "Which original document text supports this source-role suggestion?"
+- "Which source is weakest for hierarchy work and why?"
+- "What would change if this source were excluded from the next stage?"
+
 **Must refuse:**
 
 - Final hierarchy decisions.
@@ -261,6 +409,14 @@ Stage Copilots may explain, retrieve, cite, and recommend. They must not autonom
 - Why hierarchy approval is structural only.
 - What records or source signals are missing.
 
+**Discussion examples:**
+
+- "Why is this role connected to this source?"
+- "Is this reporting line inferred or confirmed?"
+- "What happens if this interface is treated as external instead of internal?"
+- "Can you challenge my interpretation of this role boundary?"
+- "Which hierarchy link has the weakest evidence?"
+
 **Must refuse:**
 
 - Targeting rollout decisions.
@@ -333,6 +489,14 @@ Stage Copilots may explain, retrieve, cite, and recommend. They must not autonom
 - Question-hint seeds and why they are not final questions.
 - Source-signal interpretation for targeting.
 - Why targeting is planning, not workflow truth.
+
+**Discussion examples:**
+
+- "Why did you suggest this participant?"
+- "What if we start with supervisor instead of frontline?"
+- "Which question hints came from which source?"
+- "Which targeting path would likely produce stronger evidence?"
+- "What changes if this contact is unavailable?"
 
 **Must refuse:**
 
@@ -409,6 +573,14 @@ Stage Copilots may explain, retrieve, cite, and recommend. They must not autonom
 - Boundary signals, disputes, defects, unmapped content, and missing evidence.
 - Safe next admin actions.
 - Handoff candidates as non-final review inputs.
+
+**Discussion examples:**
+
+- "What did this participant actually say?"
+- "Which evidence is still disputed?"
+- "Is this boundary signal useful or a blocker?"
+- "What should I ask next and why?"
+- "Can you challenge my interpretation of this answer?"
 
 **Must refuse:**
 
@@ -494,6 +666,15 @@ Stage Copilots may explain, retrieve, cite, and recommend. They must not autonom
 - Package drafting limits.
 - Gap closure briefs, optional draft documents, and visual validation context.
 
+**Discussion examples:**
+
+- "Why did you choose this method?"
+- "Why is this readiness condition blocked?"
+- "What if we proceed with warnings?"
+- "Which evidence supports this package caveat?"
+- "How would the conclusion change if the workflow boundary changed?"
+- "Why was this blocker not treated as a warning?"
+
 **Must refuse:**
 
 - Readiness override.
@@ -576,6 +757,14 @@ Stage Copilots may explain, retrieve, cite, and recommend. They must not autonom
 - Why prompt tests are inspection records, not workflow records.
 - Safe activation/testing workflow.
 
+**Discussion examples:**
+
+- "What is the difference between Capability PromptSpec and Stage Copilot PromptSpec?"
+- "If I change this Copilot prompt, what behavior changes and what does not?"
+- "Why did this prompt test fail?"
+- "Would changing this prompt alter analysis results or only conversational style?"
+- "Which PromptSpec controls this recommendation?"
+
 **Must refuse:**
 
 - Promoting or archiving prompts.
@@ -651,6 +840,14 @@ Stage Copilots may explain, retrieve, cite, and recommend. They must not autonom
 - Where to inspect details.
 - Which surface owns an operation.
 
+**Discussion examples:**
+
+- "What does this provider job failure mean?"
+- "Which route owns this action?"
+- "Is this proof output related to business logic or debug only?"
+- "Is this failure a provider issue, data issue, or route issue?"
+- "Where should I inspect this record next?"
+
 **Must refuse:**
 
 - User/admin workflow decisions.
@@ -721,6 +918,13 @@ Stage Copilots may explain, retrieve, cite, and recommend. They must not autonom
 - Why an item is only a candidate.
 - Which admin review path owns the decision.
 - What evidence or Pass 6 basis may need review.
+
+**Future discussion examples:**
+
+- "Why is this only a review candidate?"
+- "Which Pass 6 evidence made this item review-worthy?"
+- "What would need to be resolved before this could become final?"
+- "Which finalization path would be safest if this issue remains disputed?"
 
 **Must refuse now:**
 
@@ -1292,30 +1496,45 @@ Universal rules:
 
 Do not start with live provider chat. Build the foundation first.
 
+Before any foundation contracts are implemented, the design must account for:
+
+- Conversational behavior controls.
+- Stage System Knowledge references.
+- Stage Case Data Context references.
+- What-if/advisory analysis behavior.
+- Refusal policy.
+- Future retrieval of original evidence.
+- Clear separation between prompt-controlled discussion style and governed domain behavior.
+
+The first implementation slice after this report should still not build live Copilot. It should be the **Stage Copilot Foundation Contracts / Design Layer**.
+
 1. **Contract/design layer for Stage Copilot profiles and context bundle shapes**
-   - Define stage keys, profile fields, prompt keys, allowed record families, retrieval scopes, routed recommendation types, forbidden actions, and audit policy.
+   - Define stage keys, profile fields, prompt keys, conversational behavior profile references, challenge level/explanation depth/discussion style policy references, Stage System Knowledge references, Stage Case Data Context references, allowed record families, retrieval scope references, refusal policy references, advisory what-if mode boundaries, routed recommendation types, forbidden actions, and audit policy.
    - Output should be architecture/contracts first, not UI or providers.
 
 2. **Stage context bundle read-model planning**
    - Define `SourcesCopilotContextBundle`, `HierarchyCopilotContextBundle`, `TargetingCopilotContextBundle`, `EvidenceCopilotContextBundle`, `AnalysisPackageCopilotContextBundle`, `PromptStudioCopilotContextBundle`, and `AdvancedDebugCopilotContextBundle`.
-   - Identify required view-model APIs and redaction rules before implementation.
+   - Identify required view-model APIs, stage system knowledge inputs, stage case data context inputs, evidence anchors, and redaction rules before implementation.
 
 3. **Original evidence retrieval seam design**
    - Specify direct ID lookup, evidence-anchor lookup, stage-scoped keyword search, and future hybrid retrieval behavior.
-   - Define citation, redaction, audit, and scope requirements.
+   - Define citation, original text retrieval, redaction, audit, and scope requirements.
 
 4. **Shared Copilot dock UI shell**
    - Build as a host only.
    - No provider chat yet.
    - It should route by stage profile and display static/deterministic stage information.
+   - It should be designed to host multi-turn reasoning conversations later, but should not fake a live assistant.
 
 5. **Stage Copilot PromptSpec registry**
    - Add explicit Stage Copilot PromptSpec categories separate from Capability PromptSpecs.
    - Prompt Studio should show the distinction clearly.
+   - Stage Copilot PromptSpecs must include conversational behavior controls, not only topic allowlists.
 
 6. **Read-only non-provider mock runtime or deterministic response harness if needed**
    - Use deterministic responses to verify dock/profile/context/refusal/routed recommendation behavior.
    - Keep it read-only and auditable.
+   - Include deterministic examples for challenge behavior, trade-off explanation, advisory what-if handling, and out-of-stage refusal.
 
 7. **First real provider-backed pilot**
    - Pilot only after contracts, context bundle shape, retrieval seam design, prompt registry, dock shell, and read/write boundaries are in place.
@@ -1365,38 +1584,50 @@ Pass 5 is also strong and may be the first integration target if the product wan
 | Should the shared dock support cross-stage questions? | Cross-stage answers can blur data scope and authority. | Always no, limited redirects, full cross-stage assistant | Refuse out-of-stage answers and offer routed navigation to the proper stage; no cross-stage synthesis unless a future explicit supervisor profile is designed | 5 | Yes for runtime policy |
 | Should retrieval calls be audited? | Evidence retrieval may expose raw participant/source material. | Audit all, audit raw only, no audit | Audit raw evidence retrieval and provider-backed interactions; at minimum log IDs/scopes, not full sensitive payloads unless already governed | 4 | Yes for raw evidence retrieval |
 | Can Stage Copilots recommend actions that write state? | Recommendations are useful, but writes need governance. | No recommendations, routed recommendations, autonomous actions | Allow typed routed recommendations that open governed UI; no autonomous writes | 5 | Yes for action model |
+| How should challenge level and explanation depth be configured per stage? | A useful thinking partner should challenge weak assumptions without overstepping stage authority or sounding like a decision-maker. | Fixed product default, per-stage profile, admin-adjustable setting, PromptSpec-only behavior | Use per-stage profile defaults controlled by Stage Copilot PromptSpecs; do not expose admin-adjustable challenge levels until behavior is proven | 4 | Yes for foundation profile design |
+| How should Stage System Knowledge be versioned? | Copilot explanations of gates, contracts, proof logic, and feature behavior must match the product version. | Static prose, code-derived docs, versioned knowledge map, PromptSpec-only text | Use a versioned Stage System Knowledge reference per profile; do not rely only on freeform prompt text | 4 | Yes before provider-backed production runtime |
+| How should advisory what-if analysis be labelled? | Hypotheticals are valuable but can be mistaken for official analysis results. | No what-if mode, plain text caveats, explicit advisory labels, separate mode | Allow what-if discussion with explicit advisory labels and no writes; consider a visible mode later | 5 | Yes for runtime response policy |
 
 ## J. Final Recommendation
 
+Build the Stage Copilot foundation only after the conversational product model is reflected in the foundation design. The foundation must be designed for stage-scoped reasoning conversation, not static help or answer lookup.
+
 Build next:
 
-1. The Stage Copilot foundation contracts: profiles, PromptSpec categories, context bundle shapes, retrieval seam contract, routed recommendation model, and read/write/refusal policy.
-2. The stage context bundle/read-model plan, including redaction and evidence anchor requirements.
-3. The shared dock shell as a stage-aware host with no provider chat.
-4. A deterministic/mock read-only harness to validate profile routing, refusals, citations, and routed recommendations.
+1. The Stage Copilot foundation contracts: profiles, conversational behavior controls, Stage System Knowledge references, Stage Case Data Context references, PromptSpec categories, context bundle shapes, retrieval seam contract, advisory what-if boundary, routed recommendation model, and read/write/refusal policy.
+2. The stage context bundle/read-model plan, including stage system knowledge inputs, case data context inputs, redaction, original evidence retrieval pointers, and evidence anchor requirements.
+3. The shared dock shell as a stage-aware host with no provider chat, designed to support multi-turn reasoning later.
+4. A deterministic/mock read-only harness to validate profile routing, refusals, citations, routed recommendations, challenge behavior, trade-off explanations, and advisory what-if handling.
 5. The first real provider-backed pilot after the above foundation, recommended as Pass 6 Analysis / Package Copilot.
 
 Do not build yet:
 
+- Static-only help as a substitute for Copilot.
 - A generic workspace chatbot.
 - Live provider chat before profile/context/retrieval/action boundaries.
+- Provider-backed runtime before context/retrieval/refusal/action boundaries.
 - New APIs/routes/components for Copilot runtime before the shared architecture is clear.
 - Any autonomous write behavior.
 - Any retrieval/RAG/vector DB implementation.
 - Any PromptSpec changes.
 - Any data model changes.
 - Any Pass 7/client/finalization Copilot.
+- A Pass 6-only model that cannot generalize to Pass 2-5.
 
 Why:
 
 - The product direction is a cross-stage Stage Copilot family.
+- The intended product behavior is a discussable, stage-scoped thinking partner, not Q&A over data.
 - Pass 6 and Pass 5 are useful existing patterns, but they should plug into a shared architecture rather than define it alone.
 - Original evidence retrieval is essential, but it must be designed as a governed seam before implementation.
 - Separating Capability PromptSpecs from Stage Copilot PromptSpecs prevents admins from confusing analysis behavior with conversational support behavior.
+- Stage Copilot PromptSpecs should control conversational support behavior, not business rules, gates, state transitions, provider execution, or source-of-truth records.
 
 Risk if ignored:
 
 - The shared dock becomes a generic chatbot.
+- Static help gets mistaken for the intended Copilot product.
+- The Copilot can answer isolated questions but cannot support real admin reasoning.
 - Stage authority and data boundaries blur.
 - Raw participant/source evidence can leak across stages.
 - Copilot recommendations may be mistaken for business decisions.
