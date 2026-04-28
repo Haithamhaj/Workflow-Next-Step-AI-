@@ -445,6 +445,223 @@
   color: #9a3412;
 }
 
+.workspaceStageSelectorGrid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.workspaceStageButton,
+.workspaceInstructionActions button {
+  min-width: 0;
+  padding: 10px 12px;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  background: #f8fafc;
+  color: #334155;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 800;
+  cursor: pointer;
+  text-align: start;
+}
+
+.workspaceStageButton:hover,
+.workspaceStageButton:focus,
+.workspaceInstructionActions button:hover,
+.workspaceInstructionActions button:focus {
+  border-color: #93c5fd;
+  background: #eff6ff;
+  color: #1d4ed8;
+}
+
+.workspaceStageButtonActive {
+  border-color: #2563eb;
+  background: #dbeafe;
+  color: #1e40af;
+}
+
+.workspaceErrorPanel,
+.workspaceSuccessPanel {
+  margin: 0 0 18px;
+  padding: 12px 14px;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.workspaceErrorPanel {
+  border: 1px solid #fecaca;
+  background: #fef2f2;
+  color: #991b1b;
+}
+
+.workspaceSuccessPanel {
+  border: 1px solid #bbf7d0;
+  background: #f0fdf4;
+  color: #166534;
+}
+
+.workspaceInstructionTextarea {
+  width: 100%;
+  min-height: 360px;
+  box-sizing: border-box;
+  resize: vertical;
+  padding: 12px;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  background: #ffffff;
+  color: #0f172a;
+  font: inherit;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+  font-size: 13px;
+  line-height: 1.55;
+}
+
+.workspaceFieldLabel {
+  display: grid;
+  gap: 6px;
+  margin-top: 12px;
+  color: #334155;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.workspaceTextInput {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 10px 12px;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  color: #0f172a;
+  font: inherit;
+  font-size: 13px;
+}
+
+.workspaceInstructionActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.workspaceInstructionActions button:first-child {
+  border-color: #2563eb;
+  background: #2563eb;
+  color: #ffffff;
+}
+
+.workspaceInstructionActions button:first-child:hover,
+.workspaceInstructionActions button:first-child:focus {
+  border-color: #1d4ed8;
+  background: #1d4ed8;
+  color: #ffffff;
+}
+
+.workspaceInstructionActions button:disabled,
+.workspaceStageButton:disabled,
+.workspaceInstructionTextarea:disabled,
+.workspaceTextInput:disabled {
+  opacity: 0.62;
+  cursor: not-allowed;
+}
+
+.workspaceMetadataList {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  margin: 0 0 16px;
+}
+
+.workspaceMetadataList div {
+  min-width: 0;
+  padding: 10px 12px;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  background: #f8fafc;
+}
+
+.workspaceMetadataList dt {
+  margin: 0 0 4px;
+  color: #64748b;
+  font-size: 11px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.workspaceMetadataList dd {
+  margin: 0;
+  color: #0f172a;
+  font-size: 13px;
+  overflow-wrap: anywhere;
+}
+
+.workspaceDefaultPreview {
+  min-width: 0;
+  padding: 12px;
+  border: 1px solid #dbeafe;
+  border-radius: 8px;
+  background: #eff6ff;
+}
+
+.workspaceDefaultPreview h4 {
+  margin: 0 0 8px;
+  color: #1e3a8a;
+  font-size: 14px;
+}
+
+.workspaceDefaultPreview pre {
+  max-height: 360px;
+  margin: 0;
+  overflow: auto;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  color: #1e3a8a;
+  font-size: 12px;
+  line-height: 1.55;
+}
+
+.workspaceHistoryList {
+  display: grid;
+  gap: 10px;
+}
+
+.workspaceHistoryItem {
+  min-width: 0;
+  padding: 12px;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  background: #ffffff;
+}
+
+.workspaceHistoryItem div {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.workspaceHistoryItem strong {
+  color: #0f172a;
+}
+
+.workspaceHistoryItem span {
+  padding: 3px 8px;
+  border-radius: 999px;
+  background: #f1f5f9;
+  color: #475569;
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.workspaceHistoryItem p {
+  margin: 8px 0 0;
+  color: #64748b;
+  font-size: 12px;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+
 .workspaceCommandSummary {
   max-width: none;
   min-width: 0;
@@ -1215,6 +1432,7 @@
   .workspaceReviewGrid,
   .workspaceMethodGrid,
   .workspacePromptGrid,
+  .workspaceStageSelectorGrid,
   .workspaceCommandSummary {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
@@ -1346,6 +1564,8 @@
   .workspaceTabLikeGrid,
   .workspaceMethodGrid,
   .workspacePromptGrid,
+  .workspaceStageSelectorGrid,
+  .workspaceMetadataList,
   .workspaceDepartmentMap,
   .workspaceDepartmentMapCompact,
   .workspaceFlowMap,

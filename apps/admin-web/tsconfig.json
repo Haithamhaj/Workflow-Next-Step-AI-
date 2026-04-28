@@ -9,9 +9,6 @@
     "moduleResolution": "Bundler",
     "allowJs": true,
     "isolatedModules": true,
-    "paths": {
-      "@workflow/stage-copilot": ["../../packages/stage-copilot/src/index.ts"]
-    },
     "plugins": [{ "name": "next" }]
   },
   "include": ["next-env.d.ts", "app/**/*.ts", "app/**/*.tsx", "components/**/*.ts", "components/**/*.tsx", ".next/types/**/*.ts"],

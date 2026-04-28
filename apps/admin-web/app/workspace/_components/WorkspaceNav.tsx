@@ -13,6 +13,7 @@ const sections = [
   { id: "evidence", href: "/workspace/evidence", labelKey: "evidence" },
   { id: "analysis", href: "/workspace/analysis", labelKey: "analysis" },
   { id: "promptStudio", href: "/workspace/prompts", labelKey: "promptStudio" },
+  { id: "copilotInstructions", href: "/workspace/copilot-instructions", labelKey: "copilotInstructions" },
   { id: "package", href: "/workspace/package", labelKey: "package" },
   { id: "advanced", href: "/workspace/advanced", labelKey: "advanced" },
 ] as const;

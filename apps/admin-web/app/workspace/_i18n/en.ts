@@ -42,6 +42,7 @@ export const en = {
     evidence: "Evidence",
     analysis: "Analysis",
     promptStudio: "Prompt Studio",
+    copilotInstructions: "Copilot Instructions",
     package: "Package",
     advanced: "Advanced",
   },
@@ -73,6 +74,10 @@ export const en = {
     promptStudio: {
       name: "Prompt Studio",
       purpose: "Friendly entry point for prompt control while PromptOps remains the source of truth.",
+    },
+    copilotInstructions: {
+      name: "Copilot Instructions",
+      purpose: "Controls how stage copilots speak and reason. Does not change analysis prompts.",
     },
     package: {
       name: "Package",
@@ -155,6 +160,68 @@ export const en = {
         description:
           "Review, synthesis, and evaluation record surfaces. Advanced routes are for inspection and existing admin workflows, not a guided path.",
       },
+    },
+  },
+  copilotInstructions: {
+    eyebrow: "Stage Copilot Instructions",
+    title: "Copilot Instructions",
+    purpose: "Controls how stage copilots speak and reason. Does not change analysis prompts.",
+    separationWarning:
+      "This changes Copilot conversation behavior only. It does not change Capability / Analysis PromptSpecs or official analysis behavior.",
+    analysisWarning:
+      "This does not change extraction, synthesis, evaluation, package drafting, readiness, evidence trust, package eligibility, or package output.",
+    runtimeWarning:
+      "This page does not run providers, start Copilot chat, compile prompts, or run prompt tests.",
+    stageSelector: "Stage",
+    effectiveInstructions: "Effective instructions",
+    editableInstructions: "Custom instructions",
+    defaultPreview: "Static default",
+    history: "Instruction history",
+    metadata: "Current metadata",
+    changeNote: "Change note",
+    changeNotePlaceholder: "What changed and why?",
+    save: "Save instructions",
+    reset: "Reset to static default",
+    loading: "Loading instructions...",
+    noHistory: "No persisted instruction history for this stage yet.",
+    usingDefault: "Using static default",
+    usingCustom: "Using custom instructions",
+    current: "Current",
+    superseded: "Superseded",
+    source: "Source",
+    version: "Version",
+    updatedAt: "Updated",
+    updatedBy: "Updated by",
+    defaultSource: "Static default",
+    customSource: "Admin custom",
+    unsavedHint: "Save creates a new current version and preserves previous versions.",
+    resetHint: "Reset creates a new current version from the static default and preserves history.",
+    boundaryTitle: "Hard boundary",
+    boundaryItems: [
+      "Read-only conversation behavior only.",
+      "No Capability / Analysis PromptSpec changes.",
+      "No official analysis execution.",
+      "No provider or retrieval execution.",
+      "No readiness, evidence trust, or package eligibility changes.",
+    ],
+    stages: {
+      sources_context: "Sources / Context",
+      hierarchy: "Hierarchy",
+      targeting: "Targeting",
+      participant_evidence: "Participant Evidence",
+      analysis_package: "Analysis / Package",
+      prompt_studio: "Prompt Studio",
+      advanced_debug: "Advanced / Debug",
+    },
+    errors: {
+      invalid_stage_key: "Unsupported Stage Copilot stage.",
+      unsupported_action: "Unsupported instruction action.",
+      missing_system_prompt: "Instructions cannot be empty.",
+      invalid_copilot_instructions:
+        "These instructions claim authority outside the Stage Copilot boundary. Remove write, provider, analysis, approval, readiness, or package authority claims and try again.",
+      repository_validation_failed:
+        "The repository rejected these instructions. Remove unsafe authority claims and try again.",
+      unknown: "Could not complete the instruction request.",
     },
   },
   visual: {
