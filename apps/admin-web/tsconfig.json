@@ -9,6 +9,9 @@
     "moduleResolution": "Bundler",
     "allowJs": true,
     "isolatedModules": true,
+    "paths": {
+      "@workflow/stage-copilot": ["../../packages/stage-copilot/src/index.ts"]
+    },
     "plugins": [{ "name": "next" }]
   },
   "include": ["next-env.d.ts", "app/**/*.ts", "app/**/*.tsx", "components/**/*.ts", "components/**/*.tsx", ".next/types/**/*.ts"],
@@ -17,6 +20,7 @@
     { "path": "../../packages/contracts" },
     { "path": "../../packages/core-state" },
     { "path": "../../packages/persistence" },
+    { "path": "../../packages/stage-copilot" },
     { "path": "../../packages/core-case" },
     { "path": "../../packages/sources-context" },
     { "path": "../../packages/prompts" },

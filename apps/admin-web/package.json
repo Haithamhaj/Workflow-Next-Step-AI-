@@ -15,6 +15,7 @@
     "@workflow/core-case": "workspace:*",
     "@workflow/core-state": "workspace:*",
     "@workflow/persistence": "workspace:*",
+    "@workflow/stage-copilot": "workspace:*",
     "@workflow/sources-context": "workspace:*",
     "@workflow/hierarchy-intake": "workspace:*",
     "@workflow/targeting-rollout": "workspace:*",

@@ -5,6 +5,7 @@ const nextConfig = {
     "@workflow/contracts",
     "@workflow/core-state",
     "@workflow/persistence",
+    "@workflow/stage-copilot",
     "@workflow/core-case",
     "@workflow/sources-context",
     "@workflow/prompts",

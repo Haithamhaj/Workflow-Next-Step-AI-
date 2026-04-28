@@ -53,6 +53,9 @@ importers:
       '@workflow/sources-context':
         specifier: workspace:*
         version: link:../../packages/sources-context
+      '@workflow/stage-copilot':
+        specifier: workspace:*
+        version: link:../../packages/stage-copilot
       '@workflow/synthesis-evaluation':
         specifier: workspace:*
         version: link:../../packages/synthesis-evaluation
