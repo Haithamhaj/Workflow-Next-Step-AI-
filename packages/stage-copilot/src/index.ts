@@ -14,3 +14,22 @@ export {
   type StageCopilotBoundaryViolationCode,
   type StageCopilotRuntimeIntent,
 } from "./boundary.js";
+
+export {
+  assertStageCopilotContextEnvelopeReadOnly,
+  createStageCopilotContextEnvelope,
+  isStageCopilotContextEnvelopeSafe,
+  summarizeStageCopilotContextEnvelope,
+  type StageCopilotAdvisorySafeNote,
+  type StageCopilotBlockerWarningSummary,
+  type StageCopilotContextAuditSourceRef,
+  type StageCopilotContextEnvelope,
+  type StageCopilotContextEnvelopeBoundaryStatus,
+  type StageCopilotContextEnvelopeCheck,
+  type StageCopilotContextEnvelopeInput,
+  type StageCopilotContextEnvelopeSummary,
+  type StageCopilotContextEnvelopeViolationCode,
+  type StageCopilotContextScopeRef,
+  type StageCopilotEvidenceSourceRef,
+  type StageCopilotPromptTestReferenceSummary,
+} from "./context-envelope.js";
