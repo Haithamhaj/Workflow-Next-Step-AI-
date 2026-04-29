@@ -826,6 +826,8 @@ export interface Pass4PromptTestRunRepository {
 export interface ParticipantSessionRepository {
   save(record: StoredParticipantSession): void;
   findById(sessionId: string): StoredParticipantSession | null;
+  findByCompany(companyId: string, sessionId: string): StoredParticipantSession | null;
+  findByCompanyAndCase(companyId: string, caseId: string): StoredParticipantSession[];
   findByCaseId(caseId: string): StoredParticipantSession[];
   findByTargetingPlanId(targetingPlanId: string): StoredParticipantSession[];
   findAll(): StoredParticipantSession[];
@@ -874,6 +876,8 @@ export interface TelegramIdentityBindingRepository {
 export interface RawEvidenceItemRepository {
   save(record: StoredRawEvidenceItem): void;
   findById(evidenceItemId: string): StoredRawEvidenceItem | null;
+  findByCompany(companyId: string, caseId: string, evidenceItemId: string): StoredRawEvidenceItem | null;
+  findByCompanyAndSession(companyId: string, caseId: string, sessionId: string): StoredRawEvidenceItem[];
   findBySessionId(sessionId: string): StoredRawEvidenceItem[];
   findByTrustStatus(trustStatus: TrustStatus): StoredRawEvidenceItem[];
   findAll(): StoredRawEvidenceItem[];
@@ -891,6 +895,8 @@ export interface RawEvidenceItemRepository {
 export interface FirstPassExtractionOutputRepository {
   save(record: StoredFirstPassExtractionOutput): void;
   findById(extractionId: string): StoredFirstPassExtractionOutput | null;
+  findByCompany(companyId: string, caseId: string, extractionId: string): StoredFirstPassExtractionOutput | null;
+  findByCompanyAndSession(companyId: string, caseId: string, sessionId: string): StoredFirstPassExtractionOutput[];
   findBySessionId(sessionId: string): StoredFirstPassExtractionOutput[];
   findAll(): StoredFirstPassExtractionOutput[];
   updateExtractionStatus(
@@ -902,6 +908,9 @@ export interface FirstPassExtractionOutputRepository {
 export interface ClarificationCandidateRepository {
   save(record: StoredClarificationCandidate): void;
   findById(candidateId: string): StoredClarificationCandidate | null;
+  findByCompany(companyId: string, caseId: string, candidateId: string): StoredClarificationCandidate | null;
+  findByCompanyAndSession(companyId: string, caseId: string, sessionId: string): StoredClarificationCandidate[];
+  findOpenByCompanyAndSession(companyId: string, caseId: string, sessionId: string): StoredClarificationCandidate[];
   findBySessionId(sessionId: string): StoredClarificationCandidate[];
   findOpenBySessionId(sessionId: string): StoredClarificationCandidate[];
   findAll(): StoredClarificationCandidate[];
@@ -921,6 +930,8 @@ export interface ClarificationCandidateRepository {
 export interface BoundarySignalRepository {
   save(record: StoredBoundarySignal): void;
   findById(boundarySignalId: string): StoredBoundarySignal | null;
+  findByCompany(companyId: string, caseId: string, boundarySignalId: string): StoredBoundarySignal | null;
+  findByCompanyAndSession(companyId: string, caseId: string, sessionId: string): StoredBoundarySignal[];
   findBySessionId(sessionId: string): StoredBoundarySignal[];
   findRequiringEscalation(): StoredBoundarySignal[];
   findAll(): StoredBoundarySignal[];
@@ -929,6 +940,8 @@ export interface BoundarySignalRepository {
 export interface EvidenceDisputeRepository {
   save(record: StoredEvidenceDispute): void;
   findById(disputeId: string): StoredEvidenceDispute | null;
+  findByCompany(companyId: string, caseId: string, disputeId: string): StoredEvidenceDispute | null;
+  findByCompanyAndSession(companyId: string, caseId: string, sessionId: string): StoredEvidenceDispute[];
   findBySessionId(sessionId: string): StoredEvidenceDispute[];
   findByExtractionId(extractionId: string): StoredEvidenceDispute[];
   findAll(): StoredEvidenceDispute[];
@@ -941,6 +954,8 @@ export interface EvidenceDisputeRepository {
 export interface SessionNextActionRepository {
   save(record: StoredSessionNextAction): void;
   findById(nextActionId: string): StoredSessionNextAction | null;
+  findByCompany(companyId: string, caseId: string, nextActionId: string): StoredSessionNextAction | null;
+  findByCompanyAndSession(companyId: string, caseId: string, sessionId: string): StoredSessionNextAction[];
   findBySessionId(sessionId: string): StoredSessionNextAction[];
   findCurrentBySessionId(sessionId: string): StoredSessionNextAction | null;
   findAll(): StoredSessionNextAction[];
@@ -953,6 +968,8 @@ export interface SessionNextActionRepository {
 export interface Pass6HandoffCandidateRepository {
   save(record: StoredPass6HandoffCandidate): void;
   findById(handoffCandidateId: string): StoredPass6HandoffCandidate | null;
+  findByCompany(companyId: string, caseId: string, handoffCandidateId: string): StoredPass6HandoffCandidate | null;
+  findByCompanyAndCase(companyId: string, caseId: string): StoredPass6HandoffCandidate[];
   findByCaseId(caseId: string): StoredPass6HandoffCandidate[];
   findBySessionId(sessionId: string): StoredPass6HandoffCandidate[];
   findAll(): StoredPass6HandoffCandidate[];
@@ -2163,6 +2180,13 @@ class InMemoryParticipantSessionRepository implements ParticipantSessionReposito
   private readonly store = new Map<string, StoredParticipantSession>();
   save(record: StoredParticipantSession): void { this.store.set(record.sessionId, cloneRecord(record)); }
   findById(sessionId: string): StoredParticipantSession | null { const record = this.store.get(sessionId); return record ? cloneRecord(record) : null; }
+  findByCompany(companyId: string, sessionId: string): StoredParticipantSession | null {
+    const record = this.findById(sessionId);
+    return record?.companyId === companyId ? record : null;
+  }
+  findByCompanyAndCase(companyId: string, caseId: string): StoredParticipantSession[] {
+    return this.findAll().filter((record) => record.companyId === companyId && record.caseId === caseId);
+  }
   findByCaseId(caseId: string): StoredParticipantSession[] { return this.findAll().filter((record) => record.caseId === caseId); }
   findByTargetingPlanId(targetingPlanId: string): StoredParticipantSession[] { return this.findAll().filter((record) => record.targetingPlanId === targetingPlanId); }
   findAll(): StoredParticipantSession[] { return Array.from(this.store.values()).map((record) => cloneRecord(record)); }
@@ -2235,6 +2259,9 @@ class InMemoryRawEvidenceItemRepository implements RawEvidenceItemRepository {
     if (existing) {
       this.store.set(record.evidenceItemId, cloneRecord({
         ...existing,
+        companyId: record.companyId,
+        caseId: record.caseId,
+        sessionId: record.sessionId,
         trustStatus: record.trustStatus,
         confidenceScore: record.confidenceScore,
         linkedClarificationItemId: record.linkedClarificationItemId,
@@ -2245,6 +2272,13 @@ class InMemoryRawEvidenceItemRepository implements RawEvidenceItemRepository {
     this.store.set(record.evidenceItemId, cloneRecord(record));
   }
   findById(evidenceItemId: string): StoredRawEvidenceItem | null { const record = this.store.get(evidenceItemId); return record ? cloneRecord(record) : null; }
+  findByCompany(companyId: string, caseId: string, evidenceItemId: string): StoredRawEvidenceItem | null {
+    const record = this.findById(evidenceItemId);
+    return record?.companyId === companyId && record.caseId === caseId ? record : null;
+  }
+  findByCompanyAndSession(companyId: string, caseId: string, sessionId: string): StoredRawEvidenceItem[] {
+    return this.findAll().filter((record) => record.companyId === companyId && record.caseId === caseId && record.sessionId === sessionId);
+  }
   findBySessionId(sessionId: string): StoredRawEvidenceItem[] { return this.findAll().filter((record) => record.sessionId === sessionId); }
   findByTrustStatus(trustStatus: TrustStatus): StoredRawEvidenceItem[] { return this.findAll().filter((record) => record.trustStatus === trustStatus); }
   findAll(): StoredRawEvidenceItem[] { return Array.from(this.store.values()).map((record) => cloneRecord(record)); }
@@ -2267,6 +2301,13 @@ class InMemoryFirstPassExtractionOutputRepository implements FirstPassExtraction
   private readonly store = new Map<string, StoredFirstPassExtractionOutput>();
   save(record: StoredFirstPassExtractionOutput): void { this.store.set(record.extractionId, cloneRecord(record)); }
   findById(extractionId: string): StoredFirstPassExtractionOutput | null { const record = this.store.get(extractionId); return record ? cloneRecord(record) : null; }
+  findByCompany(companyId: string, caseId: string, extractionId: string): StoredFirstPassExtractionOutput | null {
+    const record = this.findById(extractionId);
+    return record?.companyId === companyId && record.caseId === caseId ? record : null;
+  }
+  findByCompanyAndSession(companyId: string, caseId: string, sessionId: string): StoredFirstPassExtractionOutput[] {
+    return this.findAll().filter((record) => record.companyId === companyId && record.caseId === caseId && record.sessionId === sessionId);
+  }
   findBySessionId(sessionId: string): StoredFirstPassExtractionOutput[] { return this.findAll().filter((record) => record.sessionId === sessionId); }
   findAll(): StoredFirstPassExtractionOutput[] { return Array.from(this.store.values()).map((record) => cloneRecord(record)); }
   updateExtractionStatus(extractionId: string, extractionStatus: StoredFirstPassExtractionOutput["extractionStatus"]): StoredFirstPassExtractionOutput | null {
@@ -2282,6 +2323,16 @@ class InMemoryClarificationCandidateRepository implements ClarificationCandidate
   private readonly store = new Map<string, StoredClarificationCandidate>();
   save(record: StoredClarificationCandidate): void { this.store.set(record.candidateId, cloneRecord(record)); }
   findById(candidateId: string): StoredClarificationCandidate | null { const record = this.store.get(candidateId); return record ? cloneRecord(record) : null; }
+  findByCompany(companyId: string, caseId: string, candidateId: string): StoredClarificationCandidate | null {
+    const record = this.findById(candidateId);
+    return record?.companyId === companyId && record.caseId === caseId ? record : null;
+  }
+  findByCompanyAndSession(companyId: string, caseId: string, sessionId: string): StoredClarificationCandidate[] {
+    return this.findAll().filter((record) => record.companyId === companyId && record.caseId === caseId && record.sessionId === sessionId);
+  }
+  findOpenByCompanyAndSession(companyId: string, caseId: string, sessionId: string): StoredClarificationCandidate[] {
+    return this.findByCompanyAndSession(companyId, caseId, sessionId).filter((record) => record.status === "open" || record.status === "asked" || record.status === "partially_resolved");
+  }
   findBySessionId(sessionId: string): StoredClarificationCandidate[] { return this.findAll().filter((record) => record.sessionId === sessionId); }
   findOpenBySessionId(sessionId: string): StoredClarificationCandidate[] { return this.findBySessionId(sessionId).filter((record) => record.status === "open" || record.status === "asked" || record.status === "partially_resolved"); }
   findAll(): StoredClarificationCandidate[] { return Array.from(this.store.values()).map((record) => cloneRecord(record)); }
@@ -2298,6 +2349,13 @@ class InMemoryBoundarySignalRepository implements BoundarySignalRepository {
   private readonly store = new Map<string, StoredBoundarySignal>();
   save(record: StoredBoundarySignal): void { this.store.set(record.boundarySignalId, cloneRecord(record)); }
   findById(boundarySignalId: string): StoredBoundarySignal | null { const record = this.store.get(boundarySignalId); return record ? cloneRecord(record) : null; }
+  findByCompany(companyId: string, caseId: string, boundarySignalId: string): StoredBoundarySignal | null {
+    const record = this.findById(boundarySignalId);
+    return record?.companyId === companyId && record.caseId === caseId ? record : null;
+  }
+  findByCompanyAndSession(companyId: string, caseId: string, sessionId: string): StoredBoundarySignal[] {
+    return this.findAll().filter((record) => record.companyId === companyId && record.caseId === caseId && record.sessionId === sessionId);
+  }
   findBySessionId(sessionId: string): StoredBoundarySignal[] { return this.findAll().filter((record) => record.sessionId === sessionId); }
   findRequiringEscalation(): StoredBoundarySignal[] { return this.findAll().filter((record) => record.requiresEscalation); }
   findAll(): StoredBoundarySignal[] { return Array.from(this.store.values()).map((record) => cloneRecord(record)); }
@@ -2307,6 +2365,13 @@ class InMemoryEvidenceDisputeRepository implements EvidenceDisputeRepository {
   private readonly store = new Map<string, StoredEvidenceDispute>();
   save(record: StoredEvidenceDispute): void { this.store.set(record.disputeId, cloneRecord(record)); }
   findById(disputeId: string): StoredEvidenceDispute | null { const record = this.store.get(disputeId); return record ? cloneRecord(record) : null; }
+  findByCompany(companyId: string, caseId: string, disputeId: string): StoredEvidenceDispute | null {
+    const record = this.findById(disputeId);
+    return record?.companyId === companyId && record.caseId === caseId ? record : null;
+  }
+  findByCompanyAndSession(companyId: string, caseId: string, sessionId: string): StoredEvidenceDispute[] {
+    return this.findAll().filter((record) => record.companyId === companyId && record.caseId === caseId && record.sessionId === sessionId);
+  }
   findBySessionId(sessionId: string): StoredEvidenceDispute[] { return this.findAll().filter((record) => record.sessionId === sessionId); }
   findByExtractionId(extractionId: string): StoredEvidenceDispute[] { return this.findAll().filter((record) => record.extractionId === extractionId); }
   findAll(): StoredEvidenceDispute[] { return Array.from(this.store.values()).map((record) => cloneRecord(record)); }
@@ -2323,6 +2388,13 @@ class InMemorySessionNextActionRepository implements SessionNextActionRepository
   private readonly store = new Map<string, StoredSessionNextAction>();
   save(record: StoredSessionNextAction): void { this.store.set(record.nextActionId, cloneRecord(record)); }
   findById(nextActionId: string): StoredSessionNextAction | null { const record = this.store.get(nextActionId); return record ? cloneRecord(record) : null; }
+  findByCompany(companyId: string, caseId: string, nextActionId: string): StoredSessionNextAction | null {
+    const record = this.findById(nextActionId);
+    return record?.companyId === companyId && record.caseId === caseId ? record : null;
+  }
+  findByCompanyAndSession(companyId: string, caseId: string, sessionId: string): StoredSessionNextAction[] {
+    return this.findAll().filter((record) => record.companyId === companyId && record.caseId === caseId && record.sessionId === sessionId);
+  }
   findBySessionId(sessionId: string): StoredSessionNextAction[] { return this.findAll().filter((record) => record.sessionId === sessionId); }
   findCurrentBySessionId(sessionId: string): StoredSessionNextAction | null {
     const priorityRank: Record<ClarificationPriority, number> = { high: 3, medium: 2, low: 1 };
@@ -2342,6 +2414,13 @@ class InMemoryPass6HandoffCandidateRepository implements Pass6HandoffCandidateRe
   private readonly store = new Map<string, StoredPass6HandoffCandidate>();
   save(record: StoredPass6HandoffCandidate): void { this.store.set(record.handoffCandidateId, cloneRecord(record)); }
   findById(handoffCandidateId: string): StoredPass6HandoffCandidate | null { const record = this.store.get(handoffCandidateId); return record ? cloneRecord(record) : null; }
+  findByCompany(companyId: string, caseId: string, handoffCandidateId: string): StoredPass6HandoffCandidate | null {
+    const record = this.findById(handoffCandidateId);
+    return record?.companyId === companyId && record.caseId === caseId ? record : null;
+  }
+  findByCompanyAndCase(companyId: string, caseId: string): StoredPass6HandoffCandidate[] {
+    return this.findAll().filter((record) => record.companyId === companyId && record.caseId === caseId);
+  }
   findByCaseId(caseId: string): StoredPass6HandoffCandidate[] { return this.findAll().filter((record) => record.caseId === caseId); }
   findBySessionId(sessionId: string): StoredPass6HandoffCandidate[] { return this.findAll().filter((record) => record.sessionIds.includes(sessionId)); }
   findAll(): StoredPass6HandoffCandidate[] { return Array.from(this.store.values()).map((record) => cloneRecord(record)); }
@@ -2611,6 +2690,7 @@ function openIntakeDatabase(dbPath?: string): DatabaseSync {
     );
     CREATE TABLE IF NOT EXISTS participant_sessions (
       id TEXT PRIMARY KEY,
+      company_id TEXT NOT NULL DEFAULT '${DEFAULT_LOCAL_COMPANY_ID}',
       case_id TEXT NOT NULL,
       targeting_plan_id TEXT NOT NULL,
       session_state TEXT NOT NULL,
@@ -2634,18 +2714,24 @@ function openIntakeDatabase(dbPath?: string): DatabaseSync {
     );
     CREATE TABLE IF NOT EXISTS raw_evidence_items (
       id TEXT PRIMARY KEY,
+      company_id TEXT NOT NULL DEFAULT '${DEFAULT_LOCAL_COMPANY_ID}',
+      case_id TEXT NOT NULL DEFAULT '',
       session_id TEXT NOT NULL,
       trust_status TEXT NOT NULL,
       payload TEXT NOT NULL
     );
     CREATE TABLE IF NOT EXISTS first_pass_extraction_outputs (
       id TEXT PRIMARY KEY,
+      company_id TEXT NOT NULL DEFAULT '${DEFAULT_LOCAL_COMPANY_ID}',
+      case_id TEXT NOT NULL DEFAULT '',
       session_id TEXT NOT NULL,
       extraction_status TEXT NOT NULL,
       payload TEXT NOT NULL
     );
     CREATE TABLE IF NOT EXISTS clarification_candidates (
       id TEXT PRIMARY KEY,
+      company_id TEXT NOT NULL DEFAULT '${DEFAULT_LOCAL_COMPANY_ID}',
+      case_id TEXT NOT NULL DEFAULT '',
       session_id TEXT NOT NULL,
       status TEXT NOT NULL,
       ask_next INTEGER NOT NULL,
@@ -2653,12 +2739,16 @@ function openIntakeDatabase(dbPath?: string): DatabaseSync {
     );
     CREATE TABLE IF NOT EXISTS boundary_signals (
       id TEXT PRIMARY KEY,
+      company_id TEXT NOT NULL DEFAULT '${DEFAULT_LOCAL_COMPANY_ID}',
+      case_id TEXT NOT NULL DEFAULT '',
       session_id TEXT NOT NULL,
       requires_escalation INTEGER NOT NULL,
       payload TEXT NOT NULL
     );
     CREATE TABLE IF NOT EXISTS evidence_disputes (
       id TEXT PRIMARY KEY,
+      company_id TEXT NOT NULL DEFAULT '${DEFAULT_LOCAL_COMPANY_ID}',
+      case_id TEXT NOT NULL DEFAULT '',
       session_id TEXT NOT NULL,
       extraction_id TEXT NOT NULL,
       admin_decision TEXT NOT NULL,
@@ -2666,6 +2756,8 @@ function openIntakeDatabase(dbPath?: string): DatabaseSync {
     );
     CREATE TABLE IF NOT EXISTS session_next_actions (
       id TEXT PRIMARY KEY,
+      company_id TEXT NOT NULL DEFAULT '${DEFAULT_LOCAL_COMPANY_ID}',
+      case_id TEXT NOT NULL DEFAULT '',
       session_id TEXT NOT NULL,
       blocking INTEGER NOT NULL,
       priority TEXT NOT NULL,
@@ -2673,6 +2765,7 @@ function openIntakeDatabase(dbPath?: string): DatabaseSync {
     );
     CREATE TABLE IF NOT EXISTS pass6_handoff_candidates (
       id TEXT PRIMARY KEY,
+      company_id TEXT NOT NULL DEFAULT '${DEFAULT_LOCAL_COMPANY_ID}',
       case_id TEXT NOT NULL,
       admin_decision TEXT NOT NULL,
       payload TEXT NOT NULL
@@ -2824,6 +2917,20 @@ function openIntakeDatabase(dbPath?: string): DatabaseSync {
     ["content_chunks", "case_id", "TEXT"],
     ["content_chunks", "source_version", "INTEGER NOT NULL DEFAULT 1"],
     ["content_chunks", "lineage_status", "TEXT NOT NULL DEFAULT 'active'"],
+    ["participant_sessions", "company_id", `TEXT NOT NULL DEFAULT '${DEFAULT_LOCAL_COMPANY_ID}'`],
+    ["raw_evidence_items", "company_id", `TEXT NOT NULL DEFAULT '${DEFAULT_LOCAL_COMPANY_ID}'`],
+    ["raw_evidence_items", "case_id", "TEXT NOT NULL DEFAULT ''"],
+    ["first_pass_extraction_outputs", "company_id", `TEXT NOT NULL DEFAULT '${DEFAULT_LOCAL_COMPANY_ID}'`],
+    ["first_pass_extraction_outputs", "case_id", "TEXT NOT NULL DEFAULT ''"],
+    ["clarification_candidates", "company_id", `TEXT NOT NULL DEFAULT '${DEFAULT_LOCAL_COMPANY_ID}'`],
+    ["clarification_candidates", "case_id", "TEXT NOT NULL DEFAULT ''"],
+    ["boundary_signals", "company_id", `TEXT NOT NULL DEFAULT '${DEFAULT_LOCAL_COMPANY_ID}'`],
+    ["boundary_signals", "case_id", "TEXT NOT NULL DEFAULT ''"],
+    ["evidence_disputes", "company_id", `TEXT NOT NULL DEFAULT '${DEFAULT_LOCAL_COMPANY_ID}'`],
+    ["evidence_disputes", "case_id", "TEXT NOT NULL DEFAULT ''"],
+    ["session_next_actions", "company_id", `TEXT NOT NULL DEFAULT '${DEFAULT_LOCAL_COMPANY_ID}'`],
+    ["session_next_actions", "case_id", "TEXT NOT NULL DEFAULT ''"],
+    ["pass6_handoff_candidates", "company_id", `TEXT NOT NULL DEFAULT '${DEFAULT_LOCAL_COMPANY_ID}'`],
   ];
   for (const [tableName, columnName, definition] of lineageDefaults) {
     addColumnIfMissing(db, tableName, columnName, definition);
@@ -2845,6 +2952,14 @@ function openIntakeDatabase(dbPath?: string): DatabaseSync {
     CREATE INDEX IF NOT EXISTS idx_crawl_summaries_lineage ON website_crawl_site_summaries(company_id, case_id, source_id, source_version);
     CREATE INDEX IF NOT EXISTS idx_content_chunks_company_case ON content_chunks(company_id, case_id);
     CREATE INDEX IF NOT EXISTS idx_content_chunks_lineage ON content_chunks(company_id, case_id, source_id, source_version);
+    CREATE INDEX IF NOT EXISTS idx_participant_sessions_company_case ON participant_sessions(company_id, case_id);
+    CREATE INDEX IF NOT EXISTS idx_raw_evidence_company_case_session ON raw_evidence_items(company_id, case_id, session_id);
+    CREATE INDEX IF NOT EXISTS idx_first_pass_extractions_company_case_session ON first_pass_extraction_outputs(company_id, case_id, session_id);
+    CREATE INDEX IF NOT EXISTS idx_clarification_candidates_company_case_session ON clarification_candidates(company_id, case_id, session_id);
+    CREATE INDEX IF NOT EXISTS idx_boundary_signals_company_case_session ON boundary_signals(company_id, case_id, session_id);
+    CREATE INDEX IF NOT EXISTS idx_evidence_disputes_company_case_session ON evidence_disputes(company_id, case_id, session_id);
+    CREATE INDEX IF NOT EXISTS idx_session_next_actions_company_case_session ON session_next_actions(company_id, case_id, session_id);
+    CREATE INDEX IF NOT EXISTS idx_pass6_handoff_candidates_company_case ON pass6_handoff_candidates(company_id, case_id);
   `);
   return db;
 }
@@ -3885,11 +4000,17 @@ export class SQLiteParticipantSessionRepository implements ParticipantSessionRep
   private readonly db: DatabaseSync;
   constructor(dbPath?: string) { this.db = openIntakeDatabase(dbPath); }
   save(record: StoredParticipantSession): void {
-    this.db.prepare("INSERT INTO participant_sessions (id, case_id, targeting_plan_id, session_state, channel_status, payload) VALUES (?, ?, ?, ?, ?, ?) ON CONFLICT(id) DO UPDATE SET case_id = excluded.case_id, targeting_plan_id = excluded.targeting_plan_id, session_state = excluded.session_state, channel_status = excluded.channel_status, payload = excluded.payload")
-      .run(record.sessionId, record.caseId, record.targetingPlanId, record.sessionState, record.channelStatus, JSON.stringify(record));
+    this.db.prepare("INSERT INTO participant_sessions (id, company_id, case_id, targeting_plan_id, session_state, channel_status, payload) VALUES (?, ?, ?, ?, ?, ?, ?) ON CONFLICT(id) DO UPDATE SET company_id = excluded.company_id, case_id = excluded.case_id, targeting_plan_id = excluded.targeting_plan_id, session_state = excluded.session_state, channel_status = excluded.channel_status, payload = excluded.payload")
+      .run(record.sessionId, record.companyId, record.caseId, record.targetingPlanId, record.sessionState, record.channelStatus, JSON.stringify(record));
   }
   findById(sessionId: string): StoredParticipantSession | null {
     return parseStored<StoredParticipantSession>(this.db.prepare("SELECT payload FROM participant_sessions WHERE id = ?").get(sessionId));
+  }
+  findByCompany(companyId: string, sessionId: string): StoredParticipantSession | null {
+    return parseStored<StoredParticipantSession>(this.db.prepare("SELECT payload FROM participant_sessions WHERE company_id = ? AND id = ?").get(companyId, sessionId));
+  }
+  findByCompanyAndCase(companyId: string, caseId: string): StoredParticipantSession[] {
+    return parseStoredList<StoredParticipantSession>(this.db.prepare("SELECT payload FROM participant_sessions WHERE company_id = ? AND case_id = ? ORDER BY id").all(companyId, caseId));
   }
   findByCaseId(caseId: string): StoredParticipantSession[] {
     return parseStoredList<StoredParticipantSession>(this.db.prepare("SELECT payload FROM participant_sessions WHERE case_id = ? ORDER BY id").all(caseId));
@@ -3984,16 +4105,25 @@ export class SQLiteRawEvidenceItemRepository implements RawEvidenceItemRepositor
     const existing = this.findById(record.evidenceItemId);
     const toStore = existing ? {
       ...existing,
+      companyId: record.companyId,
+      caseId: record.caseId,
+      sessionId: record.sessionId,
       trustStatus: record.trustStatus,
       confidenceScore: record.confidenceScore,
       linkedClarificationItemId: record.linkedClarificationItemId,
       notes: record.notes,
     } : record;
-    this.db.prepare("INSERT INTO raw_evidence_items (id, session_id, trust_status, payload) VALUES (?, ?, ?, ?) ON CONFLICT(id) DO UPDATE SET trust_status = excluded.trust_status, payload = excluded.payload")
-      .run(toStore.evidenceItemId, toStore.sessionId, toStore.trustStatus, JSON.stringify(toStore));
+    this.db.prepare("INSERT INTO raw_evidence_items (id, company_id, case_id, session_id, trust_status, payload) VALUES (?, ?, ?, ?, ?, ?) ON CONFLICT(id) DO UPDATE SET company_id = excluded.company_id, case_id = excluded.case_id, trust_status = excluded.trust_status, payload = excluded.payload")
+      .run(toStore.evidenceItemId, toStore.companyId, toStore.caseId, toStore.sessionId, toStore.trustStatus, JSON.stringify(toStore));
   }
   findById(evidenceItemId: string): StoredRawEvidenceItem | null {
     return parseStored<StoredRawEvidenceItem>(this.db.prepare("SELECT payload FROM raw_evidence_items WHERE id = ?").get(evidenceItemId));
+  }
+  findByCompany(companyId: string, caseId: string, evidenceItemId: string): StoredRawEvidenceItem | null {
+    return parseStored<StoredRawEvidenceItem>(this.db.prepare("SELECT payload FROM raw_evidence_items WHERE company_id = ? AND case_id = ? AND id = ?").get(companyId, caseId, evidenceItemId));
+  }
+  findByCompanyAndSession(companyId: string, caseId: string, sessionId: string): StoredRawEvidenceItem[] {
+    return parseStoredList<StoredRawEvidenceItem>(this.db.prepare("SELECT payload FROM raw_evidence_items WHERE company_id = ? AND case_id = ? AND session_id = ? ORDER BY id").all(companyId, caseId, sessionId));
   }
   findBySessionId(sessionId: string): StoredRawEvidenceItem[] {
     return parseStoredList<StoredRawEvidenceItem>(this.db.prepare("SELECT payload FROM raw_evidence_items WHERE session_id = ? ORDER BY id").all(sessionId));
@@ -4023,11 +4153,17 @@ export class SQLiteFirstPassExtractionOutputRepository implements FirstPassExtra
   private readonly db: DatabaseSync;
   constructor(dbPath?: string) { this.db = openIntakeDatabase(dbPath); }
   save(record: StoredFirstPassExtractionOutput): void {
-    this.db.prepare("INSERT INTO first_pass_extraction_outputs (id, session_id, extraction_status, payload) VALUES (?, ?, ?, ?) ON CONFLICT(id) DO UPDATE SET session_id = excluded.session_id, extraction_status = excluded.extraction_status, payload = excluded.payload")
-      .run(record.extractionId, record.sessionId, record.extractionStatus, JSON.stringify(record));
+    this.db.prepare("INSERT INTO first_pass_extraction_outputs (id, company_id, case_id, session_id, extraction_status, payload) VALUES (?, ?, ?, ?, ?, ?) ON CONFLICT(id) DO UPDATE SET company_id = excluded.company_id, case_id = excluded.case_id, session_id = excluded.session_id, extraction_status = excluded.extraction_status, payload = excluded.payload")
+      .run(record.extractionId, record.companyId, record.caseId, record.sessionId, record.extractionStatus, JSON.stringify(record));
   }
   findById(extractionId: string): StoredFirstPassExtractionOutput | null {
     return parseStored<StoredFirstPassExtractionOutput>(this.db.prepare("SELECT payload FROM first_pass_extraction_outputs WHERE id = ?").get(extractionId));
+  }
+  findByCompany(companyId: string, caseId: string, extractionId: string): StoredFirstPassExtractionOutput | null {
+    return parseStored<StoredFirstPassExtractionOutput>(this.db.prepare("SELECT payload FROM first_pass_extraction_outputs WHERE company_id = ? AND case_id = ? AND id = ?").get(companyId, caseId, extractionId));
+  }
+  findByCompanyAndSession(companyId: string, caseId: string, sessionId: string): StoredFirstPassExtractionOutput[] {
+    return parseStoredList<StoredFirstPassExtractionOutput>(this.db.prepare("SELECT payload FROM first_pass_extraction_outputs WHERE company_id = ? AND case_id = ? AND session_id = ? ORDER BY id").all(companyId, caseId, sessionId));
   }
   findBySessionId(sessionId: string): StoredFirstPassExtractionOutput[] {
     return parseStoredList<StoredFirstPassExtractionOutput>(this.db.prepare("SELECT payload FROM first_pass_extraction_outputs WHERE session_id = ? ORDER BY id").all(sessionId));
@@ -4048,11 +4184,20 @@ export class SQLiteClarificationCandidateRepository implements ClarificationCand
   private readonly db: DatabaseSync;
   constructor(dbPath?: string) { this.db = openIntakeDatabase(dbPath); }
   save(record: StoredClarificationCandidate): void {
-    this.db.prepare("INSERT INTO clarification_candidates (id, session_id, status, ask_next, payload) VALUES (?, ?, ?, ?, ?) ON CONFLICT(id) DO UPDATE SET session_id = excluded.session_id, status = excluded.status, ask_next = excluded.ask_next, payload = excluded.payload")
-      .run(record.candidateId, record.sessionId, record.status, record.askNext ? 1 : 0, JSON.stringify(record));
+    this.db.prepare("INSERT INTO clarification_candidates (id, company_id, case_id, session_id, status, ask_next, payload) VALUES (?, ?, ?, ?, ?, ?, ?) ON CONFLICT(id) DO UPDATE SET company_id = excluded.company_id, case_id = excluded.case_id, session_id = excluded.session_id, status = excluded.status, ask_next = excluded.ask_next, payload = excluded.payload")
+      .run(record.candidateId, record.companyId, record.caseId, record.sessionId, record.status, record.askNext ? 1 : 0, JSON.stringify(record));
   }
   findById(candidateId: string): StoredClarificationCandidate | null {
     return parseStored<StoredClarificationCandidate>(this.db.prepare("SELECT payload FROM clarification_candidates WHERE id = ?").get(candidateId));
+  }
+  findByCompany(companyId: string, caseId: string, candidateId: string): StoredClarificationCandidate | null {
+    return parseStored<StoredClarificationCandidate>(this.db.prepare("SELECT payload FROM clarification_candidates WHERE company_id = ? AND case_id = ? AND id = ?").get(companyId, caseId, candidateId));
+  }
+  findByCompanyAndSession(companyId: string, caseId: string, sessionId: string): StoredClarificationCandidate[] {
+    return parseStoredList<StoredClarificationCandidate>(this.db.prepare("SELECT payload FROM clarification_candidates WHERE company_id = ? AND case_id = ? AND session_id = ? ORDER BY id").all(companyId, caseId, sessionId));
+  }
+  findOpenByCompanyAndSession(companyId: string, caseId: string, sessionId: string): StoredClarificationCandidate[] {
+    return parseStoredList<StoredClarificationCandidate>(this.db.prepare("SELECT payload FROM clarification_candidates WHERE company_id = ? AND case_id = ? AND session_id = ? AND status IN ('open', 'asked', 'partially_resolved') ORDER BY id").all(companyId, caseId, sessionId));
   }
   findBySessionId(sessionId: string): StoredClarificationCandidate[] {
     return parseStoredList<StoredClarificationCandidate>(this.db.prepare("SELECT payload FROM clarification_candidates WHERE session_id = ? ORDER BY id").all(sessionId));
@@ -4076,11 +4221,17 @@ export class SQLiteBoundarySignalRepository implements BoundarySignalRepository 
   private readonly db: DatabaseSync;
   constructor(dbPath?: string) { this.db = openIntakeDatabase(dbPath); }
   save(record: StoredBoundarySignal): void {
-    this.db.prepare("INSERT INTO boundary_signals (id, session_id, requires_escalation, payload) VALUES (?, ?, ?, ?) ON CONFLICT(id) DO UPDATE SET session_id = excluded.session_id, requires_escalation = excluded.requires_escalation, payload = excluded.payload")
-      .run(record.boundarySignalId, record.sessionId, record.requiresEscalation ? 1 : 0, JSON.stringify(record));
+    this.db.prepare("INSERT INTO boundary_signals (id, company_id, case_id, session_id, requires_escalation, payload) VALUES (?, ?, ?, ?, ?, ?) ON CONFLICT(id) DO UPDATE SET company_id = excluded.company_id, case_id = excluded.case_id, session_id = excluded.session_id, requires_escalation = excluded.requires_escalation, payload = excluded.payload")
+      .run(record.boundarySignalId, record.companyId, record.caseId, record.sessionId, record.requiresEscalation ? 1 : 0, JSON.stringify(record));
   }
   findById(boundarySignalId: string): StoredBoundarySignal | null {
     return parseStored<StoredBoundarySignal>(this.db.prepare("SELECT payload FROM boundary_signals WHERE id = ?").get(boundarySignalId));
+  }
+  findByCompany(companyId: string, caseId: string, boundarySignalId: string): StoredBoundarySignal | null {
+    return parseStored<StoredBoundarySignal>(this.db.prepare("SELECT payload FROM boundary_signals WHERE company_id = ? AND case_id = ? AND id = ?").get(companyId, caseId, boundarySignalId));
+  }
+  findByCompanyAndSession(companyId: string, caseId: string, sessionId: string): StoredBoundarySignal[] {
+    return parseStoredList<StoredBoundarySignal>(this.db.prepare("SELECT payload FROM boundary_signals WHERE company_id = ? AND case_id = ? AND session_id = ? ORDER BY id").all(companyId, caseId, sessionId));
   }
   findBySessionId(sessionId: string): StoredBoundarySignal[] {
     return parseStoredList<StoredBoundarySignal>(this.db.prepare("SELECT payload FROM boundary_signals WHERE session_id = ? ORDER BY id").all(sessionId));
@@ -4097,11 +4248,17 @@ export class SQLiteEvidenceDisputeRepository implements EvidenceDisputeRepositor
   private readonly db: DatabaseSync;
   constructor(dbPath?: string) { this.db = openIntakeDatabase(dbPath); }
   save(record: StoredEvidenceDispute): void {
-    this.db.prepare("INSERT INTO evidence_disputes (id, session_id, extraction_id, admin_decision, payload) VALUES (?, ?, ?, ?, ?) ON CONFLICT(id) DO UPDATE SET session_id = excluded.session_id, extraction_id = excluded.extraction_id, admin_decision = excluded.admin_decision, payload = excluded.payload")
-      .run(record.disputeId, record.sessionId, record.extractionId, record.adminDecision, JSON.stringify(record));
+    this.db.prepare("INSERT INTO evidence_disputes (id, company_id, case_id, session_id, extraction_id, admin_decision, payload) VALUES (?, ?, ?, ?, ?, ?, ?) ON CONFLICT(id) DO UPDATE SET company_id = excluded.company_id, case_id = excluded.case_id, session_id = excluded.session_id, extraction_id = excluded.extraction_id, admin_decision = excluded.admin_decision, payload = excluded.payload")
+      .run(record.disputeId, record.companyId, record.caseId, record.sessionId, record.extractionId, record.adminDecision, JSON.stringify(record));
   }
   findById(disputeId: string): StoredEvidenceDispute | null {
     return parseStored<StoredEvidenceDispute>(this.db.prepare("SELECT payload FROM evidence_disputes WHERE id = ?").get(disputeId));
+  }
+  findByCompany(companyId: string, caseId: string, disputeId: string): StoredEvidenceDispute | null {
+    return parseStored<StoredEvidenceDispute>(this.db.prepare("SELECT payload FROM evidence_disputes WHERE company_id = ? AND case_id = ? AND id = ?").get(companyId, caseId, disputeId));
+  }
+  findByCompanyAndSession(companyId: string, caseId: string, sessionId: string): StoredEvidenceDispute[] {
+    return parseStoredList<StoredEvidenceDispute>(this.db.prepare("SELECT payload FROM evidence_disputes WHERE company_id = ? AND case_id = ? AND session_id = ? ORDER BY id").all(companyId, caseId, sessionId));
   }
   findBySessionId(sessionId: string): StoredEvidenceDispute[] {
     return parseStoredList<StoredEvidenceDispute>(this.db.prepare("SELECT payload FROM evidence_disputes WHERE session_id = ? ORDER BY id").all(sessionId));
@@ -4125,11 +4282,17 @@ export class SQLiteSessionNextActionRepository implements SessionNextActionRepos
   private readonly db: DatabaseSync;
   constructor(dbPath?: string) { this.db = openIntakeDatabase(dbPath); }
   save(record: StoredSessionNextAction): void {
-    this.db.prepare("INSERT INTO session_next_actions (id, session_id, blocking, priority, payload) VALUES (?, ?, ?, ?, ?) ON CONFLICT(id) DO UPDATE SET session_id = excluded.session_id, blocking = excluded.blocking, priority = excluded.priority, payload = excluded.payload")
-      .run(record.nextActionId, record.sessionId, record.blocking ? 1 : 0, record.priority, JSON.stringify(record));
+    this.db.prepare("INSERT INTO session_next_actions (id, company_id, case_id, session_id, blocking, priority, payload) VALUES (?, ?, ?, ?, ?, ?, ?) ON CONFLICT(id) DO UPDATE SET company_id = excluded.company_id, case_id = excluded.case_id, session_id = excluded.session_id, blocking = excluded.blocking, priority = excluded.priority, payload = excluded.payload")
+      .run(record.nextActionId, record.companyId, record.caseId, record.sessionId, record.blocking ? 1 : 0, record.priority, JSON.stringify(record));
   }
   findById(nextActionId: string): StoredSessionNextAction | null {
     return parseStored<StoredSessionNextAction>(this.db.prepare("SELECT payload FROM session_next_actions WHERE id = ?").get(nextActionId));
+  }
+  findByCompany(companyId: string, caseId: string, nextActionId: string): StoredSessionNextAction | null {
+    return parseStored<StoredSessionNextAction>(this.db.prepare("SELECT payload FROM session_next_actions WHERE company_id = ? AND case_id = ? AND id = ?").get(companyId, caseId, nextActionId));
+  }
+  findByCompanyAndSession(companyId: string, caseId: string, sessionId: string): StoredSessionNextAction[] {
+    return parseStoredList<StoredSessionNextAction>(this.db.prepare("SELECT payload FROM session_next_actions WHERE company_id = ? AND case_id = ? AND session_id = ? ORDER BY id").all(companyId, caseId, sessionId));
   }
   findBySessionId(sessionId: string): StoredSessionNextAction[] {
     return parseStoredList<StoredSessionNextAction>(this.db.prepare("SELECT payload FROM session_next_actions WHERE session_id = ? ORDER BY id").all(sessionId));
@@ -4154,11 +4317,17 @@ export class SQLitePass6HandoffCandidateRepository implements Pass6HandoffCandid
   private readonly db: DatabaseSync;
   constructor(dbPath?: string) { this.db = openIntakeDatabase(dbPath); }
   save(record: StoredPass6HandoffCandidate): void {
-    this.db.prepare("INSERT INTO pass6_handoff_candidates (id, case_id, admin_decision, payload) VALUES (?, ?, ?, ?) ON CONFLICT(id) DO UPDATE SET case_id = excluded.case_id, admin_decision = excluded.admin_decision, payload = excluded.payload")
-      .run(record.handoffCandidateId, record.caseId, record.adminDecision, JSON.stringify(record));
+    this.db.prepare("INSERT INTO pass6_handoff_candidates (id, company_id, case_id, admin_decision, payload) VALUES (?, ?, ?, ?, ?) ON CONFLICT(id) DO UPDATE SET company_id = excluded.company_id, case_id = excluded.case_id, admin_decision = excluded.admin_decision, payload = excluded.payload")
+      .run(record.handoffCandidateId, record.companyId, record.caseId, record.adminDecision, JSON.stringify(record));
   }
   findById(handoffCandidateId: string): StoredPass6HandoffCandidate | null {
     return parseStored<StoredPass6HandoffCandidate>(this.db.prepare("SELECT payload FROM pass6_handoff_candidates WHERE id = ?").get(handoffCandidateId));
+  }
+  findByCompany(companyId: string, caseId: string, handoffCandidateId: string): StoredPass6HandoffCandidate | null {
+    return parseStored<StoredPass6HandoffCandidate>(this.db.prepare("SELECT payload FROM pass6_handoff_candidates WHERE company_id = ? AND case_id = ? AND id = ?").get(companyId, caseId, handoffCandidateId));
+  }
+  findByCompanyAndCase(companyId: string, caseId: string): StoredPass6HandoffCandidate[] {
+    return parseStoredList<StoredPass6HandoffCandidate>(this.db.prepare("SELECT payload FROM pass6_handoff_candidates WHERE company_id = ? AND case_id = ? ORDER BY id").all(companyId, caseId));
   }
   findByCaseId(caseId: string): StoredPass6HandoffCandidate[] {
     return parseStoredList<StoredPass6HandoffCandidate>(this.db.prepare("SELECT payload FROM pass6_handoff_candidates WHERE case_id = ? ORDER BY id").all(caseId));

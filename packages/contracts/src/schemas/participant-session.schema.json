@@ -6,6 +6,7 @@
   "additionalProperties": false,
   "required": [
     "sessionId",
+    "companyId",
     "caseId",
     "targetingPlanId",
     "targetCandidateId",
@@ -34,6 +35,7 @@
   ],
   "properties": {
     "sessionId": { "type": "string", "minLength": 1 },
+    "companyId": { "type": "string", "minLength": 1 },
     "caseId": { "type": "string", "minLength": 1 },
     "targetingPlanId": { "type": "string", "minLength": 1 },
     "targetCandidateId": { "type": "string", "minLength": 1 },
@@ -561,6 +563,7 @@
       "additionalProperties": false,
       "required": [
         "sessionId",
+        "companyId",
         "caseId",
         "targetingPlanId",
         "targetCandidateId",
@@ -573,6 +576,7 @@
       ],
       "properties": {
         "sessionId": { "type": "string", "minLength": 1 },
+        "companyId": { "type": "string", "minLength": 1 },
         "caseId": { "type": "string", "minLength": 1 },
         "targetingPlanId": { "type": "string", "minLength": 1 },
         "targetCandidateId": { "type": "string", "minLength": 1 },
@@ -609,6 +613,8 @@
       "additionalProperties": false,
       "required": [
         "evidenceItemId",
+        "companyId",
+        "caseId",
         "sessionId",
         "evidenceType",
         "sourceChannel",
@@ -624,6 +630,8 @@
       ],
       "properties": {
         "evidenceItemId": { "type": "string", "minLength": 1 },
+        "companyId": { "type": "string", "minLength": 1 },
+        "caseId": { "type": "string", "minLength": 1 },
         "sessionId": { "type": "string", "minLength": 1 },
         "evidenceType": { "$ref": "#/definitions/rawEvidenceType" },
         "sourceChannel": { "$ref": "#/definitions/participationMode" },
@@ -839,6 +847,8 @@
       "additionalProperties": false,
       "required": [
         "unmappedItemId",
+        "companyId",
+        "caseId",
         "sessionId",
         "evidenceItemId",
         "reasonUnmapped",
@@ -851,6 +861,8 @@
       ],
       "properties": {
         "unmappedItemId": { "type": "string", "minLength": 1 },
+        "companyId": { "type": "string", "minLength": 1 },
+        "caseId": { "type": "string", "minLength": 1 },
         "sessionId": { "type": "string", "minLength": 1 },
         "evidenceItemId": { "type": "string", "minLength": 1 },
         "sourceTextSpan": { "$ref": "#/definitions/sourceTextSpan" },
@@ -879,6 +891,9 @@
       "additionalProperties": false,
       "required": [
         "defectId",
+        "companyId",
+        "caseId",
+        "sessionId",
         "defectType",
         "description",
         "affectedOutputSection",
@@ -890,6 +905,9 @@
       ],
       "properties": {
         "defectId": { "type": "string", "minLength": 1 },
+        "companyId": { "type": "string", "minLength": 1 },
+        "caseId": { "type": "string", "minLength": 1 },
+        "sessionId": { "type": "string", "minLength": 1 },
         "defectType": { "$ref": "#/definitions/defectType" },
         "description": { "type": "string" },
         "affectedOutputSection": { "type": "string" },
@@ -905,6 +923,8 @@
       "additionalProperties": false,
       "required": [
         "disputeId",
+        "companyId",
+        "caseId",
         "sessionId",
         "extractionId",
         "affectedItemId",
@@ -919,6 +939,8 @@
       ],
       "properties": {
         "disputeId": { "type": "string", "minLength": 1 },
+        "companyId": { "type": "string", "minLength": 1 },
+        "caseId": { "type": "string", "minLength": 1 },
         "sessionId": { "type": "string", "minLength": 1 },
         "extractionId": { "type": "string", "minLength": 1 },
         "affectedItemId": { "type": "string", "minLength": 1 },
@@ -937,6 +959,8 @@
       "additionalProperties": false,
       "required": [
         "candidateId",
+        "companyId",
+        "caseId",
         "sessionId",
         "linkedExtractedItemIds",
         "linkedUnmappedItemIds",
@@ -959,6 +983,8 @@
       ],
       "properties": {
         "candidateId": { "type": "string", "minLength": 1 },
+        "companyId": { "type": "string", "minLength": 1 },
+        "caseId": { "type": "string", "minLength": 1 },
         "sessionId": { "type": "string", "minLength": 1 },
         "linkedExtractedItemIds": {
           "type": "array",
@@ -997,6 +1023,8 @@
       "additionalProperties": false,
       "required": [
         "boundarySignalId",
+        "companyId",
+        "caseId",
         "sessionId",
         "boundaryType",
         "participantStatement",
@@ -1015,6 +1043,8 @@
       ],
       "properties": {
         "boundarySignalId": { "type": "string", "minLength": 1 },
+        "companyId": { "type": "string", "minLength": 1 },
+        "caseId": { "type": "string", "minLength": 1 },
         "sessionId": { "type": "string", "minLength": 1 },
         "boundaryType": { "$ref": "#/definitions/boundaryType" },
         "participantStatement": { "type": "string" },
@@ -1043,6 +1073,8 @@
       "additionalProperties": false,
       "required": [
         "nextActionId",
+        "companyId",
+        "caseId",
         "sessionId",
         "actionType",
         "label",
@@ -1057,6 +1089,8 @@
       ],
       "properties": {
         "nextActionId": { "type": "string", "minLength": 1 },
+        "companyId": { "type": "string", "minLength": 1 },
+        "caseId": { "type": "string", "minLength": 1 },
         "sessionId": { "type": "string", "minLength": 1 },
         "actionType": { "$ref": "#/definitions/sessionNextActionType" },
         "label": { "type": "string" },
@@ -1078,6 +1112,8 @@
       "additionalProperties": false,
       "required": [
         "extractionId",
+        "companyId",
+        "caseId",
         "sessionId",
         "basisEvidenceItemIds",
         "extractionStatus",
@@ -1103,6 +1139,8 @@
       ],
       "properties": {
         "extractionId": { "type": "string", "minLength": 1 },
+        "companyId": { "type": "string", "minLength": 1 },
+        "caseId": { "type": "string", "minLength": 1 },
         "sessionId": { "type": "string", "minLength": 1 },
         "basisEvidenceItemIds": {
           "type": "array",
@@ -1183,6 +1221,7 @@
       "additionalProperties": false,
       "required": [
         "handoffCandidateId",
+        "companyId",
         "caseId",
         "sessionIds",
         "relatedParticipantLabels",
@@ -1198,6 +1237,7 @@
       ],
       "properties": {
         "handoffCandidateId": { "type": "string", "minLength": 1 },
+        "companyId": { "type": "string", "minLength": 1 },
         "caseId": { "type": "string", "minLength": 1 },
         "sessionIds": {
           "type": "array",

@@ -348,6 +348,8 @@ export interface ChannelAccess {
 
 export interface RawEvidenceItem {
   evidenceItemId: string;
+  companyId: string;
+  caseId: string;
   sessionId: string;
   evidenceType: RawEvidenceType;
   sourceChannel: ParticipationMode;
@@ -427,6 +429,8 @@ export interface ExtractedItem {
 
 export interface UnmappedContentItem {
   unmappedItemId: string;
+  companyId: string;
+  caseId: string;
   sessionId: string;
   evidenceItemId: string;
   sourceTextSpan?: SourceTextSpan;
@@ -442,6 +446,9 @@ export interface UnmappedContentItem {
 
 export interface ExtractionDefect {
   defectId: string;
+  companyId: string;
+  caseId: string;
+  sessionId: string;
   defectType: ExtractionDefectType;
   description: string;
   affectedOutputSection: string;
@@ -454,6 +461,8 @@ export interface ExtractionDefect {
 
 export interface EvidenceDispute {
   disputeId: string;
+  companyId: string;
+  caseId: string;
   sessionId: string;
   extractionId: string;
   affectedItemId: string;
@@ -469,6 +478,8 @@ export interface EvidenceDispute {
 
 export interface ClarificationCandidate {
   candidateId: string;
+  companyId: string;
+  caseId: string;
   sessionId: string;
   linkedExtractedItemIds: string[];
   linkedUnmappedItemIds: string[];
@@ -492,6 +503,8 @@ export interface ClarificationCandidate {
 
 export interface BoundarySignal {
   boundarySignalId: string;
+  companyId: string;
+  caseId: string;
   sessionId: string;
   boundaryType: BoundaryType;
   participantStatement: string;
@@ -511,6 +524,8 @@ export interface BoundarySignal {
 
 export interface SessionNextAction {
   nextActionId: string;
+  companyId: string;
+  caseId: string;
   sessionId: string;
   actionType: SessionNextActionType;
   label: string;
@@ -526,6 +541,8 @@ export interface SessionNextAction {
 
 export interface FirstPassExtractionOutput {
   extractionId: string;
+  companyId: string;
+  caseId: string;
   sessionId: string;
   basisEvidenceItemIds: string[];
   extractionStatus: ExtractionStatus;
@@ -552,6 +569,7 @@ export interface FirstPassExtractionOutput {
 
 export interface ParticipantSession {
   sessionId: string;
+  companyId: string;
   caseId: string;
   targetingPlanId: string;
   targetCandidateId: string;
@@ -581,6 +599,7 @@ export interface ParticipantSession {
 
 export interface Pass6HandoffCandidate {
   handoffCandidateId: string;
+  companyId: string;
   caseId: string;
   sessionIds: string[];
   relatedParticipantLabels: string[];

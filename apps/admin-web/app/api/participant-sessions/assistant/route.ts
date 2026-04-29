@@ -28,17 +28,32 @@ function scopeValue(value: unknown): AdminAssistantScope {
 export async function POST(request: Request) {
   const payload = await request.json().catch(() => ({})) as Record<string, unknown>;
   const question = textValue(payload.question);
+  const companyId = textValue(payload.companyId);
   if (!question) {
     return NextResponse.json({ ok: false, error: "question_required" }, { status: 400 });
   }
+  if (!companyId) {
+    return NextResponse.json({ ok: false, error: "companyId_required" }, { status: 400 });
+  }
+  const caseId = textValue(payload.caseId);
+  const sessionId = textValue(payload.sessionId);
   const selectedSessionIds = Array.isArray(payload.selectedSessionIds)
     ? payload.selectedSessionIds.filter((value): value is string => typeof value === "string")
     : undefined;
+  if (sessionId && !repos.participantSessions.findByCompany(companyId, sessionId)) {
+    return NextResponse.json({ ok: false, error: "session_not_found" }, { status: 404 });
+  }
+  if (caseId && repos.participantSessions.findByCompanyAndCase(companyId, caseId).length === 0) {
+    return NextResponse.json({ ok: false, error: "case_not_found" }, { status: 404 });
+  }
+  if (selectedSessionIds?.some((id) => !repos.participantSessions.findByCompany(companyId, id))) {
+    return NextResponse.json({ ok: false, error: "session_not_found" }, { status: 404 });
+  }
   const result = await runAdminAssistantQuestion({
     question,
     scope: scopeValue(payload.scope),
-    caseId: textValue(payload.caseId),
-    sessionId: textValue(payload.sessionId),
+    caseId,
+    sessionId,
     selectedSessionIds,
     requestedByAdminId: textValue(payload.requestedByAdminId) ?? "admin_operator",
   }, repos, null);

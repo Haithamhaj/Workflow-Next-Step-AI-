@@ -16,6 +16,11 @@ export async function POST(request: Request, { params }: { params: { id: string 
     ? await request.json().catch(() => ({})) as Record<string, unknown>
     : Object.fromEntries((await request.formData()).entries()) as Record<string, unknown>;
   const adminDecision = textValue(payload.adminDecision);
+  const companyId = textValue(payload.companyId);
+  const caseId = textValue(payload.caseId);
+  if (!companyId || !caseId) {
+    return NextResponse.json({ ok: false, error: "companyId_caseId_required" }, { status: 400 });
+  }
   if (
     adminDecision !== "accepted_for_pass6"
     && adminDecision !== "dismissed"
@@ -24,6 +29,8 @@ export async function POST(request: Request, { params }: { params: { id: string 
   ) {
     return NextResponse.json({ ok: false, error: "invalid_adminDecision" }, { status: 400 });
   }
+  const existing = repos.pass6HandoffCandidates.findByCompany(companyId, caseId, params.id);
+  if (!existing) return NextResponse.json({ ok: false, error: "candidate_not_found" }, { status: 404 });
   const result = updatePass6HandoffCandidateAdminDecision(params.id, adminDecision, repos);
   const returnTo = textValue(payload.returnTo);
   if (returnTo && !contentType.includes("application/json")) {

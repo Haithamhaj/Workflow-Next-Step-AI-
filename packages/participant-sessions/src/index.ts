@@ -87,6 +87,7 @@ export interface ParticipantSessionCreationRepos {
 }
 
 export interface ParticipantSessionCreationOptions {
+  companyId?: string;
   now?: () => string;
   idFactory?: (input: {
     targetingPlanId: string;
@@ -243,6 +244,7 @@ function buildParticipantSession(input: {
     profile.linkedHierarchyNodeId ?? candidate.linkedHierarchyNodeId ?? profile.roleLabel;
   const sessionContext = {
     sessionId,
+    companyId: options?.companyId ?? "",
     caseId: plan.caseId,
     targetingPlanId: plan.planId,
     targetCandidateId: candidate.candidateId,
@@ -342,6 +344,23 @@ export function createParticipantSessionsFromTargetingPlan(
   const warnings: ParticipantSessionCreationWarning[] = [];
   const errors: ParticipantSessionCreationError[] = [];
   const existingForPlan = repos.participantSessions.findByTargetingPlanId(plan.planId);
+  const companyId = options?.companyId?.trim();
+  if (!companyId) {
+    return {
+      ok: false,
+      caseId: plan.caseId,
+      targetingPlanId: plan.planId,
+      createdSessions: [],
+      blockedSessions: [],
+      skippedCandidates: [],
+      existingSessions: [],
+      warnings: [],
+      errors: [{
+        code: "company_id_required",
+        message: "ParticipantSession creation requires companyId.",
+      }],
+    };
+  }
 
   for (const candidate of plan.targetCandidates) {
     if (!isApprovedCandidate(candidate)) {
@@ -833,6 +852,8 @@ export function submitWebSessionFirstNarrative(
   const capturedAt = tokenNow(options);
   const evidenceItem: RawEvidenceItem = {
     evidenceItemId: evidenceItemIdFor(resolved.participantSession, options),
+    companyId: resolved.participantSession.companyId,
+    caseId: resolved.participantSession.caseId,
     sessionId: resolved.participantSession.sessionId,
     evidenceType: "participant_text_narrative",
     sourceChannel: "web_session_chatbot",
@@ -933,6 +954,8 @@ export function submitWebSessionFirstNarrativeVoice(
   const capturedAt = tokenNow(options);
   const evidenceItem: RawEvidenceItem = {
     evidenceItemId: evidenceItemIdFor(resolved.participantSession, options),
+    companyId: resolved.participantSession.companyId,
+    caseId: resolved.participantSession.caseId,
     sessionId: resolved.participantSession.sessionId,
     evidenceType: "audio_recording_uploaded",
     sourceChannel: "web_session_chatbot",
@@ -1365,6 +1388,8 @@ export function handleTelegramTextMessage(
   const capturedAt = tokenNow(options);
   const evidenceItem: RawEvidenceItem = {
     evidenceItemId: telegramEvidenceItemIdFor(session, options),
+    companyId: session.companyId,
+    caseId: session.caseId,
     sessionId: session.sessionId,
     evidenceType: "telegram_message",
     sourceChannel: "telegram_bot",
@@ -1608,8 +1633,17 @@ export function createTranscriptEvidenceForReview(
   evidenceRepo: RawEvidenceItemRepository,
   sessionRepo?: ParticipantSessionRepository,
 ): RawEvidenceItem {
+  if (!sessionRepo) {
+    throw new Error("ParticipantSessionRepository is required for transcript evidence isolation.");
+  }
+  const session = sessionRepo?.findById(input.sessionId);
+  if (!session) {
+    throw new Error(`ParticipantSession not found for transcript evidence: ${input.sessionId}`);
+  }
   const item: RawEvidenceItem = {
     evidenceItemId: input.evidenceItemId ?? `raw_evidence_${crypto.randomUUID()}`,
+    companyId: session.companyId,
+    caseId: session.caseId,
     sessionId: input.sessionId,
     evidenceType: input.evidenceType,
     sourceChannel: input.sourceChannel,
@@ -1629,18 +1663,15 @@ export function createTranscriptEvidenceForReview(
     throw new Error(`Generated RawEvidenceItem failed validation: ${validationMessage(validation.errors)}`);
   }
   evidenceRepo.save(item);
-  const session = sessionRepo?.findById(input.sessionId);
-  if (session) {
-    sessionRepo?.save({
-      ...session,
-      sessionState: "transcript_pending_review",
-      firstNarrativeStatus: session.firstNarrativeStatus === "not_received"
-        ? "transcript_pending_review"
-        : session.firstNarrativeStatus,
-      extractionStatus: "blocked_evidence_not_approved",
-      updatedAt: item.capturedAt,
-    });
-  }
+  sessionRepo.save({
+    ...session,
+    sessionState: "transcript_pending_review",
+    firstNarrativeStatus: session.firstNarrativeStatus === "not_received"
+      ? "transcript_pending_review"
+      : session.firstNarrativeStatus,
+    extractionStatus: "blocked_evidence_not_approved",
+    updatedAt: item.capturedAt,
+  });
   return item;
 }
 
@@ -2260,9 +2291,12 @@ function createExtractionProviderJob(input: {
   const timestamp = extractionNow(input.options);
   const job: StoredProviderExtractionJob = {
     jobId: providerJobId(input.options),
+    companyId: input.session.companyId,
     sourceId: input.promptBundle.contentRef ?? input.session.sessionId,
     sessionId: input.session.sessionId,
     caseId: input.session.caseId,
+    sourceVersion: 1,
+    lineageStatus: "active",
     provider: input.provider?.name ?? "google",
     jobKind: "pass5_prompt_test",
     status: "queued",
@@ -2307,6 +2341,7 @@ function markExtractionSessionFailed(
 }
 
 function createEvidenceAnchorDefect(input: {
+  session: ParticipantSession;
   item: ExtractedItem;
   section: string;
   basisEvidenceItemId: string | null;
@@ -2315,6 +2350,9 @@ function createEvidenceAnchorDefect(input: {
 }): ExtractionDefect {
   return {
     defectId: defectId(input.options),
+    companyId: input.session.companyId,
+    caseId: input.session.caseId,
+    sessionId: input.session.sessionId,
     defectType: "missing_evidence_anchor",
     description: input.description,
     affectedOutputSection: input.section,
@@ -2336,6 +2374,8 @@ function createEvidenceAnchorDispute(input: {
 }): EvidenceDispute {
   return {
     disputeId: disputeId(input.options),
+    companyId: input.session.companyId,
+    caseId: input.session.caseId,
     sessionId: input.session.sessionId,
     extractionId: input.extractionId,
     affectedItemId: input.item.itemId,
@@ -2386,6 +2426,7 @@ function validateAndGovernExtractionOutput(input: {
     for (const item of items) {
       if (item.createdFrom === "ai_extraction" && item.evidenceAnchors.length === 0) {
         defects.push(createEvidenceAnchorDefect({
+          session: input.session,
           item,
           section,
           basisEvidenceItemId: input.output.basisEvidenceItemIds[0] ?? null,
@@ -2399,6 +2440,7 @@ function validateAndGovernExtractionOutput(input: {
         && item.evidenceAnchors.length === 0
         && (!item.basisNote || item.basisNote.trim().length === 0)) {
         defects.push(createEvidenceAnchorDefect({
+          session: input.session,
           item,
           section,
           basisEvidenceItemId: null,
@@ -2429,6 +2471,8 @@ function validateAndGovernExtractionOutput(input: {
       if (!knownEvidenceIds.has(anchor.evidenceItemId)) {
         disputes.push({
           disputeId: disputeId(input.options),
+          companyId: input.session.companyId,
+          caseId: input.session.caseId,
           sessionId: input.session.sessionId,
           extractionId: input.output.extractionId,
           affectedItemId: `${link.fromItemId}->${link.toItemId}`,
@@ -2460,6 +2504,9 @@ function validateAndGovernExtractionOutput(input: {
   const filteredBasisEvidenceItemIds = input.output.basisEvidenceItemIds.filter((id) => knownEvidenceIds.has(id));
   const output: FirstPassExtractionOutput = {
     ...input.output,
+    companyId: input.session.companyId,
+    caseId: input.session.caseId,
+    sessionId: input.session.sessionId,
     basisEvidenceItemIds: filteredBasisEvidenceItemIds.length > 0
       ? filteredBasisEvidenceItemIds
       : input.eligibleEvidence.map((item) => item.evidenceItemId),
@@ -2473,8 +2520,36 @@ function validateAndGovernExtractionOutput(input: {
     extractedControls: sectionMap.extractedControls ?? [],
     extractedDependencies: sectionMap.extractedDependencies ?? [],
     extractedUnknowns: sectionMap.extractedUnknowns ?? [],
-    extractionDefects: finalDefects,
-    evidenceDisputes: finalDisputes,
+    boundarySignals: input.output.boundarySignals.map((signal) => ({
+      ...signal,
+      companyId: signal.companyId || input.session.companyId,
+      caseId: signal.caseId || input.session.caseId,
+      sessionId: signal.sessionId || input.session.sessionId,
+    })),
+    clarificationCandidates: input.output.clarificationCandidates.map((candidate) => ({
+      ...candidate,
+      companyId: candidate.companyId || input.session.companyId,
+      caseId: candidate.caseId || input.session.caseId,
+      sessionId: candidate.sessionId || input.session.sessionId,
+    })),
+    unmappedContentItems: input.output.unmappedContentItems.map((item) => ({
+      ...item,
+      companyId: item.companyId || input.session.companyId,
+      caseId: item.caseId || input.session.caseId,
+      sessionId: item.sessionId || input.session.sessionId,
+    })),
+    extractionDefects: finalDefects.map((defect) => ({
+      ...defect,
+      companyId: defect.companyId || input.session.companyId,
+      caseId: defect.caseId || input.session.caseId,
+      sessionId: defect.sessionId || input.session.sessionId,
+    })),
+    evidenceDisputes: finalDisputes.map((dispute) => ({
+      ...dispute,
+      companyId: dispute.companyId || input.session.companyId,
+      caseId: dispute.caseId || input.session.caseId,
+      sessionId: dispute.sessionId || input.session.sessionId,
+    })),
     sourceCoverageSummary: buildSourceCoverageSummary({
       evidenceIds: input.eligibleEvidence.map((item) => item.evidenceItemId),
       fullContentProcessed: true,
@@ -3436,6 +3511,8 @@ export function recordClarificationAnswer(
   const capturedAt = input.capturedAt ?? clarificationNow(options);
   const evidenceItem: RawEvidenceItem = {
     evidenceItemId: clarificationEvidenceItemId(options),
+    companyId: session.companyId,
+    caseId: session.caseId,
     sessionId: input.sessionId,
     evidenceType: "participant_clarification_answer",
     sourceChannel: input.sourceChannel ?? session.selectedParticipationMode,
@@ -3472,6 +3549,8 @@ function defaultBoundarySignalFromAnswer(input: {
 }): BoundarySignal {
   return {
     boundarySignalId: input.partial?.boundarySignalId ?? clarificationBoundarySignalId(input.options),
+    companyId: input.session.companyId,
+    caseId: input.session.caseId,
     sessionId: input.session.sessionId,
     boundaryType: input.partial?.boundaryType ?? "knowledge_gap",
     participantStatement: input.partial?.participantStatement ?? input.evidenceItem.rawContent ?? "",
@@ -3630,6 +3709,8 @@ function buildAdminClarificationCandidate(
   const timestamp = clarificationNow(options);
   return {
     candidateId: clarificationCandidateId(options),
+    companyId: session.companyId,
+    caseId: session.caseId,
     sessionId: session.sessionId,
     linkedExtractedItemIds: input.linkedExtractedItemIds ?? [],
     linkedUnmappedItemIds: input.linkedUnmappedItemIds ?? [],
@@ -4533,6 +4614,7 @@ export interface Pass6HandoffCandidateOptions {
 }
 
 export interface Pass6HandoffCandidateInput {
+  companyId: string;
   caseId: string;
   sessionIds: string[];
   candidateType: Pass6HandoffCandidateType;
@@ -4600,6 +4682,7 @@ export function createPass6HandoffCandidate(
 ): Pass6HandoffCandidateResult {
   const candidate: Pass6HandoffCandidate = {
     handoffCandidateId: handoffCandidateId(options),
+    companyId: input.companyId,
     caseId: input.caseId,
     sessionIds: [...new Set(input.sessionIds)],
     relatedParticipantLabels: participantLabelsForSessions([...new Set(input.sessionIds)], repos),
@@ -4642,6 +4725,7 @@ export function createPass6HandoffCandidateFromEvidenceDispute(
   const session = repos.participantSessions.findById(dispute.sessionId);
   const caseId = session?.caseId ?? "unknown_case";
   return createPass6HandoffCandidate({
+    companyId: dispute.companyId,
     caseId,
     sessionIds: [dispute.sessionId],
     candidateType: "evidence_dispute_for_later_review",
@@ -4668,6 +4752,7 @@ export function createPass6HandoffCandidateFromBoundarySignal(
   const session = repos.participantSessions.findById(signal.sessionId);
   const candidateType: Pass6HandoffCandidateType = signal.requiresEscalation ? "possible_escalation_need" : "boundary_pattern";
   return createPass6HandoffCandidate({
+    companyId: signal.companyId,
     caseId: session?.caseId ?? "unknown_case",
     sessionIds: [signal.sessionId],
     candidateType,
@@ -4696,6 +4781,7 @@ export function createRepeatedUncertaintyHandoffCandidateForSession(
     return handoffFailure("source_not_found", "Repeated uncertainty candidate requires at least two unresolved/partial/escalated clarification candidates.");
   }
   return createPass6HandoffCandidate({
+    companyId: session.companyId,
     caseId: session.caseId,
     sessionIds: [sessionId],
     candidateType: "repeated_uncertainty",

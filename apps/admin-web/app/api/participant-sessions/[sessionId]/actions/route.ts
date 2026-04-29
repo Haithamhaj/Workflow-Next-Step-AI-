@@ -31,7 +31,15 @@ function redirectToSession(request: Request, sessionId: string, status: string) 
 export async function POST(request: Request, { params }: { params: { sessionId: string } }) {
   const form = await request.formData();
   const action = textValue(form, "action");
+  const companyId = textValue(form, "companyId");
   const sessionId = params.sessionId;
+  if (!companyId) return redirectToSession(request, sessionId, "company_required");
+  const session = repos.participantSessions.findByCompany(companyId, sessionId);
+  if (!session) return redirectToSession(request, sessionId, "session_not_found");
+  const scopedCandidate = (candidateId: string) =>
+    repos.clarificationCandidates.findByCompany(companyId, session.caseId, candidateId)?.sessionId === sessionId;
+  const scopedEvidence = (evidenceItemId: string) =>
+    repos.rawEvidenceItems.findByCompany(companyId, session.caseId, evidenceItemId)?.sessionId === sessionId;
 
   try {
     if (action === "select-next") {
@@ -41,6 +49,7 @@ export async function POST(request: Request, { params }: { params: { sessionId: 
     if (action === "mark-asked") {
       const candidateId = textValue(form, "candidateId");
       if (!candidateId) return redirectToSession(request, sessionId, "candidate_required");
+      if (!scopedCandidate(candidateId)) return redirectToSession(request, sessionId, "candidate_not_found");
       const result = markClarificationCandidateAsked(candidateId, repos);
       return redirectToSession(request, sessionId, result.ok ? `asked:${candidateId}` : result.errors[0]?.code ?? "ask_failed");
     }
@@ -48,12 +57,14 @@ export async function POST(request: Request, { params }: { params: { sessionId: 
       const candidateId = textValue(form, "candidateId");
       const answerText = textValue(form, "answerText");
       if (!candidateId || !answerText) return redirectToSession(request, sessionId, "answer_required");
+      if (!scopedCandidate(candidateId)) return redirectToSession(request, sessionId, "candidate_not_found");
       const result = recordClarificationAnswer({ sessionId, candidateId, answerText, capturedBy: "admin" }, repos);
       return redirectToSession(request, sessionId, result.ok ? `answer_recorded:${result.value.evidenceItemId}` : result.errors[0]?.code ?? "answer_failed");
     }
     if (action === "dismiss") {
       const candidateId = textValue(form, "candidateId");
       if (!candidateId) return redirectToSession(request, sessionId, "candidate_required");
+      if (!scopedCandidate(candidateId)) return redirectToSession(request, sessionId, "candidate_not_found");
       const result = dismissClarificationCandidate(candidateId, repos, textValue(form, "reason"));
       return redirectToSession(request, sessionId, result.ok ? `dismissed:${candidateId}` : result.errors[0]?.code ?? "dismiss_failed");
     }
@@ -67,12 +78,14 @@ export async function POST(request: Request, { params }: { params: { sessionId: 
     if (action === "formulate") {
       const candidateId = textValue(form, "candidateId");
       if (!candidateId) return redirectToSession(request, sessionId, "candidate_required");
+      if (!scopedCandidate(candidateId)) return redirectToSession(request, sessionId, "candidate_not_found");
       const result = await formulateClarificationQuestion(candidateId, repos, null);
       return redirectToSession(request, sessionId, result.ok ? `formulated:${candidateId}` : result.errors[0]?.code ?? "provider_not_configured");
     }
     if (action === "recheck") {
       const answerEvidenceId = textValue(form, "answerEvidenceId");
       if (!answerEvidenceId) return redirectToSession(request, sessionId, "answer_evidence_required");
+      if (!scopedEvidence(answerEvidenceId)) return redirectToSession(request, sessionId, "answer_evidence_not_found");
       const result = await runClarificationAnswerRecheck(sessionId, answerEvidenceId, repos, null);
       return redirectToSession(request, sessionId, result.ok ? `rechecked:${answerEvidenceId}` : result.errors[0]?.code ?? "provider_not_configured");
     }

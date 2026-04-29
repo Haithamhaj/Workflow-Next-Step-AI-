@@ -27,10 +27,11 @@ function Grid({ children }: { children: ReactNode }) {
   return <div style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(0, 1fr))", gap: "12px" }}>{children}</div>;
 }
 
-function ActionForm({ sessionId, action, children }: { sessionId: string; action: string; children: ReactNode }) {
+function ActionForm({ sessionId, companyId, action, children }: { sessionId: string; companyId: string; action: string; children: ReactNode }) {
   return (
     <form action={`/api/participant-sessions/${sessionId}/actions`} method="post" style={{ display: "inline-flex", gap: "6px", alignItems: "center", margin: "4px 6px 4px 0" }}>
       <input type="hidden" name="action" value={action} />
+      <input type="hidden" name="companyId" value={companyId} />
       {children}
     </form>
   );
@@ -133,7 +134,7 @@ export default async function ParticipantSessionDetailPage({
                 <td>{item.originalFileName ?? "—"}</td><td>{item.providerJobId ?? "—"}</td><td>{item.linkedClarificationItemId ?? "—"}</td>
                 <td>
                   {item.evidenceType === "participant_clarification_answer" ? (
-                    <ActionForm sessionId={detail.session.sessionId} action="recheck">
+                    <ActionForm sessionId={detail.session.sessionId} companyId={detail.session.companyId} action="recheck">
                       <input type="hidden" name="answerEvidenceId" value={item.evidenceItemId} />
                       <button type="submit">Recheck answer</button>
                     </ActionForm>
@@ -180,8 +181,8 @@ export default async function ParticipantSessionDetailPage({
         <div style={{ marginBottom: "12px" }}>
           {detail.supportedActions.map((action) => <code key={action} style={{ marginRight: "6px" }}>{action}</code>)}
         </div>
-        <ActionForm sessionId={detail.session.sessionId} action="select-next"><button className="btn-primary" type="submit">Select next</button></ActionForm>
-        <ActionForm sessionId={detail.session.sessionId} action="add-admin-exact">
+        <ActionForm sessionId={detail.session.sessionId} companyId={detail.session.companyId} action="select-next"><button className="btn-primary" type="submit">Select next</button></ActionForm>
+        <ActionForm sessionId={detail.session.sessionId} companyId={detail.session.companyId} action="add-admin-exact">
           <input name="questionTheme" placeholder="Admin question theme" />
           <input name="exactQuestion" placeholder="Exact participant question" />
           <button className="btn-primary" type="submit">Add admin question</button>
@@ -197,10 +198,10 @@ export default async function ParticipantSessionDetailPage({
                 <td>{candidate.priority}</td><td>{String(candidate.askNext)}</td><td>{candidate.createdFrom}</td><td>{candidate.status}</td>
                 <td>{candidate.participantFacingQuestion}</td><td>{candidate.whyItMatters}</td><td>{candidate.exampleAnswer}</td>
                 <td>
-                  <ActionForm sessionId={detail.session.sessionId} action="mark-asked"><input type="hidden" name="candidateId" value={candidate.candidateId} /><button type="submit">Mark asked</button></ActionForm>
-                  <ActionForm sessionId={detail.session.sessionId} action="formulate"><input type="hidden" name="candidateId" value={candidate.candidateId} /><button type="submit">Formulate</button></ActionForm>
-                  <ActionForm sessionId={detail.session.sessionId} action="dismiss"><input type="hidden" name="candidateId" value={candidate.candidateId} /><button type="submit">Dismiss</button></ActionForm>
-                  <ActionForm sessionId={detail.session.sessionId} action="record-answer"><input type="hidden" name="candidateId" value={candidate.candidateId} /><input name="answerText" placeholder="Admin-entered participant answer" /><button type="submit">Record answer</button></ActionForm>
+                  <ActionForm sessionId={detail.session.sessionId} companyId={detail.session.companyId} action="mark-asked"><input type="hidden" name="candidateId" value={candidate.candidateId} /><button type="submit">Mark asked</button></ActionForm>
+                  <ActionForm sessionId={detail.session.sessionId} companyId={detail.session.companyId} action="formulate"><input type="hidden" name="candidateId" value={candidate.candidateId} /><button type="submit">Formulate</button></ActionForm>
+                  <ActionForm sessionId={detail.session.sessionId} companyId={detail.session.companyId} action="dismiss"><input type="hidden" name="candidateId" value={candidate.candidateId} /><button type="submit">Dismiss</button></ActionForm>
+                  <ActionForm sessionId={detail.session.sessionId} companyId={detail.session.companyId} action="record-answer"><input type="hidden" name="candidateId" value={candidate.candidateId} /><input name="answerText" placeholder="Admin-entered participant answer" /><button type="submit">Record answer</button></ActionForm>
                 </td>
               </tr>
             ))}</tbody>
@@ -277,6 +278,7 @@ export default async function ParticipantSessionDetailPage({
         <p className="muted">Reviewable Pass 5 handoff candidates only. These records preserve observations for a later handoff review stage; they are not later-stage analysis or workflow truth.</p>
         <form action="/api/participant-sessions/handoff-candidates" method="post" style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: "8px", marginBottom: "12px" }}>
           <input type="hidden" name="returnTo" value={`/participant-sessions/${detail.session.sessionId}`} />
+          <input type="hidden" name="companyId" value={detail.session.companyId} />
           <input type="hidden" name="caseId" value={detail.session.caseId} />
           <input type="hidden" name="sessionIds" value={detail.session.sessionId} />
           <input name="description" placeholder="Admin handoff observation" />
@@ -322,6 +324,8 @@ export default async function ParticipantSessionDetailPage({
                   {(["accepted_for_pass6", "dismissed", "needs_more_evidence"] as const).map((decision) => (
                     <form key={decision} action={`/api/participant-sessions/handoff-candidates/${candidate.handoffCandidateId}/decision`} method="post" style={{ display: "inline-flex", margin: "4px 6px 4px 0" }}>
                       <input type="hidden" name="returnTo" value={`/participant-sessions/${detail.session.sessionId}`} />
+                      <input type="hidden" name="companyId" value={detail.session.companyId} />
+                      <input type="hidden" name="caseId" value={detail.session.caseId} />
                       <input type="hidden" name="adminDecision" value={decision} />
                       <button type="submit">{decision}</button>
                     </form>
