@@ -78,6 +78,14 @@ export {
 } from "./prompt-studio-context.js";
 
 export {
+  SOURCES_CONTEXT_STATIC_CONTEXT_BOUNDARY_STATUS,
+  SOURCES_CONTEXT_STATIC_CONTEXT_STAGE_KEY,
+  createSourcesContextCopilotContextEnvelope,
+  createSourcesContextStaticContextFixture,
+  summarizeSourcesContextCopilotContext,
+} from "./sources-context-context.js";
+
+export {
   WDE_ANALYSIS_CORRECTNESS_RULES,
   WDE_GOOD_BAD_ANALYSIS_EXAMPLES,
   WDE_STAGE_SYSTEM_KNOWLEDGE_PACK,
@@ -105,3 +113,18 @@ export {
   type PromptStudioCopilotProviderStatus,
   type PromptStudioCopilotTokenUsage,
 } from "./prompt-studio-chat.js";
+
+export {
+  buildSourcesContextCopilotProviderPrompt,
+  createSourcesContextCopilotChatResponse,
+  createSourcesContextCopilotFallbackResponse,
+  createSourcesContextCopilotProviderResponse,
+  type SourcesContextCopilotChatContextSummary,
+  type SourcesContextCopilotChatInput,
+  type SourcesContextCopilotChatMessage,
+  type SourcesContextCopilotChatResponse,
+  type SourcesContextCopilotChatRole,
+  type SourcesContextCopilotProviderOutput,
+  type SourcesContextCopilotProviderStatus,
+  type SourcesContextCopilotTokenUsage,
+} from "./sources-context-chat.js";
