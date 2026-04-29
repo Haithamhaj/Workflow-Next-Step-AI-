@@ -559,8 +559,10 @@
 }
 
 .workspaceInstructionActions button:disabled,
+.workspaceChatForm button:disabled,
 .workspaceStageButton:disabled,
 .workspaceInstructionTextarea:disabled,
+.workspaceChatTextarea:disabled,
 .workspaceTextInput:disabled {
   opacity: 0.62;
   cursor: not-allowed;
@@ -619,6 +621,97 @@
   color: #1e3a8a;
   font-size: 12px;
   line-height: 1.55;
+}
+
+.workspaceChatTranscript {
+  min-height: 320px;
+  max-height: 520px;
+  overflow: auto;
+  display: grid;
+  align-content: start;
+  gap: 12px;
+  padding: 12px;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  background: #f8fafc;
+}
+
+.workspaceUserMessage,
+.workspaceAssistantMessage {
+  min-width: 0;
+  padding: 12px;
+  border: 1px solid #dbe4ef;
+  border-radius: 10px;
+  background: #ffffff;
+}
+
+.workspaceUserMessage {
+  border-color: #bfdbfe;
+  background: #eff6ff;
+}
+
+.workspaceAssistantMessage {
+  border-color: #d8e6d8;
+  background: #f7fbf7;
+}
+
+.workspaceUserMessage strong,
+.workspaceAssistantMessage strong {
+  display: block;
+  margin-bottom: 6px;
+  color: #172033;
+  font-size: 12px;
+}
+
+.workspaceUserMessage p,
+.workspaceAssistantMessage p {
+  margin: 0;
+  color: #334155;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  font-size: 13px;
+  line-height: 1.55;
+}
+
+.workspaceChatForm {
+  display: grid;
+  gap: 12px;
+  margin-top: 14px;
+}
+
+.workspaceChatTextarea {
+  width: 100%;
+  min-height: 118px;
+  box-sizing: border-box;
+  resize: vertical;
+  padding: 12px;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  background: #ffffff;
+  color: #0f172a;
+  font: inherit;
+  font-size: 14px;
+  line-height: 1.55;
+}
+
+.workspaceChatForm button {
+  width: fit-content;
+  min-width: 132px;
+  padding: 10px 14px;
+  border: 1px solid #2563eb;
+  border-radius: 8px;
+  background: #2563eb;
+  color: #ffffff;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.workspaceChatForm button:hover,
+.workspaceChatForm button:focus {
+  border-color: #1d4ed8;
+  background: #1d4ed8;
 }
 
 .workspaceHistoryList {

@@ -14,6 +14,7 @@ const sections = [
   { id: "analysis", href: "/workspace/analysis", labelKey: "analysis" },
   { id: "promptStudio", href: "/workspace/prompts", labelKey: "promptStudio" },
   { id: "copilotInstructions", href: "/workspace/copilot-instructions", labelKey: "copilotInstructions" },
+  { id: "promptStudioCopilot", href: "/workspace/prompt-studio-copilot", labelKey: "promptStudioCopilot" },
   { id: "package", href: "/workspace/package", labelKey: "package" },
   { id: "advanced", href: "/workspace/advanced", labelKey: "advanced" },
 ] as const;

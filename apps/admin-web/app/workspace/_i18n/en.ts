@@ -43,6 +43,7 @@ export const en = {
     analysis: "Analysis",
     promptStudio: "Prompt Studio",
     copilotInstructions: "Copilot Instructions",
+    promptStudioCopilot: "Prompt Studio Copilot",
     package: "Package",
     advanced: "Advanced",
   },
@@ -78,6 +79,10 @@ export const en = {
     copilotInstructions: {
       name: "Copilot Instructions",
       purpose: "Controls how stage copilots speak and reason. Does not change analysis prompts.",
+    },
+    promptStudioCopilot: {
+      name: "Prompt Studio Copilot",
+      purpose: "A no-tool conversation surface for discussing Prompt Studio, instructions, and prompt-system separation.",
     },
     package: {
       name: "Package",
@@ -222,6 +227,37 @@ export const en = {
       repository_validation_failed:
         "The repository rejected these instructions. Remove unsafe authority claims and try again.",
       unknown: "Could not complete the instruction request.",
+    },
+  },
+  promptStudioCopilot: {
+    eyebrow: "Prompt Studio Copilot",
+    title: "Prompt Studio Copilot",
+    purpose:
+      "Ask about Prompt Studio, Stage Copilot Instructions, and the boundary between conversational instructions and analysis prompts.",
+    boundaryCopy: "No tools. No actions. Advisory conversation only.",
+    separationCopy:
+      "This Copilot can discuss Prompt Studio and instructions, but it does not change analysis prompts.",
+    analysisBoundary:
+      "It cannot save prompts, apply changes, compile prompts, run prompt tests, run official analysis, change readiness, or change package eligibility.",
+    messageLabel: "Admin message",
+    messagePlaceholder: "Ask how Copilot Instructions differ from Capability / Analysis PromptSpecs...",
+    send: "Send message",
+    sending: "Sending...",
+    conversation: "Conversation",
+    emptyConversation: "No messages yet.",
+    providerStatus: "Provider status",
+    model: "Model",
+    contextSource: "Context source",
+    contextReadOnly: "Context read-only",
+    responseDetails: "Response details",
+    fallbackNotice:
+      "Provider-backed response was not available. The answer shown is a deterministic fallback from the chat route.",
+    errorTitle: "Chat request failed",
+    errors: {
+      invalid_json: "The request body was invalid.",
+      missing_message: "Enter a message before sending.",
+      prompt_studio_copilot_failed: "Prompt Studio Copilot could not answer this request.",
+      unknown: "Could not complete the chat request.",
     },
   },
   visual: {
