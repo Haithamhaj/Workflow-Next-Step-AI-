@@ -9,14 +9,17 @@ Recommended expansion approach:
 - Keep the Prompt Studio pattern: Stage Copilot Instructions + read-only context envelope + stage knowledge + GPT/OpenAI text response + deterministic fallback + no-tool/no-action proofs.
 - Build one stage at a time.
 - Keep each stage route scoped and explicit before introducing any generic all-stage abstraction.
+- Treat the long-term UI as a **Workspace Stage Copilot Widget** that can be opened anywhere in `/workspace`, auto-detects the current stage, and allows manual stage override.
+- Keep existing and future stage-specific Copilot pages as development/proof surfaces, not as the only way users can talk to a Copilot.
 - Use stage-specific static context and small read-only fixture/read-model summaries before RAG.
 - Do not let `packages/stage-copilot` directly own official analysis truth or import mutating stage execution paths.
+- Design every stage registration so Pass 7, Pass 8, Pass 9, and later stages can be added by extending stage metadata, system knowledge, context assembly, routes, proofs, and UI labels without changing the no-tool/no-action product model.
 
 Recommended next Copilot: **Pass 2 Sources / Context Copilot**.
 
 This confirms the operator assumption. Sources / Context is the best next pilot because it is early in the workflow, valuable to admins, and lower risk than Participant Evidence or Analysis / Package if it starts with static stage knowledge plus narrow read-only source/context summaries. It still needs careful boundaries because `packages/sources-context` includes provider-backed and mutating intake functions.
 
-Recommended first implementation slice: **Sources / Context Copilot API-only route with static/read-only context fixture and proof**. Add UI in the following slice or pair API+UI only if the shared chat component is already extracted safely.
+Recommended first implementation slice: **Sources / Context Copilot API-only route with static/read-only context fixture and proof**. After the second stage is proven, add the **Workspace Stage Copilot Widget foundation** so users can talk to the same Copilot system from anywhere without navigating to a dedicated Copilot page.
 
 ## 2. Current Prompt Studio Copilot Pattern
 
@@ -323,6 +326,27 @@ The reusable safety boundary is strong: the model may explain, discuss, compare,
 - Proof difficulty: medium.
 - Risk level: medium due to temptation to add tools/actions.
 
+### Future Pass 7 / Pass 8 / Pass 9 Copilots
+
+The family model must remain open for later workflow stages that are not fully scoped in this plan.
+
+Future stages should be added by extending the same stage registration pattern:
+
+- stage key
+- Stage Copilot Instructions default
+- operational stage knowledge card
+- read-only context envelope fixture/read model
+- stage-specific chat helper or shared helper configuration
+- stage API route
+- UI label and widget selector entry
+- proof questions and expected concepts
+- token baseline
+- no-tool/no-action/no-write boundary checks
+
+Pass 7, Pass 8, Pass 9, and later stages must not require a new Copilot architecture. They should become additional members of the same Stage Copilot family.
+
+Until those stages are formally defined, the family should reserve extension points without guessing their behavior. A future stage Copilot may know and discuss the internal system capabilities used by that stage, but knowledge of a capability must never grant execution authority.
+
 ## 4. Shared vs Stage-Specific Components
 
 Shared components should include:
@@ -528,15 +552,39 @@ Options:
   - component must remain dumb UI only
   - must not import stage packages or provider logic
 
+### Option E - Workspace Stage Copilot Widget
+
+- Pros:
+  - best user access model: the admin can ask the Copilot from any workspace page
+  - can auto-detect the current stage from route/page context
+  - can allow explicit manual stage override when the admin wants another stage's perspective
+  - avoids forcing users to navigate to a dedicated Copilot page before asking a question
+  - keeps the same underlying Stage Copilot routes, instructions, context envelopes, provider path, and safety boundaries
+  - scales naturally as Pass 7, Pass 8, Pass 9, and later stages are added
+- Cons:
+  - higher cross-page UX risk than a dedicated page
+  - requires a reliable stage detection map
+  - requires strict visible labeling so users know which stage context is active
+  - must avoid becoming a global all-knowing assistant
+  - must not add action buttons, tools, save/apply controls, provider controls, or workflow mutation affordances
+
 Recommendation:
 
-- Use **stage-specific pages under `/workspace`** with a **shared dumb chat component** introduced only when the second UI is built.
-- Keep stage-specific API routes.
-- For navigation, either:
-  - add a grouped “Copilots” workspace nav section later, or
-  - link each Copilot from its stage page plus a central Copilot index.
+- Treat the **Workspace Stage Copilot Widget** as the preferred end-user access model.
+- Keep **stage-specific API routes** because they are easier to scope, test, and prove.
+- Keep stage-specific pages under `/workspace` as development/proof surfaces and optional detailed views.
+- Introduce a shared dumb chat component before or with the widget so the dedicated pages and widget share presentation behavior.
+- Let the widget:
+  - open from any `/workspace` page
+  - infer current stage from route context where possible
+  - default to the current stage
+  - allow manual stage override
+  - show the active stage clearly
+  - send a clear `stageKey` on every request
+  - display provider status, model, token usage if present, context source, and fallback status
+  - display the boundary: no tools, no actions, advisory conversation only
 
-Because the user wants to see and test each Copilot in UI, do not hide them behind API-only work for long. However, the first expansion slice should be API-only to prove the safety/context boundary before adding another UI surface.
+Because the user wants to talk to the Copilot without navigating to a specific page, the widget should become the primary UX. However, it should be built after at least one additional non-Prompt-Studio stage route is proven, so the widget can validate stage detection and manual stage switching rather than only wrapping the current Prompt Studio page.
 
 ## 7. Context Strategy Before RAG
 
@@ -577,6 +625,8 @@ The Stage Copilot family should leave a clean seam for:
 
 - `stageKey`
 - `caseId`
+- current route/page-derived stage
+- manual stage override
 - selected stage record IDs
 - stage context map ID/version
 - read-only retrieval scope
@@ -596,6 +646,17 @@ Important future boundary:
 - Copilot answers must not approve evidence, transcripts, gates, readiness, or package eligibility
 
 Do not implement RAG in the family expansion slice. Design it separately.
+
+The widget should not require RAG to be useful. Before RAG exists, it can still pass:
+
+- active `stageKey`
+- current workspace route
+- case/session identifiers where already available
+- static stage knowledge
+- read-only context fixture or summary refs
+- current Stage Copilot Instructions
+
+Later, the same request shape can carry a governed context map reference without changing the no-action conversation model.
 
 ## 9. Proof Strategy
 
@@ -625,6 +686,19 @@ Each future Stage Copilot should have proofs for:
 - no analysis mutation
 - no readiness/package eligibility mutation
 - no package generation
+
+Widget-specific proofs should validate:
+
+- widget renders on representative `/workspace` pages
+- widget auto-detects the expected stage from page context
+- widget supports manual stage override
+- every chat request includes exactly one explicit `stageKey`
+- active stage label is visible in English and Arabic where applicable
+- widget has no apply/save/run/approve/generate controls
+- widget does not expose provider/model controls
+- widget does not persist conversations unless a later approved slice adds explicit conversation storage
+- widget does not import stage packages, providers, `@workflow/prompts`, prompt compilation, prompt tests, retrieval, or analysis runtime modules
+- existing dedicated Copilot pages continue to render
 
 Stage-specific proof question examples:
 
@@ -768,7 +842,41 @@ This is the strongest first slice.
   - no forbidden imports/controls
 - Risk level: low.
 
-### Slice 4 - Sources / Context Read-Only Live Summary Plan
+### Slice 4 - Workspace Stage Copilot Widget Foundation
+
+- Purpose: provide the primary access model: one Copilot widget available throughout `/workspace`.
+- Files/packages likely touched:
+  - workspace shell/layout components
+  - workspace `_components`
+  - workspace i18n files
+  - widget proof script
+- Produces:
+  - floating or docked Copilot widget
+  - active stage indicator
+  - current-stage auto-detection map
+  - manual stage override selector
+  - shared message input/transcript/provider-status UI
+  - routing to already-proven stage chat APIs
+- Must not do:
+  - no new stage behavior
+  - no tools
+  - no actions
+  - no writes
+  - no apply/save/run/approve/generate controls
+  - no provider/model selector
+  - no conversation persistence
+  - no RAG/retrieval
+  - no direct imports of mutating stage packages
+- Proof strategy:
+  - widget renders on representative workspace pages
+  - current-stage detection works for known routes
+  - manual stage override sends the selected `stageKey`
+  - widget can call Prompt Studio and Sources / Context routes
+  - no forbidden controls/imports
+  - existing dedicated Copilot pages still render
+- Risk level: medium because it touches shared workspace UI, but low for analysis behavior if it remains a UI consumer only.
+
+### Slice 5 - Sources / Context Read-Only Live Summary Plan
 
 - Purpose: plan live case/source context without RAG.
 - Files/packages likely touched:
@@ -785,7 +893,7 @@ This is the strongest first slice.
   - future plan identifies no-write/read-only checks
 - Risk level: low.
 
-### Slice 5 - Hierarchy Copilot Static Context and API Route
+### Slice 6 - Hierarchy Copilot Static Context and API Route
 
 - Purpose: third Copilot after Sources / Context proves family pattern.
 - Files/packages likely touched:
@@ -805,6 +913,33 @@ This is the strongest first slice.
   - structural approval only
 - Risk level: medium.
 
+### Future Slice Template - Pass 7 / Pass 8 / Pass 9 Copilot
+
+- Purpose: add a later stage Copilot once the corresponding stage is formally defined.
+- Files/packages likely touched:
+  - `packages/stage-copilot` stage knowledge/context/chat helper
+  - stage-specific API route
+  - widget stage registry/selector metadata
+  - optional dedicated workspace page
+  - proof scripts
+- Produces:
+  - stage instructions/default coverage
+  - operational stage knowledge
+  - read-only context envelope
+  - text-only provider/fallback chat
+  - widget availability
+- Must not do:
+  - no tools/actions/writes
+  - no official stage execution
+  - no provider-backed analysis capability execution
+  - no gate/readiness/package/evidence mutation
+- Proof strategy:
+  - 11-category stage knowledge coverage
+  - stage-specific diagnostic questions
+  - widget stage selection and route proof
+  - no forbidden imports/writes/actions
+- Risk level: depends on the future stage; classify at planning time.
+
 ## 12. Risks, Open Questions, and Required Decisions
 
 Critical risks:
@@ -817,18 +952,24 @@ Critical risks:
 Non-critical risks:
 
 - Token cost if every Copilot receives the full WDE knowledge pack.
-- Workspace nav clutter as Copilot pages expand.
+- Workspace nav clutter as Copilot pages expand; the widget reduces this risk but needs clear stage labeling.
 - Static context may feel shallow before live read-only summaries exist.
 - No conversation persistence limits real workflow continuity.
 - Live GPT quality can vary; strict proof gates should remain.
+- Current-stage auto-detection can be wrong if route-to-stage mapping is incomplete.
+- Manual stage override may confuse users unless the active stage is always visible.
 
 Operator decisions needed:
 
 - Should each Copilot have a visible nav item, or should Copilots be grouped under a Copilot hub?
 - Should first Sources / Context slice be API-only, or API+UI in one slice?
+- Should the Workspace Stage Copilot Widget be introduced immediately after Sources / Context API proof, or after Sources / Context UI proof?
+- Should dedicated per-stage Copilot pages remain visible after the widget exists, or become developer/proof surfaces only?
 - Should token optimization happen before the next Copilot, or as part of each Copilot’s first implementation?
 - When should live Prompt Studio PromptSpec read-only projection be prioritized?
 - What token budget is acceptable per stage in normal mode?
+- What route/page map should define current stage detection?
+- What formal stage keys should be reserved for Pass 7, Pass 8, Pass 9 once those stages are named?
 
 Deferred items:
 
@@ -837,7 +978,8 @@ Deferred items:
 - live read-only PromptSpec projection
 - live read-only source/context projections
 - shared all-stage route factory
-- shared Copilot UI host
+- shared Workspace Stage Copilot Widget host
+- Pass 7 / Pass 8 / Pass 9 Copilot definitions
 - Advanced / Debug Copilot
 
 ## 13. Final Recommendation
@@ -849,8 +991,9 @@ Build next:
 1. **Sources / Context Copilot API-only route with static/read-only context fixture and proof**
 2. Sources / Context Copilot workspace UI
 3. Shared dumb chat UI component
-4. Sources / Context live read-only summary planning
-5. Hierarchy Copilot static context/API
+4. Workspace Stage Copilot Widget foundation
+5. Sources / Context live read-only summary planning
+6. Hierarchy Copilot static context/API
 
 Keep each Copilot:
 
@@ -865,4 +1008,6 @@ Keep each Copilot:
 - no writes
 - no official analysis execution
 
-Sources / Context is the right next pilot, provided the first slice does not execute source-processing capabilities or read live source repositories until a separate read-only context model is proven.
+The long-term UX should not require users to navigate to a dedicated Copilot page. The accepted direction is a **Workspace Stage Copilot Widget** that is available anywhere in the workflow, detects the current stage, allows manual stage override, and routes to the same underlying Stage Copilot system.
+
+Sources / Context is the right next pilot, provided the first slice does not execute source-processing capabilities or read live source repositories until a separate read-only context model is proven. Pass 7, Pass 8, Pass 9, and later stages should be added through the same family pattern when their stage contracts, knowledge, and boundaries are defined.
