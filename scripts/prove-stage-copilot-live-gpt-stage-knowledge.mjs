@@ -285,9 +285,11 @@ const counts = rows.reduce((acc, row) => {
 }, {});
 
 if (liveSuccessCount === rows.length) {
-  assert.ok((counts.pass ?? 0) >= 6, "live GPT stage-knowledge smoke should produce at least 6 pass answers");
+  assert.equal(counts.pass ?? 0, rows.length, "live GPT stage-knowledge smoke should produce 8 pass answers");
+  assert.equal(counts.partial ?? 0, 0, "live GPT stage-knowledge smoke should not leave partial answers");
   assert.equal(counts.context_gap ?? 0, 0, "live GPT stage-knowledge smoke should not leave context gaps");
   assert.equal(counts.fail ?? 0, 0, "live GPT stage-knowledge smoke should not fail any diagnostic question");
+  assert.equal(rows.find((row) => row.question === 4)?.result, "pass", "Pass 5 Participant Evidence answer should pass");
   assert.equal(rows.find((row) => row.question === 5)?.result, "pass", "Pass 6A/6B/6C answer should pass");
   assert.equal(rows.find((row) => row.question === 6)?.result, "pass", "bad readiness/package assumption answer should pass");
   assert.equal(rows.find((row) => row.question === 8)?.result, "pass", "advisory limits answer should pass");
