@@ -393,6 +393,81 @@ export interface CompanyRepository {
   findAll(): StoredCompany[];
 }
 
+export interface CaseScopedRecord {
+  caseId: string;
+}
+
+export interface CaseScopedListRepository<TRecord extends CaseScopedRecord> {
+  findByCaseId(caseId: string): TRecord[];
+  findAll(): TRecord[];
+}
+
+export interface CaseScopedDirectRepository<TRecord extends CaseScopedRecord> {
+  findById(recordId: string): TRecord | null;
+}
+
+export function assertScopedCompanyCaseInput(companyId: string, caseId?: string): void {
+  if (!companyId.trim()) {
+    throw new Error("companyId is required for scoped repository reads");
+  }
+  if (caseId !== undefined && !caseId.trim()) {
+    throw new Error("caseId is required for scoped repository reads");
+  }
+}
+
+export function caseBelongsToCompany(
+  companyId: string,
+  caseId: string,
+  cases: CaseRepository,
+): boolean {
+  assertScopedCompanyCaseInput(companyId, caseId);
+  return cases.findByCompanyAndCase(companyId, caseId) !== null;
+}
+
+export function listRecordsByCompanyAndCase<TRecord extends CaseScopedRecord>(
+  companyId: string,
+  caseId: string,
+  cases: CaseRepository,
+  repo: CaseScopedListRepository<TRecord>,
+): TRecord[] {
+  if (!caseBelongsToCompany(companyId, caseId, cases)) {
+    return [];
+  }
+  return repo.findByCaseId(caseId);
+}
+
+export function listRecordsByCompany<TRecord extends CaseScopedRecord>(
+  companyId: string,
+  cases: CaseRepository,
+  repo: CaseScopedListRepository<TRecord>,
+): TRecord[] {
+  assertScopedCompanyCaseInput(companyId);
+  const allowedCaseIds = new Set(cases.findByCompanyId(companyId).map((record) => record.caseId));
+  if (allowedCaseIds.size === 0) {
+    return [];
+  }
+  return repo.findAll().filter((record) => allowedCaseIds.has(record.caseId));
+}
+
+export function findRecordByCompany<TRecord extends CaseScopedRecord>(
+  companyId: string,
+  recordId: string,
+  cases: CaseRepository,
+  repo: CaseScopedDirectRepository<TRecord>,
+): TRecord | null {
+  if (!companyId.trim()) {
+    throw new Error("companyId is required for scoped repository reads");
+  }
+  if (!recordId.trim()) {
+    throw new Error("recordId is required for scoped repository reads");
+  }
+  const record = repo.findById(recordId);
+  if (record === null) {
+    return null;
+  }
+  return caseBelongsToCompany(companyId, record.caseId, cases) ? record : null;
+}
+
 export interface SourceRepository {
   save(s: Source): void;
   findById(sourceId: string): Source | null;

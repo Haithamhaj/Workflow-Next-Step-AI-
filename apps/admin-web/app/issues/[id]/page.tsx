@@ -3,9 +3,11 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { IssueDetailClient } from "./IssueDetailClient";
 
+const DEFAULT_COMPANY_ID = "company-default-local";
+
 async function getIssue(id: string): Promise<StoredReviewIssueRecord | null> {
   const res = await fetch(
-    `http://localhost:${process.env.PORT ?? 3000}/api/issues/${encodeURIComponent(id)}`,
+    `http://localhost:${process.env.PORT ?? 3000}/api/issues/${encodeURIComponent(id)}?companyId=${encodeURIComponent(DEFAULT_COMPANY_ID)}`,
     { cache: "no-store" },
   );
   if (res.status === 404) return null;

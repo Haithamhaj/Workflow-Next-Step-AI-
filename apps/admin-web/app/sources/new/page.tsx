@@ -34,6 +34,8 @@ const PROCESSING_STATUSES = [
   "requires_admin_review",
 ] as const;
 
+const DEFAULT_COMPANY_ID = "company-default-local";
+
 export default function NewSourcePage() {
   const router = useRouter();
   const [errors, setErrors] = useState<string[]>([]);
@@ -51,6 +53,7 @@ export default function NewSourcePage() {
         payload[key] = value.trim();
       }
     }
+    payload.companyId = DEFAULT_COMPANY_ID;
 
     try {
       const res = await fetch("/api/sources", {

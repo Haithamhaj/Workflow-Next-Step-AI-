@@ -10,6 +10,8 @@ const REVIEW_STATES = [
   "review_resolved",
 ] as const;
 
+const DEFAULT_COMPANY_ID = "company-default-local";
+
 function parseEvidence(raw: string) {
   return raw
     .split("\n")
@@ -43,6 +45,7 @@ export default function NewIssuePage() {
 
     const fd = new FormData(e.currentTarget);
     const payload = {
+      companyId: DEFAULT_COMPANY_ID,
       issueId: String(fd.get("issueId") ?? "").trim(),
       caseId: String(fd.get("caseId") ?? "").trim(),
       initialPackageId: String(fd.get("initialPackageId") ?? "").trim(),

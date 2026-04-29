@@ -37,6 +37,8 @@ const INPUT_TYPE_OPTIONS: { value: InputType; label: string }[] = [
   { value: "audio", label: "Audio" },
 ];
 
+const DEFAULT_COMPANY_ID = "company-default-local";
+
 export default function NewIntakeSessionPage() {
   const router = useRouter();
   const [errors, setErrors] = useState<string[]>([]);
@@ -75,6 +77,7 @@ export default function NewIntakeSessionPage() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
+          companyId: DEFAULT_COMPANY_ID,
           sessionId: sessionId || undefined,
           caseId,
           bucket,

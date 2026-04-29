@@ -1,15 +1,29 @@
 import { NextResponse } from "next/server";
-import { createIntakeSession, listIntakeSessionsByCase } from "@workflow/sources-context";
+import { createIntakeSession } from "@workflow/sources-context";
+import {
+  caseBelongsToCompany,
+  listRecordsByCompany,
+  listRecordsByCompanyAndCase,
+} from "@workflow/persistence";
 import { store } from "../../../lib/store";
+import {
+  getCompanyIdFromBody,
+  getCompanyIdFromRequest,
+  missingCompanyIdResponse,
+  scopedNotFoundResponse,
+} from "../../../lib/company-scope";
 
 export async function GET(request: Request) {
   const url = new URL(request.url);
-  const caseId = url.searchParams.get("caseId");
-  if (caseId) {
-    const sessions = listIntakeSessionsByCase(caseId, store.intakeSessions);
-    return NextResponse.json(sessions);
+  const companyId = getCompanyIdFromRequest(request);
+  if (!companyId) {
+    return missingCompanyIdResponse();
   }
-  const sessions = store.intakeSessions.findAll();
+
+  const caseId = url.searchParams.get("caseId");
+  const sessions = caseId
+    ? listRecordsByCompanyAndCase(companyId, caseId, store.cases, store.intakeSessions)
+    : listRecordsByCompany(companyId, store.cases, store.intakeSessions);
   return NextResponse.json(sessions);
 }
 
@@ -23,12 +37,23 @@ export async function POST(request: Request) {
 
   try {
     const b = body as Record<string, unknown>;
+    const companyId = getCompanyIdFromBody(body);
+    if (!companyId) {
+      return missingCompanyIdResponse();
+    }
+    const caseId = String(b.caseId ?? "").trim();
+    if (!caseId) {
+      return NextResponse.json({ error: "caseId is required." }, { status: 400 });
+    }
+    if (!caseBelongsToCompany(companyId, caseId, store.cases)) {
+      return scopedNotFoundResponse();
+    }
     const session = createIntakeSession(
       {
         sessionId: typeof b.sessionId === "string" && b.sessionId.trim()
           ? b.sessionId.trim()
           : `intake_${crypto.randomUUID()}`,
-        caseId: String(b.caseId ?? ""),
+        caseId,
         bucket: (b.bucket as "company" | "department") ?? "company",
         defaultProvider: "google",
         availableProviders: ["google", "openai"],

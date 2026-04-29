@@ -1,14 +1,24 @@
 import { NextResponse } from "next/server";
-import { getSource } from "@workflow/sources-context";
+import { findRecordByCompany } from "@workflow/persistence";
 import { store } from "../../../../lib/store";
+import {
+  getCompanyIdFromRequest,
+  missingCompanyIdResponse,
+  scopedNotFoundResponse,
+} from "../../../../lib/company-scope";
 
 export async function GET(
-  _request: Request,
+  request: Request,
   { params }: { params: { id: string } }
 ) {
-  const source = getSource(params.id, store.sources);
+  const companyId = getCompanyIdFromRequest(request);
+  if (!companyId) {
+    return missingCompanyIdResponse();
+  }
+
+  const source = findRecordByCompany(companyId, params.id, store.cases, store.sources);
   if (source === null) {
-    return NextResponse.json({ error: "Source not found" }, { status: 404 });
+    return scopedNotFoundResponse();
   }
   return NextResponse.json(source);
 }
