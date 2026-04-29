@@ -1,11 +1,6 @@
 "use client";
 
-import { useState } from "react";
-import {
-  getWorkspaceDirection,
-  workspaceDictionaries,
-  type WorkspaceLanguage,
-} from "../_i18n";
+import { getWorkspaceDirection, workspaceDictionaries, type WorkspaceLanguage } from "../_i18n";
 import { WorkspaceBoundaryNote } from "./WorkspaceBoundaryNote";
 import { WorkspaceSectionCard } from "./WorkspaceSectionCard";
 import { WorkspaceShell } from "./WorkspaceShell";
@@ -19,6 +14,7 @@ import {
   TruthBoundaryCard,
   WorkspaceCommandSection,
 } from "./WorkspaceVisualSystem";
+import { useWorkspaceLanguage } from "./useWorkspaceLanguage";
 import styles from "../workspace.module.css";
 
 const sectionLinks = {
@@ -61,13 +57,17 @@ const staticModuleOrder = [
   "advanced",
 ] as const;
 
-export function WorkspaceHome() {
-  const [language, setLanguage] = useState<WorkspaceLanguage>("en");
+export function WorkspaceHome({
+  initialLanguage = null,
+}: {
+  initialLanguage?: WorkspaceLanguage | null;
+}) {
+  const { language, toggleLanguage, isLanguageReady } = useWorkspaceLanguage(initialLanguage);
   const dictionary = workspaceDictionaries[language];
   const direction = getWorkspaceDirection(language);
 
-  function toggleLanguage() {
-    setLanguage((current) => (current === "en" ? "ar" : "en"));
+  if (!isLanguageReady) {
+    return <div className={styles.workspaceLanguageBoot} aria-hidden="true" />;
   }
 
   return (

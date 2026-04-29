@@ -84,12 +84,13 @@ assert.match(arSource, /رد احتياطي/, "Arabic fallback response label ex
 assert.match(cssSource, /stageCopilotWidget/, "widget CSS exists");
 assert.match(cssSource, /stageCopilotPanel/, "chat panel CSS exists");
 assert.match(cssSource, /\.stageCopilotWidget\s*\{[^}]*position:\s*fixed/s, "widget uses fixed positioning");
-assert.match(cssSource, /\.stageCopilotWidget\s*\{[^}]*inset-inline-end:\s*22px/s, "LTR/default widget placement uses right-side logical alignment");
-assert.match(cssSource, /\.workspaceRoot\[dir="rtl"\]\s+\.stageCopilotWidget\s*\{[^}]*inset-inline-start:\s*22px/s, "RTL widget placement uses left-side alignment");
+assert.match(cssSource, /\.stageCopilotWidget\s*\{[^}]*left:\s*22px/s, "LTR/default widget placement uses physical left alignment");
+assert.match(cssSource, /\.workspaceRoot\[dir="rtl"\]\s+\.stageCopilotWidget\s*\{[^}]*left:\s*auto[^}]*right:\s*22px/s, "RTL widget placement uses physical right alignment");
 assert.match(cssSource, /\.stageCopilotWidgetTrigger\s*\{[^}]*width:\s*58px[^}]*height:\s*58px[^}]*border-radius:\s*999px/s, "closed trigger is circular and compact");
 assert.match(cssSource, /\.stageCopilotWidgetTriggerMark\s*\{[^}]*width:\s*40px[^}]*height:\s*40px[^}]*border-radius:\s*50%/s, "closed trigger uses icon-only circular mark");
 assert.match(cssSource, /\.stageCopilotWidgetPanel\s*\{[^}]*position:\s*fixed[^}]*width:\s*min\(420px, calc\(100vw - 24px\)\)[^}]*max-height:\s*min\(680px, calc\(100vh - 124px\)\)[^}]*overflow:\s*auto/s, "panel is fixed, viewport-bounded, and internally scrollable");
-assert.match(cssSource, /\.workspaceRoot\[dir="rtl"\]\s+\.stageCopilotWidgetPanel\s*\{[^}]*inset-inline-start:\s*22px/s, "RTL panel aligns left");
+assert.match(cssSource, /\.stageCopilotWidgetPanel\s*\{[^}]*left:\s*22px/s, "LTR/default panel aligns with left-side trigger");
+assert.match(cssSource, /\.workspaceRoot\[dir="rtl"\]\s+\.stageCopilotWidgetPanel\s*\{[^}]*left:\s*auto[^}]*right:\s*22px[^}]*direction:\s*rtl[^}]*text-align:\s*right/s, "RTL panel aligns with right-side trigger and uses RTL text direction");
 assert.match(cssSource, /@media \(max-width:\s*560px\)[\s\S]*\.stageCopilotWidgetPanel\s*\{[^}]*width:\s*calc\(100vw - 24px\)/, "mobile panel is viewport-bounded");
 assert.doesNotMatch(cssSource, /\.stageCopilotWidgetTrigger\s*\{[^}]*width:\s*100%/s, "closed trigger must not be a wide bar");
 
@@ -145,7 +146,7 @@ console.log(JSON.stringify({
     "widget_mounted_in_workspace_shell",
     "closed_trigger_is_circular_icon_only",
     "widget_uses_fixed_positioning",
-    "ltr_right_rtl_left_placement_validated",
+    "ltr_left_rtl_right_placement_validated",
     "panel_is_fixed_viewport_bounded_and_scrollable",
     "open_panel_has_single_header_pattern",
     "close_control_exists",

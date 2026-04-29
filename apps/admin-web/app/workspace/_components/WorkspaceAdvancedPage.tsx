@@ -1,13 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
-import {
-  getWorkspaceDirection,
-  workspaceDictionaries,
-  type WorkspaceLanguage,
-} from "../_i18n";
+import { getWorkspaceDirection, workspaceDictionaries, type WorkspaceLanguage } from "../_i18n";
 import { WorkspaceShell } from "./WorkspaceShell";
+import { useWorkspaceLanguage } from "./useWorkspaceLanguage";
 import styles from "../workspace.module.css";
 
 type AdvancedGroupKey = keyof (typeof workspaceDictionaries)["en"]["advanced"]["groups"];
@@ -79,14 +75,18 @@ const advancedGroups: Array<{
   },
 ];
 
-export function WorkspaceAdvancedPage() {
-  const [language, setLanguage] = useState<WorkspaceLanguage>("en");
+export function WorkspaceAdvancedPage({
+  initialLanguage = null,
+}: {
+  initialLanguage?: WorkspaceLanguage | null;
+}) {
+  const { language, toggleLanguage, isLanguageReady } = useWorkspaceLanguage(initialLanguage);
   const dictionary = workspaceDictionaries[language];
   const direction = getWorkspaceDirection(language);
   const page = dictionary.pages.advanced;
 
-  function toggleLanguage() {
-    setLanguage((current) => (current === "en" ? "ar" : "en"));
+  if (!isLanguageReady) {
+    return <div className={styles.workspaceLanguageBoot} aria-hidden="true" />;
   }
 
   return (

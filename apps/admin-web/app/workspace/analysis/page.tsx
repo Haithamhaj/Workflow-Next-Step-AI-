@@ -1,8 +1,10 @@
 import { WorkspacePlaceholderPage } from "../_components/WorkspacePlaceholderPage";
+import { getInitialWorkspaceLanguage } from "../_i18n/server";
 
 export default function WorkspaceAnalysisPage() {
   return (
     <WorkspacePlaceholderPage
+      initialLanguage={getInitialWorkspaceLanguage()}
       pageKey="analysis"
       links={[
         { href: "/pass6/synthesis-input-bundles", labelKey: "pass6Bundles" },

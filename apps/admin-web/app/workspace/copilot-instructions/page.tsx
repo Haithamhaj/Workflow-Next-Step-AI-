@@ -5,9 +5,9 @@ import {
   getWorkspaceDirection,
   workspaceDictionaries,
   type WorkspaceDictionary,
-  type WorkspaceLanguage,
 } from "../_i18n";
 import { WorkspaceShell } from "../_components/WorkspaceShell";
+import { useWorkspaceLanguage } from "../_components/useWorkspaceLanguage";
 import styles from "../workspace.module.css";
 
 type StageKey =
@@ -102,7 +102,7 @@ function friendlyError(error: ErrorResponse, dictionary: WorkspaceDictionary) {
 }
 
 export default function WorkspaceCopilotInstructionsPage() {
-  const [language, setLanguage] = useState<WorkspaceLanguage>("en");
+  const { language, toggleLanguage, isLanguageReady } = useWorkspaceLanguage();
   const dictionary = workspaceDictionaries[language];
   const direction = getWorkspaceDirection(language);
   const copy = dictionary.copilotInstructions;
@@ -126,8 +126,8 @@ export default function WorkspaceCopilotInstructionsPage() {
     [selectedStage, stages],
   );
 
-  function toggleLanguage() {
-    setLanguage((currentLanguage) => (currentLanguage === "en" ? "ar" : "en"));
+  if (!isLanguageReady) {
+    return <div className={styles.workspaceLanguageBoot} aria-hidden="true" />;
   }
 
   async function readJson<T>(response: Response): Promise<T> {

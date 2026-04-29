@@ -1,7 +1,12 @@
+"use client";
+
 import Link from "next/link";
+import { usePathname } from "next/navigation";
+import { useEffect, useState } from "react";
 
 const links = [
   { href: "/", label: "Dashboard" },
+  { href: "/workspace", label: "Workspace" },
   { href: "/cases", label: "Cases" },
   { href: "/intake-sessions", label: "Intake sessions" },
   { href: "/intake-sources", label: "Intake sources" },
@@ -28,19 +33,89 @@ const links = [
   { href: "/admin", label: "Admin config" },
 ];
 
-export function Nav() {
+export function Nav({
+  initialDirection = "ltr",
+}: {
+  initialDirection?: "ltr" | "rtl";
+}) {
+  const pathname = usePathname();
+  const [isOpen, setIsOpen] = useState(false);
+  const [direction, setDirection] = useState<"ltr" | "rtl">(initialDirection);
+
+  useEffect(() => {
+    setIsOpen(false);
+  }, [pathname]);
+
+  useEffect(() => {
+    const updateDirection = () => {
+      const workspaceRoot = document.querySelector<HTMLElement>("[class*='workspaceRoot']");
+      setDirection(workspaceRoot?.dir === "rtl" ? "rtl" : "ltr");
+    };
+
+    updateDirection();
+
+    const observer = new MutationObserver(updateDirection);
+    observer.observe(document.body, {
+      attributes: true,
+      attributeFilter: ["dir", "class"],
+      childList: true,
+      subtree: true,
+    });
+
+    return () => observer.disconnect();
+  }, [pathname]);
+
+  const isRtl = direction === "rtl";
+
   return (
-    <aside className="sidebar">
-      <h1>Workflow</h1>
-      <nav>
-        <ul>
-          {links.map((l) => (
-            <li key={l.href}>
-              <Link href={l.href}>{l.label}</Link>
-            </li>
-          ))}
-        </ul>
-      </nav>
-    </aside>
+    <>
+      <button
+        type="button"
+        className={`mainNavToggle ${isRtl ? "mainNavToggleRtl" : ""}`}
+        aria-expanded={isOpen}
+        aria-controls="main-navigation"
+        onClick={() => setIsOpen((current) => !current)}
+      >
+        <span aria-hidden="true">☰</span>
+        <strong>Menu</strong>
+      </button>
+
+      {isOpen ? (
+        <button
+          type="button"
+          className="mainNavBackdrop"
+          aria-label="Close main navigation"
+          onClick={() => setIsOpen(false)}
+        />
+      ) : null}
+
+      <aside
+        id="main-navigation"
+        className={`sidebar ${isRtl ? "sidebarRtl" : ""} ${isOpen ? "sidebarOpen" : ""}`}
+        aria-hidden={!isOpen}
+        dir={direction}
+      >
+        <div className="sidebarHeader">
+          <h1>Workflow</h1>
+          <button
+            type="button"
+            className="sidebarClose"
+            aria-label="Close main navigation"
+            onClick={() => setIsOpen(false)}
+          >
+            ×
+          </button>
+        </div>
+        <nav>
+          <ul>
+            {links.map((l) => (
+              <li key={l.href}>
+                <Link href={l.href}>{l.label}</Link>
+              </li>
+            ))}
+          </ul>
+        </nav>
+      </aside>
+    </>
   );
 }

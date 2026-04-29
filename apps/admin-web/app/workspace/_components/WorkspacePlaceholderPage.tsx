@@ -1,14 +1,10 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
-import {
-  getWorkspaceDirection,
-  workspaceDictionaries,
-  type WorkspaceLanguage,
-} from "../_i18n";
+import { getWorkspaceDirection, workspaceDictionaries, type WorkspaceLanguage } from "../_i18n";
 import { WorkspaceShell } from "./WorkspaceShell";
 import { WorkspaceScreenVisuals } from "./WorkspaceVisualSystem";
+import { useWorkspaceLanguage } from "./useWorkspaceLanguage";
 import styles from "../workspace.module.css";
 
 export type WorkspacePlaceholderKey =
@@ -31,17 +27,19 @@ export interface WorkspacePlaceholderLink {
 export function WorkspacePlaceholderPage({
   pageKey,
   links = [],
+  initialLanguage = null,
 }: {
   pageKey: WorkspacePlaceholderKey;
   links?: WorkspacePlaceholderLink[];
+  initialLanguage?: WorkspaceLanguage | null;
 }) {
-  const [language, setLanguage] = useState<WorkspaceLanguage>("en");
+  const { language, toggleLanguage, isLanguageReady } = useWorkspaceLanguage(initialLanguage);
   const dictionary = workspaceDictionaries[language];
   const direction = getWorkspaceDirection(language);
   const page = dictionary.pages[pageKey];
 
-  function toggleLanguage() {
-    setLanguage((current) => (current === "en" ? "ar" : "en"));
+  if (!isLanguageReady) {
+    return <div className={styles.workspaceLanguageBoot} aria-hidden="true" />;
   }
 
   return (

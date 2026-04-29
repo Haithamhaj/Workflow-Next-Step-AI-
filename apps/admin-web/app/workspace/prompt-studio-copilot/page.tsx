@@ -5,9 +5,9 @@ import {
   getWorkspaceDirection,
   workspaceDictionaries,
   type WorkspaceDictionary,
-  type WorkspaceLanguage,
 } from "../_i18n";
 import { WorkspaceShell } from "../_components/WorkspaceShell";
+import { useWorkspaceLanguage } from "../_components/useWorkspaceLanguage";
 import styles from "../workspace.module.css";
 
 type ChatRole = "user" | "assistant";
@@ -61,7 +61,7 @@ function providerStatusClass(status: ProviderStatus) {
 }
 
 export default function PromptStudioCopilotPage() {
-  const [language, setLanguage] = useState<WorkspaceLanguage>("en");
+  const { language, toggleLanguage, isLanguageReady } = useWorkspaceLanguage();
   const dictionary = workspaceDictionaries[language];
   const direction = getWorkspaceDirection(language);
   const copy = dictionary.promptStudioCopilot;
@@ -78,8 +78,8 @@ export default function PromptStudioCopilotPage() {
     [lastResponse],
   );
 
-  function toggleLanguage() {
-    setLanguage((currentLanguage) => (currentLanguage === "en" ? "ar" : "en"));
+  if (!isLanguageReady) {
+    return <div className={styles.workspaceLanguageBoot} aria-hidden="true" />;
   }
 
   async function readJson<T>(response: Response): Promise<T> {

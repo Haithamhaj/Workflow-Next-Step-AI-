@@ -1,12 +1,10 @@
 import type { StoredReviewIssueRecord } from "@workflow/review-issues";
+import { listReviewIssues } from "@workflow/review-issues";
 import Link from "next/link";
+import { store } from "../../lib/store";
 
-async function getIssues(): Promise<StoredReviewIssueRecord[]> {
-  const res = await fetch(`http://localhost:${process.env.PORT ?? 3000}/api/issues`, {
-    cache: "no-store",
-  });
-  if (!res.ok) return [];
-  return res.json() as Promise<StoredReviewIssueRecord[]>;
+function getIssues(): StoredReviewIssueRecord[] {
+  return listReviewIssues(store.reviewIssues);
 }
 
 function reviewColor(reviewState: string): string {
@@ -24,8 +22,8 @@ function reviewColor(reviewState: string): string {
   }
 }
 
-export default async function IssuesPage() {
-  const issues = await getIssues();
+export default function IssuesPage() {
+  const issues = getIssues();
 
   return (
     <>

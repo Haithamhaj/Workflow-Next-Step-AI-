@@ -1,12 +1,10 @@
 import type { Source } from "@workflow/persistence";
+import { getSource } from "@workflow/sources-context";
 import Link from "next/link";
+import { store } from "../../../lib/store";
 
-async function getSourceById(id: string): Promise<Source | null> {
-  const res = await fetch(`http://localhost:3000/api/sources/${id}`, {
-    cache: "no-store",
-  });
-  if (!res.ok) return null;
-  return res.json() as Promise<Source>;
+function getSourceById(id: string): Source | null {
+  return getSource(id, store.sources);
 }
 
 function AuthorityBadge({ authority }: { authority: string }) {
@@ -48,12 +46,12 @@ function Row({ label, value }: { label: string; value: React.ReactNode }) {
   );
 }
 
-export default async function SourceDetailPage({
+export default function SourceDetailPage({
   params,
 }: {
   params: { id: string };
 }) {
-  const source = await getSourceById(params.id);
+  const source = getSourceById(params.id);
 
   if (!source) {
     return (

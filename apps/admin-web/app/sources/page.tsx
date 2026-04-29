@@ -1,16 +1,14 @@
 import type { Source } from "@workflow/persistence";
+import { listSources } from "@workflow/sources-context";
 import Link from "next/link";
+import { store } from "../../lib/store";
 
-async function getSources(): Promise<Source[]> {
-  const res = await fetch("http://localhost:3000/api/sources", {
-    cache: "no-store",
-  });
-  if (!res.ok) return [];
-  return res.json() as Promise<Source[]>;
+function getSources(): Source[] {
+  return listSources(store.sources);
 }
 
-export default async function SourcesPage() {
-  const sources = await getSources();
+export default function SourcesPage() {
+  const sources = getSources();
 
   return (
     <>
