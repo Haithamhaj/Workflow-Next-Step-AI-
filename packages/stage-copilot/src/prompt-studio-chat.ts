@@ -35,6 +35,17 @@ export interface PromptStudioCopilotChatContextSummary {
   instructionVersion: number;
 }
 
+export interface PromptStudioCopilotTokenUsage {
+  inputTokens?: number;
+  outputTokens?: number;
+  totalTokens?: number;
+  raw?: {
+    inputTokens?: number;
+    outputTokens?: number;
+    totalTokens?: number;
+  };
+}
+
 export interface PromptStudioCopilotChatResponse {
   ok: true;
   stageKey: "prompt_studio";
@@ -42,12 +53,19 @@ export interface PromptStudioCopilotChatResponse {
   model: string;
   providerStatus: PromptStudioCopilotProviderStatus;
   contextSummary: PromptStudioCopilotChatContextSummary;
+  tokenUsage: PromptStudioCopilotTokenUsage | null;
+  tokenUsageUnavailable: boolean;
 }
 
 export interface PromptStudioCopilotProviderOutput {
   text: string;
   provider: string;
   model: string;
+  usage?: {
+    inputTokens?: number;
+    outputTokens?: number;
+    totalTokens?: number;
+  };
 }
 
 function compactWhitespace(value: string): string {
@@ -66,6 +84,20 @@ function unsafeIntent(message: string): boolean {
 
 function claimsCompletedAction(answer: string): boolean {
   return /\b(I|we)\s+(changed|saved|promoted|compiled|tested|executed|mutated|updated|approved|rejected|generated)\b/i.test(answer);
+}
+
+function tokenUsageFromProviderOutput(
+  providerOutput: PromptStudioCopilotProviderOutput,
+): PromptStudioCopilotTokenUsage | null {
+  const usage = providerOutput.usage;
+  if (!usage) return null;
+  const tokenUsage: PromptStudioCopilotTokenUsage = {};
+  if (typeof usage.inputTokens === "number") tokenUsage.inputTokens = usage.inputTokens;
+  if (typeof usage.outputTokens === "number") tokenUsage.outputTokens = usage.outputTokens;
+  if (typeof usage.totalTokens === "number") tokenUsage.totalTokens = usage.totalTokens;
+  if (Object.keys(tokenUsage).length === 0) return null;
+  tokenUsage.raw = { ...tokenUsage };
+  return tokenUsage;
 }
 
 function contextSummaryFrom(
@@ -177,6 +209,7 @@ export function createPromptStudioCopilotProviderResponse(
   if (claimsCompletedAction(answer)) {
     throw new Error("Prompt Studio Copilot provider response claimed action execution.");
   }
+  const tokenUsage = tokenUsageFromProviderOutput(providerOutput);
 
   return {
     ok: true,
@@ -185,6 +218,8 @@ export function createPromptStudioCopilotProviderResponse(
     model: providerOutput.model,
     providerStatus: "provider_success",
     contextSummary: contextSummaryFrom(summary, input),
+    tokenUsage,
+    tokenUsageUnavailable: tokenUsage === null,
   };
 }
 
@@ -204,6 +239,8 @@ export function createPromptStudioCopilotFallbackResponse(
     model: "deterministic-prompt-studio-copilot-v0",
     providerStatus,
     contextSummary: contextSummaryFrom(summary, input),
+    tokenUsage: null,
+    tokenUsageUnavailable: true,
   };
 }
 

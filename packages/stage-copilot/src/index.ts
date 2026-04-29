@@ -89,4 +89,5 @@ export {
   type PromptStudioCopilotChatRole,
   type PromptStudioCopilotProviderOutput,
   type PromptStudioCopilotProviderStatus,
+  type PromptStudioCopilotTokenUsage,
 } from "./prompt-studio-chat.js";

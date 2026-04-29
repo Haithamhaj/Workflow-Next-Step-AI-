@@ -121,10 +121,26 @@ const providerResponse = createPromptStudioCopilotProviderResponse({
   text: "Capability / Analysis PromptSpecs control official analysis. Stage Copilot Instructions only shape conversation behavior, and I did not change any records.",
   provider: "openai",
   model: "gpt-proof",
+  usage: {
+    inputTokens: 100,
+    outputTokens: 50,
+    totalTokens: 150,
+  },
 });
 assert.equal(providerResponse.providerStatus, "provider_success", "provider-backed success path returns provider_success");
 assert.equal(providerResponse.model, "gpt-proof", "provider-backed response preserves model name");
 assert.equal(typeof providerResponse.answer, "string", "provider-backed response returns text");
+assert.deepEqual(providerResponse.tokenUsage, {
+  inputTokens: 100,
+  outputTokens: 50,
+  totalTokens: 150,
+  raw: {
+    inputTokens: 100,
+    outputTokens: 50,
+    totalTokens: 150,
+  },
+}, "provider-backed response passes through provider token usage");
+assert.equal(providerResponse.tokenUsageUnavailable, false, "provider-backed response marks token usage available when provider returns usage");
 assertNoActionExecutionFields(providerResponse);
 assert.throws(
   () => createPromptStudioCopilotProviderResponse({
@@ -148,6 +164,8 @@ const notConfiguredFallback = createPromptStudioCopilotFallbackResponse({
   instructionVersion: 1,
 }, "provider_not_configured");
 assert.equal(notConfiguredFallback.providerStatus, "provider_not_configured", "provider unavailable path returns provider_not_configured fallback");
+assert.equal(notConfiguredFallback.tokenUsage, null, "provider unavailable fallback reports null token usage");
+assert.equal(notConfiguredFallback.tokenUsageUnavailable, true, "provider unavailable fallback marks token usage unavailable");
 assert.match(notConfiguredFallback.answer, /deterministic fallback response/i, "provider unavailable fallback is explicit");
 assertNoActionExecutionFields(notConfiguredFallback);
 
