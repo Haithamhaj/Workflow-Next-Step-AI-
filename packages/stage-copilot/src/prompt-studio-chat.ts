@@ -2,6 +2,10 @@ import {
   createPromptStudioCopilotContextEnvelope,
   summarizePromptStudioCopilotContext,
 } from "./prompt-studio-context.js";
+import {
+  answerWdeStageKnowledgeQuestionDeterministically,
+  summarizeWdeStageSystemKnowledgeForPromptStudio,
+} from "./wde-stage-system-knowledge.js";
 import type { StageCopilotContextEnvelopeSummary } from "./context-envelope.js";
 
 export type PromptStudioCopilotChatRole = "user" | "assistant";
@@ -134,6 +138,7 @@ function fallbackAnswer(
 ): string {
   const historyCount = input.history?.length ?? 0;
   const instructionBasis = firstSentence(instructions);
+  const stageKnowledgeAnswer = answerWdeStageKnowledgeQuestionDeterministically(message);
   const safetyResponse = unsafeIntent(message)
     ? "If you are asking me to change, save, promote, compile, test, approve, reject, execute, or generate something, I cannot do that from chat. I can only explain the boundary and help you think through the risk."
     : "I can discuss the Prompt Studio boundary and help reason about the prompt systems without changing anything.";
@@ -143,6 +148,9 @@ function fallbackAnswer(
     "Prompt Studio Copilot is a no-tool, no-action conversational assistant. It cannot mutate records, save prompts, promote PromptSpecs, compile prompts, run prompt tests, call providers, run official analysis, change readiness, change package eligibility, or generate packages.",
     `Current Prompt Studio Copilot Instructions are used as conversation guidance (${input.instructionSource}, version ${input.instructionVersion}): ${instructionBasis}`,
     "The static Prompt Studio context says there are two separate prompt systems: Capability / Analysis PromptSpecs control official analysis behavior, while Stage Copilot Instructions control only how a stage Copilot speaks and reasons.",
+    stageKnowledgeAnswer
+      ? `Static WDE stage-system knowledge answer: ${stageKnowledgeAnswer}`
+      : "Static WDE stage-system knowledge is available for Pass 2 Sources / Context, Pass 3 Hierarchy, Pass 4 Targeting, Pass 5 Participant Evidence, and Pass 6A/6B/6C Analysis / Package boundaries.",
     safetyResponse,
     `Your question: "${message}"`,
     historyCount > 0
@@ -157,6 +165,7 @@ export function buildPromptStudioCopilotProviderPrompt(input: PromptStudioCopilo
   const { message, instructions } = validateChatInput(input);
   const envelope = createPromptStudioCopilotContextEnvelope();
   const summary = summarizePromptStudioCopilotContext(envelope);
+  const stageKnowledgeSummary = summarizeWdeStageSystemKnowledgeForPromptStudio();
   const history = (input.history ?? [])
     .map((item) => `${item.role.toUpperCase()}: ${compactWhitespace(item.content)}`)
     .join("\n");
@@ -185,6 +194,9 @@ export function buildPromptStudioCopilotProviderPrompt(input: PromptStudioCopilo
     `systemKnowledgeRefCount=${summary.systemKnowledgeRefCount}`,
     `warningCount=${summary.warningCount}`,
     "Context rule: Capability / Analysis PromptSpecs are separate from Stage Copilot Instructions. Copilot Instructions change conversation behavior only.",
+    "",
+    "## WDE Stage System Knowledge (Read-Only Static Pack)",
+    stageKnowledgeSummary,
     "",
     history ? "## Conversation History" : "",
     history,

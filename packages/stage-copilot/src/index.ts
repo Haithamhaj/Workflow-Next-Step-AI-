@@ -78,6 +78,20 @@ export {
 } from "./prompt-studio-context.js";
 
 export {
+  WDE_ANALYSIS_CORRECTNESS_RULES,
+  WDE_GOOD_BAD_ANALYSIS_EXAMPLES,
+  WDE_STAGE_SYSTEM_KNOWLEDGE_PACK,
+  answerWdeStageKnowledgeQuestionDeterministically,
+  getWdeStageSystemKnowledgeEntry,
+  listWdeStageSystemKnowledgeEntries,
+  summarizeWdeStageSystemKnowledgeForPromptStudio,
+  type WdeAnalysisCorrectnessRule,
+  type WdeAnalysisExample,
+  type WdeStageSystemKnowledgeEntry,
+  type WdeStageSystemKnowledgeKey,
+} from "./wde-stage-system-knowledge.js";
+
+export {
   buildPromptStudioCopilotProviderPrompt,
   createPromptStudioCopilotChatResponse,
   createPromptStudioCopilotFallbackResponse,

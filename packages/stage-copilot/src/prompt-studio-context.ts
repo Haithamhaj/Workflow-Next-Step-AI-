@@ -18,6 +18,12 @@ import {
   type StageCopilotContextScopeRef,
   type StageCopilotPromptTestReferenceSummary,
 } from "./context-envelope.js";
+import {
+  WDE_ANALYSIS_CORRECTNESS_RULES,
+  WDE_GOOD_BAD_ANALYSIS_EXAMPLES,
+  listWdeStageSystemKnowledgeEntries,
+  summarizeWdeStageSystemKnowledgeForPromptStudio,
+} from "./wde-stage-system-knowledge.js";
 
 export const PROMPT_STUDIO_STATIC_CONTEXT_STAGE_KEY = "prompt_studio" as const;
 
@@ -95,6 +101,27 @@ const systemKnowledgeRefs: readonly StageCopilotSystemKnowledgeRef[] = Object.fr
     sourceRef: "handoff/STAGE_COPILOT_INSTRUCTIONS_ACCEPTED_FOUNDATION_ARCHIVE.md",
     notes: "Admins may edit Stage Copilot Instructions separately from Capability / Analysis PromptSpecs.",
   }),
+  ...listWdeStageSystemKnowledgeEntries().map((entry) => Object.freeze({
+    refId: `wde_stage_system_knowledge:${entry.key}`,
+    refType: "stage_rule" as const,
+    label: entry.label,
+    sourceRef: entry.sourceRefs.join("; "),
+    notes: `${entry.purpose} Must not: ${entry.mustNotDo.join("; ")}`,
+  })),
+  ...WDE_ANALYSIS_CORRECTNESS_RULES.map((rule) => Object.freeze({
+    refId: `wde_analysis_correctness_rule:${rule.ruleId}`,
+    refType: "stage_rule" as const,
+    label: rule.label,
+    sourceRef: "packages/stage-copilot/src/wde-stage-system-knowledge.ts",
+    notes: rule.guidance,
+  })),
+  ...WDE_GOOD_BAD_ANALYSIS_EXAMPLES.map((example) => Object.freeze({
+    refId: `wde_analysis_example:${example.exampleId}`,
+    refType: "proof_or_validation_logic" as const,
+    label: example.label,
+    sourceRef: "packages/stage-copilot/src/wde-stage-system-knowledge.ts",
+    notes: `${example.example} ${example.why}`,
+  })),
 ]);
 
 const caseContextRefs: readonly StageCopilotCaseContextRef[] = Object.freeze([
@@ -182,6 +209,17 @@ const advisorySafeNotes: readonly StageCopilotAdvisorySafeNote[] = Object.freeze
     doesNotChangePackageEligibility: true,
     doesNotGeneratePackageOutput: true,
   }),
+  Object.freeze({
+    noteId: "wde_stage_system_knowledge_is_static_context",
+    label: "WDE Stage System Knowledge Pack is static read-only context.",
+    body: summarizeWdeStageSystemKnowledgeForPromptStudio(),
+    advisoryOnly: true,
+    doesNotMutateOfficialRecords: true,
+    doesNotRerunOfficialAnalysis: true,
+    doesNotChangeReadiness: true,
+    doesNotChangePackageEligibility: true,
+    doesNotGeneratePackageOutput: true,
+  }),
 ]);
 
 const auditSourceRefs: readonly StageCopilotContextAuditSourceRef[] = Object.freeze([
@@ -196,6 +234,12 @@ const auditSourceRefs: readonly StageCopilotContextAuditSourceRef[] = Object.fre
     sourceType: "operator_supplied_summary",
     sourceRef: "handoff/STAGE_COPILOT_READONLY_CONTEXT_ASSEMBLY_PLAN.md",
     notes: "Planning source for Prompt Studio as first read-only context pilot.",
+  }),
+  Object.freeze({
+    refId: "audit_ref:wde_stage_system_knowledge_pack",
+    sourceType: "proof_fixture",
+    sourceRef: "packages/stage-copilot/src/wde-stage-system-knowledge.ts",
+    notes: "Static WDE Pass 2-6 knowledge pack. Does not import or resolve live PromptSpecs.",
   }),
 ]);
 

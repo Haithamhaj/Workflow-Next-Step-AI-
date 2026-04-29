@@ -3,10 +3,15 @@ import { readFileSync } from "node:fs";
 
 import { providerRegistry } from "../packages/integrations/dist/index.js";
 import {
+  WDE_ANALYSIS_CORRECTNESS_RULES,
+  WDE_GOOD_BAD_ANALYSIS_EXAMPLES,
   buildPromptStudioCopilotProviderPrompt,
+  createPromptStudioCopilotContextEnvelope,
   createPromptStudioCopilotFallbackResponse,
   createPromptStudioCopilotProviderResponse,
   getDefaultStageCopilotSystemPrompt,
+  listWdeStageSystemKnowledgeEntries,
+  summarizeWdeStageSystemKnowledgeForPromptStudio,
 } from "../packages/stage-copilot/dist/index.js";
 
 const routeSource = readFileSync("apps/admin-web/app/api/stage-copilot/prompt-studio/chat/route.ts", "utf8");
@@ -184,6 +189,34 @@ function usageSummary(tokenUsage) {
 const defaultPrompt = getDefaultStageCopilotSystemPrompt("prompt_studio");
 assert.ok(defaultPrompt, "Prompt Studio default instructions exist");
 
+const knowledgeEntries = listWdeStageSystemKnowledgeEntries();
+const knowledgeKeys = new Set(knowledgeEntries.map((entry) => entry.key));
+for (const key of [
+  "pass2_sources_context",
+  "pass3_hierarchy",
+  "pass4_targeting",
+  "pass5_participant_evidence",
+  "pass6a_synthesis_input",
+  "pass6b_synthesis_evaluation_readiness",
+  "pass6c_initial_package",
+]) {
+  assert.ok(knowledgeKeys.has(key), `WDE Stage System Knowledge pack contains ${key}`);
+}
+assert.ok(WDE_ANALYSIS_CORRECTNESS_RULES.length >= 8, "WDE analysis correctness rules exist");
+assert.ok(WDE_GOOD_BAD_ANALYSIS_EXAMPLES.length >= 3, "WDE good/bad analysis examples exist");
+assert.match(
+  summarizeWdeStageSystemKnowledgeForPromptStudio(),
+  /Pass 2[\s\S]*Pass 3[\s\S]*Pass 4[\s\S]*Pass 5[\s\S]*Pass 6A[\s\S]*Pass 6B[\s\S]*Pass 6C/,
+  "WDE stage system knowledge summary covers Pass 2 through Pass 6C",
+);
+
+const promptStudioEnvelope = createPromptStudioCopilotContextEnvelope();
+const promptStudioKnowledgeRefIds = promptStudioEnvelope.systemKnowledgeRefs.map((ref) => ref.refId);
+assert.ok(
+  promptStudioKnowledgeRefIds.some((refId) => refId === "wde_stage_system_knowledge:pass2_sources_context"),
+  "Prompt Studio context includes WDE stage-knowledge refs",
+);
+
 const provider = providerRegistry.getPromptTextProvider("openai");
 const rows = [];
 const contextGaps = new Map();
@@ -197,11 +230,17 @@ for (const test of tests) {
     instructionVersion: 1,
   };
 
+  const assembledPrompt = buildPromptStudioCopilotProviderPrompt(chatInput);
+  assert.match(
+    assembledPrompt,
+    /WDE Stage System Knowledge \(Read-Only Static Pack\)[\s\S]*Pass 2[\s\S]*Pass 6C/,
+    `Q${test.number} provider prompt includes WDE stage knowledge context`,
+  );
+
   let response;
   if (provider) {
     try {
-      const compiledPrompt = buildPromptStudioCopilotProviderPrompt(chatInput);
-      const providerResult = await provider.runPromptText({ compiledPrompt });
+      const providerResult = await provider.runPromptText({ compiledPrompt: assembledPrompt });
       response = createPromptStudioCopilotProviderResponse(chatInput, providerResult);
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
@@ -269,6 +308,36 @@ const counts = rows.reduce((acc, row) => {
   acc[row.result] = (acc[row.result] ?? 0) + 1;
   return acc;
 }, {});
+
+function resultFor(questionNumber) {
+  const row = rows.find((item) => item.question === questionNumber);
+  assert.ok(row, `Q${questionNumber} result exists`);
+  return row.result;
+}
+
+function assertPassOrPartial(questionNumber, label) {
+  assert.ok(
+    ["pass", "partial"].includes(resultFor(questionNumber)),
+    `${label} must be pass or partial after WDE Stage System Knowledge pack integration`,
+  );
+}
+
+function assertPass(questionNumber, label) {
+  assert.equal(
+    resultFor(questionNumber),
+    "pass",
+    `${label} must pass after WDE Stage System Knowledge pack integration`,
+  );
+}
+
+assertPassOrPartial(1, "Pass 2 knowledge answer");
+assertPassOrPartial(2, "Pass 3 knowledge answer");
+assertPassOrPartial(3, "Pass 4 knowledge answer");
+assertPassOrPartial(4, "Pass 5 knowledge answer");
+assertPassOrPartial(5, "Pass 6A/6B/6C knowledge answer");
+assertPass(6, "Bad readiness/package assumption answer");
+assertPassOrPartial(7, "Good/bad analysis answer");
+assertPass(8, "Advisory limits answer");
 
 function importAndExportLines(source) {
   return source
