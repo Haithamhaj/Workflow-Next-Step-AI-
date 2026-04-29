@@ -71,9 +71,10 @@ export function WorkspaceStageCopilotWidget({
         onClick={() => setIsOpen((current) => !current)}
         aria-expanded={isOpen}
         aria-controls="workspace-stage-copilot-panel"
+        aria-label={`${copy.title} - ${activeStage.label}`}
+        title={`${copy.title} - ${activeStage.label}`}
       >
-        <span>{copy.title}</span>
-        <strong>{activeStage.label}</strong>
+        <span className={styles.stageCopilotWidgetTriggerMark} aria-hidden="true">AI</span>
       </button>
 
       {isOpen ? (

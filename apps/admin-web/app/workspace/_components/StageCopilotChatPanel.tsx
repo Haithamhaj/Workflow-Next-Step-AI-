@@ -139,12 +139,7 @@ export function StageCopilotChatPanel({
 
   return (
     <section className={styles.stageCopilotPanel} aria-label={stageLabel}>
-      <div className={styles.stageCopilotPanelHeader}>
-        <div>
-          <span>{stageLabel}</span>
-          <strong>{boundaryCopy}</strong>
-        </div>
-      </div>
+      <p className={styles.stageCopilotBoundaryNote}>{boundaryCopy}</p>
 
       {error ? (
         <div className={styles.stageCopilotError} role="alert">
@@ -207,9 +202,11 @@ export function StageCopilotChatPanel({
             dir="auto"
           />
         </label>
-        <button type="submit" disabled={isSending || !message.trim()}>
-          {isSending ? copy.sending : copy.send}
-        </button>
+        <div className={styles.stageCopilotFormFooter}>
+          <button type="submit" disabled={isSending || !message.trim()}>
+            {isSending ? copy.sending : copy.send}
+          </button>
+        </div>
       </form>
     </section>
   );

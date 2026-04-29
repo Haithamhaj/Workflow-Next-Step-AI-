@@ -715,33 +715,59 @@
 }
 
 .stageCopilotWidget {
-  position: absolute;
-  inset-block-end: 18px;
-  inset-inline-end: 18px;
-  z-index: 20;
-  width: min(430px, calc(100% - 36px));
+  position: fixed;
+  inset-block-end: calc(22px + env(safe-area-inset-bottom));
+  inset-inline-end: 22px;
+  z-index: 60;
+  width: 58px;
+  height: 58px;
   pointer-events: none;
 }
 
+.workspaceRoot[dir="rtl"] .stageCopilotWidget {
+  inset-inline-end: auto;
+  inset-inline-start: 22px;
+}
+
 .stageCopilotWidgetTrigger {
-  width: 100%;
-  min-height: 54px;
-  display: flex;
+  width: 58px;
+  height: 58px;
+  min-height: 58px;
+  display: inline-flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  padding: 10px 14px;
-  border: 1px solid #253248;
-  border-radius: 10px;
-  background: #111827;
+  justify-content: center;
+  padding: 0;
+  border: 1px solid #334155;
+  border-radius: 999px;
+  background: #172033;
   color: #ffffff;
   font: inherit;
-  box-shadow: 0 18px 40px rgba(15, 23, 42, 0.24);
+  box-shadow: 0 18px 42px rgba(15, 23, 42, 0.26);
   cursor: pointer;
   pointer-events: auto;
 }
 
-.stageCopilotWidgetTrigger span,
+.stageCopilotWidgetTrigger:hover,
+.stageCopilotWidgetTrigger:focus {
+  border-color: #60a5fa;
+  background: #1e3a8a;
+}
+
+.stageCopilotWidgetTriggerMark {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: #2563eb;
+  color: #ffffff;
+  font-size: 14px;
+  font-weight: 900;
+  letter-spacing: 0;
+  line-height: 1;
+}
+
 .stageCopilotWidgetTopbar span {
   display: block;
   color: #b7c4d8;
@@ -750,7 +776,6 @@
   text-transform: uppercase;
 }
 
-.stageCopilotWidgetTrigger strong,
 .stageCopilotWidgetTopbar strong {
   display: block;
   color: #ffffff;
@@ -759,7 +784,10 @@
 }
 
 .stageCopilotWidgetPanel {
-  margin-top: 10px;
+  position: fixed;
+  inset-block-end: calc(92px + env(safe-area-inset-bottom));
+  inset-inline-end: 22px;
+  width: min(420px, calc(100vw - 24px));
   max-height: min(680px, calc(100vh - 124px));
   overflow: auto;
   border: 1px solid #c9d5e5;
@@ -769,9 +797,14 @@
   pointer-events: auto;
 }
 
+.workspaceRoot[dir="rtl"] .stageCopilotWidgetPanel {
+  inset-inline-end: auto;
+  inset-inline-start: 22px;
+}
+
 .stageCopilotWidgetTopbar {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   justify-content: space-between;
   gap: 12px;
   padding: 12px 14px;
@@ -832,25 +865,14 @@
   padding: 14px;
 }
 
-.stageCopilotPanelHeader {
+.stageCopilotBoundaryNote {
   margin-bottom: 10px;
   padding: 10px 12px;
   border: 1px solid #c7d7ee;
   border-radius: 8px;
   background: #eff6ff;
-}
-
-.stageCopilotPanelHeader span {
-  display: block;
-  color: #1d4ed8;
-  font-size: 12px;
-  font-weight: 800;
-}
-
-.stageCopilotPanelHeader strong {
-  display: block;
-  margin-top: 3px;
   color: #1e3a8a;
+  font-weight: 800;
   font-size: 13px;
 }
 
@@ -925,7 +947,7 @@
 
 .stageCopilotForm {
   display: grid;
-  gap: 10px;
+  gap: 8px;
   margin-top: 12px;
 }
 
@@ -939,7 +961,7 @@
 
 .stageCopilotTextarea {
   width: 100%;
-  min-height: 92px;
+  min-height: 86px;
   box-sizing: border-box;
   resize: vertical;
   padding: 10px;
@@ -952,10 +974,19 @@
   line-height: 1.5;
 }
 
+.stageCopilotFormFooter {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.workspaceRoot[dir="rtl"] .stageCopilotFormFooter {
+  justify-content: flex-start;
+}
+
 .stageCopilotForm button {
   width: fit-content;
-  min-width: 110px;
-  padding: 9px 13px;
+  min-width: 96px;
+  padding: 8px 12px;
   border: 1px solid #2563eb;
   border-radius: 8px;
   background: #2563eb;
@@ -964,6 +995,32 @@
   font-size: 12px;
   font-weight: 800;
   cursor: pointer;
+}
+
+@media (max-width: 560px) {
+  .stageCopilotWidget {
+    inset-block-end: calc(14px + env(safe-area-inset-bottom));
+    inset-inline-end: 12px;
+  }
+
+  .workspaceRoot[dir="rtl"] .stageCopilotWidget {
+    inset-inline-start: 12px;
+  }
+
+  .stageCopilotWidgetPanel {
+    inset-block-end: calc(82px + env(safe-area-inset-bottom));
+    inset-inline-end: 12px;
+    width: calc(100vw - 24px);
+    max-height: calc(100vh - 104px);
+  }
+
+  .workspaceRoot[dir="rtl"] .stageCopilotWidgetPanel {
+    inset-inline-start: 12px;
+  }
+
+  .stageCopilotDetails {
+    grid-template-columns: 1fr;
+  }
 }
 
 .stageCopilotForm button:hover,

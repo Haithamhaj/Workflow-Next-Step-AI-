@@ -40,6 +40,10 @@ assert.match(widgetSource, /prompt_studio/, "widget supports prompt_studio");
 assert.match(widgetSource, /sources_context/, "widget supports sources_context");
 assert.match(widgetSource, /\/api\/stage-copilot\/prompt-studio\/chat/, "widget maps prompt_studio to Prompt Studio endpoint");
 assert.match(widgetSource, /\/api\/stage-copilot\/sources-context\/chat/, "widget maps sources_context to Sources / Context endpoint");
+assert.match(widgetSource, /stageCopilotWidgetTriggerMark/, "widget trigger uses a short circular mark");
+assert.match(widgetSource, /aria-label=\{\`\$\{copy\.title\} - \$\{activeStage\.label\}`\}/, "widget trigger accessible label includes active stage");
+assert.match(widgetSource, /title=\{\`\$\{copy\.title\} - \$\{activeStage\.label\}`\}/, "widget trigger title includes active stage");
+assert.match(widgetSource, /stageCopilotWidgetClose/, "open panel close control exists");
 assert.match(widgetSource, /<select/, "widget has manual stage override selector");
 assert.match(widgetSource, /usePathname/, "widget uses route/path for current-stage detection");
 assert.match(widgetSource, /\/workspace\/sources/, "widget detects Sources workspace route");
@@ -55,6 +59,9 @@ assert.match(panelSource, /contextSummary/, "shared panel displays context summa
 assert.match(panelSource, /fallbackNotice/, "shared panel displays fallback notice");
 assert.match(panelSource, /initialMessages/, "shared panel accepts optional initial messages");
 assert.match(panelSource, /onProviderStatusChange/, "shared panel accepts provider status callback");
+assert.match(panelSource, /stageCopilotBoundaryNote/, "shared panel keeps boundary copy without a duplicate stage header");
+assert.doesNotMatch(panelSource, /stageCopilotPanelHeader/, "open panel must not render a second stage header");
+assert.match(panelSource, /stageCopilotFormFooter/, "composer has intentional send button placement");
 
 assert.match(enSource, /Stage Copilot/, "English Stage Copilot label exists");
 assert.match(enSource, /Prompt Studio/, "English Prompt Studio label exists");
@@ -76,6 +83,15 @@ assert.match(arSource, /رد احتياطي/, "Arabic fallback response label ex
 
 assert.match(cssSource, /stageCopilotWidget/, "widget CSS exists");
 assert.match(cssSource, /stageCopilotPanel/, "chat panel CSS exists");
+assert.match(cssSource, /\.stageCopilotWidget\s*\{[^}]*position:\s*fixed/s, "widget uses fixed positioning");
+assert.match(cssSource, /\.stageCopilotWidget\s*\{[^}]*inset-inline-end:\s*22px/s, "LTR/default widget placement uses right-side logical alignment");
+assert.match(cssSource, /\.workspaceRoot\[dir="rtl"\]\s+\.stageCopilotWidget\s*\{[^}]*inset-inline-start:\s*22px/s, "RTL widget placement uses left-side alignment");
+assert.match(cssSource, /\.stageCopilotWidgetTrigger\s*\{[^}]*width:\s*58px[^}]*height:\s*58px[^}]*border-radius:\s*999px/s, "closed trigger is circular and compact");
+assert.match(cssSource, /\.stageCopilotWidgetTriggerMark\s*\{[^}]*width:\s*40px[^}]*height:\s*40px[^}]*border-radius:\s*50%/s, "closed trigger uses icon-only circular mark");
+assert.match(cssSource, /\.stageCopilotWidgetPanel\s*\{[^}]*position:\s*fixed[^}]*width:\s*min\(420px, calc\(100vw - 24px\)\)[^}]*max-height:\s*min\(680px, calc\(100vh - 124px\)\)[^}]*overflow:\s*auto/s, "panel is fixed, viewport-bounded, and internally scrollable");
+assert.match(cssSource, /\.workspaceRoot\[dir="rtl"\]\s+\.stageCopilotWidgetPanel\s*\{[^}]*inset-inline-start:\s*22px/s, "RTL panel aligns left");
+assert.match(cssSource, /@media \(max-width:\s*560px\)[\s\S]*\.stageCopilotWidgetPanel\s*\{[^}]*width:\s*calc\(100vw - 24px\)/, "mobile panel is viewport-bounded");
+assert.doesNotMatch(cssSource, /\.stageCopilotWidgetTrigger\s*\{[^}]*width:\s*100%/s, "closed trigger must not be a wide bar");
 
 const widgetAndPanelImports = [
   importAndExportLines(panelSource),
@@ -127,6 +143,12 @@ console.log(JSON.stringify({
     "shared_component_source_exists",
     "widget_source_exists",
     "widget_mounted_in_workspace_shell",
+    "closed_trigger_is_circular_icon_only",
+    "widget_uses_fixed_positioning",
+    "ltr_right_rtl_left_placement_validated",
+    "panel_is_fixed_viewport_bounded_and_scrollable",
+    "open_panel_has_single_header_pattern",
+    "close_control_exists",
     "prompt_studio_supported",
     "sources_context_supported",
     "stage_keys_map_to_correct_endpoints",
