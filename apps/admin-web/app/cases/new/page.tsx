@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 
 interface FormState {
+  companyId: string;
   caseId: string;
   domain: string;
   mainDepartment: string;
@@ -14,6 +15,7 @@ interface FormState {
 }
 
 const EMPTY: FormState = {
+  companyId: "company-default-local",
   caseId: "",
   domain: "",
   mainDepartment: "",
@@ -40,6 +42,7 @@ export default function NewCasePage() {
     setSubmitting(true);
 
     const payload = {
+      companyId: form.companyId,
       caseId: form.caseId,
       domain: form.domain,
       mainDepartment: form.mainDepartment,
@@ -127,6 +130,10 @@ export default function NewCasePage() {
 
       <div className="card" style={{ maxWidth: "600px" }}>
         <form onSubmit={handleSubmit}>
+          <div style={fieldStyle}>
+            <label style={labelStyle}>Company ID *</label>
+            <input style={inputStyle} value={form.companyId} onChange={update("companyId")} />
+          </div>
           <div style={fieldStyle}>
             <label style={labelStyle}>Case ID *</label>
             <input style={inputStyle} value={form.caseId} onChange={update("caseId")} />

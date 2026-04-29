@@ -5,8 +5,13 @@
   "description": "Minimum creation inputs for a case (spec §8.1) plus optional near-core inputs (§8.2). Single-department scope in v1 (§8.4).",
   "type": "object",
   "additionalProperties": false,
-  "required": ["caseId", "domain", "mainDepartment", "useCaseLabel", "companyProfileRef", "createdAt"],
+  "required": ["companyId", "caseId", "domain", "mainDepartment", "useCaseLabel", "companyProfileRef", "createdAt"],
   "properties": {
+    "companyId": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Top-level company identity that owns this case."
+    },
     "caseId": {
       "type": "string",
       "minLength": 1,

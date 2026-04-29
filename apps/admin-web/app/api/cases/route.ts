@@ -1,10 +1,13 @@
 import { NextResponse } from "next/server";
 import { validateCaseConfiguration } from "@workflow/contracts";
 import { createCase, listCases } from "@workflow/core-case";
+import { DEFAULT_LOCAL_COMPANY_ID } from "@workflow/persistence";
 import { store } from "../../../lib/store";
 
-export async function GET() {
-  const cases = listCases(store.cases);
+export async function GET(request: Request) {
+  const url = new URL(request.url);
+  const companyId = url.searchParams.get("companyId") ?? DEFAULT_LOCAL_COMPANY_ID;
+  const cases = listCases(store.cases, companyId);
   return NextResponse.json(cases);
 }
 
@@ -25,6 +28,12 @@ export async function POST(request: Request) {
   }
 
   try {
+    if (!store.companies.findById(result.value.companyId)) {
+      return NextResponse.json(
+        { error: `Company '${result.value.companyId}' not found.` },
+        { status: 404 },
+      );
+    }
     const c = createCase(result.value, store.cases);
     return NextResponse.json(c, { status: 201 });
   } catch (err) {

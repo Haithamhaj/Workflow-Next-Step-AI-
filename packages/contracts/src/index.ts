@@ -2,6 +2,7 @@ export { ajv, createAjv } from "./ajv.js";
 export { makeValidator, type ValidationResult } from "./validate.js";
 export * from "./types/index.js";
 export {
+  companySchema,
   caseConfigurationSchema,
   sourceRegistrationSchema,
   promptRegistrationSchema,
@@ -76,6 +77,7 @@ export {
 
 import { makeValidator } from "./validate.js";
 import {
+  companySchema,
   caseConfigurationSchema,
   sourceRegistrationSchema,
   promptRegistrationSchema,
@@ -147,6 +149,7 @@ import {
   pass6PromptTestExecutionResultSchema,
   stageCopilotProfileSchema,
 } from "./schemas/index.js";
+import type { Company } from "./types/company.js";
 import type { CaseConfiguration } from "./types/case-configuration.js";
 import type { SourceRegistration } from "./types/source-registration.js";
 import type { PromptRegistration } from "./types/prompt-registration.js";
@@ -216,6 +219,9 @@ import {
   ReviewState,
   ReleaseState,
 } from "./types/states.js";
+
+export const validateCompany =
+  makeValidator<Company>(companySchema);
 
 export const validateCaseConfiguration =
   makeValidator<CaseConfiguration>(caseConfigurationSchema);

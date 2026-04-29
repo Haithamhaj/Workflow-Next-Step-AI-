@@ -1,5 +1,6 @@
 import type {
   CaseConfiguration,
+  Company,
   CaseState,
   SourceRegistration,
   PromptRegistration,
@@ -94,12 +95,15 @@ import { dirname, join } from "node:path";
 import { DatabaseSync } from "node:sqlite";
 
 export const PERSISTENCE_PACKAGE = "@workflow/persistence" as const;
+export const DEFAULT_LOCAL_COMPANY_ID = "company-default-local" as const;
+export const DEFAULT_LOCAL_COMPANY_DISPLAY_NAME = "Default Local Company" as const;
 
 // ---------------------------------------------------------------------------
 // Entity types
 // ---------------------------------------------------------------------------
 
 export interface Case {
+  companyId: string;
   caseId: string;
   domain: string;
   mainDepartment: string;
@@ -110,6 +114,8 @@ export interface Case {
   createdAt: string;
   state: CaseState;
 }
+
+export type StoredCompany = Company;
 
 export interface Source extends SourceRegistration {
   registeredAt: string;
@@ -375,7 +381,16 @@ export interface StoredStageCopilotSystemPromptRecord {
 export interface CaseRepository {
   save(c: Case): void;
   findById(caseId: string): Case | null;
+  findByCompanyAndCase(companyId: string, caseId: string): Case | null;
+  findByCompanyId(companyId: string): Case[];
   findAll(): Case[];
+}
+
+export interface CompanyRepository {
+  save(company: StoredCompany): void;
+  findById(companyId: string): StoredCompany | null;
+  findActive(): StoredCompany[];
+  findAll(): StoredCompany[];
 }
 
 export interface SourceRepository {
@@ -854,19 +869,53 @@ export interface Pass6PromptTestExecutionResultRepository
 // In-memory implementations
 // ---------------------------------------------------------------------------
 
+class InMemoryCompanyRepository implements CompanyRepository {
+  private readonly store = new Map<string, StoredCompany>();
+
+  save(company: StoredCompany): void {
+    if (this.store.has(company.companyId)) {
+      throw new Error(`Company already exists: ${company.companyId}`);
+    }
+    this.store.set(company.companyId, cloneRecord(company));
+  }
+
+  findById(companyId: string): StoredCompany | null {
+    const record = this.store.get(companyId);
+    return record ? cloneRecord(record) : null;
+  }
+
+  findActive(): StoredCompany[] {
+    return this.findAll().filter((company) => company.status === "active");
+  }
+
+  findAll(): StoredCompany[] {
+    return Array.from(this.store.values()).map((company) => cloneRecord(company));
+  }
+}
+
 class InMemoryCaseRepository implements CaseRepository {
   private readonly store = new Map<string, Case>();
 
   save(c: Case): void {
-    this.store.set(c.caseId, { ...c });
+    this.store.set(c.caseId, cloneRecord(c));
   }
 
   findById(caseId: string): Case | null {
-    return this.store.get(caseId) ?? null;
+    const record = this.store.get(caseId);
+    return record ? cloneRecord(record) : null;
+  }
+
+  findByCompanyAndCase(companyId: string, caseId: string): Case | null {
+    const record = this.findById(caseId);
+    return record?.companyId === companyId ? record : null;
+  }
+
+  findByCompanyId(companyId: string): Case[] {
+    return this.findAll().filter((c) => c.companyId === companyId);
   }
 
   findAll(): Case[] {
-    return Array.from(this.store.values());
+    return Array.from(this.store.values()).map((c) => cloneRecord(c));
   }
 }
 
@@ -2181,6 +2230,17 @@ function openIntakeDatabase(dbPath?: string): DatabaseSync {
     PRAGMA journal_mode = WAL;
   `);
   db.exec(`
+    CREATE TABLE IF NOT EXISTS companies (
+      id TEXT PRIMARY KEY,
+      display_name TEXT NOT NULL,
+      status TEXT NOT NULL,
+      payload TEXT NOT NULL
+    );
+    CREATE TABLE IF NOT EXISTS cases (
+      id TEXT PRIMARY KEY,
+      company_id TEXT NOT NULL,
+      payload TEXT NOT NULL
+    );
     CREATE TABLE IF NOT EXISTS intake_sessions (
       id TEXT PRIMARY KEY,
       case_id TEXT NOT NULL,
@@ -2525,6 +2585,9 @@ function openIntakeDatabase(dbPath?: string): DatabaseSync {
     CREATE INDEX IF NOT EXISTS idx_stage_copilot_system_prompts_stage_version ON stage_copilot_system_prompts(stage_key, version);
     CREATE UNIQUE INDEX IF NOT EXISTS idx_stage_copilot_system_prompts_one_current ON stage_copilot_system_prompts(stage_key)
       WHERE status = 'current';
+    CREATE INDEX IF NOT EXISTS idx_companies_status ON companies(status);
+    CREATE INDEX IF NOT EXISTS idx_cases_company_id ON cases(company_id);
+    CREATE UNIQUE INDEX IF NOT EXISTS idx_cases_company_case_id ON cases(company_id, id);
   `);
   return db;
 }
@@ -2541,6 +2604,101 @@ function parseStoredList<T>(rows: unknown[]): T[] {
     const parsed = parseStored<T>(row);
     return parsed ? [parsed] : [];
   });
+}
+
+export function createDefaultLocalCompany(now = new Date().toISOString()): StoredCompany {
+  return {
+    companyId: DEFAULT_LOCAL_COMPANY_ID,
+    displayName: DEFAULT_LOCAL_COMPANY_DISPLAY_NAME,
+    status: "active",
+    createdAt: now,
+    updatedAt: now,
+    notes: "Default local company for pre-company local data.",
+  };
+}
+
+export function ensureDefaultLocalCompany(repo: CompanyRepository, now?: string): StoredCompany {
+  const existing = repo.findById(DEFAULT_LOCAL_COMPANY_ID);
+  if (existing) return existing;
+  const company = createDefaultLocalCompany(now);
+  repo.save(company);
+  return company;
+}
+
+function caseWithDefaultCompany(record: Case): Case {
+  return {
+    ...record,
+    companyId: record.companyId || DEFAULT_LOCAL_COMPANY_ID,
+  };
+}
+
+export class SQLiteCompanyRepository implements CompanyRepository {
+  private readonly db: DatabaseSync;
+
+  constructor(dbPath?: string) {
+    this.db = openIntakeDatabase(dbPath);
+  }
+
+  save(company: StoredCompany): void {
+    if (this.findById(company.companyId)) {
+      throw new Error(`Company already exists: ${company.companyId}`);
+    }
+    this.db.prepare(
+      "INSERT INTO companies (id, display_name, status, payload) VALUES (?, ?, ?, ?)",
+    ).run(company.companyId, company.displayName, company.status, JSON.stringify(company));
+  }
+
+  findById(companyId: string): StoredCompany | null {
+    const row = this.db.prepare("SELECT payload FROM companies WHERE id = ?").get(companyId);
+    return parseStored<StoredCompany>(row);
+  }
+
+  findActive(): StoredCompany[] {
+    const rows = this.db.prepare("SELECT payload FROM companies WHERE status = 'active' ORDER BY display_name, id").all();
+    return parseStoredList<StoredCompany>(rows);
+  }
+
+  findAll(): StoredCompany[] {
+    const rows = this.db.prepare("SELECT payload FROM companies ORDER BY display_name, id").all();
+    return parseStoredList<StoredCompany>(rows);
+  }
+}
+
+export class SQLiteCaseRepository implements CaseRepository {
+  private readonly db: DatabaseSync;
+
+  constructor(dbPath?: string) {
+    this.db = openIntakeDatabase(dbPath);
+  }
+
+  save(c: Case): void {
+    const record = caseWithDefaultCompany(c);
+    this.db.prepare(
+      "INSERT INTO cases (id, company_id, payload) VALUES (?, ?, ?) ON CONFLICT(id) DO UPDATE SET company_id = excluded.company_id, payload = excluded.payload",
+    ).run(record.caseId, record.companyId, JSON.stringify(record));
+  }
+
+  findById(caseId: string): Case | null {
+    const row = this.db.prepare("SELECT payload FROM cases WHERE id = ?").get(caseId);
+    const record = parseStored<Case>(row);
+    return record ? caseWithDefaultCompany(record) : null;
+  }
+
+  findByCompanyAndCase(companyId: string, caseId: string): Case | null {
+    const row = this.db.prepare("SELECT payload FROM cases WHERE company_id = ? AND id = ?").get(companyId, caseId);
+    const record = parseStored<Case>(row);
+    return record ? caseWithDefaultCompany(record) : null;
+  }
+
+  findByCompanyId(companyId: string): Case[] {
+    const rows = this.db.prepare("SELECT payload FROM cases WHERE company_id = ? ORDER BY id").all(companyId);
+    return parseStoredList<Case>(rows).map((record) => caseWithDefaultCompany(record));
+  }
+
+  findAll(): Case[] {
+    const rows = this.db.prepare("SELECT payload FROM cases ORDER BY company_id, id").all();
+    return parseStoredList<Case>(rows).map((record) => caseWithDefaultCompany(record));
+  }
 }
 
 export class SQLiteStageCopilotSystemPromptRepository implements StageCopilotSystemPromptRepository {
@@ -3924,6 +4082,18 @@ export interface SQLiteStageCopilotRepositories {
   stageCopilotSystemPrompts: StageCopilotSystemPromptRepository;
 }
 
+export interface SQLiteCoreRepositories {
+  companies: CompanyRepository;
+  cases: CaseRepository;
+}
+
+export function createSQLiteCoreRepositories(dbPath?: string): SQLiteCoreRepositories {
+  return {
+    companies: new SQLiteCompanyRepository(dbPath),
+    cases: new SQLiteCaseRepository(dbPath),
+  };
+}
+
 export function createSQLiteStageCopilotRepositories(dbPath?: string): SQLiteStageCopilotRepositories {
   return {
     stageCopilotSystemPrompts: new SQLiteStageCopilotSystemPromptRepository(dbPath),
@@ -4094,6 +4264,7 @@ export interface Pass6PersistenceRepositories {
 }
 
 export interface InMemoryStore extends Pass6PersistenceRepositories {
+  companies: CompanyRepository;
   cases: CaseRepository;
   sources: SourceRepository;
   prompts: PromptRepository;
@@ -4177,6 +4348,7 @@ function createInMemoryPass6Repositories(): Pass6PersistenceRepositories {
 export function createInMemoryStore(): InMemoryStore {
   return {
     ...createInMemoryPass6Repositories(),
+    companies: new InMemoryCompanyRepository(),
     cases: new InMemoryCaseRepository(),
     sources: new InMemorySourceRepository(),
     prompts: new InMemoryPromptRepository(),
@@ -4235,6 +4407,7 @@ export type {
   AIIntakeSuggestion,
   AdminIntakeDecision,
   CaseConfiguration,
+  Company,
   ConditionInterpretations,
   EmbeddingJobRecord,
   FinalPackageRecord,

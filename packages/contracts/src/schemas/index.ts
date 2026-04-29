@@ -1,3 +1,4 @@
+import companySchema from "./company.schema.json" with { type: "json" };
 import caseConfigurationSchema from "./case-configuration.schema.json" with { type: "json" };
 import sourceRegistrationSchema from "./source-registration.schema.json" with { type: "json" };
 import promptRegistrationSchema from "./prompt-registration.schema.json" with { type: "json" };
@@ -100,6 +101,7 @@ const pass6PromptTestCaseSchema = pass6PromptWorkspaceContractSchema("Pass6Promp
 const pass6PromptTestExecutionResultSchema = pass6PromptWorkspaceContractSchema("Pass6PromptTestExecutionResult", "pass6PromptTestExecutionResult");
 
 export {
+  companySchema,
   caseConfigurationSchema,
   sourceRegistrationSchema,
   promptRegistrationSchema,

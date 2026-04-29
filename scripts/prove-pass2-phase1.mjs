@@ -51,6 +51,7 @@ function record(name, ok, detail) {
 // ---------------------------------------------------------------------------
 
 const caseConfig = {
+  companyId: "company-default-local",
   caseId: "case-001",
   domain: "construction",
   mainDepartment: "operations",

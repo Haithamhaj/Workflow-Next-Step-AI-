@@ -1,8 +1,12 @@
 import {
   createInMemoryStore,
+  createSQLiteCoreRepositories,
   createSQLiteIntakeRepositories,
   createSQLiteStageCopilotRepositories,
+  ensureDefaultLocalCompany,
+  DEFAULT_LOCAL_COMPANY_ID,
   type InMemoryStore,
+  type Case,
 } from "@workflow/persistence";
 
 // Survive Next.js hot-reloads in dev by persisting to globalThis.
@@ -10,9 +14,28 @@ declare const globalThis: typeof global & { __workflowStore__?: InMemoryStore };
 
 const intakeRepositories = createSQLiteIntakeRepositories();
 const stageCopilotRepositories = createSQLiteStageCopilotRepositories();
+const coreRepositories = createSQLiteCoreRepositories();
 
-export const store: InMemoryStore = globalThis.__workflowStore__ ?? (globalThis.__workflowStore__ = {
-  ...createInMemoryStore(),
+function migrateLegacyCasesToSQLite(existing: InMemoryStore | undefined): void {
+  if (!existing?.cases) return;
+  for (const legacyCase of existing.cases.findAll() as Array<Case & { companyId?: string }>) {
+    if (coreRepositories.cases.findById(legacyCase.caseId)) continue;
+    coreRepositories.cases.save({
+      ...legacyCase,
+      companyId: legacyCase.companyId || DEFAULT_LOCAL_COMPANY_ID,
+    });
+  }
+}
+
+ensureDefaultLocalCompany(coreRepositories.companies);
+migrateLegacyCasesToSQLite(globalThis.__workflowStore__);
+
+const baseStore = globalThis.__workflowStore__ ?? createInMemoryStore();
+
+export const store: InMemoryStore = (globalThis.__workflowStore__ = {
+  ...baseStore,
+  companies: coreRepositories.companies,
+  cases: coreRepositories.cases,
   stageCopilotSystemPrompts: stageCopilotRepositories.stageCopilotSystemPrompts,
   intakeSessions: intakeRepositories.intakeSessions,
   intakeSources: intakeRepositories.intakeSources,
