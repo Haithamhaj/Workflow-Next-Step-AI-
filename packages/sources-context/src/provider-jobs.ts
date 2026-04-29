@@ -55,7 +55,10 @@ function createJob(source: IntakeSource, kind: ProviderJobKind): StoredProviderE
     jobId: id("pjob"),
     sourceId: source.sourceId,
     sessionId: source.sessionId,
+    companyId: source.companyId,
     caseId: source.caseId,
+    sourceVersion: source.sourceVersion,
+    lineageStatus: source.lineageStatus,
     provider: kind === "audio_transcription" ? "google_speech_to_text" : "google",
     jobKind: kind,
     status: "queued",
@@ -83,6 +86,9 @@ function saveFailure(
 function saveArtifact(input: {
   sourceId: string;
   jobId: string;
+  companyId?: string;
+  caseId?: string;
+  sourceVersion?: number;
   kind: TextArtifactRecord["artifactKind"];
   text: string;
   providerConfidence?: number;
@@ -92,6 +98,10 @@ function saveArtifact(input: {
     artifactId: id("artifact"),
     sourceId: input.sourceId,
     jobId: input.jobId,
+    companyId: input.companyId,
+    caseId: input.caseId,
+    sourceVersion: input.sourceVersion,
+    lineageStatus: input.sourceVersion ? "active" : undefined,
     artifactKind: input.kind,
     text: input.text,
     providerConfidence: input.providerConfidence,
@@ -148,6 +158,9 @@ export async function runProviderExtractionJob(input: {
       const artifact = saveArtifact({
         sourceId: source.sourceId,
         jobId: running.jobId,
+        companyId: source.companyId,
+        caseId: source.caseId,
+        sourceVersion: source.sourceVersion,
         kind: "raw_transcript",
         text: transcript.text,
         providerConfidence: transcript.confidence,
@@ -182,6 +195,9 @@ export async function runProviderExtractionJob(input: {
     const artifact = saveArtifact({
       sourceId: source.sourceId,
       jobId: running.jobId,
+      companyId: source.companyId,
+      caseId: source.caseId,
+      sourceVersion: source.sourceVersion,
       kind: "extracted_text",
       text: result.text,
     }, input.repos.textArtifacts);
@@ -213,10 +229,15 @@ export async function runEmbeddingJob(input: {
   chunkRefs?: string[];
 }): Promise<StoredEmbeddingJobRecord> {
   const timestamp = now();
+  const source = input.sourceId ? input.repos.intakeSources.findById(input.sourceId) : null;
   const job: StoredEmbeddingJobRecord = {
     embeddingJobId: id("embedjob"),
     sourceId: input.sourceId,
     artifactId: input.artifactId,
+    companyId: source?.companyId,
+    caseId: source?.caseId,
+    sourceVersion: source?.sourceVersion,
+    lineageStatus: source ? "active" : undefined,
     provider: "google",
     status: "queued",
     embeddingModel: input.model,
@@ -239,6 +260,9 @@ export async function runEmbeddingJob(input: {
     const output = saveArtifact({
       sourceId: input.sourceId ?? "embedding_smoke",
       jobId: running.embeddingJobId,
+      companyId: source?.companyId,
+      caseId: source?.caseId,
+      sourceVersion: source?.sourceVersion,
       kind: "embedding_input",
       text: JSON.stringify({
         model: result.model,

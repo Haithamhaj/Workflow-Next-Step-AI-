@@ -7,7 +7,12 @@
   "additionalProperties": false,
   "required": [
     "approvalId",
+    "companyId",
     "crawlPlanId",
+    "caseId",
+    "sourceId",
+    "sourceVersion",
+    "lineageStatus",
     "candidatePageId",
     "decidedBy",
     "decidedAt",
@@ -15,7 +20,15 @@
   ],
   "properties": {
     "approvalId": { "type": "string", "minLength": 1 },
+    "companyId": { "type": "string", "minLength": 1 },
     "crawlPlanId": { "type": "string", "minLength": 1 },
+    "caseId": { "type": "string", "minLength": 1 },
+    "sourceId": { "type": "string", "minLength": 1 },
+    "sourceVersion": { "type": "integer", "minimum": 1 },
+    "lineageStatus": {
+      "type": "string",
+      "enum": ["active", "previous", "superseded", "stale"]
+    },
     "candidatePageId": { "type": "string", "minLength": 1 },
     "decidedBy": { "type": "string", "minLength": 1 },
     "decidedAt": { "type": "string", "format": "date-time" },

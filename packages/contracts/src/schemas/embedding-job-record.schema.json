@@ -8,7 +8,10 @@
   "required": [
     "embeddingJobId",
     "chunkId",
+    "companyId",
     "caseId",
+    "sourceVersion",
+    "lineageStatus",
     "provider",
     "model",
     "status",
@@ -17,7 +20,13 @@
   "properties": {
     "embeddingJobId": { "type": "string", "minLength": 1 },
     "chunkId": { "type": "string", "minLength": 1 },
+    "companyId": { "type": "string", "minLength": 1 },
     "caseId": { "type": "string", "minLength": 1 },
+    "sourceVersion": { "type": "integer", "minimum": 1 },
+    "lineageStatus": {
+      "type": "string",
+      "enum": ["active", "previous", "superseded", "stale"]
+    },
     "provider": {
       "type": "string",
       "enum": ["openai", "anthropic", "mistral", "deepgram", "local", "other"]

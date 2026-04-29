@@ -1,6 +1,13 @@
 import { NextResponse } from "next/server";
 import { approveWebsiteCrawlPlan } from "@workflow/sources-context";
+import { caseBelongsToCompany } from "@workflow/persistence";
 import { store } from "../../../../lib/store";
+import {
+  getCompanyIdFromBody,
+  getCompanyIdFromRequest,
+  missingCompanyIdResponse,
+  scopedNotFoundResponse,
+} from "../../../../lib/company-scope";
 
 export const dynamic = "force-dynamic";
 
@@ -19,9 +26,11 @@ function repos() {
   };
 }
 
-export async function GET(_request: Request, { params }: { params: { id: string } }) {
+export async function GET(request: Request, { params }: { params: { id: string } }) {
+  const companyId = getCompanyIdFromRequest(request);
+  if (!companyId) return missingCompanyIdResponse();
   const plan = store.websiteCrawlPlans.findById(params.id);
-  if (!plan) return NextResponse.json({ error: "Website crawl plan not found" }, { status: 404 });
+  if (!plan || !caseBelongsToCompany(companyId, plan.caseId, store.cases)) return scopedNotFoundResponse();
   return NextResponse.json({
     plan,
     approval: store.websiteCrawlApprovals.findByCrawlPlanId(params.id),
@@ -35,7 +44,11 @@ export async function GET(_request: Request, { params }: { params: { id: string 
 
 export async function PATCH(request: Request, { params }: { params: { id: string } }) {
   try {
-    const body = (await request.json()) as { approvedUrls?: string[]; rejectedUrls?: string[] };
+    const body = (await request.json()) as { approvedUrls?: string[]; rejectedUrls?: string[]; companyId?: string };
+    const companyId = getCompanyIdFromBody(body);
+    if (!companyId) return missingCompanyIdResponse();
+    const plan = store.websiteCrawlPlans.findById(params.id);
+    if (!plan || !caseBelongsToCompany(companyId, plan.caseId, store.cases)) return scopedNotFoundResponse();
     const result = approveWebsiteCrawlPlan({
       crawlPlanId: params.id,
       approvedUrls: body.approvedUrls ?? [],

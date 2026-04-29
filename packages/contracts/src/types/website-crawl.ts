@@ -13,9 +13,15 @@ export type WebsiteCrawlPlanStatus =
   | "completed"
   | "cancelled";
 
+export type SourceLineageStatus = "active" | "previous" | "superseded" | "stale";
+
 export interface WebsiteCrawlPlan {
   crawlPlanId: string;
+  companyId: string;
   caseId: string;
+  sourceId: string;
+  sourceVersion: number;
+  lineageStatus: SourceLineageStatus;
   intakeBatchId?: string;
   seedUrls: string[];
   maxPages: number;
@@ -48,7 +54,12 @@ export type WebsiteCrawlApprovalDecision = "approve" | "reject";
 
 export interface WebsiteCrawlApproval {
   approvalId: string;
+  companyId: string;
   crawlPlanId: string;
+  caseId: string;
+  sourceId: string;
+  sourceVersion: number;
+  lineageStatus: SourceLineageStatus;
   candidatePageId: string;
   decidedBy: string;
   decidedAt: string;
@@ -59,7 +70,11 @@ export interface WebsiteCrawlApproval {
 export interface WebsiteSiteSummary {
   siteSummaryId: string;
   crawlPlanId: string;
+  companyId: string;
   caseId: string;
+  sourceId: string;
+  sourceVersion: number;
+  lineageStatus: SourceLineageStatus;
   siteRootUrl: string;
   totalPagesDiscovered: number;
   totalPagesApproved: number;

@@ -4,6 +4,8 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 
+const DEFAULT_COMPANY_ID = "company-default-local";
+
 export default function AddNotePage({ params }: { params: { id: string } }) {
   const router = useRouter();
   const [displayName, setDisplayName] = useState("");
@@ -22,6 +24,7 @@ export default function AddNotePage({ params }: { params: { id: string } }) {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
+          companyId: DEFAULT_COMPANY_ID,
           sessionId: params.id,
           inputType: "manual_note",
           displayName: displayName || undefined,

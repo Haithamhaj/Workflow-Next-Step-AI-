@@ -1,15 +1,22 @@
 import { NextResponse } from "next/server";
 import { getIntakeSource, updateIntakeSourceStatus } from "@workflow/sources-context";
+import { caseBelongsToCompany } from "@workflow/persistence";
 import { store } from "../../../../lib/store";
+import {
+  getCompanyIdFromBody,
+  getCompanyIdFromRequest,
+  missingCompanyIdResponse,
+  scopedNotFoundResponse,
+} from "../../../../lib/company-scope";
 
 export async function GET(
-  _request: Request,
+  request: Request,
   { params }: { params: { id: string } },
 ) {
+  const companyId = getCompanyIdFromRequest(request);
+  if (!companyId) return missingCompanyIdResponse();
   const source = getIntakeSource(params.id, store.intakeSources);
-  if (!source) {
-    return NextResponse.json({ error: "Intake source not found" }, { status: 404 });
-  }
+  if (!source || !caseBelongsToCompany(companyId, source.caseId, store.cases)) return scopedNotFoundResponse();
   const hasFileBytes = store.fileStore.has(params.id);
   return NextResponse.json({ ...source, hasFileBytes });
 }
@@ -26,6 +33,10 @@ export async function PATCH(
   }
 
   const b = body as Record<string, unknown>;
+  const companyId = getCompanyIdFromBody(body);
+  if (!companyId) return missingCompanyIdResponse();
+  const source = store.intakeSources.findById(params.id);
+  if (!source || !caseBelongsToCompany(companyId, source.caseId, store.cases)) return scopedNotFoundResponse();
 
   try {
     if (typeof b.status === "string") {

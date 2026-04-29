@@ -8,7 +8,11 @@
   "required": [
     "siteSummaryId",
     "crawlPlanId",
+    "companyId",
     "caseId",
+    "sourceId",
+    "sourceVersion",
+    "lineageStatus",
     "siteRootUrl",
     "totalPagesDiscovered",
     "totalPagesApproved",
@@ -18,7 +22,14 @@
   "properties": {
     "siteSummaryId": { "type": "string", "minLength": 1 },
     "crawlPlanId": { "type": "string", "minLength": 1 },
+    "companyId": { "type": "string", "minLength": 1 },
     "caseId": { "type": "string", "minLength": 1 },
+    "sourceId": { "type": "string", "minLength": 1 },
+    "sourceVersion": { "type": "integer", "minimum": 1 },
+    "lineageStatus": {
+      "type": "string",
+      "enum": ["active", "previous", "superseded", "stale"]
+    },
     "siteRootUrl": { "type": "string", "minLength": 1 },
     "totalPagesDiscovered": { "type": "integer", "minimum": 0 },
     "totalPagesApproved": { "type": "integer", "minimum": 0 },

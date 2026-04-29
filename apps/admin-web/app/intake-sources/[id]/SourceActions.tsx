@@ -8,6 +8,8 @@ interface SourceActionsProps {
   status: string;
 }
 
+const DEFAULT_COMPANY_ID = "company-default-local";
+
 export default function SourceActions({ sourceId, status }: SourceActionsProps) {
   const router = useRouter();
   const [submitting, setSubmitting] = useState(false);
@@ -20,7 +22,7 @@ export default function SourceActions({ sourceId, status }: SourceActionsProps) 
       const res = await fetch(`/api/intake-sources/${sourceId}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ status: newStatus }),
+        body: JSON.stringify({ companyId: DEFAULT_COMPANY_ID, status: newStatus }),
       });
       if (!res.ok) {
         const data = (await res.json()) as { error?: string };
@@ -39,7 +41,11 @@ export default function SourceActions({ sourceId, status }: SourceActionsProps) 
     setSubmitting(true);
     setError("");
     try {
-      const res = await fetch(path, { method: "POST" });
+      const res = await fetch(path, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ companyId: DEFAULT_COMPANY_ID }),
+      });
       if (!res.ok && res.status !== 424) {
         const data = (await res.json()) as { error?: string; errorMessage?: string };
         setError(data.error ?? data.errorMessage ?? "Action failed");

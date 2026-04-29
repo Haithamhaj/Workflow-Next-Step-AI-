@@ -140,6 +140,7 @@ export interface ProviderConfig {
 }
 
 export type ProviderJobStatus = "queued" | "running" | "succeeded" | "failed" | "skipped";
+export type SourceLineageStatus = "active" | "previous" | "superseded" | "stale";
 
 export type ProviderJobKind =
   | "document_extraction"
@@ -157,6 +158,9 @@ export interface ProviderExtractionJob {
   sourceId: string;
   sessionId: string;
   caseId: string;
+  companyId?: string;
+  sourceVersion?: number;
+  lineageStatus?: SourceLineageStatus;
   provider: ProviderName | "google_speech_to_text" | "crawl4ai" | "fetch_html";
   jobKind: ProviderJobKind;
   status: ProviderJobStatus;
@@ -195,9 +199,12 @@ export interface WebsiteCrawlCandidatePage {
 
 export interface WebsiteCrawlPlan {
   crawlPlanId: string;
+  companyId: string;
   sourceId: string;
   sessionId: string;
   caseId: string;
+  sourceVersion: number;
+  lineageStatus: SourceLineageStatus;
   baseUrl: string;
   maxPages: number;
   status: WebsiteCrawlPlanStatus;
@@ -209,8 +216,12 @@ export interface WebsiteCrawlPlan {
 
 export interface WebsiteCrawlApproval {
   approvalId: string;
+  companyId: string;
   crawlPlanId: string;
   sourceId: string;
+  caseId: string;
+  sourceVersion: number;
+  lineageStatus: SourceLineageStatus;
   approvedUrls: string[];
   rejectedUrls: string[];
   createdAt: string;
@@ -218,8 +229,12 @@ export interface WebsiteCrawlApproval {
 
 export interface CrawledPageContent {
   pageContentId: string;
+  companyId: string;
   crawlPlanId: string;
   sourceId: string;
+  caseId: string;
+  sourceVersion: number;
+  lineageStatus: SourceLineageStatus;
   url: string;
   pageTitle?: string;
   statusCode: number;
@@ -229,16 +244,24 @@ export interface CrawledPageContent {
 
 export interface WebsiteCrawlSiteSummary {
   summaryId: string;
+  companyId: string;
   crawlPlanId: string;
   sourceId: string;
+  caseId: string;
+  sourceVersion: number;
+  lineageStatus: SourceLineageStatus;
   summary: WebsiteSummary;
   createdAt: string;
 }
 
 export interface ContentChunkRecord {
   chunkId: string;
+  companyId: string;
   crawlPlanId: string;
   sourceId: string;
+  caseId: string;
+  sourceVersion: number;
+  lineageStatus: SourceLineageStatus;
   pageContentId: string;
   url: string;
   chunkIndex: number;
@@ -250,6 +273,10 @@ export interface TextArtifactRecord {
   artifactId: string;
   sourceId?: string;
   jobId?: string;
+  companyId?: string;
+  caseId?: string;
+  sourceVersion?: number;
+  lineageStatus?: SourceLineageStatus;
   artifactKind: "extracted_text" | "raw_transcript" | "embedding_input";
   text: string;
   providerConfidence?: number;
@@ -288,6 +315,10 @@ export interface EmbeddingJobRecord {
   embeddingJobId: string;
   sourceId?: string;
   artifactId?: string;
+  companyId?: string;
+  caseId?: string;
+  sourceVersion?: number;
+  lineageStatus?: SourceLineageStatus;
   provider: ProviderName;
   status: ProviderJobStatus;
   embeddingModel?: string;
@@ -404,7 +435,10 @@ export interface IntakeSession {
 export interface IntakeSource {
   sourceId: string;
   sessionId: string;
+  companyId: string;
   caseId: string;
+  sourceVersion: number;
+  lineageStatus: SourceLineageStatus;
   inputType: IntakeInputType;
   bucket: IntakeBucket;
   status: IntakeSourceStatus;

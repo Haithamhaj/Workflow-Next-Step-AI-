@@ -21,6 +21,8 @@ type Plan = {
   errorMessage?: string;
 };
 
+const DEFAULT_COMPANY_ID = "company-default-local";
+
 export default function CrawlApprovalClient({
   sourceId,
   initialPlans,
@@ -37,7 +39,7 @@ export default function CrawlApprovalClient({
     const response = await fetch("/api/website-crawls", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ sourceId, maxPages }),
+      body: JSON.stringify({ companyId: DEFAULT_COMPANY_ID, sourceId, maxPages }),
     });
     const data = await response.json();
     if (data.plan) {
@@ -56,7 +58,7 @@ export default function CrawlApprovalClient({
     const response = await fetch(`/api/website-crawls/${plan.crawlPlanId}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ approvedUrls: approvedUrls.length > 0 ? approvedUrls : fallbackUrl }),
+      body: JSON.stringify({ companyId: DEFAULT_COMPANY_ID, approvedUrls: approvedUrls.length > 0 ? approvedUrls : fallbackUrl }),
     });
     const data = await response.json();
     if (data.plan) {
@@ -69,7 +71,11 @@ export default function CrawlApprovalClient({
 
   async function executePlan(plan: Plan) {
     setMessage("Executing approved crawl...");
-    const response = await fetch(`/api/website-crawls/${plan.crawlPlanId}/execute`, { method: "POST" });
+    const response = await fetch(`/api/website-crawls/${plan.crawlPlanId}/execute`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ companyId: DEFAULT_COMPANY_ID }),
+    });
     const data = await response.json();
     if (data.plan) {
       setPlans((current) => current.map((item) => item.crawlPlanId === data.plan.crawlPlanId ? data.plan : item));

@@ -8,7 +8,10 @@
   "required": [
     "extractionJobId",
     "intakeSourceId",
+    "companyId",
     "caseId",
+    "sourceVersion",
+    "lineageStatus",
     "provider",
     "jobType",
     "status",
@@ -17,7 +20,13 @@
   "properties": {
     "extractionJobId": { "type": "string", "minLength": 1 },
     "intakeSourceId": { "type": "string", "minLength": 1 },
+    "companyId": { "type": "string", "minLength": 1 },
     "caseId": { "type": "string", "minLength": 1 },
+    "sourceVersion": { "type": "integer", "minimum": 1 },
+    "lineageStatus": {
+      "type": "string",
+      "enum": ["active", "previous", "superseded", "stale"]
+    },
     "provider": {
       "type": "string",
       "enum": ["openai", "anthropic", "mistral", "deepgram", "local", "other"]

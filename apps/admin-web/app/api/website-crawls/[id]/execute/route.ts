@@ -1,7 +1,13 @@
 import { NextResponse } from "next/server";
 import { providerRegistry } from "@workflow/integrations";
 import { runApprovedWebsiteCrawl } from "@workflow/sources-context";
+import { caseBelongsToCompany } from "@workflow/persistence";
 import { store } from "../../../../../lib/store";
+import {
+  getCompanyIdFromBody,
+  missingCompanyIdResponse,
+  scopedNotFoundResponse,
+} from "../../../../../lib/company-scope";
 
 export const dynamic = "force-dynamic";
 
@@ -20,8 +26,13 @@ function repos() {
   };
 }
 
-export async function POST(_request: Request, { params }: { params: { id: string } }) {
+export async function POST(request: Request, { params }: { params: { id: string } }) {
   try {
+    const body = (await request.json().catch(() => ({}))) as { companyId?: string };
+    const companyId = getCompanyIdFromBody(body);
+    if (!companyId) return missingCompanyIdResponse();
+    const plan = store.websiteCrawlPlans.findById(params.id);
+    if (!plan || !caseBelongsToCompany(companyId, plan.caseId, store.cases)) return scopedNotFoundResponse();
     const result = await runApprovedWebsiteCrawl({
       crawlPlanId: params.id,
       crawlProvider: providerRegistry.getCrawlProvider()!,

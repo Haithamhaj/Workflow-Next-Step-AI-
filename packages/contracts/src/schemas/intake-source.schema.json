@@ -8,7 +8,10 @@
   "required": [
     "sourceId",
     "sessionId",
+    "companyId",
     "caseId",
+    "sourceVersion",
+    "lineageStatus",
     "inputType",
     "bucket",
     "status",
@@ -17,7 +20,13 @@
   "properties": {
     "sourceId": { "type": "string", "minLength": 1 },
     "sessionId": { "type": "string", "minLength": 1 },
+    "companyId": { "type": "string", "minLength": 1 },
     "caseId": { "type": "string", "minLength": 1 },
+    "sourceVersion": { "type": "integer", "minimum": 1 },
+    "lineageStatus": {
+      "type": "string",
+      "enum": ["active", "previous", "superseded", "stale"]
+    },
     "inputType": {
       "description": "Official input type for this slice (§4.3).",
       "type": "string",

@@ -94,6 +94,8 @@ function providerJob(input: {
   sourceId: string;
   sessionId: string;
   caseId: string;
+  companyId?: string;
+  sourceVersion?: number;
   inputType: "document" | "website_url" | "manual_note" | "image" | "audio" | "video";
   jobKind: StoredProviderExtractionJob["jobKind"];
   provider?: StoredProviderExtractionJob["provider"];
@@ -103,7 +105,10 @@ function providerJob(input: {
     jobId: `pjob_${crypto.randomUUID()}`,
     sourceId: input.sourceId,
     sessionId: input.sessionId,
+    companyId: input.companyId,
     caseId: input.caseId,
+    sourceVersion: input.sourceVersion,
+    lineageStatus: input.sourceVersion ? "active" : undefined,
     provider: input.provider ?? "google",
     jobKind: input.jobKind,
     status: "queued",
@@ -297,6 +302,8 @@ export async function structureManualNoteWithProvider(input: {
     sourceId: source.sourceId,
     sessionId: source.sessionId,
     caseId: source.caseId,
+    companyId: source.companyId,
+    sourceVersion: source.sourceVersion,
     inputType: source.inputType,
     jobKind: "manual_note_suggestion",
   });
@@ -314,6 +321,10 @@ export async function structureManualNoteWithProvider(input: {
       artifactId: `artifact_${crypto.randomUUID()}`,
       sourceId: source.sourceId,
       jobId: running.jobId,
+      companyId: source.companyId,
+      caseId: source.caseId,
+      sourceVersion: source.sourceVersion,
+      lineageStatus: "active" as const,
       artifactKind: "extracted_text" as const,
       text: JSON.stringify({
         operatorOriginalNote: source.noteText ?? "",
@@ -368,6 +379,8 @@ export async function createStructuredContextWithProvider(input: {
     sourceId: anchor.sourceId,
     sessionId: session.sessionId,
     caseId: session.caseId,
+    companyId: anchor.companyId,
+    sourceVersion: anchor.sourceVersion,
     inputType: anchor.inputType,
     jobKind: "structured_context_generation",
   });

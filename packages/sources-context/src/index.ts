@@ -46,6 +46,7 @@ export {
   listIntakeSourcesBySession,
   updateIntakeSourceStatus,
   updateIntakeSourceExtractedText,
+  createNextIntakeSourceVersion,
   buildBatchSummary,
 } from "./intake-source.js";
 

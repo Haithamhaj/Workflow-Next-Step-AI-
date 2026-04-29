@@ -29,10 +29,15 @@ export type ProviderVendor =
   | "local"
   | "other";
 
+export type SourceLineageStatus = "active" | "previous" | "superseded" | "stale";
+
 export interface ProviderExtractionJob {
   extractionJobId: string;
   intakeSourceId: string;
+  companyId: string;
   caseId: string;
+  sourceVersion: number;
+  lineageStatus: SourceLineageStatus;
   provider: ProviderVendor;
   model?: string;
   jobType: ProviderExtractionJobType;
@@ -55,7 +60,10 @@ export type EmbeddingJobStatus =
 export interface EmbeddingJobRecord {
   embeddingJobId: string;
   chunkId: string;
+  companyId: string;
   caseId: string;
+  sourceVersion: number;
+  lineageStatus: SourceLineageStatus;
   provider: ProviderVendor;
   model: string;
   status: EmbeddingJobStatus;

@@ -106,6 +106,7 @@ export default function NewIntakeSessionPage() {
           const formData = new FormData();
           formData.append("file", src.file);
           formData.append("metadata", JSON.stringify({
+            companyId: DEFAULT_COMPANY_ID,
             sessionId: createdSessionId,
             caseId,
             inputType: src.inputType,
@@ -125,6 +126,7 @@ export default function NewIntakeSessionPage() {
         } else {
           // JSON registration for non-file sources
           const sourcePayload: Record<string, unknown> = {
+            companyId: DEFAULT_COMPANY_ID,
             sessionId: createdSessionId,
             caseId,
             inputType: src.inputType,

@@ -1,11 +1,19 @@
 import { NextResponse } from "next/server";
+import { caseBelongsToCompany } from "@workflow/persistence";
 import { store } from "../../../../../lib/store";
+import {
+  getCompanyIdFromRequest,
+  missingCompanyIdResponse,
+  scopedNotFoundResponse,
+} from "../../../../../lib/company-scope";
 
 export const dynamic = "force-dynamic";
 
-export async function GET(_request: Request, { params }: { params: { id: string } }) {
+export async function GET(request: Request, { params }: { params: { id: string } }) {
+  const companyId = getCompanyIdFromRequest(request);
+  if (!companyId) return missingCompanyIdResponse();
   const plan = store.websiteCrawlPlans.findById(params.id);
-  if (!plan) return NextResponse.json({ error: "Website crawl plan not found" }, { status: 404 });
+  if (!plan || !caseBelongsToCompany(companyId, plan.caseId, store.cases)) return scopedNotFoundResponse();
   return NextResponse.json({
     plan: {
       crawlPlanId: plan.crawlPlanId,

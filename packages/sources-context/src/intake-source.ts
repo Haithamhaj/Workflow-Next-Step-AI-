@@ -24,6 +24,7 @@ import type {
 export function registerIntakeSource(input: {
   sourceId: string;
   sessionId: string;
+  companyId: string;
   caseId: string;
   inputType: IntakeInputType;
   bucket: IntakeBucket;
@@ -46,7 +47,10 @@ export function registerIntakeSource(input: {
   const source: IntakeSourceContract = {
     sourceId: input.sourceId,
     sessionId: input.sessionId,
+    companyId: input.companyId,
     caseId: input.caseId,
+    sourceVersion: 1,
+    lineageStatus: "active",
     inputType: input.inputType,
     bucket: input.bucket,
     status: "uploaded",
@@ -154,6 +158,32 @@ export function updateIntakeSourceExtractedText(
   if (!result.ok) {
     const messages = result.errors.map((e) => e.message ?? String(e)).join("; ");
     throw new Error(`Invalid source update: ${messages}`);
+  }
+
+  repo.save(updated);
+  return updated;
+}
+
+export function createNextIntakeSourceVersion(
+  sourceId: string,
+  updates: Partial<Pick<StoredIntakeSource, "displayName" | "fileName" | "fileSize" | "mimeType" | "websiteUrl" | "noteText" | "noteOrigin" | "extractedText" | "status">>,
+  repo: IntakeSourceRepository,
+): StoredIntakeSource {
+  const existing = repo.findById(sourceId);
+  if (!existing) throw new Error(`Intake source not found: ${sourceId}`);
+
+  const updated: StoredIntakeSource = {
+    ...existing,
+    ...updates,
+    sourceVersion: existing.sourceVersion + 1,
+    lineageStatus: "active",
+    updatedAt: new Date().toISOString(),
+  };
+
+  const result = validateIntakeSource(updated);
+  if (!result.ok) {
+    const messages = result.errors.map((e) => e.message ?? String(e)).join("; ");
+    throw new Error(`Invalid source version update: ${messages}`);
   }
 
   repo.save(updated);

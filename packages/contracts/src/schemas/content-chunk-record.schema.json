@@ -8,7 +8,10 @@
   "required": [
     "chunkId",
     "intakeSourceId",
+    "companyId",
     "caseId",
+    "sourceVersion",
+    "lineageStatus",
     "ordinal",
     "contentRef",
     "createdAt"
@@ -16,7 +19,13 @@
   "properties": {
     "chunkId": { "type": "string", "minLength": 1 },
     "intakeSourceId": { "type": "string", "minLength": 1 },
+    "companyId": { "type": "string", "minLength": 1 },
     "caseId": { "type": "string", "minLength": 1 },
+    "sourceVersion": { "type": "integer", "minimum": 1 },
+    "lineageStatus": {
+      "type": "string",
+      "enum": ["active", "previous", "superseded", "stale"]
+    },
     "ordinal": { "type": "integer", "minimum": 0 },
     "contentRef": { "type": "string", "minLength": 1 },
     "tokenCount": { "type": "integer", "minimum": 0 },

@@ -87,6 +87,7 @@ import type {
   Pass6PromptTestCase,
   Pass6PromptTestExecutionResult,
   StageCopilotStageKey,
+  SourceLineageStatus,
 } from "@workflow/contracts";
 
 import { mkdirSync } from "node:fs";
@@ -406,6 +407,19 @@ export interface CaseScopedDirectRepository<TRecord extends CaseScopedRecord> {
   findById(recordId: string): TRecord | null;
 }
 
+export interface SourceLineageRecord extends CaseScopedRecord {
+  companyId: string;
+  sourceId: string;
+  sourceVersion: number;
+  lineageStatus: SourceLineageStatus;
+}
+
+export interface SourceLineageRepository<TRecord extends SourceLineageRecord> {
+  save(record: TRecord): void;
+  findBySourceId(sourceId: string): TRecord[];
+  findAll(): TRecord[];
+}
+
 export function assertScopedCompanyCaseInput(companyId: string, caseId?: string): void {
   if (!companyId.trim()) {
     throw new Error("companyId is required for scoped repository reads");
@@ -466,6 +480,64 @@ export function findRecordByCompany<TRecord extends CaseScopedRecord>(
     return null;
   }
   return caseBelongsToCompany(companyId, record.caseId, cases) ? record : null;
+}
+
+export function sourceLineageMatches(
+  record: SourceLineageRecord,
+  companyId: string,
+  caseId: string,
+  sourceId?: string,
+  sourceVersion?: number,
+): boolean {
+  return record.companyId === companyId
+    && record.caseId === caseId
+    && (sourceId === undefined || record.sourceId === sourceId)
+    && (sourceVersion === undefined || record.sourceVersion === sourceVersion);
+}
+
+export function listSourceLineageRecords<TRecord extends SourceLineageRecord>(
+  companyId: string,
+  caseId: string,
+  cases: CaseRepository,
+  repo: SourceLineageRepository<TRecord>,
+  options: { sourceId?: string; sourceVersion?: number; includeStale?: boolean } = {},
+): TRecord[] {
+  if (!caseBelongsToCompany(companyId, caseId, cases)) {
+    return [];
+  }
+  const rows = options.sourceId ? repo.findBySourceId(options.sourceId) : repo.findAll();
+  return rows.filter((record) =>
+    sourceLineageMatches(record, companyId, caseId, options.sourceId, options.sourceVersion)
+    && (options.includeStale === true || record.lineageStatus !== "stale")
+  );
+}
+
+export function markSourceLineageStatus<TRecord extends SourceLineageRecord>(
+  repo: SourceLineageRepository<TRecord>,
+  input: {
+    companyId: string;
+    caseId: string;
+    sourceId: string;
+    sourceVersion?: number;
+    fromStatuses?: SourceLineageStatus[];
+    toStatus: SourceLineageStatus;
+  },
+): number {
+  let updated = 0;
+  for (const record of repo.findBySourceId(input.sourceId)) {
+    if (!sourceLineageMatches(record, input.companyId, input.caseId, input.sourceId, input.sourceVersion)) {
+      continue;
+    }
+    if (input.fromStatuses && !input.fromStatuses.includes(record.lineageStatus)) {
+      continue;
+    }
+    if (record.lineageStatus === input.toStatus) {
+      continue;
+    }
+    repo.save({ ...record, lineageStatus: input.toStatus });
+    updated += 1;
+  }
+  return updated;
 }
 
 export interface SourceRepository {
@@ -549,6 +621,7 @@ export interface IntakeSessionRepository {
 export interface IntakeSourceRepository {
   save(s: StoredIntakeSource): void;
   findById(sourceId: string): StoredIntakeSource | null;
+  findBySourceId(sourceId: string): StoredIntakeSource[];
   findBySessionId(sessionId: string): StoredIntakeSource[];
   findByCaseId(caseId: string): StoredIntakeSource[];
   findAll(): StoredIntakeSource[];
@@ -1368,6 +1441,11 @@ class InMemoryIntakeSourceRepository implements IntakeSourceRepository {
 
   findById(sourceId: string): StoredIntakeSource | null {
     return this.store.get(sourceId) ?? null;
+  }
+
+  findBySourceId(sourceId: string): StoredIntakeSource[] {
+    const record = this.findById(sourceId);
+    return record ? [record] : [];
   }
 
   findBySessionId(sessionId: string): StoredIntakeSource[] {
@@ -2296,6 +2374,17 @@ function intakeSqlitePath(dbPath?: string): string {
   return join(process.cwd(), "data", "intake-phase2.sqlite");
 }
 
+function addColumnIfMissing(db: DatabaseSync, tableName: string, columnName: string, definition: string): void {
+  try {
+    db.exec(`ALTER TABLE ${tableName} ADD COLUMN ${columnName} ${definition};`);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    if (!message.includes("duplicate column name")) {
+      throw error;
+    }
+  }
+}
+
 function openIntakeDatabase(dbPath?: string): DatabaseSync {
   const path = intakeSqlitePath(dbPath);
   mkdirSync(dirname(path), { recursive: true });
@@ -2323,8 +2412,11 @@ function openIntakeDatabase(dbPath?: string): DatabaseSync {
     );
     CREATE TABLE IF NOT EXISTS intake_sources (
       id TEXT PRIMARY KEY,
+      company_id TEXT NOT NULL DEFAULT '${DEFAULT_LOCAL_COMPANY_ID}',
       session_id TEXT NOT NULL,
       case_id TEXT NOT NULL,
+      source_version INTEGER NOT NULL DEFAULT 1,
+      lineage_status TEXT NOT NULL DEFAULT 'active',
       payload TEXT NOT NULL
     );
     CREATE INDEX IF NOT EXISTS idx_intake_sessions_case_id ON intake_sessions(case_id);
@@ -2332,18 +2424,30 @@ function openIntakeDatabase(dbPath?: string): DatabaseSync {
     CREATE INDEX IF NOT EXISTS idx_intake_sources_case_id ON intake_sources(case_id);
     CREATE TABLE IF NOT EXISTS provider_extraction_jobs (
       id TEXT PRIMARY KEY,
+      company_id TEXT,
+      case_id TEXT,
       source_id TEXT NOT NULL,
       session_id TEXT NOT NULL,
+      source_version INTEGER,
+      lineage_status TEXT,
       payload TEXT NOT NULL
     );
     CREATE TABLE IF NOT EXISTS text_artifacts (
       id TEXT PRIMARY KEY,
+      company_id TEXT,
+      case_id TEXT,
       source_id TEXT,
+      source_version INTEGER,
+      lineage_status TEXT,
       payload TEXT NOT NULL
     );
     CREATE TABLE IF NOT EXISTS embedding_jobs (
       id TEXT PRIMARY KEY,
+      company_id TEXT,
+      case_id TEXT,
       source_id TEXT,
+      source_version INTEGER,
+      lineage_status TEXT,
       payload TEXT NOT NULL
     );
     CREATE TABLE IF NOT EXISTS ai_intake_suggestions (
@@ -2361,32 +2465,52 @@ function openIntakeDatabase(dbPath?: string): DatabaseSync {
     );
     CREATE TABLE IF NOT EXISTS website_crawl_plans (
       id TEXT PRIMARY KEY,
+      company_id TEXT NOT NULL DEFAULT '${DEFAULT_LOCAL_COMPANY_ID}',
+      case_id TEXT,
       source_id TEXT NOT NULL,
       session_id TEXT NOT NULL,
+      source_version INTEGER NOT NULL DEFAULT 1,
+      lineage_status TEXT NOT NULL DEFAULT 'active',
       payload TEXT NOT NULL
     );
     CREATE TABLE IF NOT EXISTS website_crawl_approvals (
       id TEXT PRIMARY KEY,
+      company_id TEXT NOT NULL DEFAULT '${DEFAULT_LOCAL_COMPANY_ID}',
+      case_id TEXT,
       crawl_plan_id TEXT NOT NULL,
       source_id TEXT NOT NULL,
+      source_version INTEGER NOT NULL DEFAULT 1,
+      lineage_status TEXT NOT NULL DEFAULT 'active',
       payload TEXT NOT NULL
     );
     CREATE TABLE IF NOT EXISTS crawled_page_contents (
       id TEXT PRIMARY KEY,
+      company_id TEXT NOT NULL DEFAULT '${DEFAULT_LOCAL_COMPANY_ID}',
+      case_id TEXT,
       crawl_plan_id TEXT NOT NULL,
       source_id TEXT NOT NULL,
+      source_version INTEGER NOT NULL DEFAULT 1,
+      lineage_status TEXT NOT NULL DEFAULT 'active',
       payload TEXT NOT NULL
     );
     CREATE TABLE IF NOT EXISTS website_crawl_site_summaries (
       id TEXT PRIMARY KEY,
+      company_id TEXT NOT NULL DEFAULT '${DEFAULT_LOCAL_COMPANY_ID}',
+      case_id TEXT,
       crawl_plan_id TEXT NOT NULL,
       source_id TEXT NOT NULL,
+      source_version INTEGER NOT NULL DEFAULT 1,
+      lineage_status TEXT NOT NULL DEFAULT 'active',
       payload TEXT NOT NULL
     );
     CREATE TABLE IF NOT EXISTS content_chunks (
       id TEXT PRIMARY KEY,
+      company_id TEXT NOT NULL DEFAULT '${DEFAULT_LOCAL_COMPANY_ID}',
+      case_id TEXT,
       crawl_plan_id TEXT NOT NULL,
       source_id TEXT NOT NULL,
+      source_version INTEGER NOT NULL DEFAULT 1,
+      lineage_status TEXT NOT NULL DEFAULT 'active',
       page_content_id TEXT NOT NULL,
       payload TEXT NOT NULL
     );
@@ -2664,6 +2788,64 @@ function openIntakeDatabase(dbPath?: string): DatabaseSync {
     CREATE INDEX IF NOT EXISTS idx_cases_company_id ON cases(company_id);
     CREATE UNIQUE INDEX IF NOT EXISTS idx_cases_company_case_id ON cases(company_id, id);
   `);
+  const lineageDefaults: Array<[string, string, string]> = [
+    ["intake_sources", "company_id", `TEXT NOT NULL DEFAULT '${DEFAULT_LOCAL_COMPANY_ID}'`],
+    ["intake_sources", "source_version", "INTEGER NOT NULL DEFAULT 1"],
+    ["intake_sources", "lineage_status", "TEXT NOT NULL DEFAULT 'active'"],
+    ["provider_extraction_jobs", "company_id", "TEXT"],
+    ["provider_extraction_jobs", "case_id", "TEXT"],
+    ["provider_extraction_jobs", "source_version", "INTEGER"],
+    ["provider_extraction_jobs", "lineage_status", "TEXT"],
+    ["text_artifacts", "company_id", "TEXT"],
+    ["text_artifacts", "case_id", "TEXT"],
+    ["text_artifacts", "source_version", "INTEGER"],
+    ["text_artifacts", "lineage_status", "TEXT"],
+    ["embedding_jobs", "company_id", "TEXT"],
+    ["embedding_jobs", "case_id", "TEXT"],
+    ["embedding_jobs", "source_version", "INTEGER"],
+    ["embedding_jobs", "lineage_status", "TEXT"],
+    ["website_crawl_plans", "company_id", `TEXT NOT NULL DEFAULT '${DEFAULT_LOCAL_COMPANY_ID}'`],
+    ["website_crawl_plans", "case_id", "TEXT"],
+    ["website_crawl_plans", "source_version", "INTEGER NOT NULL DEFAULT 1"],
+    ["website_crawl_plans", "lineage_status", "TEXT NOT NULL DEFAULT 'active'"],
+    ["website_crawl_approvals", "company_id", `TEXT NOT NULL DEFAULT '${DEFAULT_LOCAL_COMPANY_ID}'`],
+    ["website_crawl_approvals", "case_id", "TEXT"],
+    ["website_crawl_approvals", "source_version", "INTEGER NOT NULL DEFAULT 1"],
+    ["website_crawl_approvals", "lineage_status", "TEXT NOT NULL DEFAULT 'active'"],
+    ["crawled_page_contents", "company_id", `TEXT NOT NULL DEFAULT '${DEFAULT_LOCAL_COMPANY_ID}'`],
+    ["crawled_page_contents", "case_id", "TEXT"],
+    ["crawled_page_contents", "source_version", "INTEGER NOT NULL DEFAULT 1"],
+    ["crawled_page_contents", "lineage_status", "TEXT NOT NULL DEFAULT 'active'"],
+    ["website_crawl_site_summaries", "company_id", `TEXT NOT NULL DEFAULT '${DEFAULT_LOCAL_COMPANY_ID}'`],
+    ["website_crawl_site_summaries", "case_id", "TEXT"],
+    ["website_crawl_site_summaries", "source_version", "INTEGER NOT NULL DEFAULT 1"],
+    ["website_crawl_site_summaries", "lineage_status", "TEXT NOT NULL DEFAULT 'active'"],
+    ["content_chunks", "company_id", `TEXT NOT NULL DEFAULT '${DEFAULT_LOCAL_COMPANY_ID}'`],
+    ["content_chunks", "case_id", "TEXT"],
+    ["content_chunks", "source_version", "INTEGER NOT NULL DEFAULT 1"],
+    ["content_chunks", "lineage_status", "TEXT NOT NULL DEFAULT 'active'"],
+  ];
+  for (const [tableName, columnName, definition] of lineageDefaults) {
+    addColumnIfMissing(db, tableName, columnName, definition);
+  }
+  db.exec(`
+    CREATE INDEX IF NOT EXISTS idx_intake_sources_company_case ON intake_sources(company_id, case_id);
+    CREATE INDEX IF NOT EXISTS idx_intake_sources_lineage ON intake_sources(company_id, case_id, id, source_version);
+    CREATE INDEX IF NOT EXISTS idx_provider_jobs_company_case ON provider_extraction_jobs(company_id, case_id);
+    CREATE INDEX IF NOT EXISTS idx_provider_jobs_lineage ON provider_extraction_jobs(company_id, case_id, source_id, source_version);
+    CREATE INDEX IF NOT EXISTS idx_text_artifacts_company_case ON text_artifacts(company_id, case_id);
+    CREATE INDEX IF NOT EXISTS idx_text_artifacts_lineage ON text_artifacts(company_id, case_id, source_id, source_version);
+    CREATE INDEX IF NOT EXISTS idx_embedding_jobs_company_case ON embedding_jobs(company_id, case_id);
+    CREATE INDEX IF NOT EXISTS idx_embedding_jobs_lineage ON embedding_jobs(company_id, case_id, source_id, source_version);
+    CREATE INDEX IF NOT EXISTS idx_crawl_plans_company_case ON website_crawl_plans(company_id, case_id);
+    CREATE INDEX IF NOT EXISTS idx_crawl_plans_lineage ON website_crawl_plans(company_id, case_id, source_id, source_version);
+    CREATE INDEX IF NOT EXISTS idx_crawl_approvals_lineage ON website_crawl_approvals(company_id, case_id, source_id, source_version);
+    CREATE INDEX IF NOT EXISTS idx_crawled_pages_company_case ON crawled_page_contents(company_id, case_id);
+    CREATE INDEX IF NOT EXISTS idx_crawled_pages_lineage ON crawled_page_contents(company_id, case_id, source_id, source_version);
+    CREATE INDEX IF NOT EXISTS idx_crawl_summaries_lineage ON website_crawl_site_summaries(company_id, case_id, source_id, source_version);
+    CREATE INDEX IF NOT EXISTS idx_content_chunks_company_case ON content_chunks(company_id, case_id);
+    CREATE INDEX IF NOT EXISTS idx_content_chunks_lineage ON content_chunks(company_id, case_id, source_id, source_version);
+  `);
   return db;
 }
 
@@ -2909,13 +3091,18 @@ export class SQLiteIntakeSourceRepository implements IntakeSourceRepository {
 
   save(source: StoredIntakeSource): void {
     this.db.prepare(
-      "INSERT INTO intake_sources (id, session_id, case_id, payload) VALUES (?, ?, ?, ?) ON CONFLICT(id) DO UPDATE SET session_id = excluded.session_id, case_id = excluded.case_id, payload = excluded.payload",
-    ).run(source.sourceId, source.sessionId, source.caseId, JSON.stringify(source));
+      "INSERT INTO intake_sources (id, company_id, session_id, case_id, source_version, lineage_status, payload) VALUES (?, ?, ?, ?, ?, ?, ?) ON CONFLICT(id) DO UPDATE SET company_id = excluded.company_id, session_id = excluded.session_id, case_id = excluded.case_id, source_version = excluded.source_version, lineage_status = excluded.lineage_status, payload = excluded.payload",
+    ).run(source.sourceId, source.companyId, source.sessionId, source.caseId, source.sourceVersion, source.lineageStatus, JSON.stringify(source));
   }
 
   findById(sourceId: string): StoredIntakeSource | null {
     const row = this.db.prepare("SELECT payload FROM intake_sources WHERE id = ?").get(sourceId);
     return parseStored<StoredIntakeSource>(row);
+  }
+
+  findBySourceId(sourceId: string): StoredIntakeSource[] {
+    const record = this.findById(sourceId);
+    return record ? [record] : [];
   }
 
   findBySessionId(sessionId: string): StoredIntakeSource[] {
@@ -2943,8 +3130,8 @@ export class SQLiteProviderExtractionJobRepository implements ProviderExtraction
 
   save(job: StoredProviderExtractionJob): void {
     this.db.prepare(
-      "INSERT INTO provider_extraction_jobs (id, source_id, session_id, payload) VALUES (?, ?, ?, ?) ON CONFLICT(id) DO UPDATE SET source_id = excluded.source_id, session_id = excluded.session_id, payload = excluded.payload",
-    ).run(job.jobId, job.sourceId, job.sessionId, JSON.stringify(job));
+      "INSERT INTO provider_extraction_jobs (id, company_id, case_id, source_id, session_id, source_version, lineage_status, payload) VALUES (?, ?, ?, ?, ?, ?, ?, ?) ON CONFLICT(id) DO UPDATE SET company_id = excluded.company_id, case_id = excluded.case_id, source_id = excluded.source_id, session_id = excluded.session_id, source_version = excluded.source_version, lineage_status = excluded.lineage_status, payload = excluded.payload",
+    ).run(job.jobId, job.companyId ?? null, job.caseId, job.sourceId, job.sessionId, job.sourceVersion ?? null, job.lineageStatus ?? null, JSON.stringify(job));
   }
 
   findById(jobId: string): StoredProviderExtractionJob | null {
@@ -2977,8 +3164,8 @@ export class SQLiteTextArtifactRepository implements TextArtifactRepository {
 
   save(artifact: StoredTextArtifactRecord): void {
     this.db.prepare(
-      "INSERT INTO text_artifacts (id, source_id, payload) VALUES (?, ?, ?) ON CONFLICT(id) DO UPDATE SET source_id = excluded.source_id, payload = excluded.payload",
-    ).run(artifact.artifactId, artifact.sourceId ?? null, JSON.stringify(artifact));
+      "INSERT INTO text_artifacts (id, company_id, case_id, source_id, source_version, lineage_status, payload) VALUES (?, ?, ?, ?, ?, ?, ?) ON CONFLICT(id) DO UPDATE SET company_id = excluded.company_id, case_id = excluded.case_id, source_id = excluded.source_id, source_version = excluded.source_version, lineage_status = excluded.lineage_status, payload = excluded.payload",
+    ).run(artifact.artifactId, artifact.companyId ?? null, artifact.caseId ?? null, artifact.sourceId ?? null, artifact.sourceVersion ?? null, artifact.lineageStatus ?? null, JSON.stringify(artifact));
   }
 
   findById(artifactId: string): StoredTextArtifactRecord | null {
@@ -3006,8 +3193,8 @@ export class SQLiteEmbeddingJobRepository implements EmbeddingJobRepository {
 
   save(job: StoredEmbeddingJobRecord): void {
     this.db.prepare(
-      "INSERT INTO embedding_jobs (id, source_id, payload) VALUES (?, ?, ?) ON CONFLICT(id) DO UPDATE SET source_id = excluded.source_id, payload = excluded.payload",
-    ).run(job.embeddingJobId, job.sourceId ?? null, JSON.stringify(job));
+      "INSERT INTO embedding_jobs (id, company_id, case_id, source_id, source_version, lineage_status, payload) VALUES (?, ?, ?, ?, ?, ?, ?) ON CONFLICT(id) DO UPDATE SET company_id = excluded.company_id, case_id = excluded.case_id, source_id = excluded.source_id, source_version = excluded.source_version, lineage_status = excluded.lineage_status, payload = excluded.payload",
+    ).run(job.embeddingJobId, job.companyId ?? null, job.caseId ?? null, job.sourceId ?? null, job.sourceVersion ?? null, job.lineageStatus ?? null, JSON.stringify(job));
   }
 
   findById(embeddingJobId: string): StoredEmbeddingJobRecord | null {
@@ -3103,8 +3290,8 @@ export class SQLiteWebsiteCrawlPlanRepository implements WebsiteCrawlPlanReposit
 
   save(plan: StoredWebsiteCrawlPlan): void {
     this.db.prepare(
-      "INSERT INTO website_crawl_plans (id, source_id, session_id, payload) VALUES (?, ?, ?, ?) ON CONFLICT(id) DO UPDATE SET source_id = excluded.source_id, session_id = excluded.session_id, payload = excluded.payload",
-    ).run(plan.crawlPlanId, plan.sourceId, plan.sessionId, JSON.stringify(plan));
+      "INSERT INTO website_crawl_plans (id, company_id, case_id, source_id, session_id, source_version, lineage_status, payload) VALUES (?, ?, ?, ?, ?, ?, ?, ?) ON CONFLICT(id) DO UPDATE SET company_id = excluded.company_id, case_id = excluded.case_id, source_id = excluded.source_id, session_id = excluded.session_id, source_version = excluded.source_version, lineage_status = excluded.lineage_status, payload = excluded.payload",
+    ).run(plan.crawlPlanId, plan.companyId, plan.caseId, plan.sourceId, plan.sessionId, plan.sourceVersion, plan.lineageStatus, JSON.stringify(plan));
   }
 
   findById(crawlPlanId: string): StoredWebsiteCrawlPlan | null {
@@ -3137,8 +3324,8 @@ export class SQLiteWebsiteCrawlApprovalRepository implements WebsiteCrawlApprova
 
   save(approval: StoredWebsiteCrawlApproval): void {
     this.db.prepare(
-      "INSERT INTO website_crawl_approvals (id, crawl_plan_id, source_id, payload) VALUES (?, ?, ?, ?) ON CONFLICT(id) DO UPDATE SET crawl_plan_id = excluded.crawl_plan_id, source_id = excluded.source_id, payload = excluded.payload",
-    ).run(approval.approvalId, approval.crawlPlanId, approval.sourceId, JSON.stringify(approval));
+      "INSERT INTO website_crawl_approvals (id, company_id, case_id, crawl_plan_id, source_id, source_version, lineage_status, payload) VALUES (?, ?, ?, ?, ?, ?, ?, ?) ON CONFLICT(id) DO UPDATE SET company_id = excluded.company_id, case_id = excluded.case_id, crawl_plan_id = excluded.crawl_plan_id, source_id = excluded.source_id, source_version = excluded.source_version, lineage_status = excluded.lineage_status, payload = excluded.payload",
+    ).run(approval.approvalId, approval.companyId, approval.caseId, approval.crawlPlanId, approval.sourceId, approval.sourceVersion, approval.lineageStatus, JSON.stringify(approval));
   }
 
   findByCrawlPlanId(crawlPlanId: string): StoredWebsiteCrawlApproval | null {
@@ -3161,8 +3348,8 @@ export class SQLiteCrawledPageContentRepository implements CrawledPageContentRep
 
   save(page: StoredCrawledPageContent): void {
     this.db.prepare(
-      "INSERT INTO crawled_page_contents (id, crawl_plan_id, source_id, payload) VALUES (?, ?, ?, ?) ON CONFLICT(id) DO UPDATE SET crawl_plan_id = excluded.crawl_plan_id, source_id = excluded.source_id, payload = excluded.payload",
-    ).run(page.pageContentId, page.crawlPlanId, page.sourceId, JSON.stringify(page));
+      "INSERT INTO crawled_page_contents (id, company_id, case_id, crawl_plan_id, source_id, source_version, lineage_status, payload) VALUES (?, ?, ?, ?, ?, ?, ?, ?) ON CONFLICT(id) DO UPDATE SET company_id = excluded.company_id, case_id = excluded.case_id, crawl_plan_id = excluded.crawl_plan_id, source_id = excluded.source_id, source_version = excluded.source_version, lineage_status = excluded.lineage_status, payload = excluded.payload",
+    ).run(page.pageContentId, page.companyId, page.caseId, page.crawlPlanId, page.sourceId, page.sourceVersion, page.lineageStatus, JSON.stringify(page));
   }
 
   findByCrawlPlanId(crawlPlanId: string): StoredCrawledPageContent[] {
@@ -3190,8 +3377,8 @@ export class SQLiteWebsiteCrawlSiteSummaryRepository implements WebsiteCrawlSite
 
   save(summary: StoredWebsiteCrawlSiteSummary): void {
     this.db.prepare(
-      "INSERT INTO website_crawl_site_summaries (id, crawl_plan_id, source_id, payload) VALUES (?, ?, ?, ?) ON CONFLICT(id) DO UPDATE SET crawl_plan_id = excluded.crawl_plan_id, source_id = excluded.source_id, payload = excluded.payload",
-    ).run(summary.summaryId, summary.crawlPlanId, summary.sourceId, JSON.stringify(summary));
+      "INSERT INTO website_crawl_site_summaries (id, company_id, case_id, crawl_plan_id, source_id, source_version, lineage_status, payload) VALUES (?, ?, ?, ?, ?, ?, ?, ?) ON CONFLICT(id) DO UPDATE SET company_id = excluded.company_id, case_id = excluded.case_id, crawl_plan_id = excluded.crawl_plan_id, source_id = excluded.source_id, source_version = excluded.source_version, lineage_status = excluded.lineage_status, payload = excluded.payload",
+    ).run(summary.summaryId, summary.companyId, summary.caseId, summary.crawlPlanId, summary.sourceId, summary.sourceVersion, summary.lineageStatus, JSON.stringify(summary));
   }
 
   findByCrawlPlanId(crawlPlanId: string): StoredWebsiteCrawlSiteSummary | null {
@@ -3214,8 +3401,8 @@ export class SQLiteContentChunkRepository implements ContentChunkRepository {
 
   save(chunk: StoredContentChunkRecord): void {
     this.db.prepare(
-      "INSERT INTO content_chunks (id, crawl_plan_id, source_id, page_content_id, payload) VALUES (?, ?, ?, ?, ?) ON CONFLICT(id) DO UPDATE SET crawl_plan_id = excluded.crawl_plan_id, source_id = excluded.source_id, page_content_id = excluded.page_content_id, payload = excluded.payload",
-    ).run(chunk.chunkId, chunk.crawlPlanId, chunk.sourceId, chunk.pageContentId, JSON.stringify(chunk));
+      "INSERT INTO content_chunks (id, company_id, case_id, crawl_plan_id, source_id, source_version, lineage_status, page_content_id, payload) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?) ON CONFLICT(id) DO UPDATE SET company_id = excluded.company_id, case_id = excluded.case_id, crawl_plan_id = excluded.crawl_plan_id, source_id = excluded.source_id, source_version = excluded.source_version, lineage_status = excluded.lineage_status, page_content_id = excluded.page_content_id, payload = excluded.payload",
+    ).run(chunk.chunkId, chunk.companyId, chunk.caseId, chunk.crawlPlanId, chunk.sourceId, chunk.sourceVersion, chunk.lineageStatus, chunk.pageContentId, JSON.stringify(chunk));
   }
 
   findByCrawlPlanId(crawlPlanId: string): StoredContentChunkRecord[] {

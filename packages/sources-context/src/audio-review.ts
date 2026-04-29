@@ -61,6 +61,9 @@ function existingOrCreate(input: {
 function saveTranscriptArtifact(input: {
   sourceId: string;
   jobId?: string;
+  companyId?: string;
+  caseId?: string;
+  sourceVersion?: number;
   kind: TextArtifactRecord["artifactKind"];
   text: string;
   providerConfidence?: number;
@@ -70,6 +73,10 @@ function saveTranscriptArtifact(input: {
     artifactId: id("artifact"),
     sourceId: input.sourceId,
     jobId: input.jobId,
+    companyId: input.companyId,
+    caseId: input.caseId,
+    sourceVersion: input.sourceVersion,
+    lineageStatus: input.sourceVersion ? "active" : undefined,
     artifactKind: input.kind,
     text: input.text,
     providerConfidence: input.providerConfidence,
@@ -80,7 +87,7 @@ function saveTranscriptArtifact(input: {
   return artifact;
 }
 
-function chunkTranscript(review: StoredAudioTranscriptReviewRecord, text: string): StoredContentChunkRecord[] {
+function chunkTranscript(source: { companyId: string; caseId: string; sourceId: string; sourceVersion: number }, review: StoredAudioTranscriptReviewRecord, text: string): StoredContentChunkRecord[] {
   const trimmed = text.trim();
   if (!trimmed) return [];
   const size = 1200;
@@ -88,8 +95,12 @@ function chunkTranscript(review: StoredAudioTranscriptReviewRecord, text: string
   for (let start = 0, index = 0; start < trimmed.length; start += size, index += 1) {
     chunks.push({
       chunkId: id("chunk"),
+      companyId: source.companyId,
       crawlPlanId: `audio_transcript:${review.reviewId}`,
       sourceId: review.sourceId,
+      caseId: source.caseId,
+      sourceVersion: source.sourceVersion,
+      lineageStatus: "active",
       pageContentId: review.reviewId,
       url: `audio:${review.sourceId}`,
       chunkIndex: index,
@@ -200,26 +211,31 @@ export async function saveAudioTranscriptDecision(input: {
     throw new Error("No transcript text is available for approval or edit.");
   }
 
+  const source = input.repos.intakeSources.findById(review.sourceId);
+  if (!source) {
+    throw new Error(`Intake source not found: ${review.sourceId}`);
+  }
+
   const artifact = saveTranscriptArtifact({
     sourceId: review.sourceId,
     jobId: review.providerJobId,
+    companyId: source?.companyId,
+    caseId: source?.caseId,
+    sourceVersion: source?.sourceVersion,
     kind: "extracted_text",
     text: trustedText,
     providerConfidence: review.providerConfidence,
     providerQualitySignal: input.action === "edit" ? "admin_edited_transcript" : review.providerQualitySignal,
   }, input.repos.textArtifacts);
 
-  const source = input.repos.intakeSources.findById(review.sourceId);
-  if (source) {
-    input.repos.intakeSources.save({
-      ...source,
-      extractedText: trustedText,
-      status: "pending_analysis",
-      updatedAt: now(),
-    });
-  }
+  input.repos.intakeSources.save({
+    ...source,
+    extractedText: trustedText,
+    status: "pending_analysis",
+    updatedAt: now(),
+  });
 
-  const chunks = chunkTranscript(review, trustedText);
+  const chunks = chunkTranscript(source, review, trustedText);
   chunks.forEach((chunk) => input.repos.contentChunks.save(chunk));
   for (const chunk of chunks) {
     await runEmbeddingJob({

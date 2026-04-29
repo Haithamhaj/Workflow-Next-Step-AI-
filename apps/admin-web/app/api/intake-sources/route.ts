@@ -1,6 +1,13 @@
 import { NextResponse } from "next/server";
 import { registerIntakeSource, listIntakeSourcesBySession, buildBatchSummary } from "@workflow/sources-context";
+import { caseBelongsToCompany, listSourceLineageRecords } from "@workflow/persistence";
 import { store } from "../../../lib/store";
+import {
+  getCompanyIdFromBody,
+  getCompanyIdFromRequest,
+  missingCompanyIdResponse,
+  scopedNotFoundResponse,
+} from "../../../lib/company-scope";
 
 type Phase2InputType = "document" | "website_url" | "manual_note" | "image" | "audio";
 
@@ -33,18 +40,30 @@ function caseIdFor(sessionId: string, value: unknown): string {
 
 export async function GET(request: Request) {
   const url = new URL(request.url);
+  const companyId = getCompanyIdFromRequest(request);
+  if (!companyId) {
+    return missingCompanyIdResponse();
+  }
   const sessionId = url.searchParams.get("sessionId");
+  const caseId = url.searchParams.get("caseId");
   const summary = url.searchParams.get("summary");
 
   if (sessionId && summary === "true") {
+    const session = store.intakeSessions.findById(sessionId);
+    if (!session || !caseBelongsToCompany(companyId, session.caseId, store.cases)) return scopedNotFoundResponse();
     const items = buildBatchSummary(sessionId, store.intakeSources);
     return NextResponse.json(items);
   }
   if (sessionId) {
+    const session = store.intakeSessions.findById(sessionId);
+    if (!session || !caseBelongsToCompany(companyId, session.caseId, store.cases)) return scopedNotFoundResponse();
     const sources = listIntakeSourcesBySession(sessionId, store.intakeSources);
     return NextResponse.json(sources);
   }
-  const sources = store.intakeSources.findAll();
+  if (!caseId) {
+    return NextResponse.json({ error: "caseId is required when sessionId is not provided." }, { status: 400 });
+  }
+  const sources = listSourceLineageRecords(companyId, caseId, store.cases, store.intakeSources, { includeStale: true });
   return NextResponse.json(sources);
 }
 
@@ -76,10 +95,17 @@ async function handleMultipartUpload(request: Request) {
     }
 
     const sessionId = String(meta.sessionId ?? "");
+    const companyId = typeof meta.companyId === "string" ? meta.companyId.trim() : "";
+    if (!companyId) {
+      return missingCompanyIdResponse();
+    }
     const caseId = caseIdFor(sessionId, meta.caseId);
 
     if (!sessionId || !caseId) {
       return NextResponse.json({ error: "sessionId and caseId are required" }, { status: 400 });
+    }
+    if (!caseBelongsToCompany(companyId, caseId, store.cases)) {
+      return scopedNotFoundResponse();
     }
 
     // Read file bytes
@@ -89,6 +115,7 @@ async function handleMultipartUpload(request: Request) {
       {
         sourceId: sourceIdFrom(meta.sourceId),
         sessionId,
+        companyId,
         caseId,
         inputType: normalizeInputType(meta.inputType),
         bucket: (meta.bucket as "company" | "department") ?? "company",
@@ -126,11 +153,20 @@ async function handleJsonRegistration(request: Request) {
   try {
     const b = body as Record<string, unknown>;
     const sessionId = String(b.sessionId ?? "");
+    const companyId = getCompanyIdFromBody(body);
+    if (!companyId) {
+      return missingCompanyIdResponse();
+    }
+    const caseId = caseIdFor(sessionId, b.caseId);
+    if (!caseBelongsToCompany(companyId, caseId, store.cases)) {
+      return scopedNotFoundResponse();
+    }
     const source = registerIntakeSource(
       {
         sourceId: sourceIdFrom(b.sourceId),
         sessionId,
-        caseId: caseIdFor(sessionId, b.caseId),
+        companyId,
+        caseId,
         inputType: normalizeInputType(b.inputType),
         bucket: b.bucket as never,
         displayName: typeof b.displayName === "string" ? b.displayName : undefined,

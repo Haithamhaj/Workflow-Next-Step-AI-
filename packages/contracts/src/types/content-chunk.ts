@@ -6,10 +6,15 @@
  * is defined so later phases can write chunks durably.
  */
 
+export type SourceLineageStatus = "active" | "previous" | "superseded" | "stale";
+
 export interface ContentChunkRecord {
   chunkId: string;
   intakeSourceId: string;
+  companyId: string;
   caseId: string;
+  sourceVersion: number;
+  lineageStatus: SourceLineageStatus;
   ordinal: number;
   contentRef: string;
   tokenCount?: number;

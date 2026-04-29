@@ -123,8 +123,12 @@ function chunkText(page: StoredCrawledPageContent): StoredContentChunkRecord[] {
   for (let start = 0, index = 0; start < text.length; start += size, index += 1) {
     chunks.push({
       chunkId: id("chunk"),
+      companyId: page.companyId,
       crawlPlanId: page.crawlPlanId,
       sourceId: page.sourceId,
+      caseId: page.caseId,
+      sourceVersion: page.sourceVersion,
+      lineageStatus: page.lineageStatus,
       pageContentId: page.pageContentId,
       url: page.url,
       chunkIndex: index,
@@ -150,9 +154,12 @@ export async function createWebsiteCrawlPlan(input: {
   const maxPages = assertMaxPages(input.maxPages ?? DEFAULT_WEBSITE_CRAWL_MAX_PAGES);
   let plan: StoredWebsiteCrawlPlan = {
     crawlPlanId: id("crawlplan"),
+    companyId: source.companyId,
     sourceId: source.sourceId,
     sessionId: source.sessionId,
     caseId: source.caseId,
+    sourceVersion: source.sourceVersion,
+    lineageStatus: "active",
     baseUrl: source.websiteUrl,
     maxPages,
     status: "discovery_pending",
@@ -212,8 +219,12 @@ export function approveWebsiteCrawlPlan(input: {
   };
   const approval: StoredWebsiteCrawlApproval = {
     approvalId: id("crawlapproval"),
+    companyId: plan.companyId,
     crawlPlanId: plan.crawlPlanId,
     sourceId: plan.sourceId,
+    caseId: plan.caseId,
+    sourceVersion: plan.sourceVersion,
+    lineageStatus: plan.lineageStatus,
     approvedUrls: approved,
     rejectedUrls: rejected,
     createdAt: now(),
@@ -229,7 +240,10 @@ function createCrawlJob(plan: StoredWebsiteCrawlPlan, crawlProvider: CrawlProvid
     jobId: id("pjob"),
     sourceId: plan.sourceId,
     sessionId: plan.sessionId,
+    companyId: plan.companyId,
     caseId: plan.caseId,
+    sourceVersion: plan.sourceVersion,
+    lineageStatus: plan.lineageStatus,
     provider: crawlProvider.name as StoredProviderExtractionJob["provider"],
     jobKind: "website_crawl",
     status: "queued",
@@ -274,8 +288,12 @@ export async function runApprovedWebsiteCrawl(input: {
 
     const pages = successful.map((page): StoredCrawledPageContent => ({
       pageContentId: id("crawlpage"),
+      companyId: plan.companyId,
       crawlPlanId: plan.crawlPlanId,
       sourceId: plan.sourceId,
+      caseId: plan.caseId,
+      sourceVersion: plan.sourceVersion,
+      lineageStatus: plan.lineageStatus,
       url: page.url,
       pageTitle: page.title,
       statusCode: page.statusCode,
@@ -286,8 +304,12 @@ export async function runApprovedWebsiteCrawl(input: {
 
     const summary: StoredWebsiteCrawlSiteSummary = {
       summaryId: id("crawlsummary"),
+      companyId: plan.companyId,
       crawlPlanId: plan.crawlPlanId,
       sourceId: plan.sourceId,
+      caseId: plan.caseId,
+      sourceVersion: plan.sourceVersion,
+      lineageStatus: plan.lineageStatus,
       summary: await input.crawlProvider.generateSiteSummary(successful),
       createdAt: now(),
     };
