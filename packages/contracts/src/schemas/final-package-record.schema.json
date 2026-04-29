@@ -24,7 +24,13 @@
   ],
   "properties": {
     "packageId": { "type": "string", "minLength": 1 },
+    "companyId": { "type": "string", "minLength": 1 },
     "caseId": { "type": "string", "minLength": 1 },
+    "analysisRunId": { "type": "string", "minLength": 1 },
+    "lineageStatus": {
+      "type": "string",
+      "enum": ["active", "previous", "superseded", "stale"]
+    },
     "packageType": {
       "type": "string",
       "enum": ["final_workflow_and_reference_package"]

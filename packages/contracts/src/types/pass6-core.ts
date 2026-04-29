@@ -76,9 +76,24 @@ export interface Pass6PreparedMaterialItem {
   notes?: string;
 }
 
+export type Pass6LineageStatus = "active" | "previous" | "superseded" | "stale";
+
+export interface Pass6RunLineage {
+  companyId?: string;
+  analysisRunId?: string;
+  stageRunId?: string;
+  supersedesAnalysisRunId?: string;
+  lineageStatus?: Pass6LineageStatus;
+}
+
 export interface SynthesisInputBundle {
   bundleId: string;
+  companyId?: string;
   caseId: string;
+  analysisRunId?: string;
+  stageRunId?: string;
+  supersedesAnalysisRunId?: string;
+  lineageStatus?: Pass6LineageStatus;
   createdAt: string;
   sourcePass5SessionIds: string[];
   analysis_material: Pass6PreparedMaterialItem[];
@@ -111,7 +126,11 @@ export type WorkflowUnitType =
 
 export interface WorkflowUnit {
   unitId: string;
+  companyId?: string;
   caseId: string;
+  analysisRunId?: string;
+  stageRunId?: string;
+  lineageStatus?: Pass6LineageStatus;
   bundleId: string;
   unitType: WorkflowUnitType;
   unitText: string;
@@ -136,7 +155,11 @@ export type WorkflowClaimStatus =
 
 export interface WorkflowClaim {
   claimId: string;
+  companyId?: string;
   caseId: string;
+  analysisRunId?: string;
+  stageRunId?: string;
+  lineageStatus?: Pass6LineageStatus;
   bundleId: string;
   primaryClaimType: WorkflowClaimType;
   secondaryClaimTypes?: WorkflowClaimType[];
@@ -164,6 +187,11 @@ export type AnalysisMethodKey =
 
 export interface AnalysisMethodUsage {
   methodUsageId: string;
+  companyId?: string;
+  caseId?: string;
+  analysisRunId?: string;
+  stageRunId?: string;
+  lineageStatus?: Pass6LineageStatus;
   methodId: string;
   methodKey: AnalysisMethodKey;
   methodName: string;
@@ -205,7 +233,11 @@ export interface AnalysisMethodUsage {
 
 export interface DifferenceInterpretation {
   differenceId: string;
+  companyId?: string;
   caseId: string;
+  analysisRunId?: string;
+  stageRunId?: string;
+  lineageStatus?: Pass6LineageStatus;
   involvedClaimIds: string[];
   involvedLayers?: string[];
   involvedRoles?: string[];
@@ -261,7 +293,11 @@ export interface Pass6RecordMetadata {
 
 export interface AssembledWorkflowDraft {
   draftId: string;
+  companyId?: string;
   caseId: string;
+  analysisRunId?: string;
+  stageRunId?: string;
+  lineageStatus?: Pass6LineageStatus;
   basedOnBundleId: string;
   workflowUnderstandingLevel: WorkflowUnderstandingLevel;
   steps: WorkflowElement[];
@@ -307,7 +343,11 @@ export type SevenConditionAssessmentMap = Record<
 
 export interface SevenConditionAssessment {
   assessmentId: string;
+  companyId?: string;
   caseId: string;
+  analysisRunId?: string;
+  stageRunId?: string;
+  lineageStatus?: Pass6LineageStatus;
   assembledWorkflowDraftId: string;
   conditions: SevenConditionAssessmentMap;
   overallSummary: string;
@@ -390,7 +430,11 @@ export interface ClarificationNeed {
 
 export interface InquiryPacket {
   inquiryPacketId: string;
+  companyId?: string;
   caseId: string;
+  analysisRunId?: string;
+  stageRunId?: string;
+  lineageStatus?: Pass6LineageStatus;
   targetRole?: string;
   targetRecipient?: string;
   clarificationNeeds: ClarificationNeed[];
@@ -400,7 +444,11 @@ export interface InquiryPacket {
 
 export interface PrePackageGateResult {
   gateResultId: string;
+  companyId?: string;
   caseId: string;
+  analysisRunId?: string;
+  stageRunId?: string;
+  lineageStatus?: Pass6LineageStatus;
   workflowReadinessResultId: string;
   gateDecision: GateDecision;
   clarificationNeeds: ClarificationNeed[];
@@ -449,7 +497,11 @@ export type ExternalInterfaceRecommendedAction =
 
 export interface ExternalInterfaceRecord {
   interfaceId: string;
+  companyId?: string;
   caseId: string;
+  analysisRunId?: string;
+  stageRunId?: string;
+  lineageStatus?: Pass6LineageStatus;
   relatedWorkflowDraftId?: string;
   relatedReadinessResultId?: string;
   relatedGateResultId?: string;
@@ -496,7 +548,11 @@ export type InitialWorkflowPackageStatus =
 
 export interface InitialWorkflowPackage {
   packageId: string;
+  companyId?: string;
   caseId: string;
+  analysisRunId?: string;
+  stageRunId?: string;
+  lineageStatus?: Pass6LineageStatus;
   workflowReadinessResultId: string;
   packageStatus: InitialWorkflowPackageStatus;
   clientFacingSections: PackageSection[];
@@ -509,7 +565,11 @@ export interface InitialWorkflowPackage {
 
 export interface WorkflowGapClosureBrief {
   briefId: string;
+  companyId?: string;
   caseId: string;
+  analysisRunId?: string;
+  stageRunId?: string;
+  lineageStatus?: Pass6LineageStatus;
   packageBlockedReason: string;
   currentlyVisibleWorkflow: string;
   brokenUnknownConditions: string[];
@@ -528,7 +588,11 @@ export type DocumentDraftType =
 
 export interface DraftOperationalDocument {
   draftId: string;
+  companyId?: string;
   caseId: string;
+  analysisRunId?: string;
+  stageRunId?: string;
+  lineageStatus?: Pass6LineageStatus;
   documentDraftType: DocumentDraftType;
   draftStatus: "draft_only_not_approved" | "requested_but_not_ready" | "superseded";
   evidenceMaturitySummary: string;
@@ -623,7 +687,11 @@ export interface WorkflowGraphReferenceJson {
 
 export interface WorkflowGraphRecord {
   visualRecordId: string;
+  companyId?: string;
   caseId: string;
+  analysisRunId?: string;
+  stageRunId?: string;
+  lineageStatus?: Pass6LineageStatus;
   assembledWorkflowDraftId: string;
   workflowGraphJson: WorkflowGraphReferenceJson;
   workflowMermaid: string;
@@ -633,6 +701,7 @@ export interface WorkflowGraphRecord {
 
 export interface Pass6CopilotContextBundle {
   contextBundleId: string;
+  companyId?: string;
   caseId: string;
   bundleRefs: Pass6Reference[];
   claimRefs: Pass6Reference[];
@@ -674,6 +743,7 @@ export interface Pass6CopilotRoutedActionRecommendation {
 
 export interface Pass6CopilotInteraction {
   interactionId: string;
+  companyId?: string;
   caseId: string;
   question: string;
   answer?: string;
@@ -701,7 +771,11 @@ export interface Pass6CopilotInteraction {
 
 export interface Pass7ReviewCandidate {
   candidateId: string;
+  companyId?: string;
   caseId: string;
+  analysisRunId?: string;
+  stageRunId?: string;
+  lineageStatus?: Pass6LineageStatus;
   sourceType:
     | "difference_interpretation"
     | "workflow_readiness_result"

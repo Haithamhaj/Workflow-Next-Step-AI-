@@ -41,7 +41,10 @@ export interface FinalPackageGapLayer {
 export interface FinalPackageRecord {
   // §29.8.1 Required top-level fields
   packageId: string;
+  companyId?: string;
   caseId: string;
+  analysisRunId?: string;
+  lineageStatus?: "active" | "previous" | "superseded" | "stale";
   packageType: "final_workflow_and_reference_package";
   packageState: PackageState;
   packageReleaseState: ReleaseState;

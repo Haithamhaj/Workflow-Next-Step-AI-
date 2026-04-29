@@ -15,6 +15,10 @@
       "type": "string",
       "format": "date-time"
     },
+    "lineageStatus": {
+      "type": "string",
+      "enum": ["active", "previous", "superseded", "stale"]
+    },
     "reference": {
       "type": "object",
       "additionalProperties": false,
@@ -729,7 +733,11 @@
       "required": ["packageId", "caseId", "workflowReadinessResultId", "packageStatus", "clientFacingSections", "warningsCaveats", "interfacesDependencies", "metadata"],
       "properties": {
         "packageId": { "$ref": "#/definitions/nonEmptyString" },
+        "companyId": { "$ref": "#/definitions/optionalString" },
         "caseId": { "$ref": "#/definitions/nonEmptyString" },
+        "analysisRunId": { "$ref": "#/definitions/optionalString" },
+        "stageRunId": { "$ref": "#/definitions/optionalString" },
+        "lineageStatus": { "$ref": "#/definitions/lineageStatus" },
         "workflowReadinessResultId": { "$ref": "#/definitions/nonEmptyString" },
         "packageStatus": {
           "type": "string",
@@ -749,7 +757,11 @@
       "required": ["briefId", "caseId", "packageBlockedReason", "currentlyVisibleWorkflow", "brokenUnknownConditions", "gapsToClose", "recommendedClarificationRoute", "nextStepToReachPackageReadiness"],
       "properties": {
         "briefId": { "$ref": "#/definitions/nonEmptyString" },
+        "companyId": { "$ref": "#/definitions/optionalString" },
         "caseId": { "$ref": "#/definitions/nonEmptyString" },
+        "analysisRunId": { "$ref": "#/definitions/optionalString" },
+        "stageRunId": { "$ref": "#/definitions/optionalString" },
+        "lineageStatus": { "$ref": "#/definitions/lineageStatus" },
         "packageBlockedReason": { "$ref": "#/definitions/nonEmptyString" },
         "currentlyVisibleWorkflow": { "$ref": "#/definitions/nonEmptyString" },
         "brokenUnknownConditions": { "type": "array", "items": { "$ref": "#/definitions/nonEmptyString" } },
@@ -764,7 +776,11 @@
       "required": ["draftId", "caseId", "documentDraftType", "draftStatus", "evidenceMaturitySummary", "sections", "limitations", "metadata"],
       "properties": {
         "draftId": { "$ref": "#/definitions/nonEmptyString" },
+        "companyId": { "$ref": "#/definitions/optionalString" },
         "caseId": { "$ref": "#/definitions/nonEmptyString" },
+        "analysisRunId": { "$ref": "#/definitions/optionalString" },
+        "stageRunId": { "$ref": "#/definitions/optionalString" },
+        "lineageStatus": { "$ref": "#/definitions/lineageStatus" },
         "documentDraftType": {
           "type": "string",
           "enum": ["sop_draft", "policy_draft", "sla_supporting_reference_draft", "work_instruction_draft", "role_responsibility_guidance_draft", "questionnaire_inquiry_set_draft"]
@@ -785,7 +801,11 @@
       "required": ["visualRecordId", "caseId", "assembledWorkflowDraftId", "workflowGraphJson", "workflowMermaid", "workflowReactFlowModel", "visualValidationErrors"],
       "properties": {
         "visualRecordId": { "$ref": "#/definitions/nonEmptyString" },
+        "companyId": { "$ref": "#/definitions/optionalString" },
         "caseId": { "$ref": "#/definitions/nonEmptyString" },
+        "analysisRunId": { "$ref": "#/definitions/optionalString" },
+        "stageRunId": { "$ref": "#/definitions/optionalString" },
+        "lineageStatus": { "$ref": "#/definitions/lineageStatus" },
         "assembledWorkflowDraftId": { "$ref": "#/definitions/nonEmptyString" },
         "workflowGraphJson": {
           "type": "object",

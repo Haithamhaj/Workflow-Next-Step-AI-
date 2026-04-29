@@ -19,10 +19,22 @@
       "minLength": 1,
       "description": "Unique identifier for this initial package record."
     },
+    "companyId": {
+      "type": "string",
+      "minLength": 1
+    },
     "caseId": {
       "type": "string",
       "minLength": 1,
       "description": "Case this initial package belongs to."
+    },
+    "analysisRunId": {
+      "type": "string",
+      "minLength": 1
+    },
+    "lineageStatus": {
+      "type": "string",
+      "enum": ["active", "previous", "superseded", "stale"]
     },
     "evaluationId": {
       "type": "string",

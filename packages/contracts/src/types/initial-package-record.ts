@@ -51,7 +51,10 @@ export interface InitialPackageAdmin {
 
 export interface InitialPackageRecord {
   initialPackageId: string;
+  companyId?: string;
   caseId: string;
+  analysisRunId?: string;
+  lineageStatus?: "active" | "previous" | "superseded" | "stale";
   evaluationId: string;
   status: InitialPackageStatus;
   outward: InitialPackageOutward;

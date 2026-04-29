@@ -192,6 +192,19 @@ function section(sectionId: string, title: string, contentSummary: string, basis
   return { sectionId, title, contentSummary, basisClaimIds };
 }
 
+function lineageFrom(record: object) {
+  const lineage = record as {
+    companyId?: string;
+    analysisRunId?: string;
+    lineageStatus?: "active" | "previous" | "superseded" | "stale";
+  };
+  return {
+    ...(lineage.companyId ? { companyId: lineage.companyId } : {}),
+    ...(lineage.analysisRunId ? { analysisRunId: lineage.analysisRunId } : {}),
+    lineageStatus: lineage.lineageStatus ?? "active",
+  };
+}
+
 function listWorkflow(elements: { label: string; description?: string }[]): string {
   if (elements.length === 0) return "No detailed item is available in the current assembled workflow draft.";
   return elements.map((element, index) => `${index + 1}. ${element.label}${element.description ? ` — ${element.description}` : ""}`).join("\n");
@@ -280,6 +293,7 @@ function buildInitialWorkflowPackage(input: GeneratePass6OutputInput, now: strin
   const interfaces = input.externalInterfaces ?? [];
   return {
     packageId: input.packageId ?? `initial_workflow_package:${safeIdPart(readiness.resultId)}`,
+    ...lineageFrom(readiness),
     caseId: readiness.caseId,
     workflowReadinessResultId: readiness.resultId,
     packageStatus: packageStatusFor(readiness, input.prePackageGateResult),
@@ -311,6 +325,7 @@ function buildGapClosureBrief(input: GeneratePass6OutputInput, now: string): Wor
     : readiness.gapRiskSummary.gapIds;
   return {
     briefId: input.briefId ?? `workflow_gap_closure_brief:${safeIdPart(readiness.resultId)}`,
+    ...lineageFrom(readiness),
     caseId: readiness.caseId,
     packageBlockedReason: `${readiness.readinessDecision}: ${readiness.gapRiskSummary.summary}`,
     currentlyVisibleWorkflow: listWorkflow([...draft.steps, ...draft.sequence, ...draft.handoffs]),
@@ -347,6 +362,7 @@ function buildDraftOperationalDocument(input: GeneratePass6OutputInput, now: str
   return {
     draft: {
       draftId: input.draftDocumentId ?? `draft_operational_document:${safeIdPart(input.workflowReadinessResult.resultId)}:${documentDraftType}`,
+      ...lineageFrom(input.workflowReadinessResult),
       caseId: input.workflowReadinessResult.caseId,
       documentDraftType,
       draftStatus: "draft_only_not_approved",
@@ -676,6 +692,7 @@ export function generatePackageVisuals(
   const visuals = buildPackageVisuals(graph);
   const baseRecord = {
     visualRecordId: input.visualRecordId ?? `workflow_visual:${safeIdPart(input.initialWorkflowPackage.packageId)}`,
+    ...lineageFrom(input.initialWorkflowPackage),
     caseId: input.initialWorkflowPackage.caseId,
     assembledWorkflowDraftId: input.assembledWorkflowDraft.draftId,
     workflowGraphJson: graph as unknown as WorkflowGraphRecord["workflowGraphJson"],

@@ -87,6 +87,7 @@ import type {
   Pass6PromptTestCase,
   Pass6PromptTestExecutionResult,
   StageCopilotStageKey,
+  Pass6LineageStatus,
   SourceLineageStatus,
 } from "@workflow/contracts";
 
@@ -591,6 +592,9 @@ export interface EvaluationRepository {
 export interface InitialPackageRepository {
   save(p: StoredInitialPackageRecord): void;
   findById(initialPackageId: string): StoredInitialPackageRecord | null;
+  findByCompany(companyId: string, caseId: string, initialPackageId: string): StoredInitialPackageRecord | null;
+  findByCompanyAndCase(companyId: string, caseId: string): StoredInitialPackageRecord[];
+  findByAnalysisRun(companyId: string, caseId: string, analysisRunId: string): StoredInitialPackageRecord[];
   findByCaseId(caseId: string): StoredInitialPackageRecord[];
   findByEvaluationId(evaluationId: string): StoredInitialPackageRecord[];
   findAll(): StoredInitialPackageRecord[];
@@ -607,6 +611,9 @@ export interface ReviewIssueRepository {
 export interface FinalPackageRepository {
   save(p: StoredFinalPackageRecord): void;
   findById(packageId: string): StoredFinalPackageRecord | null;
+  findByCompany(companyId: string, caseId: string, packageId: string): StoredFinalPackageRecord | null;
+  findByCompanyAndCase(companyId: string, caseId: string): StoredFinalPackageRecord[];
+  findByAnalysisRun(companyId: string, caseId: string, analysisRunId: string): StoredFinalPackageRecord[];
   findByCaseId(caseId: string): StoredFinalPackageRecord[];
   findAll(): StoredFinalPackageRecord[];
 }
@@ -998,9 +1005,19 @@ export interface Pass6HandoffCandidateRepository {
 export interface Pass6RecordRepository<TRecord extends object> {
   save(record: TRecord): void;
   findById(id: string): TRecord | null;
+  findByCompany(companyId: string, caseId: string, id: string): TRecord | null;
+  findByCompanyAndCase(companyId: string, caseId: string): TRecord[];
+  findByAnalysisRun(companyId: string, caseId: string, analysisRunId: string): TRecord[];
+  findActiveByCompanyAndCase(companyId: string, caseId: string): TRecord[];
   findByCaseId(caseId: string): TRecord[];
   findAll(): TRecord[];
   update(id: string, updates: Partial<TRecord>): TRecord | null;
+  updateLineageStatus(
+    companyId: string,
+    caseId: string,
+    analysisRunId: string,
+    lineageStatus: Pass6LineageStatus,
+  ): number;
 }
 
 export type SynthesisInputBundleRepository = Pass6RecordRepository<StoredSynthesisInputBundle>;
@@ -1350,6 +1367,19 @@ class InMemoryInitialPackageRepository implements InitialPackageRepository {
     return this.store.get(initialPackageId) ?? null;
   }
 
+  findByCompany(companyId: string, caseId: string, initialPackageId: string): StoredInitialPackageRecord | null {
+    const record = this.findById(initialPackageId);
+    return record?.companyId === companyId && record.caseId === caseId ? record : null;
+  }
+
+  findByCompanyAndCase(companyId: string, caseId: string): StoredInitialPackageRecord[] {
+    return this.findAll().filter((record) => record.companyId === companyId && record.caseId === caseId);
+  }
+
+  findByAnalysisRun(companyId: string, caseId: string, analysisRunId: string): StoredInitialPackageRecord[] {
+    return this.findByCompanyAndCase(companyId, caseId).filter((record) => record.analysisRunId === analysisRunId);
+  }
+
   findByCaseId(caseId: string): StoredInitialPackageRecord[] {
     return Array.from(this.store.values()).filter((p) => p.caseId === caseId);
   }
@@ -1382,6 +1412,19 @@ class InMemoryFinalPackageRepository implements FinalPackageRepository {
 
   findById(packageId: string): StoredFinalPackageRecord | null {
     return this.store.get(packageId) ?? null;
+  }
+
+  findByCompany(companyId: string, caseId: string, packageId: string): StoredFinalPackageRecord | null {
+    const record = this.findById(packageId);
+    return record?.companyId === companyId && record.caseId === caseId ? record : null;
+  }
+
+  findByCompanyAndCase(companyId: string, caseId: string): StoredFinalPackageRecord[] {
+    return this.findAll().filter((record) => record.companyId === companyId && record.caseId === caseId);
+  }
+
+  findByAnalysisRun(companyId: string, caseId: string, analysisRunId: string): StoredFinalPackageRecord[] {
+    return this.findByCompanyAndCase(companyId, caseId).filter((record) => record.analysisRunId === analysisRunId);
   }
 
   findByCaseId(caseId: string): StoredFinalPackageRecord[] {
@@ -2123,6 +2166,18 @@ function cloneRecord<T>(record: T): T {
 type Pass6RecordIdGetter<TRecord extends object> = (record: TRecord) => string;
 type Pass6RecordCaseIdGetter<TRecord extends object> = (record: TRecord) => string | undefined;
 
+function pass6CompanyId<TRecord extends object>(record: TRecord): string | undefined {
+  return (record as { companyId?: string }).companyId;
+}
+
+function pass6AnalysisRunId<TRecord extends object>(record: TRecord): string | undefined {
+  return (record as { analysisRunId?: string }).analysisRunId;
+}
+
+function pass6LineageStatus<TRecord extends object>(record: TRecord): Pass6LineageStatus | undefined {
+  return (record as { lineageStatus?: Pass6LineageStatus }).lineageStatus;
+}
+
 class InMemoryPass6RecordRepository<TRecord extends object>
   implements Pass6RecordRepository<TRecord>
 {
@@ -2142,6 +2197,23 @@ class InMemoryPass6RecordRepository<TRecord extends object>
     return record ? cloneRecord(record) : null;
   }
 
+  findByCompany(companyId: string, caseId: string, id: string): TRecord | null {
+    const record = this.findById(id);
+    return record && pass6CompanyId(record) === companyId && this.getCaseId(record) === caseId ? record : null;
+  }
+
+  findByCompanyAndCase(companyId: string, caseId: string): TRecord[] {
+    return this.findAll().filter((record) => pass6CompanyId(record) === companyId && this.getCaseId(record) === caseId);
+  }
+
+  findByAnalysisRun(companyId: string, caseId: string, analysisRunId: string): TRecord[] {
+    return this.findByCompanyAndCase(companyId, caseId).filter((record) => pass6AnalysisRunId(record) === analysisRunId);
+  }
+
+  findActiveByCompanyAndCase(companyId: string, caseId: string): TRecord[] {
+    return this.findByCompanyAndCase(companyId, caseId).filter((record) => pass6LineageStatus(record) === "active");
+  }
+
   findByCaseId(caseId: string): TRecord[] {
     return this.findAll().filter((record) => this.getCaseId(record) === caseId);
   }
@@ -2156,6 +2228,16 @@ class InMemoryPass6RecordRepository<TRecord extends object>
     const updated = cloneRecord({ ...existing, ...updates });
     this.store.set(id, updated);
     return cloneRecord(updated);
+  }
+
+  updateLineageStatus(companyId: string, caseId: string, analysisRunId: string, lineageStatus: Pass6LineageStatus): number {
+    let count = 0;
+    for (const [id, record] of this.store.entries()) {
+      if (pass6CompanyId(record) !== companyId || this.getCaseId(record) !== caseId || pass6AnalysisRunId(record) !== analysisRunId) continue;
+      this.store.set(id, cloneRecord({ ...record, lineageStatus }));
+      count += 1;
+    }
+    return count;
   }
 }
 
@@ -2853,7 +2935,10 @@ function openIntakeDatabase(dbPath?: string): DatabaseSync {
     CREATE TABLE IF NOT EXISTS pass6_core_records (
       record_type TEXT NOT NULL,
       id TEXT NOT NULL,
+      company_id TEXT NOT NULL DEFAULT '${DEFAULT_LOCAL_COMPANY_ID}',
       case_id TEXT,
+      analysis_run_id TEXT,
+      lineage_status TEXT,
       payload TEXT NOT NULL,
       PRIMARY KEY (record_type, id)
     );
@@ -2950,6 +3035,9 @@ function openIntakeDatabase(dbPath?: string): DatabaseSync {
     CREATE INDEX IF NOT EXISTS idx_pass6_handoff_candidates_case_id ON pass6_handoff_candidates(case_id);
     CREATE INDEX IF NOT EXISTS idx_pass6_core_records_type ON pass6_core_records(record_type);
     CREATE INDEX IF NOT EXISTS idx_pass6_core_records_case_id ON pass6_core_records(record_type, case_id);
+    CREATE INDEX IF NOT EXISTS idx_pass6_core_records_company_case ON pass6_core_records(record_type, company_id, case_id);
+    CREATE INDEX IF NOT EXISTS idx_pass6_core_records_company_case_run ON pass6_core_records(record_type, company_id, case_id, analysis_run_id);
+    CREATE INDEX IF NOT EXISTS idx_pass6_core_records_company_case_status ON pass6_core_records(record_type, company_id, case_id, lineage_status);
     CREATE INDEX IF NOT EXISTS idx_pass6_configuration_profiles_status ON pass6_configuration_profiles(status);
     CREATE INDEX IF NOT EXISTS idx_pass6_configuration_profiles_scope ON pass6_configuration_profiles(scope, scope_ref);
     CREATE INDEX IF NOT EXISTS idx_stage_copilot_system_prompts_stage_key ON stage_copilot_system_prompts(stage_key);
@@ -3011,6 +3099,9 @@ function openIntakeDatabase(dbPath?: string): DatabaseSync {
     ["session_next_actions", "company_id", `TEXT NOT NULL DEFAULT '${DEFAULT_LOCAL_COMPANY_ID}'`],
     ["session_next_actions", "case_id", "TEXT NOT NULL DEFAULT ''"],
     ["pass6_handoff_candidates", "company_id", `TEXT NOT NULL DEFAULT '${DEFAULT_LOCAL_COMPANY_ID}'`],
+    ["pass6_core_records", "company_id", `TEXT NOT NULL DEFAULT '${DEFAULT_LOCAL_COMPANY_ID}'`],
+    ["pass6_core_records", "analysis_run_id", "TEXT"],
+    ["pass6_core_records", "lineage_status", "TEXT"],
     ["hierarchy_intakes", "company_id", `TEXT NOT NULL DEFAULT '${DEFAULT_LOCAL_COMPANY_ID}'`],
     ["hierarchy_drafts", "company_id", `TEXT NOT NULL DEFAULT '${DEFAULT_LOCAL_COMPANY_ID}'`],
     ["hierarchy_corrections", "company_id", `TEXT NOT NULL DEFAULT '${DEFAULT_LOCAL_COMPANY_ID}'`],
@@ -4511,8 +4602,16 @@ export class SQLitePass6RecordRepository<TRecord extends object>
   save(record: TRecord): void {
     const cloned = cloneRecord(record);
     this.db.prepare(
-      "INSERT INTO pass6_core_records (record_type, id, case_id, payload) VALUES (?, ?, ?, ?) ON CONFLICT(record_type, id) DO UPDATE SET case_id = excluded.case_id, payload = excluded.payload",
-    ).run(this.recordType, this.getId(cloned), this.getCaseId(cloned) ?? null, JSON.stringify(cloned));
+      "INSERT INTO pass6_core_records (record_type, id, company_id, case_id, analysis_run_id, lineage_status, payload) VALUES (?, ?, ?, ?, ?, ?, ?) ON CONFLICT(record_type, id) DO UPDATE SET company_id = excluded.company_id, case_id = excluded.case_id, analysis_run_id = excluded.analysis_run_id, lineage_status = excluded.lineage_status, payload = excluded.payload",
+    ).run(
+      this.recordType,
+      this.getId(cloned),
+      pass6CompanyId(cloned) ?? DEFAULT_LOCAL_COMPANY_ID,
+      this.getCaseId(cloned) ?? null,
+      pass6AnalysisRunId(cloned) ?? null,
+      pass6LineageStatus(cloned) ?? null,
+      JSON.stringify(cloned),
+    );
   }
 
   findById(id: string): TRecord | null {
@@ -4521,6 +4620,35 @@ export class SQLitePass6RecordRepository<TRecord extends object>
     ).get(this.recordType, id);
     const record = parseStored<TRecord>(row);
     return record ? cloneRecord(record) : null;
+  }
+
+  findByCompany(companyId: string, caseId: string, id: string): TRecord | null {
+    const row = this.db.prepare(
+      "SELECT payload FROM pass6_core_records WHERE record_type = ? AND company_id = ? AND case_id = ? AND id = ?",
+    ).get(this.recordType, companyId, caseId, id);
+    const record = parseStored<TRecord>(row);
+    return record ? cloneRecord(record) : null;
+  }
+
+  findByCompanyAndCase(companyId: string, caseId: string): TRecord[] {
+    const rows = this.db.prepare(
+      "SELECT payload FROM pass6_core_records WHERE record_type = ? AND company_id = ? AND case_id = ? ORDER BY id",
+    ).all(this.recordType, companyId, caseId);
+    return parseStoredList<TRecord>(rows).map((record) => cloneRecord(record));
+  }
+
+  findByAnalysisRun(companyId: string, caseId: string, analysisRunId: string): TRecord[] {
+    const rows = this.db.prepare(
+      "SELECT payload FROM pass6_core_records WHERE record_type = ? AND company_id = ? AND case_id = ? AND analysis_run_id = ? ORDER BY id",
+    ).all(this.recordType, companyId, caseId, analysisRunId);
+    return parseStoredList<TRecord>(rows).map((record) => cloneRecord(record));
+  }
+
+  findActiveByCompanyAndCase(companyId: string, caseId: string): TRecord[] {
+    const rows = this.db.prepare(
+      "SELECT payload FROM pass6_core_records WHERE record_type = ? AND company_id = ? AND case_id = ? AND lineage_status = 'active' ORDER BY id",
+    ).all(this.recordType, companyId, caseId);
+    return parseStoredList<TRecord>(rows).map((record) => cloneRecord(record));
   }
 
   findByCaseId(caseId: string): TRecord[] {
@@ -4543,6 +4671,14 @@ export class SQLitePass6RecordRepository<TRecord extends object>
     const updated = cloneRecord({ ...existing, ...updates });
     this.save(updated);
     return cloneRecord(updated);
+  }
+
+  updateLineageStatus(companyId: string, caseId: string, analysisRunId: string, lineageStatus: Pass6LineageStatus): number {
+    const records = this.findByAnalysisRun(companyId, caseId, analysisRunId);
+    for (const record of records) {
+      this.save(cloneRecord({ ...record, lineageStatus }));
+    }
+    return records.length;
   }
 }
 
@@ -4568,6 +4704,24 @@ export class SQLitePass6ConfigurationProfileRepository
     return record ? cloneRecord(record) : null;
   }
 
+  findByCompany(_companyId: string, caseId: string, configId: string): StoredPass6ConfigurationProfile | null {
+    const record = this.findById(configId);
+    return record?.scope === "case" && record.scopeRef === caseId ? record : null;
+  }
+
+  findByCompanyAndCase(_companyId: string, caseId: string): StoredPass6ConfigurationProfile[] {
+    return this.findByCaseId(caseId);
+  }
+
+  findByAnalysisRun(_companyId: string, _caseId: string, _analysisRunId: string): StoredPass6ConfigurationProfile[] {
+    return [];
+  }
+
+  findActiveByCompanyAndCase(_companyId: string, caseId: string): StoredPass6ConfigurationProfile[] {
+    const active = this.findActive("case", caseId);
+    return active ? [active] : [];
+  }
+
   findByCaseId(caseId: string): StoredPass6ConfigurationProfile[] {
     const rows = this.db.prepare("SELECT payload FROM pass6_configuration_profiles WHERE scope = 'case' AND scope_ref = ? ORDER BY id").all(caseId);
     return parseStoredList<StoredPass6ConfigurationProfile>(rows).map((record) => cloneRecord(record));
@@ -4584,6 +4738,10 @@ export class SQLitePass6ConfigurationProfileRepository
     const updated = cloneRecord({ ...existing, ...updates });
     this.save(updated);
     return cloneRecord(updated);
+  }
+
+  updateLineageStatus(_companyId: string, _caseId: string, _analysisRunId: string, _lineageStatus: Pass6LineageStatus): number {
+    return 0;
   }
 
   findActive(scope = "global", scopeRef = ""): StoredPass6ConfigurationProfile | null {
@@ -4687,7 +4845,7 @@ function createSQLitePass6Repositories(dbPath?: string): Pass6PersistenceReposit
     synthesisInputBundles: new SQLitePass6RecordRepository<StoredSynthesisInputBundle>("synthesis_input_bundle", (record) => record.bundleId, pass6CaseId, dbPath),
     workflowUnits: new SQLitePass6RecordRepository<StoredWorkflowUnit>("workflow_unit", (record) => record.unitId, pass6CaseId, dbPath),
     workflowClaims: new SQLitePass6RecordRepository<StoredWorkflowClaim>("workflow_claim", (record) => record.claimId, pass6CaseId, dbPath),
-    analysisMethodUsages: new SQLitePass6RecordRepository<StoredAnalysisMethodUsage>("analysis_method_usage", (record) => record.methodUsageId, () => undefined, dbPath),
+    analysisMethodUsages: new SQLitePass6RecordRepository<StoredAnalysisMethodUsage>("analysis_method_usage", (record) => record.methodUsageId, pass6CaseId, dbPath),
     differenceInterpretations: new SQLitePass6RecordRepository<StoredDifferenceInterpretation>("difference_interpretation", (record) => record.differenceId, pass6CaseId, dbPath),
     assembledWorkflowDrafts: new SQLitePass6RecordRepository<StoredAssembledWorkflowDraft>("assembled_workflow_draft", (record) => record.draftId, pass6CaseId, dbPath),
     workflowReadinessResults: new SQLitePass6RecordRepository<StoredWorkflowReadinessResult>("workflow_readiness_result", (record) => record.resultId, pass6CaseId, dbPath),
@@ -4905,7 +5063,7 @@ function createInMemoryPass6Repositories(): Pass6PersistenceRepositories {
     synthesisInputBundles: new InMemoryPass6RecordRepository<StoredSynthesisInputBundle>((record) => record.bundleId, pass6CaseId),
     workflowUnits: new InMemoryPass6RecordRepository<StoredWorkflowUnit>((record) => record.unitId, pass6CaseId),
     workflowClaims: new InMemoryPass6RecordRepository<StoredWorkflowClaim>((record) => record.claimId, pass6CaseId),
-    analysisMethodUsages: new InMemoryPass6RecordRepository<StoredAnalysisMethodUsage>((record) => record.methodUsageId),
+    analysisMethodUsages: new InMemoryPass6RecordRepository<StoredAnalysisMethodUsage>((record) => record.methodUsageId, pass6CaseId),
     differenceInterpretations: new InMemoryPass6RecordRepository<StoredDifferenceInterpretation>((record) => record.differenceId, pass6CaseId),
     assembledWorkflowDrafts: new InMemoryPass6RecordRepository<StoredAssembledWorkflowDraft>((record) => record.draftId, pass6CaseId),
     workflowReadinessResults: new InMemoryPass6RecordRepository<StoredWorkflowReadinessResult>((record) => record.resultId, pass6CaseId),
