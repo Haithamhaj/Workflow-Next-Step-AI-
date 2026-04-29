@@ -204,11 +204,88 @@ for (const key of [
 }
 assert.ok(WDE_ANALYSIS_CORRECTNESS_RULES.length >= 8, "WDE analysis correctness rules exist");
 assert.ok(WDE_GOOD_BAD_ANALYSIS_EXAMPLES.length >= 3, "WDE good/bad analysis examples exist");
+assert.ok(
+  WDE_ANALYSIS_CORRECTNESS_RULES.some((rule) => /advisory|cannot run tools|mutate records|readiness/i.test(rule.guidance)),
+  "analysis correctness rules state Copilot capability awareness is advisory and non-executable",
+);
+for (const requiredExample of [
+  "good_pass6_evidence_anchored",
+  "bad_pass6_flattened_truth",
+  "dangerous_readiness_assumption",
+  "bad_evidence_promotion",
+  "bad_document_as_truth",
+  "good_pass5_to_6a_handoff",
+]) {
+  assert.ok(
+    WDE_GOOD_BAD_ANALYSIS_EXAMPLES.some((example) => example.exampleId === requiredExample),
+    `WDE examples include ${requiredExample}`,
+  );
+}
 assert.match(
   summarizeWdeStageSystemKnowledgeForPromptStudio(),
   /Pass 2[\s\S]*Pass 3[\s\S]*Pass 4[\s\S]*Pass 5[\s\S]*Pass 6A[\s\S]*Pass 6B[\s\S]*Pass 6C/,
   "WDE stage system knowledge summary covers Pass 2 through Pass 6C",
 );
+assert.match(
+  summarizeWdeStageSystemKnowledgeForPromptStudio(),
+  /Internal capabilities known but not executable by Copilot/,
+  "Prompt Studio compact summary states internal capability knowledge is not execution authority",
+);
+
+const operationalCoverageCategories = [
+  "purpose",
+  "goal",
+  "inputs",
+  "outputs",
+  "stepByStepOperations",
+  "contractsAndRecords",
+  "internalSystemCapabilities",
+  "boundaries",
+  "mustNotDo",
+  "wrongInterpretationExamples",
+  "handoffToNextStage",
+];
+
+const criticalOperationalCategories = [
+  "internalSystemCapabilities",
+  "boundaries",
+  "mustNotDo",
+  "wrongInterpretationExamples",
+];
+
+function categoryPresent(entry, category) {
+  const value = entry[category];
+  if (Array.isArray(value)) return value.length > 0 && value.every((item) => typeof item === "string" && item.trim().length > 0);
+  return typeof value === "string" && value.trim().length > 0;
+}
+
+const coverageRows = knowledgeEntries.map((entry) => {
+  const missing = operationalCoverageCategories.filter((category) => !categoryPresent(entry, category));
+  for (const criticalCategory of criticalOperationalCategories) {
+    assert.ok(
+      !missing.includes(criticalCategory),
+      `${entry.label} must not miss critical operational category ${criticalCategory}`,
+    );
+  }
+  assert.ok(
+    entry.internalSystemCapabilities.some((capability) => capability.trim().length > 0),
+    `${entry.label} declares internal system capabilities`,
+  );
+  assert.match(
+    entry.boundaries.join(" "),
+    /does not grant Copilot execution authority|not grant Copilot execution authority|knowledge.*does not grant/i,
+    `${entry.label} boundary states capability knowledge does not grant execution authority`,
+  );
+  assert.ok(
+    missing.length <= 1,
+    `${entry.label} must score at least 10/11 operational categories; missing: ${missing.join(", ") || "none"}`,
+  );
+  return {
+    stage: entry.label,
+    score: `${operationalCoverageCategories.length - missing.length}/${operationalCoverageCategories.length}`,
+    missing: missing.join(", ") || "none",
+  };
+});
 
 const promptStudioEnvelope = createPromptStudioCopilotContextEnvelope();
 const promptStudioKnowledgeRefIds = promptStudioEnvelope.systemKnowledgeRefs.map((ref) => ref.refId);
@@ -360,6 +437,8 @@ assertDoesNotMatch(routeSource, /tools\s*:/, "chat route must not send provider 
 const usageAvailable = totals.available > 0;
 
 console.log("Stage Copilot stage-knowledge and token usage proof complete.");
+console.log("Operational coverage table:");
+console.table(coverageRows);
 console.log("Summary table:");
 console.table(rows.map((row) => ({
   q: row.question,
@@ -390,5 +469,6 @@ console.log(JSON.stringify({
     context_gap: counts.context_gap ?? 0,
     total: rows.length,
   },
+  operationalCoverage: coverageRows,
   contextGaps: Object.fromEntries(contextGaps),
 }, null, 2));
