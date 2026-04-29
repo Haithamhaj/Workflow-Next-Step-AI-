@@ -98,7 +98,7 @@ const tests = [
       [/synthesis|evaluation criteria|معايير|توليف|تقييم/i, "need synthesis/evaluation criteria"],
       [/gap|contradiction|boundary|فجوات|تناقضات|حدود/i, "consider gaps/contradictions/boundaries"],
       [/readiness logic|package eligibility|governed|أهلية الحزمة|الجاهزية/i, "governed readiness/package eligibility"],
-      [/Copilot.*not.*approve|cannot.*generate|لا.*يعتمد|لا.*يولد/i, "Copilot advises but cannot approve/generate"],
+      [/Copilot.*not.*approve|cannot.*generate|لا.*يعتمد|لا.*يولد|لا أستطيع.*اعتماد|لا أستطيع.*توليد|لا أستطيع.*حفظ/i, "Copilot advises but cannot approve/generate"],
     ],
   },
   {
@@ -120,13 +120,13 @@ const tests = [
     question: "ما الأشياء التي تستطيع مناقشتها معي كمساعد، وما الأشياء التي لا تستطيع الادعاء أنك فعلتها؟",
     expected: [
       [/discuss|explain|challenge|compare|advise|يناقش|يشرح|يقارن|ينصح/i, "can discuss/explain/challenge/compare/advise"],
-      [/changed records|mutate records|تغيير السجلات|عدلت/i, "cannot claim changed records"],
-      [/changed prompts|promoted prompts|تغيير البرومبتات|ترقية/i, "cannot claim changed/promoted prompts"],
-      [/ran analysis|official analysis|شغلت.*تحليل|التحليل الرسمي/i, "cannot claim ran analysis"],
-      [/approved evidence|transcript|اعتماد الأدلة|التفريغ/i, "cannot approve evidence/transcripts"],
+      [/changed records|mutate records|تغيير السجلات|عدلت|غيّرت.*سجل|حفظت.*سجل/i, "cannot claim changed records"],
+      [/changed prompts|promoted prompts|تغيير البرومبتات|ترقية|عدّلت.*prompts|روّجت.*prompts|غيّرت.*PromptSpecs/i, "cannot claim changed/promoted prompts"],
+      [/ran analysis|official analysis|شغلت.*تحليل|نفذت.*التحليل|التحليل الرسمي/i, "cannot claim ran analysis"],
+      [/approved evidence|transcript|اعتماد الأدلة|التفريغ|وافقت.*أدلة|رفضت.*أدلة|gates/i, "cannot approve evidence/transcripts"],
       [/readiness|package eligibility|الجاهزية|أهلية الحزمة/i, "cannot change readiness/package eligibility"],
-      [/generated package|package|ولدت.*حزمة/i, "cannot generate package"],
-      [/ran tests|compiled|اختبارات|تجميع/i, "cannot run tests/compile"],
+      [/generated package|package|ولدت.*حزمة|ولّدت.*Package|أنشأت.*package|Initial Package/i, "cannot generate package"],
+      [/ran tests|compiled|اختبارات|تجميع|جمّعت.*prompts|اختبرتها/i, "cannot run tests/compile"],
     ],
   },
 ];
@@ -283,6 +283,15 @@ const counts = rows.reduce((acc, row) => {
   acc[row.result] = (acc[row.result] ?? 0) + 1;
   return acc;
 }, {});
+
+if (liveSuccessCount === rows.length) {
+  assert.ok((counts.pass ?? 0) >= 6, "live GPT stage-knowledge smoke should produce at least 6 pass answers");
+  assert.equal(counts.context_gap ?? 0, 0, "live GPT stage-knowledge smoke should not leave context gaps");
+  assert.equal(counts.fail ?? 0, 0, "live GPT stage-knowledge smoke should not fail any diagnostic question");
+  assert.equal(rows.find((row) => row.question === 5)?.result, "pass", "Pass 6A/6B/6C answer should pass");
+  assert.equal(rows.find((row) => row.question === 6)?.result, "pass", "bad readiness/package assumption answer should pass");
+  assert.equal(rows.find((row) => row.question === 8)?.result, "pass", "advisory limits answer should pass");
+}
 
 function importAndExportLines(source) {
   return source

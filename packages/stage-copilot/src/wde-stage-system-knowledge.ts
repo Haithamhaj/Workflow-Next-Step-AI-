@@ -942,6 +942,69 @@ export function summarizeWdeStageSystemKnowledgeForPromptStudio(): string {
   ].join("\n\n");
 }
 
+function compactOperationalList(items: readonly string[]): string {
+  return items.map((item) => item.replace(/\s+/g, " ").trim()).join(" | ");
+}
+
+function stageFocusScore(entry: WdeStageSystemKnowledgeEntry, focusText: string): number {
+  const normalized = focusText.toLowerCase();
+  if (!normalized) return 0;
+  const stageMatchers: Record<WdeStageSystemKnowledgeKey, readonly RegExp[]> = {
+    pass2_sources_context: [/pass\s*2/i, /sources?\s*\/?\s*context/i, /مصادر|السياق/],
+    pass3_hierarchy: [/pass\s*3/i, /hierarchy/i, /هيكل|اعتماد.*hierarchy/],
+    pass4_targeting: [/pass\s*4/i, /targeting|rollout/i, /استهداف|اختيار المشاركين/],
+    pass5_participant_evidence: [/pass\s*5/i, /participant evidence|narrative|clarification|extraction/i, /الأدلة|توضيح|استخراج/],
+    pass6a_synthesis_input: [/6A/i, /SynthesisInputBundle/i, /حزمة/],
+    pass6b_synthesis_evaluation_readiness: [/6B/i, /synthesis|evaluation|readiness|seven[- ]?condition/i, /توليف|تقييم|جاهزية/],
+    pass6c_initial_package: [/6C/i, /Initial Package|package eligibility/i, /الحزمة الأولية|أهلية الحزمة/],
+  };
+  return stageMatchers[entry.key].reduce((score, pattern) => score + (pattern.test(normalized) ? 1 : 0), 0);
+}
+
+export function summarizeWdeOperationalStageCardsForPromptStudio(
+  focusText = "",
+): string {
+  const entries = [...WDE_STAGE_SYSTEM_KNOWLEDGE_PACK].sort((a, b) => {
+    const scoreDelta = stageFocusScore(b, focusText) - stageFocusScore(a, focusText);
+    if (scoreDelta !== 0) return scoreDelta;
+    return WDE_STAGE_SYSTEM_KNOWLEDGE_PACK.indexOf(a) - WDE_STAGE_SYSTEM_KNOWLEDGE_PACK.indexOf(b);
+  });
+
+  const stageCards = entries.map((entry) => [
+    `### ${entry.label} (${entry.key})`,
+    `purpose: ${entry.purpose}`,
+    `goal: ${entry.goal}`,
+    `inputs: ${compactOperationalList(entry.inputs)}`,
+    `outputs: ${compactOperationalList(entry.outputs)}`,
+    `stepByStepOperations: ${compactOperationalList(entry.stepByStepOperations)}`,
+    `contractsAndRecords: ${compactOperationalList(entry.contractsAndRecords)}`,
+    `internalSystemCapabilities: ${compactOperationalList(entry.internalSystemCapabilities)}. Knowledge only; Copilot cannot run these capabilities.`,
+    `boundaries: ${compactOperationalList(entry.boundaries)}`,
+    `mustNotDo: ${compactOperationalList(entry.mustNotDo)}`,
+    `wrongInterpretationExamples: ${compactOperationalList(entry.wrongInterpretationExamples)}`,
+    `handoffToNextStage: ${entry.handoffToNextStage}`,
+  ].join("\n")).join("\n\n");
+
+  const rules = WDE_ANALYSIS_CORRECTNESS_RULES
+    .map((rule) => `- ${rule.label} ${rule.guidance}`)
+    .join("\n");
+
+  const examples = WDE_GOOD_BAD_ANALYSIS_EXAMPLES
+    .map((example) => `- ${example.label} (${example.kind}): ${example.example} Why: ${example.why}`)
+    .join("\n");
+
+  return [
+    "Use these compact structured cards as the authoritative stage-system knowledge for conversational answers.",
+    "Each card includes the required 11 categories: purpose, goal, inputs, outputs, stepByStepOperations, contractsAndRecords, internalSystemCapabilities, boundaries, mustNotDo, wrongInterpretationExamples, handoffToNextStage.",
+    "Knowledge of internalSystemCapabilities is descriptive only and never grants execution authority.",
+    stageCards,
+    "### Global analysis correctness rules",
+    rules,
+    "### Good/bad analysis examples",
+    examples,
+  ].join("\n\n");
+}
+
 function mentionsAny(value: string, patterns: readonly RegExp[]): boolean {
   return patterns.some((pattern) => pattern.test(value));
 }
