@@ -740,6 +740,8 @@ export interface FinalPreHierarchyReviewRepository {
 export interface HierarchyIntakeRepository {
   save(record: StoredHierarchyIntakeRecord): void;
   findById(hierarchyIntakeId: string): StoredHierarchyIntakeRecord | null;
+  findByCompany(companyId: string, caseId: string, hierarchyIntakeId: string): StoredHierarchyIntakeRecord | null;
+  findByCompanyAndCase(companyId: string, caseId: string): StoredHierarchyIntakeRecord[];
   findBySessionId(sessionId: string): StoredHierarchyIntakeRecord | null;
   findByCaseId(caseId: string): StoredHierarchyIntakeRecord[];
   findAll(): StoredHierarchyIntakeRecord[];
@@ -748,6 +750,8 @@ export interface HierarchyIntakeRepository {
 export interface HierarchyDraftRepository {
   save(record: StoredHierarchyDraftRecord): void;
   findById(hierarchyDraftId: string): StoredHierarchyDraftRecord | null;
+  findByCompany(companyId: string, caseId: string, hierarchyDraftId: string): StoredHierarchyDraftRecord | null;
+  findByCompanyAndCase(companyId: string, caseId: string): StoredHierarchyDraftRecord[];
   findBySessionId(sessionId: string): StoredHierarchyDraftRecord | null;
   findByCaseId(caseId: string): StoredHierarchyDraftRecord[];
   findAll(): StoredHierarchyDraftRecord[];
@@ -756,6 +760,8 @@ export interface HierarchyDraftRepository {
 export interface HierarchyCorrectionEventRepository {
   save(record: StoredHierarchyCorrectionEvent): void;
   findById(correctionId: string): StoredHierarchyCorrectionEvent | null;
+  findByCompany(companyId: string, caseId: string, correctionId: string): StoredHierarchyCorrectionEvent | null;
+  findByCompanyAndCase(companyId: string, caseId: string): StoredHierarchyCorrectionEvent[];
   findBySessionId(sessionId: string): StoredHierarchyCorrectionEvent[];
   findByDraftId(hierarchyDraftId: string): StoredHierarchyCorrectionEvent[];
   findAll(): StoredHierarchyCorrectionEvent[];
@@ -764,6 +770,8 @@ export interface HierarchyCorrectionEventRepository {
 export interface ApprovedHierarchySnapshotRepository {
   save(record: StoredApprovedHierarchySnapshot): void;
   findById(approvedSnapshotId: string): StoredApprovedHierarchySnapshot | null;
+  findByCompany(companyId: string, caseId: string, approvedSnapshotId: string): StoredApprovedHierarchySnapshot | null;
+  findByCompanyAndCase(companyId: string, caseId: string): StoredApprovedHierarchySnapshot[];
   findBySessionId(sessionId: string): StoredApprovedHierarchySnapshot | null;
   findByCaseId(caseId: string): StoredApprovedHierarchySnapshot[];
   findAll(): StoredApprovedHierarchySnapshot[];
@@ -772,6 +780,8 @@ export interface ApprovedHierarchySnapshotRepository {
 export interface HierarchyReadinessSnapshotRepository {
   save(record: StoredHierarchyReadinessSnapshot): void;
   findById(readinessSnapshotId: string): StoredHierarchyReadinessSnapshot | null;
+  findByCompany(companyId: string, caseId: string, readinessSnapshotId: string): StoredHierarchyReadinessSnapshot | null;
+  findByCompanyAndCase(companyId: string, caseId: string): StoredHierarchyReadinessSnapshot[];
   findBySessionId(sessionId: string): StoredHierarchyReadinessSnapshot | null;
   findByCaseId(caseId: string): StoredHierarchyReadinessSnapshot[];
   findAll(): StoredHierarchyReadinessSnapshot[];
@@ -788,6 +798,8 @@ export interface StructuredPromptSpecRepository {
 export interface SourceHierarchyTriageJobRepository {
   save(record: StoredSourceHierarchyTriageJob): void;
   findById(triageJobId: string): StoredSourceHierarchyTriageJob | null;
+  findByCompany(companyId: string, caseId: string, triageJobId: string): StoredSourceHierarchyTriageJob | null;
+  findByCompanyAndCase(companyId: string, caseId: string): StoredSourceHierarchyTriageJob[];
   findBySessionId(sessionId: string): StoredSourceHierarchyTriageJob[];
   findLatestBySessionId(sessionId: string): StoredSourceHierarchyTriageJob | null;
   findAll(): StoredSourceHierarchyTriageJob[];
@@ -796,6 +808,8 @@ export interface SourceHierarchyTriageJobRepository {
 export interface SourceHierarchyTriageSuggestionRepository {
   save(record: StoredSourceHierarchyTriageSuggestion): void;
   findById(triageId: string): StoredSourceHierarchyTriageSuggestion | null;
+  findByCompany(companyId: string, caseId: string, triageId: string): StoredSourceHierarchyTriageSuggestion | null;
+  findByCompanyAndCase(companyId: string, caseId: string): StoredSourceHierarchyTriageSuggestion[];
   findBySessionId(sessionId: string): StoredSourceHierarchyTriageSuggestion[];
   findBySourceId(sourceId: string): StoredSourceHierarchyTriageSuggestion[];
   findAll(): StoredSourceHierarchyTriageSuggestion[];
@@ -811,6 +825,8 @@ export interface Pass3PromptTestRunRepository {
 export interface TargetingRolloutPlanRepository {
   save(record: StoredTargetingRolloutPlan): void;
   findById(planId: string): StoredTargetingRolloutPlan | null;
+  findByCompany(companyId: string, caseId: string, planId: string): StoredTargetingRolloutPlan | null;
+  findByCompanyAndCase(companyId: string, caseId: string): StoredTargetingRolloutPlan[];
   findByCaseId(caseId: string): StoredTargetingRolloutPlan[];
   findBySessionId(sessionId: string): StoredTargetingRolloutPlan | null;
   findAll(): StoredTargetingRolloutPlan[];
@@ -1819,6 +1835,13 @@ class InMemoryHierarchyIntakeRepository implements HierarchyIntakeRepository {
   findById(hierarchyIntakeId: string): StoredHierarchyIntakeRecord | null {
     return this.store.get(hierarchyIntakeId) ?? null;
   }
+  findByCompany(companyId: string, caseId: string, hierarchyIntakeId: string): StoredHierarchyIntakeRecord | null {
+    const record = this.findById(hierarchyIntakeId);
+    return record?.companyId === companyId && record.caseId === caseId ? record : null;
+  }
+  findByCompanyAndCase(companyId: string, caseId: string): StoredHierarchyIntakeRecord[] {
+    return this.findAll().filter((record) => record.companyId === companyId && record.caseId === caseId);
+  }
 
   findBySessionId(sessionId: string): StoredHierarchyIntakeRecord | null {
     return Array.from(this.store.values()).find((record) => record.sessionId === sessionId) ?? null;
@@ -1847,6 +1870,13 @@ class InMemoryHierarchyDraftRepository implements HierarchyDraftRepository {
   findById(hierarchyDraftId: string): StoredHierarchyDraftRecord | null {
     return this.store.get(hierarchyDraftId) ?? null;
   }
+  findByCompany(companyId: string, caseId: string, hierarchyDraftId: string): StoredHierarchyDraftRecord | null {
+    const record = this.findById(hierarchyDraftId);
+    return record?.companyId === companyId && record.caseId === caseId ? record : null;
+  }
+  findByCompanyAndCase(companyId: string, caseId: string): StoredHierarchyDraftRecord[] {
+    return this.findAll().filter((record) => record.companyId === companyId && record.caseId === caseId);
+  }
 
   findBySessionId(sessionId: string): StoredHierarchyDraftRecord | null {
     return Array.from(this.store.values()).find((record) => record.sessionId === sessionId) ?? null;
@@ -1874,6 +1904,13 @@ class InMemoryHierarchyCorrectionEventRepository implements HierarchyCorrectionE
 
   findById(correctionId: string): StoredHierarchyCorrectionEvent | null {
     return this.store.get(correctionId) ?? null;
+  }
+  findByCompany(companyId: string, caseId: string, correctionId: string): StoredHierarchyCorrectionEvent | null {
+    const record = this.findById(correctionId);
+    return record?.companyId === companyId && record.caseId === caseId ? record : null;
+  }
+  findByCompanyAndCase(companyId: string, caseId: string): StoredHierarchyCorrectionEvent[] {
+    return this.findAll().filter((record) => record.companyId === companyId && record.caseId === caseId);
   }
 
   findBySessionId(sessionId: string): StoredHierarchyCorrectionEvent[] {
@@ -1904,6 +1941,13 @@ class InMemoryApprovedHierarchySnapshotRepository implements ApprovedHierarchySn
   findById(approvedSnapshotId: string): StoredApprovedHierarchySnapshot | null {
     return this.store.get(approvedSnapshotId) ?? null;
   }
+  findByCompany(companyId: string, caseId: string, approvedSnapshotId: string): StoredApprovedHierarchySnapshot | null {
+    const record = this.findById(approvedSnapshotId);
+    return record?.companyId === companyId && record.caseId === caseId ? record : null;
+  }
+  findByCompanyAndCase(companyId: string, caseId: string): StoredApprovedHierarchySnapshot[] {
+    return this.findAll().filter((record) => record.companyId === companyId && record.caseId === caseId);
+  }
 
   findBySessionId(sessionId: string): StoredApprovedHierarchySnapshot | null {
     return Array.from(this.store.values()).find((record) => record.sessionId === sessionId) ?? null;
@@ -1927,6 +1971,13 @@ class InMemoryHierarchyReadinessSnapshotRepository implements HierarchyReadiness
 
   findById(readinessSnapshotId: string): StoredHierarchyReadinessSnapshot | null {
     return this.store.get(readinessSnapshotId) ?? null;
+  }
+  findByCompany(companyId: string, caseId: string, readinessSnapshotId: string): StoredHierarchyReadinessSnapshot | null {
+    const record = this.findById(readinessSnapshotId);
+    return record?.companyId === companyId && record.caseId === caseId ? record : null;
+  }
+  findByCompanyAndCase(companyId: string, caseId: string): StoredHierarchyReadinessSnapshot[] {
+    return this.findAll().filter((record) => record.companyId === companyId && record.caseId === caseId);
   }
 
   findBySessionId(sessionId: string): StoredHierarchyReadinessSnapshot | null {
@@ -1977,6 +2028,13 @@ class InMemorySourceHierarchyTriageJobRepository implements SourceHierarchyTriag
   findById(triageJobId: string): StoredSourceHierarchyTriageJob | null {
     return this.store.get(triageJobId) ?? null;
   }
+  findByCompany(companyId: string, caseId: string, triageJobId: string): StoredSourceHierarchyTriageJob | null {
+    const record = this.findById(triageJobId);
+    return record?.companyId === companyId && record.caseId === caseId ? record : null;
+  }
+  findByCompanyAndCase(companyId: string, caseId: string): StoredSourceHierarchyTriageJob[] {
+    return this.findAll().filter((record) => record.companyId === companyId && record.caseId === caseId);
+  }
 
   findBySessionId(sessionId: string): StoredSourceHierarchyTriageJob[] {
     return Array.from(this.store.values()).filter((record) => record.sessionId === sessionId);
@@ -2001,6 +2059,13 @@ class InMemorySourceHierarchyTriageSuggestionRepository implements SourceHierarc
 
   findById(triageId: string): StoredSourceHierarchyTriageSuggestion | null {
     return this.store.get(triageId) ?? null;
+  }
+  findByCompany(companyId: string, caseId: string, triageId: string): StoredSourceHierarchyTriageSuggestion | null {
+    const record = this.findById(triageId);
+    return record?.companyId === companyId && record.caseId === caseId ? record : null;
+  }
+  findByCompanyAndCase(companyId: string, caseId: string): StoredSourceHierarchyTriageSuggestion[] {
+    return this.findAll().filter((record) => record.companyId === companyId && record.caseId === caseId);
   }
 
   findBySessionId(sessionId: string): StoredSourceHierarchyTriageSuggestion[] {
@@ -2028,6 +2093,13 @@ class InMemoryTargetingRolloutPlanRepository implements TargetingRolloutPlanRepo
   private readonly store = new Map<string, StoredTargetingRolloutPlan>();
   save(record: StoredTargetingRolloutPlan): void { this.store.set(record.planId, structuredClone(record)); }
   findById(planId: string): StoredTargetingRolloutPlan | null { return this.store.get(planId) ?? null; }
+  findByCompany(companyId: string, caseId: string, planId: string): StoredTargetingRolloutPlan | null {
+    const record = this.findById(planId);
+    return record?.companyId === companyId && record.caseId === caseId ? record : null;
+  }
+  findByCompanyAndCase(companyId: string, caseId: string): StoredTargetingRolloutPlan[] {
+    return this.findAll().filter((record) => record.companyId === companyId && record.caseId === caseId);
+  }
   findByCaseId(caseId: string): StoredTargetingRolloutPlan[] { return Array.from(this.store.values()).filter((record) => record.caseId === caseId); }
   findBySessionId(sessionId: string): StoredTargetingRolloutPlan | null {
     const records = Array.from(this.store.values()).filter((record) => record.sessionId === sessionId);
@@ -2619,6 +2691,7 @@ function openIntakeDatabase(dbPath?: string): DatabaseSync {
     );
     CREATE TABLE IF NOT EXISTS hierarchy_intakes (
       id TEXT PRIMARY KEY,
+      company_id TEXT NOT NULL DEFAULT '${DEFAULT_LOCAL_COMPANY_ID}',
       session_id TEXT NOT NULL,
       case_id TEXT NOT NULL,
       payload TEXT NOT NULL
@@ -2626,6 +2699,7 @@ function openIntakeDatabase(dbPath?: string): DatabaseSync {
     CREATE TABLE IF NOT EXISTS hierarchy_drafts (
       id TEXT PRIMARY KEY,
       intake_id TEXT NOT NULL,
+      company_id TEXT NOT NULL DEFAULT '${DEFAULT_LOCAL_COMPANY_ID}',
       session_id TEXT NOT NULL,
       case_id TEXT NOT NULL,
       payload TEXT NOT NULL
@@ -2633,6 +2707,7 @@ function openIntakeDatabase(dbPath?: string): DatabaseSync {
     CREATE TABLE IF NOT EXISTS hierarchy_corrections (
       id TEXT PRIMARY KEY,
       draft_id TEXT NOT NULL,
+      company_id TEXT NOT NULL DEFAULT '${DEFAULT_LOCAL_COMPANY_ID}',
       session_id TEXT NOT NULL,
       case_id TEXT NOT NULL,
       payload TEXT NOT NULL
@@ -2640,12 +2715,14 @@ function openIntakeDatabase(dbPath?: string): DatabaseSync {
     CREATE TABLE IF NOT EXISTS approved_hierarchy_snapshots (
       id TEXT PRIMARY KEY,
       draft_id TEXT NOT NULL,
+      company_id TEXT NOT NULL DEFAULT '${DEFAULT_LOCAL_COMPANY_ID}',
       session_id TEXT NOT NULL,
       case_id TEXT NOT NULL,
       payload TEXT NOT NULL
     );
     CREATE TABLE IF NOT EXISTS hierarchy_readiness_snapshots (
       id TEXT PRIMARY KEY,
+      company_id TEXT NOT NULL DEFAULT '${DEFAULT_LOCAL_COMPANY_ID}',
       session_id TEXT NOT NULL,
       case_id TEXT NOT NULL,
       payload TEXT NOT NULL
@@ -2658,6 +2735,7 @@ function openIntakeDatabase(dbPath?: string): DatabaseSync {
     );
     CREATE TABLE IF NOT EXISTS source_hierarchy_triage_jobs (
       id TEXT PRIMARY KEY,
+      company_id TEXT NOT NULL DEFAULT '${DEFAULT_LOCAL_COMPANY_ID}',
       session_id TEXT NOT NULL,
       case_id TEXT NOT NULL,
       payload TEXT NOT NULL
@@ -2665,6 +2743,7 @@ function openIntakeDatabase(dbPath?: string): DatabaseSync {
     CREATE TABLE IF NOT EXISTS source_hierarchy_triage_suggestions (
       id TEXT PRIMARY KEY,
       source_id TEXT NOT NULL,
+      company_id TEXT NOT NULL DEFAULT '${DEFAULT_LOCAL_COMPANY_ID}',
       session_id TEXT NOT NULL,
       case_id TEXT NOT NULL,
       payload TEXT NOT NULL
@@ -2677,6 +2756,7 @@ function openIntakeDatabase(dbPath?: string): DatabaseSync {
     );
     CREATE TABLE IF NOT EXISTS targeting_rollout_plans (
       id TEXT PRIMARY KEY,
+      company_id TEXT NOT NULL DEFAULT '${DEFAULT_LOCAL_COMPANY_ID}',
       session_id TEXT NOT NULL,
       case_id TEXT NOT NULL,
       state TEXT NOT NULL,
@@ -2931,6 +3011,14 @@ function openIntakeDatabase(dbPath?: string): DatabaseSync {
     ["session_next_actions", "company_id", `TEXT NOT NULL DEFAULT '${DEFAULT_LOCAL_COMPANY_ID}'`],
     ["session_next_actions", "case_id", "TEXT NOT NULL DEFAULT ''"],
     ["pass6_handoff_candidates", "company_id", `TEXT NOT NULL DEFAULT '${DEFAULT_LOCAL_COMPANY_ID}'`],
+    ["hierarchy_intakes", "company_id", `TEXT NOT NULL DEFAULT '${DEFAULT_LOCAL_COMPANY_ID}'`],
+    ["hierarchy_drafts", "company_id", `TEXT NOT NULL DEFAULT '${DEFAULT_LOCAL_COMPANY_ID}'`],
+    ["hierarchy_corrections", "company_id", `TEXT NOT NULL DEFAULT '${DEFAULT_LOCAL_COMPANY_ID}'`],
+    ["approved_hierarchy_snapshots", "company_id", `TEXT NOT NULL DEFAULT '${DEFAULT_LOCAL_COMPANY_ID}'`],
+    ["hierarchy_readiness_snapshots", "company_id", `TEXT NOT NULL DEFAULT '${DEFAULT_LOCAL_COMPANY_ID}'`],
+    ["source_hierarchy_triage_jobs", "company_id", `TEXT NOT NULL DEFAULT '${DEFAULT_LOCAL_COMPANY_ID}'`],
+    ["source_hierarchy_triage_suggestions", "company_id", `TEXT NOT NULL DEFAULT '${DEFAULT_LOCAL_COMPANY_ID}'`],
+    ["targeting_rollout_plans", "company_id", `TEXT NOT NULL DEFAULT '${DEFAULT_LOCAL_COMPANY_ID}'`],
   ];
   for (const [tableName, columnName, definition] of lineageDefaults) {
     addColumnIfMissing(db, tableName, columnName, definition);
@@ -2960,6 +3048,17 @@ function openIntakeDatabase(dbPath?: string): DatabaseSync {
     CREATE INDEX IF NOT EXISTS idx_evidence_disputes_company_case_session ON evidence_disputes(company_id, case_id, session_id);
     CREATE INDEX IF NOT EXISTS idx_session_next_actions_company_case_session ON session_next_actions(company_id, case_id, session_id);
     CREATE INDEX IF NOT EXISTS idx_pass6_handoff_candidates_company_case ON pass6_handoff_candidates(company_id, case_id);
+    CREATE INDEX IF NOT EXISTS idx_hierarchy_intakes_company_case ON hierarchy_intakes(company_id, case_id);
+    CREATE INDEX IF NOT EXISTS idx_hierarchy_drafts_company_case ON hierarchy_drafts(company_id, case_id);
+    CREATE INDEX IF NOT EXISTS idx_hierarchy_corrections_company_case ON hierarchy_corrections(company_id, case_id);
+    CREATE INDEX IF NOT EXISTS idx_approved_hierarchy_company_case ON approved_hierarchy_snapshots(company_id, case_id);
+    CREATE INDEX IF NOT EXISTS idx_approved_hierarchy_company_case_snapshot ON approved_hierarchy_snapshots(company_id, case_id, id);
+    CREATE INDEX IF NOT EXISTS idx_hierarchy_readiness_company_case ON hierarchy_readiness_snapshots(company_id, case_id);
+    CREATE INDEX IF NOT EXISTS idx_hierarchy_readiness_company_case_snapshot ON hierarchy_readiness_snapshots(company_id, case_id, id);
+    CREATE INDEX IF NOT EXISTS idx_source_hierarchy_triage_jobs_company_case ON source_hierarchy_triage_jobs(company_id, case_id);
+    CREATE INDEX IF NOT EXISTS idx_source_hierarchy_triage_suggestions_company_case ON source_hierarchy_triage_suggestions(company_id, case_id);
+    CREATE INDEX IF NOT EXISTS idx_targeting_rollout_plans_company_case ON targeting_rollout_plans(company_id, case_id);
+    CREATE INDEX IF NOT EXISTS idx_targeting_rollout_plans_company_case_plan ON targeting_rollout_plans(company_id, case_id, id);
   `);
   return db;
 }
@@ -3676,13 +3775,19 @@ export class SQLiteHierarchyIntakeRepository implements HierarchyIntakeRepositor
 
   save(record: StoredHierarchyIntakeRecord): void {
     this.db.prepare(
-      "INSERT INTO hierarchy_intakes (id, session_id, case_id, payload) VALUES (?, ?, ?, ?) ON CONFLICT(id) DO UPDATE SET session_id = excluded.session_id, case_id = excluded.case_id, payload = excluded.payload",
-    ).run(record.hierarchyIntakeId, record.sessionId, record.caseId, JSON.stringify(record));
+      "INSERT INTO hierarchy_intakes (id, company_id, session_id, case_id, payload) VALUES (?, ?, ?, ?, ?) ON CONFLICT(id) DO UPDATE SET company_id = excluded.company_id, session_id = excluded.session_id, case_id = excluded.case_id, payload = excluded.payload",
+    ).run(record.hierarchyIntakeId, record.companyId, record.sessionId, record.caseId, JSON.stringify(record));
   }
 
   findById(hierarchyIntakeId: string): StoredHierarchyIntakeRecord | null {
     const row = this.db.prepare("SELECT payload FROM hierarchy_intakes WHERE id = ?").get(hierarchyIntakeId);
     return parseStored<StoredHierarchyIntakeRecord>(row);
+  }
+  findByCompany(companyId: string, caseId: string, hierarchyIntakeId: string): StoredHierarchyIntakeRecord | null {
+    return parseStored<StoredHierarchyIntakeRecord>(this.db.prepare("SELECT payload FROM hierarchy_intakes WHERE company_id = ? AND case_id = ? AND id = ?").get(companyId, caseId, hierarchyIntakeId));
+  }
+  findByCompanyAndCase(companyId: string, caseId: string): StoredHierarchyIntakeRecord[] {
+    return parseStoredList<StoredHierarchyIntakeRecord>(this.db.prepare("SELECT payload FROM hierarchy_intakes WHERE company_id = ? AND case_id = ? ORDER BY id").all(companyId, caseId));
   }
 
   findBySessionId(sessionId: string): StoredHierarchyIntakeRecord | null {
@@ -3710,13 +3815,19 @@ export class SQLiteHierarchyDraftRepository implements HierarchyDraftRepository 
 
   save(record: StoredHierarchyDraftRecord): void {
     this.db.prepare(
-      "INSERT INTO hierarchy_drafts (id, intake_id, session_id, case_id, payload) VALUES (?, ?, ?, ?, ?) ON CONFLICT(id) DO UPDATE SET intake_id = excluded.intake_id, session_id = excluded.session_id, case_id = excluded.case_id, payload = excluded.payload",
-    ).run(record.hierarchyDraftId, record.hierarchyIntakeId, record.sessionId, record.caseId, JSON.stringify(record));
+      "INSERT INTO hierarchy_drafts (id, intake_id, company_id, session_id, case_id, payload) VALUES (?, ?, ?, ?, ?, ?) ON CONFLICT(id) DO UPDATE SET intake_id = excluded.intake_id, company_id = excluded.company_id, session_id = excluded.session_id, case_id = excluded.case_id, payload = excluded.payload",
+    ).run(record.hierarchyDraftId, record.hierarchyIntakeId, record.companyId, record.sessionId, record.caseId, JSON.stringify(record));
   }
 
   findById(hierarchyDraftId: string): StoredHierarchyDraftRecord | null {
     const row = this.db.prepare("SELECT payload FROM hierarchy_drafts WHERE id = ?").get(hierarchyDraftId);
     return parseStored<StoredHierarchyDraftRecord>(row);
+  }
+  findByCompany(companyId: string, caseId: string, hierarchyDraftId: string): StoredHierarchyDraftRecord | null {
+    return parseStored<StoredHierarchyDraftRecord>(this.db.prepare("SELECT payload FROM hierarchy_drafts WHERE company_id = ? AND case_id = ? AND id = ?").get(companyId, caseId, hierarchyDraftId));
+  }
+  findByCompanyAndCase(companyId: string, caseId: string): StoredHierarchyDraftRecord[] {
+    return parseStoredList<StoredHierarchyDraftRecord>(this.db.prepare("SELECT payload FROM hierarchy_drafts WHERE company_id = ? AND case_id = ? ORDER BY id").all(companyId, caseId));
   }
 
   findBySessionId(sessionId: string): StoredHierarchyDraftRecord | null {
@@ -3744,13 +3855,19 @@ export class SQLiteHierarchyCorrectionEventRepository implements HierarchyCorrec
 
   save(record: StoredHierarchyCorrectionEvent): void {
     this.db.prepare(
-      "INSERT INTO hierarchy_corrections (id, draft_id, session_id, case_id, payload) VALUES (?, ?, ?, ?, ?) ON CONFLICT(id) DO UPDATE SET draft_id = excluded.draft_id, session_id = excluded.session_id, case_id = excluded.case_id, payload = excluded.payload",
-    ).run(record.correctionId, record.hierarchyDraftId, record.sessionId, record.caseId, JSON.stringify(record));
+      "INSERT INTO hierarchy_corrections (id, draft_id, company_id, session_id, case_id, payload) VALUES (?, ?, ?, ?, ?, ?) ON CONFLICT(id) DO UPDATE SET draft_id = excluded.draft_id, company_id = excluded.company_id, session_id = excluded.session_id, case_id = excluded.case_id, payload = excluded.payload",
+    ).run(record.correctionId, record.hierarchyDraftId, record.companyId, record.sessionId, record.caseId, JSON.stringify(record));
   }
 
   findById(correctionId: string): StoredHierarchyCorrectionEvent | null {
     const row = this.db.prepare("SELECT payload FROM hierarchy_corrections WHERE id = ?").get(correctionId);
     return parseStored<StoredHierarchyCorrectionEvent>(row);
+  }
+  findByCompany(companyId: string, caseId: string, correctionId: string): StoredHierarchyCorrectionEvent | null {
+    return parseStored<StoredHierarchyCorrectionEvent>(this.db.prepare("SELECT payload FROM hierarchy_corrections WHERE company_id = ? AND case_id = ? AND id = ?").get(companyId, caseId, correctionId));
+  }
+  findByCompanyAndCase(companyId: string, caseId: string): StoredHierarchyCorrectionEvent[] {
+    return parseStoredList<StoredHierarchyCorrectionEvent>(this.db.prepare("SELECT payload FROM hierarchy_corrections WHERE company_id = ? AND case_id = ? ORDER BY id").all(companyId, caseId));
   }
 
   findBySessionId(sessionId: string): StoredHierarchyCorrectionEvent[] {
@@ -3778,13 +3895,19 @@ export class SQLiteApprovedHierarchySnapshotRepository implements ApprovedHierar
 
   save(record: StoredApprovedHierarchySnapshot): void {
     this.db.prepare(
-      "INSERT INTO approved_hierarchy_snapshots (id, draft_id, session_id, case_id, payload) VALUES (?, ?, ?, ?, ?) ON CONFLICT(id) DO NOTHING",
-    ).run(record.approvedSnapshotId, record.hierarchyDraftId, record.sessionId, record.caseId, JSON.stringify(record));
+      "INSERT INTO approved_hierarchy_snapshots (id, draft_id, company_id, session_id, case_id, payload) VALUES (?, ?, ?, ?, ?, ?) ON CONFLICT(id) DO NOTHING",
+    ).run(record.approvedSnapshotId, record.hierarchyDraftId, record.companyId, record.sessionId, record.caseId, JSON.stringify(record));
   }
 
   findById(approvedSnapshotId: string): StoredApprovedHierarchySnapshot | null {
     const row = this.db.prepare("SELECT payload FROM approved_hierarchy_snapshots WHERE id = ?").get(approvedSnapshotId);
     return parseStored<StoredApprovedHierarchySnapshot>(row);
+  }
+  findByCompany(companyId: string, caseId: string, approvedSnapshotId: string): StoredApprovedHierarchySnapshot | null {
+    return parseStored<StoredApprovedHierarchySnapshot>(this.db.prepare("SELECT payload FROM approved_hierarchy_snapshots WHERE company_id = ? AND case_id = ? AND id = ?").get(companyId, caseId, approvedSnapshotId));
+  }
+  findByCompanyAndCase(companyId: string, caseId: string): StoredApprovedHierarchySnapshot[] {
+    return parseStoredList<StoredApprovedHierarchySnapshot>(this.db.prepare("SELECT payload FROM approved_hierarchy_snapshots WHERE company_id = ? AND case_id = ? ORDER BY id").all(companyId, caseId));
   }
 
   findBySessionId(sessionId: string): StoredApprovedHierarchySnapshot | null {
@@ -3812,13 +3935,19 @@ export class SQLiteHierarchyReadinessSnapshotRepository implements HierarchyRead
 
   save(record: StoredHierarchyReadinessSnapshot): void {
     this.db.prepare(
-      "INSERT INTO hierarchy_readiness_snapshots (id, session_id, case_id, payload) VALUES (?, ?, ?, ?) ON CONFLICT(id) DO UPDATE SET session_id = excluded.session_id, case_id = excluded.case_id, payload = excluded.payload",
-    ).run(record.readinessSnapshotId, record.sessionId, record.caseId, JSON.stringify(record));
+      "INSERT INTO hierarchy_readiness_snapshots (id, company_id, session_id, case_id, payload) VALUES (?, ?, ?, ?, ?) ON CONFLICT(id) DO UPDATE SET company_id = excluded.company_id, session_id = excluded.session_id, case_id = excluded.case_id, payload = excluded.payload",
+    ).run(record.readinessSnapshotId, record.companyId, record.sessionId, record.caseId, JSON.stringify(record));
   }
 
   findById(readinessSnapshotId: string): StoredHierarchyReadinessSnapshot | null {
     const row = this.db.prepare("SELECT payload FROM hierarchy_readiness_snapshots WHERE id = ?").get(readinessSnapshotId);
     return parseStored<StoredHierarchyReadinessSnapshot>(row);
+  }
+  findByCompany(companyId: string, caseId: string, readinessSnapshotId: string): StoredHierarchyReadinessSnapshot | null {
+    return parseStored<StoredHierarchyReadinessSnapshot>(this.db.prepare("SELECT payload FROM hierarchy_readiness_snapshots WHERE company_id = ? AND case_id = ? AND id = ?").get(companyId, caseId, readinessSnapshotId));
+  }
+  findByCompanyAndCase(companyId: string, caseId: string): StoredHierarchyReadinessSnapshot[] {
+    return parseStoredList<StoredHierarchyReadinessSnapshot>(this.db.prepare("SELECT payload FROM hierarchy_readiness_snapshots WHERE company_id = ? AND case_id = ? ORDER BY id").all(companyId, caseId));
   }
 
   findBySessionId(sessionId: string): StoredHierarchyReadinessSnapshot | null {
@@ -3880,13 +4009,19 @@ export class SQLiteSourceHierarchyTriageJobRepository implements SourceHierarchy
 
   save(record: StoredSourceHierarchyTriageJob): void {
     this.db.prepare(
-      "INSERT INTO source_hierarchy_triage_jobs (id, session_id, case_id, payload) VALUES (?, ?, ?, ?) ON CONFLICT(id) DO UPDATE SET session_id = excluded.session_id, case_id = excluded.case_id, payload = excluded.payload",
-    ).run(record.triageJobId, record.sessionId, record.caseId, JSON.stringify(record));
+      "INSERT INTO source_hierarchy_triage_jobs (id, company_id, session_id, case_id, payload) VALUES (?, ?, ?, ?, ?) ON CONFLICT(id) DO UPDATE SET company_id = excluded.company_id, session_id = excluded.session_id, case_id = excluded.case_id, payload = excluded.payload",
+    ).run(record.triageJobId, record.companyId, record.sessionId, record.caseId, JSON.stringify(record));
   }
 
   findById(triageJobId: string): StoredSourceHierarchyTriageJob | null {
     const row = this.db.prepare("SELECT payload FROM source_hierarchy_triage_jobs WHERE id = ?").get(triageJobId);
     return parseStored<StoredSourceHierarchyTriageJob>(row);
+  }
+  findByCompany(companyId: string, caseId: string, triageJobId: string): StoredSourceHierarchyTriageJob | null {
+    return parseStored<StoredSourceHierarchyTriageJob>(this.db.prepare("SELECT payload FROM source_hierarchy_triage_jobs WHERE company_id = ? AND case_id = ? AND id = ?").get(companyId, caseId, triageJobId));
+  }
+  findByCompanyAndCase(companyId: string, caseId: string): StoredSourceHierarchyTriageJob[] {
+    return parseStoredList<StoredSourceHierarchyTriageJob>(this.db.prepare("SELECT payload FROM source_hierarchy_triage_jobs WHERE company_id = ? AND case_id = ? ORDER BY id").all(companyId, caseId));
   }
 
   findBySessionId(sessionId: string): StoredSourceHierarchyTriageJob[] {
@@ -3914,13 +4049,19 @@ export class SQLiteSourceHierarchyTriageSuggestionRepository implements SourceHi
 
   save(record: StoredSourceHierarchyTriageSuggestion): void {
     this.db.prepare(
-      "INSERT INTO source_hierarchy_triage_suggestions (id, source_id, session_id, case_id, payload) VALUES (?, ?, ?, ?, ?) ON CONFLICT(id) DO UPDATE SET source_id = excluded.source_id, session_id = excluded.session_id, case_id = excluded.case_id, payload = excluded.payload",
-    ).run(record.triageId, record.sourceId, record.sessionId, record.caseId, JSON.stringify(record));
+      "INSERT INTO source_hierarchy_triage_suggestions (id, source_id, company_id, session_id, case_id, payload) VALUES (?, ?, ?, ?, ?, ?) ON CONFLICT(id) DO UPDATE SET source_id = excluded.source_id, company_id = excluded.company_id, session_id = excluded.session_id, case_id = excluded.case_id, payload = excluded.payload",
+    ).run(record.triageId, record.sourceId, record.companyId, record.sessionId, record.caseId, JSON.stringify(record));
   }
 
   findById(triageId: string): StoredSourceHierarchyTriageSuggestion | null {
     const row = this.db.prepare("SELECT payload FROM source_hierarchy_triage_suggestions WHERE id = ?").get(triageId);
     return parseStored<StoredSourceHierarchyTriageSuggestion>(row);
+  }
+  findByCompany(companyId: string, caseId: string, triageId: string): StoredSourceHierarchyTriageSuggestion | null {
+    return parseStored<StoredSourceHierarchyTriageSuggestion>(this.db.prepare("SELECT payload FROM source_hierarchy_triage_suggestions WHERE company_id = ? AND case_id = ? AND id = ?").get(companyId, caseId, triageId));
+  }
+  findByCompanyAndCase(companyId: string, caseId: string): StoredSourceHierarchyTriageSuggestion[] {
+    return parseStoredList<StoredSourceHierarchyTriageSuggestion>(this.db.prepare("SELECT payload FROM source_hierarchy_triage_suggestions WHERE company_id = ? AND case_id = ? ORDER BY id").all(companyId, caseId));
   }
 
   findBySessionId(sessionId: string): StoredSourceHierarchyTriageSuggestion[] {
@@ -3961,11 +4102,17 @@ export class SQLiteTargetingRolloutPlanRepository implements TargetingRolloutPla
   private readonly db: DatabaseSync;
   constructor(dbPath?: string) { this.db = openIntakeDatabase(dbPath); }
   save(record: StoredTargetingRolloutPlan): void {
-    this.db.prepare("INSERT INTO targeting_rollout_plans (id, session_id, case_id, state, payload) VALUES (?, ?, ?, ?, ?) ON CONFLICT(id) DO UPDATE SET session_id = excluded.session_id, case_id = excluded.case_id, state = excluded.state, payload = excluded.payload")
-      .run(record.planId, record.sessionId, record.caseId, record.state, JSON.stringify(record));
+    this.db.prepare("INSERT INTO targeting_rollout_plans (id, company_id, session_id, case_id, state, payload) VALUES (?, ?, ?, ?, ?, ?) ON CONFLICT(id) DO UPDATE SET company_id = excluded.company_id, session_id = excluded.session_id, case_id = excluded.case_id, state = excluded.state, payload = excluded.payload")
+      .run(record.planId, record.companyId, record.sessionId, record.caseId, record.state, JSON.stringify(record));
   }
   findById(planId: string): StoredTargetingRolloutPlan | null {
     return parseStored<StoredTargetingRolloutPlan>(this.db.prepare("SELECT payload FROM targeting_rollout_plans WHERE id = ?").get(planId));
+  }
+  findByCompany(companyId: string, caseId: string, planId: string): StoredTargetingRolloutPlan | null {
+    return parseStored<StoredTargetingRolloutPlan>(this.db.prepare("SELECT payload FROM targeting_rollout_plans WHERE company_id = ? AND case_id = ? AND id = ?").get(companyId, caseId, planId));
+  }
+  findByCompanyAndCase(companyId: string, caseId: string): StoredTargetingRolloutPlan[] {
+    return parseStoredList<StoredTargetingRolloutPlan>(this.db.prepare("SELECT payload FROM targeting_rollout_plans WHERE company_id = ? AND case_id = ? ORDER BY id").all(companyId, caseId));
   }
   findByCaseId(caseId: string): StoredTargetingRolloutPlan[] {
     return parseStoredList<StoredTargetingRolloutPlan>(this.db.prepare("SELECT payload FROM targeting_rollout_plans WHERE case_id = ? ORDER BY id").all(caseId));

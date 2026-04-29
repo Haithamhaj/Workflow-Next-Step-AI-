@@ -62,6 +62,7 @@ export interface TargetingRecommendationProvider {
     packet: Omit<
       TargetingRecommendationPacket,
       | "packetId"
+      | "companyId"
       | "caseId"
       | "selectedDepartment"
       | "selectedUseCase"
@@ -191,23 +192,24 @@ function validatePlan(plan: TargetingRolloutPlan): TargetingRolloutPlan {
   return plan;
 }
 
-function latestReadinessForCase(caseId: string, repos: TargetingRolloutRepos): HierarchyReadinessSnapshot | null {
-  const snapshots = repos.hierarchyReadinessSnapshots.findByCaseId(caseId);
+function latestReadinessForCase(companyId: string, caseId: string, repos: TargetingRolloutRepos): HierarchyReadinessSnapshot | null {
+  const snapshots = repos.hierarchyReadinessSnapshots.findByCompanyAndCase(companyId, caseId);
   return snapshots[snapshots.length - 1] ?? null;
 }
 
 function approvedSnapshotForReadiness(readiness: HierarchyReadinessSnapshot, repos: TargetingRolloutRepos): ApprovedHierarchySnapshot | null {
-  if (readiness.approvedSnapshotId) return repos.approvedHierarchySnapshots.findById(readiness.approvedSnapshotId);
-  return repos.approvedHierarchySnapshots.findBySessionId(readiness.sessionId);
+  if (readiness.approvedSnapshotId) return repos.approvedHierarchySnapshots.findByCompany(readiness.companyId, readiness.caseId, readiness.approvedSnapshotId);
+  return repos.approvedHierarchySnapshots.findByCompanyAndCase(readiness.companyId, readiness.caseId).find((snapshot) => snapshot.sessionId === readiness.sessionId) ?? null;
 }
 
 export function createOrLoadTargetingRolloutPlan(input: {
+  companyId: string;
   caseId: string;
   createdBy?: string;
 }, repos: TargetingRolloutRepos): TargetingRolloutPlan {
-  const existing = repos.targetingRolloutPlans.findByCaseId(input.caseId)[0];
+  const existing = repos.targetingRolloutPlans.findByCompanyAndCase(input.companyId, input.caseId)[0];
   if (existing) return existing;
-  const readiness = latestReadinessForCase(input.caseId, repos);
+  const readiness = latestReadinessForCase(input.companyId, input.caseId, repos);
   if (!readiness || readiness.status !== "ready_for_participant_targeting_planning") {
     throw new Error("Pass 4 requires a Pass 3 readiness snapshot with status ready_for_participant_targeting_planning.");
   }
@@ -239,6 +241,7 @@ export function createOrLoadTargetingRolloutPlan(input: {
   const profiles = candidates.map((candidate) => profileFromCandidate(candidate, snapshot, input.createdBy ?? "admin"));
   const plan: TargetingRolloutPlan = {
     planId: id("targeting_plan"),
+    companyId: input.companyId,
     caseId: input.caseId,
     sessionId: readiness.sessionId,
     selectedDepartment: session?.primaryDepartment ?? "unknown",
@@ -288,15 +291,18 @@ function statusFromError(message: string): Exclude<TargetingProviderStatus, "not
 }
 
 export async function generateTargetingRecommendationPacket(input: {
+  companyId: string;
   caseId: string;
   provider: TargetingRecommendationProvider | null;
   generatedBy?: string;
 }, repos: TargetingRolloutRepos): Promise<TargetingRolloutPlan> {
-  const plan = createOrLoadTargetingRolloutPlan({ caseId: input.caseId, createdBy: input.generatedBy }, repos);
-  const snapshot = repos.approvedHierarchySnapshots.findById(plan.basisHierarchySnapshotId);
-  const readiness = repos.hierarchyReadinessSnapshots.findById(plan.basisReadinessSnapshotId);
+  const plan = createOrLoadTargetingRolloutPlan({ companyId: input.companyId, caseId: input.caseId, createdBy: input.generatedBy }, repos);
+  const snapshot = repos.approvedHierarchySnapshots.findByCompany(plan.companyId, plan.caseId, plan.basisHierarchySnapshotId);
+  const readiness = repos.hierarchyReadinessSnapshots.findByCompany(plan.companyId, plan.caseId, plan.basisReadinessSnapshotId);
   if (!snapshot || !readiness) throw new Error("Pass 4 basis hierarchy/readiness data is missing.");
-  const sourceSignals = repos.sourceHierarchyTriageSuggestions?.findBySessionId(plan.sessionId) ?? [];
+  const sourceSignals = repos.sourceHierarchyTriageSuggestions
+    ?.findByCompanyAndCase(plan.companyId, plan.caseId)
+    .filter((signal) => signal.sessionId === plan.sessionId) ?? [];
   const promptSpec = ensureActivePass4TargetingPromptSpec(repos.structuredPromptSpecs);
   const compiledPrompt = compilePass4TargetingPromptSpec(promptSpec, {
     caseId: plan.caseId,
@@ -328,6 +334,7 @@ export async function generateTargetingRecommendationPacket(input: {
     const generated = await input.provider.generateTargetingRecommendationPacket({ compiledPrompt });
     const packet: TargetingRecommendationPacket = {
       packetId: id("targeting_packet"),
+      companyId: plan.companyId,
       caseId: plan.caseId,
       selectedDepartment: plan.selectedDepartment,
       selectedUseCase: plan.selectedUseCase,
@@ -382,14 +389,16 @@ export async function generateTargetingRecommendationPacket(input: {
   }
 }
 
-function loadPlan(planId: string, repos: TargetingRolloutRepos): TargetingRolloutPlan {
-  const plan = repos.targetingRolloutPlans.findById(planId);
-  if (!plan) throw new Error(`Targeting rollout plan not found: ${planId}`);
+function loadPlan(input: { planId: string; companyId: string; caseId: string }, repos: TargetingRolloutRepos): TargetingRolloutPlan {
+  const plan = repos.targetingRolloutPlans.findByCompany(input.companyId, input.caseId, input.planId);
+  if (!plan) throw new Error(`Targeting rollout plan not found: ${input.planId}`);
   return plan;
 }
 
 export function updateCandidateDecision(input: {
   planId: string;
+  companyId: string;
+  caseId: string;
   candidateId: string;
   adminDecision?: TargetCandidate["adminDecision"];
   targetType?: TargetType;
@@ -398,7 +407,7 @@ export function updateCandidateDecision(input: {
   markContactDataMissing?: boolean;
   adminNote?: string;
 }, repos: TargetingRolloutRepos): TargetingRolloutPlan {
-  const plan = loadPlan(input.planId, repos);
+  const plan = loadPlan(input, repos);
   const targetCandidates = plan.targetCandidates.map((candidate) => {
     if (candidate.candidateId !== input.candidateId) return candidate;
     return {
@@ -424,11 +433,13 @@ export function updateCandidateDecision(input: {
 
 export function updateParticipantContactProfile(input: {
   planId: string;
+  companyId: string;
+  caseId: string;
   participantId: string;
   updates: Partial<ParticipantContactProfile>;
   updatedBy?: string;
 }, repos: TargetingRolloutRepos): TargetingRolloutPlan {
-  const plan = loadPlan(input.planId, repos);
+  const plan = loadPlan(input, repos);
   const timestamp = now();
   const participantContactProfiles = plan.participantContactProfiles.map((profile) => {
     if (profile.participantId !== input.participantId) return profile;
@@ -454,11 +465,13 @@ export function updateParticipantContactProfile(input: {
 
 export function updateQuestionHintSeed(input: {
   planId: string;
+  companyId: string;
+  caseId: string;
   hintId: string;
   status: QuestionHintSeed["status"];
   adminNote?: string;
 }, repos: TargetingRolloutRepos): TargetingRolloutPlan {
-  const plan = loadPlan(input.planId, repos);
+  const plan = loadPlan(input, repos);
   const next: TargetingRolloutPlan = {
     ...plan,
     questionHintSeeds: plan.questionHintSeeds.map((hint) => hint.hintId === input.hintId ? { ...hint, status: input.status, adminNote: input.adminNote ?? hint.adminNote } : hint),
@@ -470,11 +483,13 @@ export function updateQuestionHintSeed(input: {
 
 export function transitionTargetingPlan(input: {
   planId: string;
+  companyId: string;
+  caseId: string;
   state: TargetingRolloutPlanState;
   adminUser?: string;
   adminNote?: string;
 }, repos: TargetingRolloutRepos): TargetingRolloutPlan {
-  const plan = loadPlan(input.planId, repos);
+  const plan = loadPlan(input, repos);
   const allowed: Record<TargetingRolloutPlanState, TargetingRolloutPlanState[]> = {
     draft_from_ai_packet: ["under_admin_review"],
     under_admin_review: ["approved_ready_for_outreach", "approved_with_contact_gaps", "needs_rework", "rejected"],

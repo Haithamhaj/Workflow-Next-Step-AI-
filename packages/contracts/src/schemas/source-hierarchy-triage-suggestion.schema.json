@@ -7,6 +7,7 @@
   "required": [
     "triageId",
     "sessionId",
+    "companyId",
     "caseId",
     "sourceId",
     "sourceName",
@@ -25,6 +26,7 @@
     "triageId": { "type": "string", "minLength": 1 },
     "triageJobId": { "type": "string" },
     "sessionId": { "type": "string", "minLength": 1 },
+    "companyId": { "type": "string", "minLength": 1 },
     "caseId": { "type": "string", "minLength": 1 },
     "sourceId": { "type": "string", "minLength": 1 },
     "sourceName": { "type": "string", "minLength": 1 },

@@ -4,11 +4,12 @@
   "title": "HierarchyDraftRecord",
   "type": "object",
   "additionalProperties": false,
-  "required": ["hierarchyDraftId", "hierarchyIntakeId", "sessionId", "caseId", "status", "nodes", "secondaryRelationships", "createdBy", "createdAt", "updatedAt"],
+  "required": ["hierarchyDraftId", "hierarchyIntakeId", "sessionId", "companyId", "caseId", "status", "nodes", "secondaryRelationships", "createdBy", "createdAt", "updatedAt"],
   "properties": {
     "hierarchyDraftId": { "type": "string", "minLength": 1 },
     "hierarchyIntakeId": { "type": "string", "minLength": 1 },
     "sessionId": { "type": "string", "minLength": 1 },
+    "companyId": { "type": "string", "minLength": 1 },
     "caseId": { "type": "string", "minLength": 1 },
     "status": { "type": "string", "enum": ["manual_admin_created", "ai_draft_succeeded", "ai_draft_failed"] },
     "nodes": {

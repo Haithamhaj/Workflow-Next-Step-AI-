@@ -46,7 +46,7 @@ export interface HierarchyDraftGenerationResult {
 export interface SourceHierarchyTriageGenerationResult {
   suggestions: Omit<
     SourceHierarchyTriageSuggestion,
-    "triageId" | "triageJobId" | "sessionId" | "caseId" | "adminDecision" | "createdAt" | "updatedAt"
+    "triageId" | "triageJobId" | "sessionId" | "companyId" | "caseId" | "adminDecision" | "createdAt" | "updatedAt"
   >[];
   warnings: string[];
   provider: ProviderName;
@@ -58,6 +58,7 @@ export interface TargetingRecommendationGenerationResult {
   packet: Omit<
     TargetingRecommendationPacket,
     | "packetId"
+    | "companyId"
     | "caseId"
     | "selectedDepartment"
     | "selectedUseCase"

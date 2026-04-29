@@ -12,8 +12,12 @@ const repos = {
   targetingRolloutPlans: store.targetingRolloutPlans,
 };
 
-export async function POST(_: Request, { params }: { params: { id: string } }) {
-  const plan = store.targetingRolloutPlans.findById(params.id);
+export async function POST(request: Request, { params }: { params: { id: string } }) {
+  const searchParams = new URL(request.url).searchParams;
+  const companyId = searchParams.get("companyId");
+  const caseId = searchParams.get("caseId");
+  if (!companyId || !caseId) return NextResponse.json({ error: "companyId and caseId are required." }, { status: 400 });
+  const plan = store.targetingRolloutPlans.findByCompany(companyId, caseId, params.id);
   if (!plan) return NextResponse.json({ error: "Targeting rollout plan not found." }, { status: 404 });
   const extractionProvider = providerRegistry.getExtractionProvider("google");
   const provider: TargetingRecommendationProvider | null = extractionProvider?.generateTargetingRecommendationPacket
@@ -22,6 +26,6 @@ export async function POST(_: Request, { params }: { params: { id: string } }) {
       generateTargetingRecommendationPacket: (input) => extractionProvider.generateTargetingRecommendationPacket!(input),
     }
     : null;
-  const next = await generateTargetingRecommendationPacket({ caseId: plan.caseId, provider, generatedBy: "admin" }, repos);
+  const next = await generateTargetingRecommendationPacket({ companyId: plan.companyId, caseId: plan.caseId, provider, generatedBy: "admin" }, repos);
   return NextResponse.json(next);
 }

@@ -87,7 +87,7 @@ export interface SourceHierarchyTriageProvider {
   }): Promise<{
     suggestions: Omit<
       SourceHierarchyTriageSuggestion,
-      "triageId" | "triageJobId" | "sessionId" | "caseId" | "adminDecision" | "createdAt" | "updatedAt"
+      "triageId" | "triageJobId" | "sessionId" | "companyId" | "caseId" | "adminDecision" | "createdAt" | "updatedAt"
     >[];
     warnings: string[];
     provider: "google" | "openai";
@@ -222,6 +222,7 @@ export function parsePastedHierarchyText(text: string): HierarchyNodeRecord[] {
 
 export function createPastedHierarchyIntake(input: {
   sessionId: string;
+  companyId: string;
   pastedText: string;
   createdBy?: string;
 }, repos: HierarchyFoundationRepos): HierarchyIntakeRecord {
@@ -233,6 +234,7 @@ export function createPastedHierarchyIntake(input: {
   const record: HierarchyIntakeRecord = {
     hierarchyIntakeId: existing?.hierarchyIntakeId ?? id("hierarchy_intake"),
     sessionId: session.sessionId,
+    companyId: input.companyId,
     caseId: session.caseId,
     inputMethod: "pasted_text",
     status: existing?.status === "structurally_approved" ? "structurally_approved" : "intake_created",
@@ -250,6 +252,7 @@ export function createPastedHierarchyIntake(input: {
 
 export function createUploadedDocumentHierarchyIntake(input: {
   sessionId: string;
+  companyId: string;
   sourceId: string;
   artifactId?: string;
   createdBy?: string;
@@ -262,6 +265,7 @@ export function createUploadedDocumentHierarchyIntake(input: {
   const record: HierarchyIntakeRecord = {
     hierarchyIntakeId: existing?.hierarchyIntakeId ?? id("hierarchy_intake"),
     sessionId: session.sessionId,
+    companyId: input.companyId,
     caseId: session.caseId,
     inputMethod: "uploaded_document",
     status: existing?.status === "structurally_approved" ? "structurally_approved" : "intake_created",
@@ -280,6 +284,7 @@ export function createUploadedDocumentHierarchyIntake(input: {
 
 export function saveManualHierarchyDraft(input: {
   sessionId: string;
+  companyId: string;
   nodes: HierarchyNodeRecord[];
   secondaryRelationships?: HierarchySecondaryRelationship[];
   createdBy?: string;
@@ -287,6 +292,7 @@ export function saveManualHierarchyDraft(input: {
 }, repos: HierarchyFoundationRepos): HierarchyDraftRecord {
   const intake = repos.hierarchyIntakes.findBySessionId(input.sessionId);
   if (!intake) throw new Error("Create hierarchy intake before saving a manual draft.");
+  if (intake.companyId !== input.companyId) throw new Error("Hierarchy intake not found for company.");
 
   const validation = validateHierarchyNodes({
     nodes: input.nodes,
@@ -300,6 +306,7 @@ export function saveManualHierarchyDraft(input: {
     hierarchyDraftId: existing?.hierarchyDraftId ?? id("hierarchy_draft"),
     hierarchyIntakeId: intake.hierarchyIntakeId,
     sessionId: intake.sessionId,
+    companyId: intake.companyId,
     caseId: intake.caseId,
     status: "manual_admin_created",
     nodes: cloneNodes(input.nodes),
@@ -317,6 +324,7 @@ export function saveManualHierarchyDraft(input: {
     correctionId: id("hierarchy_correction"),
     hierarchyDraftId: draft.hierarchyDraftId,
     sessionId: draft.sessionId,
+    companyId: draft.companyId,
     caseId: draft.caseId,
     correctedBy: input.createdBy?.trim() || "admin",
     correctedAt: timestamp,
@@ -334,12 +342,14 @@ export function saveManualHierarchyDraft(input: {
 
 export async function generateProviderBackedHierarchyDraft(input: {
   sessionId: string;
+  companyId: string;
   provider: HierarchyDraftProvider | null;
   promptSpecId: string;
   compiledPrompt: string;
 }, repos: HierarchyFoundationRepos): Promise<HierarchyDraftRecord> {
   const intake = repos.hierarchyIntakes.findBySessionId(input.sessionId);
   if (!intake) throw new Error("Create hierarchy intake before generating an AI hierarchy draft.");
+  if (intake.companyId !== input.companyId) throw new Error("Hierarchy intake not found for company.");
 
   const timestamp = now();
   const existing = repos.hierarchyDrafts.findBySessionId(input.sessionId);
@@ -349,6 +359,7 @@ export async function generateProviderBackedHierarchyDraft(input: {
       hierarchyDraftId: existing?.hierarchyDraftId ?? id("hierarchy_draft"),
       hierarchyIntakeId: intake.hierarchyIntakeId,
       sessionId: intake.sessionId,
+      companyId: intake.companyId,
       caseId: intake.caseId,
       status: "ai_draft_failed",
       nodes: [],
@@ -382,6 +393,7 @@ export async function generateProviderBackedHierarchyDraft(input: {
       hierarchyDraftId: existing?.hierarchyDraftId ?? id("hierarchy_draft"),
       hierarchyIntakeId: intake.hierarchyIntakeId,
       sessionId: intake.sessionId,
+      companyId: intake.companyId,
       caseId: intake.caseId,
       status: "ai_draft_succeeded",
       nodes: cloneNodes(generated.nodes),
@@ -405,6 +417,7 @@ export async function generateProviderBackedHierarchyDraft(input: {
       hierarchyDraftId: existing?.hierarchyDraftId ?? id("hierarchy_draft"),
       hierarchyIntakeId: intake.hierarchyIntakeId,
       sessionId: intake.sessionId,
+      companyId: intake.companyId,
       caseId: intake.caseId,
       status: "ai_draft_failed",
       nodes: [],
@@ -439,6 +452,7 @@ function requireSourceTriageRepos(repos: HierarchyFoundationRepos): {
 
 export async function generateProviderBackedSourceHierarchyTriage(input: {
   sessionId: string;
+  companyId: string;
   provider: SourceHierarchyTriageProvider | null;
   promptSpecId: string;
   compiledPrompt: string;
@@ -455,6 +469,7 @@ export async function generateProviderBackedSourceHierarchyTriage(input: {
     const job: SourceHierarchyTriageJob = {
       triageJobId: id("source_hierarchy_triage_job"),
       sessionId: session.sessionId,
+      companyId: input.companyId,
       caseId: session.caseId,
       status: "ai_triage_failed",
       promptSpecId: input.promptSpecId,
@@ -475,6 +490,7 @@ export async function generateProviderBackedSourceHierarchyTriage(input: {
     const job: SourceHierarchyTriageJob = {
       triageJobId: id("source_hierarchy_triage_job"),
       sessionId: session.sessionId,
+      companyId: input.companyId,
       caseId: session.caseId,
       status: "ai_triage_succeeded",
       provider: generated.provider,
@@ -495,6 +511,7 @@ export async function generateProviderBackedSourceHierarchyTriage(input: {
       triageId: id("source_hierarchy_triage"),
       triageJobId: job.triageJobId,
       sessionId: session.sessionId,
+      companyId: input.companyId,
       caseId: session.caseId,
       evidenceStatus: suggestion.evidenceStatus ?? "document_claim_only",
       participantValidationNeeded: suggestion.participantValidationNeeded,
@@ -515,6 +532,7 @@ export async function generateProviderBackedSourceHierarchyTriage(input: {
     const job: SourceHierarchyTriageJob = {
       triageJobId: id("source_hierarchy_triage_job"),
       sessionId: session.sessionId,
+      companyId: input.companyId,
       caseId: session.caseId,
       status: "ai_triage_failed",
       provider: input.provider.name,
@@ -534,6 +552,7 @@ export async function generateProviderBackedSourceHierarchyTriage(input: {
 
 export function createManualSourceHierarchyLink(input: {
   sessionId: string;
+  companyId: string;
   sourceId: string;
   sourceName: string;
   suggestedScope: SourceHierarchySuggestedScope;
@@ -552,6 +571,7 @@ export function createManualSourceHierarchyLink(input: {
   const job: SourceHierarchyTriageJob = {
     triageJobId: id("source_hierarchy_triage_job"),
     sessionId: session.sessionId,
+    companyId: input.companyId,
     caseId: session.caseId,
     status: "manual_link_created",
     createdBy: input.createdBy?.trim() || "admin",
@@ -566,6 +586,7 @@ export function createManualSourceHierarchyLink(input: {
     triageId: id("source_hierarchy_triage"),
     triageJobId: job.triageJobId,
     sessionId: session.sessionId,
+    companyId: input.companyId,
     caseId: session.caseId,
     sourceId: input.sourceId,
     sourceName: input.sourceName || input.sourceId,
@@ -591,6 +612,8 @@ export function createManualSourceHierarchyLink(input: {
 
 export function updateSourceHierarchyTriageSuggestion(input: {
   triageId: string;
+  companyId: string;
+  caseId: string;
   action: "accept" | "reject" | "change_scope" | "mark_participant_validation_needed" | "add_note";
   suggestedScope?: SourceHierarchySuggestedScope;
   linkedNodeId?: string;
@@ -598,7 +621,7 @@ export function updateSourceHierarchyTriageSuggestion(input: {
   adminNote?: string;
 }, repos: HierarchyFoundationRepos): SourceHierarchyTriageSuggestion {
   const triageRepos = requireSourceTriageRepos(repos);
-  const existing = triageRepos.suggestions.findById(input.triageId);
+  const existing = triageRepos.suggestions.findByCompany(input.companyId, input.caseId, input.triageId);
   if (!existing) throw new Error(`Source hierarchy triage suggestion not found: ${input.triageId}`);
 
   let evidenceStatus: SourceHierarchyEvidenceStatus = existing.evidenceStatus;
@@ -647,10 +670,12 @@ export function updateSourceHierarchyTriageSuggestion(input: {
 
 export function approveStructuralHierarchy(input: {
   sessionId: string;
+  companyId: string;
   approvedBy?: string;
 }, repos: HierarchyFoundationRepos): ApprovedHierarchySnapshot {
   const draft = repos.hierarchyDrafts.findBySessionId(input.sessionId);
   if (!draft) throw new Error("Manual hierarchy draft must be saved before structural approval.");
+  if (draft.companyId !== input.companyId) throw new Error("Hierarchy draft not found for company.");
   const existing = repos.approvedHierarchySnapshots.findBySessionId(input.sessionId);
   if (existing) return existing;
 
@@ -658,6 +683,7 @@ export function approveStructuralHierarchy(input: {
     approvedSnapshotId: id("approved_hierarchy"),
     hierarchyDraftId: draft.hierarchyDraftId,
     sessionId: draft.sessionId,
+    companyId: draft.companyId,
     caseId: draft.caseId,
     nodes: cloneNodes(draft.nodes),
     secondaryRelationships: cloneRelationships(draft.secondaryRelationships),
@@ -680,12 +706,14 @@ export function approveStructuralHierarchy(input: {
 
 export function calculateHierarchyReadinessSnapshot(
   sessionId: string,
+  companyId: string,
   repos: HierarchyFoundationRepos,
 ): HierarchyReadinessSnapshot {
   const session = repos.intakeSessions.findById(sessionId);
   if (!session) throw new Error(`Intake session not found: ${sessionId}`);
 
   const approved = repos.approvedHierarchySnapshots.findBySessionId(sessionId);
+  if (approved && approved.companyId !== companyId) throw new Error("Approved hierarchy snapshot not found for company.");
   const reasons: string[] = [];
   if (!approved) reasons.push("Structural hierarchy approval snapshot has not been created.");
   if (approved && approved.nodes.length === 0) reasons.push("Approved hierarchy snapshot has no nodes.");
@@ -693,6 +721,7 @@ export function calculateHierarchyReadinessSnapshot(
   const snapshot: HierarchyReadinessSnapshot = {
     readinessSnapshotId: id("hierarchy_readiness"),
     sessionId: session.sessionId,
+    companyId,
     caseId: session.caseId,
     status: reasons.length === 0 ? "ready_for_participant_targeting_planning" : "blocked",
     approvedSnapshotId: approved?.approvedSnapshotId,

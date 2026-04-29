@@ -4,11 +4,12 @@
   "title": "ApprovedHierarchySnapshot",
   "type": "object",
   "additionalProperties": true,
-  "required": ["approvedSnapshotId", "hierarchyDraftId", "sessionId", "caseId", "nodes", "secondaryRelationships", "structuralApprovalOnly", "approvalScopeNote", "approvedBy", "approvedAt"],
+  "required": ["approvedSnapshotId", "hierarchyDraftId", "sessionId", "companyId", "caseId", "nodes", "secondaryRelationships", "structuralApprovalOnly", "approvalScopeNote", "approvedBy", "approvedAt"],
   "properties": {
     "approvedSnapshotId": { "type": "string", "minLength": 1 },
     "hierarchyDraftId": { "type": "string", "minLength": 1 },
     "sessionId": { "type": "string", "minLength": 1 },
+    "companyId": { "type": "string", "minLength": 1 },
     "caseId": { "type": "string", "minLength": 1 },
     "nodes": { "type": "array" },
     "secondaryRelationships": { "type": "array" },

@@ -4,10 +4,11 @@
   "title": "HierarchyReadinessSnapshot",
   "type": "object",
   "additionalProperties": false,
-  "required": ["readinessSnapshotId", "sessionId", "caseId", "status", "nodeCount", "relationshipCount", "reasons", "pass4Boundary", "createdAt"],
+  "required": ["readinessSnapshotId", "sessionId", "companyId", "caseId", "status", "nodeCount", "relationshipCount", "reasons", "pass4Boundary", "createdAt"],
   "properties": {
     "readinessSnapshotId": { "type": "string", "minLength": 1 },
     "sessionId": { "type": "string", "minLength": 1 },
+    "companyId": { "type": "string", "minLength": 1 },
     "caseId": { "type": "string", "minLength": 1 },
     "status": { "type": "string", "enum": ["blocked", "ready_for_participant_targeting_planning"] },
     "approvedSnapshotId": { "type": "string" },

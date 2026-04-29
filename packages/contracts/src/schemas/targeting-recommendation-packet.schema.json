@@ -5,6 +5,7 @@
   "additionalProperties": true,
   "required": [
     "packetId",
+    "companyId",
     "caseId",
     "selectedDepartment",
     "selectedUseCase",
@@ -26,6 +27,7 @@
   ],
   "properties": {
     "packetId": { "type": "string", "minLength": 1 },
+    "companyId": { "type": "string", "minLength": 1 },
     "caseId": { "type": "string", "minLength": 1 },
     "selectedDepartment": { "type": "string" },
     "selectedUseCase": { "type": "string" },

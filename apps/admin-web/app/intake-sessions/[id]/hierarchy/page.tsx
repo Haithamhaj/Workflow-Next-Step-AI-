@@ -70,6 +70,7 @@ export default function HierarchyPage({ params }: { params: { id: string } }) {
   const hierarchyDraftPrompt = pass3PromptSpecs.find((spec) => spec.linkedModule === pass3CapabilityModule("hierarchy_draft") && spec.status === "draft") ?? null;
   const sourceDraftPrompt = pass3PromptSpecs.find((spec) => spec.linkedModule === pass3CapabilityModule("source_hierarchy_triage") && spec.status === "draft") ?? null;
   const session = store.intakeSessions.findById(params.id);
+  const caseRecord = session ? store.cases.findById(session.caseId) : null;
   const structuredContext = store.structuredContexts.findBySessionId(params.id);
   const context = structuredContext?.context;
   const state = {
@@ -78,6 +79,7 @@ export default function HierarchyPage({ params }: { params: { id: string } }) {
       companyName: context?.companyName,
       department: context?.mainDepartment ?? session?.primaryDepartment,
       useCase: context?.selectedUseCase ?? session?.useCaseSelection?.useCaseLabel,
+      companyId: caseRecord?.companyId,
       caseId: session?.caseId,
     },
     promptSpec,
@@ -102,7 +104,7 @@ export default function HierarchyPage({ params }: { params: { id: string } }) {
       <p>
         <Link href={`/intake-sessions/${params.id}`}>&larr; Session detail</Link>
       </p>
-      <HierarchyFoundationClient sessionId={params.id} initialState={state} />
+      <HierarchyFoundationClient sessionId={params.id} companyId={caseRecord?.companyId ?? ""} initialState={state} />
     </>
   );
 }

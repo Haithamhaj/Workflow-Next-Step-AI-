@@ -13,7 +13,7 @@ export default function TargetingRolloutPlanClient({ initialPlan }: { initialPla
 
   async function patch(body: unknown) {
     setError(null);
-    const res = await fetch(`/api/targeting-rollout/${plan.planId}`, { method: "PATCH", headers: { "content-type": "application/json" }, body: JSON.stringify(body) });
+    const res = await fetch(`/api/targeting-rollout/${plan.planId}`, { method: "PATCH", headers: { "content-type": "application/json" }, body: JSON.stringify({ companyId: plan.companyId, caseId: plan.caseId, ...(body as Record<string, unknown>) }) });
     const data = await res.json();
     if (!res.ok) { setError(data.error ?? "Request failed"); return; }
     setPlan(data);
@@ -21,7 +21,7 @@ export default function TargetingRolloutPlanClient({ initialPlan }: { initialPla
 
   async function generate() {
     setError(null);
-    const res = await fetch(`/api/targeting-rollout/${plan.planId}/generate`, { method: "POST" });
+    const res = await fetch(`/api/targeting-rollout/${plan.planId}/generate?companyId=${encodeURIComponent(plan.companyId)}&caseId=${encodeURIComponent(plan.caseId)}`, { method: "POST" });
     const data = await res.json();
     if (!res.ok) { setError(data.error ?? "Generation failed"); return; }
     setPlan(data);
@@ -62,6 +62,7 @@ export default function TargetingRolloutPlanClient({ initialPlan }: { initialPla
       {error ? <p style={{ color: "#ff8a8a" }}>{error}</p> : null}
       <div className="card">
         <p><strong>Case:</strong> <code>{plan.caseId}</code></p>
+        <p><strong>Company:</strong> <code>{plan.companyId}</code></p>
         <p><strong>Department:</strong> {plan.selectedDepartment}</p>
         <p><strong>Use case:</strong> {plan.selectedUseCase}</p>
         <p><strong>Pass 3 readiness:</strong> <code>{plan.basisReadinessSnapshotId}</code></p>

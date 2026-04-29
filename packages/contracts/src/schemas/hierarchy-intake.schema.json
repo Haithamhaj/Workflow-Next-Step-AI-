@@ -4,10 +4,11 @@
   "title": "HierarchyIntakeRecord",
   "type": "object",
   "additionalProperties": false,
-  "required": ["hierarchyIntakeId", "sessionId", "caseId", "inputMethod", "status", "createdBy", "createdAt", "updatedAt"],
+  "required": ["hierarchyIntakeId", "sessionId", "companyId", "caseId", "inputMethod", "status", "createdBy", "createdAt", "updatedAt"],
   "properties": {
     "hierarchyIntakeId": { "type": "string", "minLength": 1 },
     "sessionId": { "type": "string", "minLength": 1 },
+    "companyId": { "type": "string", "minLength": 1 },
     "caseId": { "type": "string", "minLength": 1 },
     "inputMethod": { "type": "string", "enum": ["pasted_text", "uploaded_document"] },
     "status": { "type": "string", "enum": ["intake_created", "manual_draft_saved", "structurally_approved"] },

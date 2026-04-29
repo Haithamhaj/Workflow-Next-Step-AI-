@@ -5,6 +5,7 @@
   "additionalProperties": true,
   "required": [
     "planId",
+    "companyId",
     "caseId",
     "sessionId",
     "selectedDepartment",
@@ -28,6 +29,7 @@
   ],
   "properties": {
     "planId": { "type": "string", "minLength": 1 },
+    "companyId": { "type": "string", "minLength": 1 },
     "caseId": { "type": "string", "minLength": 1 },
     "sessionId": { "type": "string", "minLength": 1 },
     "selectedDepartment": { "type": "string" },

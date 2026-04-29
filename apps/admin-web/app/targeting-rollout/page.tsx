@@ -1,19 +1,22 @@
 import type { TargetingRolloutPlan } from "@workflow/contracts";
 import Link from "next/link";
 
-async function getPlans(): Promise<TargetingRolloutPlan[]> {
-  const res = await fetch(`http://localhost:${process.env.PORT ?? 3000}/api/targeting-rollout`, { cache: "no-store" });
+async function getPlans(companyId?: string): Promise<TargetingRolloutPlan[]> {
+  if (!companyId) return [];
+  const res = await fetch(`http://localhost:${process.env.PORT ?? 3000}/api/targeting-rollout?companyId=${encodeURIComponent(companyId)}`, { cache: "no-store" });
   if (!res.ok) return [];
   return res.json() as Promise<TargetingRolloutPlan[]>;
 }
 
-export default async function TargetingRolloutPage() {
-  const plans = await getPlans();
+export default async function TargetingRolloutPage({ searchParams }: { searchParams?: { companyId?: string } }) {
+  const companyId = searchParams?.companyId;
+  const plans = await getPlans(companyId);
   return (
     <>
       <h2>Pass 4 Targeting Rollout</h2>
       <p style={{ color: "#aaa" }}>Participant targeting and rollout planning from approved Pass 3 hierarchy snapshots. No outreach, invitations, sessions, responses, or workflow analysis happen here.</p>
       <form action="/api/targeting-rollout" method="post" style={{ margin: "20px 0", display: "flex", gap: "8px", alignItems: "center" }}>
+        <input name="companyId" placeholder="companyId" defaultValue={companyId ?? ""} style={{ minWidth: "220px" }} />
         <input name="caseId" placeholder="caseId with approved Pass 3 readiness" style={{ minWidth: "320px" }} />
         <button className="btn-primary" type="submit">Create/load plan</button>
       </form>
@@ -35,7 +38,7 @@ export default async function TargetingRolloutPage() {
           <tbody>
             {plans.map((plan) => (
               <tr key={plan.planId} style={{ borderBottom: "1px solid #222" }}>
-                <td style={{ padding: "8px", fontFamily: "monospace" }}><Link href={`/targeting-rollout/${plan.planId}`}>{plan.planId}</Link></td>
+                <td style={{ padding: "8px", fontFamily: "monospace" }}><Link href={`/targeting-rollout/${plan.planId}?companyId=${encodeURIComponent(plan.companyId)}&caseId=${encodeURIComponent(plan.caseId)}`}>{plan.planId}</Link></td>
                 <td style={{ padding: "8px", fontFamily: "monospace" }}>{plan.caseId}</td>
                 <td style={{ padding: "8px" }}>{plan.selectedDepartment}</td>
                 <td style={{ padding: "8px" }}>{plan.selectedUseCase}</td>

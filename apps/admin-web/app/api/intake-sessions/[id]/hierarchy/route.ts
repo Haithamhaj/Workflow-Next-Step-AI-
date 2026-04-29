@@ -45,9 +45,16 @@ function repos() {
   };
 }
 
-function payload(sessionId: string) {
-  const foundation = getHierarchyFoundationState(sessionId, repos());
+function sessionForCompany(companyId: string, sessionId: string) {
   const session = store.intakeSessions.findById(sessionId);
+  if (!session) return null;
+  return store.cases.findByCompanyAndCase(companyId, session.caseId) ? session : null;
+}
+
+function payload(companyId: string, sessionId: string) {
+  const session = sessionForCompany(companyId, sessionId);
+  if (!session) throw new Error("Intake session not found.");
+  const foundation = getHierarchyFoundationState(sessionId, repos());
   const structuredContext = store.structuredContexts.findBySessionId(sessionId);
   const context = structuredContext?.context;
   const promptSpec = ensureActivePass3HierarchyPromptSpec(store.structuredPromptSpecs);
@@ -61,6 +68,7 @@ function payload(sessionId: string) {
       companyName: context?.companyName,
       department: context?.mainDepartment ?? session?.primaryDepartment,
       useCase: context?.selectedUseCase ?? session?.useCaseSelection?.useCaseLabel,
+      companyId,
       caseId: session?.caseId,
     },
     promptSpec,
@@ -126,11 +134,13 @@ function sourceTriagePromptInput(sessionId: string) {
 }
 
 export async function GET(
-  _request: Request,
+  request: Request,
   { params }: { params: { id: string } },
 ) {
   try {
-    return NextResponse.json(payload(params.id));
+    const companyId = new URL(request.url).searchParams.get("companyId");
+    if (!companyId) return NextResponse.json({ error: "companyId is required." }, { status: 400 });
+    return NextResponse.json(payload(companyId, params.id));
   } catch (error) {
     return NextResponse.json({ error: error instanceof Error ? error.message : String(error) }, { status: 400 });
   }
@@ -142,25 +152,30 @@ export async function POST(
 ) {
   const body = await request.json().catch(() => ({})) as Record<string, unknown>;
   const action = typeof body.action === "string" ? body.action : "";
+  const companyId = typeof body.companyId === "string" ? body.companyId : "";
+  const session = companyId ? sessionForCompany(companyId, params.id) : null;
+  if (!companyId || !session) return NextResponse.json({ error: "Intake session not found." }, { status: 404 });
 
   try {
     if (action === "create-pasted-intake") {
       const intake = createPastedHierarchyIntake({
         sessionId: params.id,
+        companyId,
         pastedText: typeof body.pastedText === "string" ? body.pastedText : "",
         createdBy: typeof body.createdBy === "string" ? body.createdBy : undefined,
       }, repos());
-      return NextResponse.json({ ...payload(params.id), intake }, { status: 201 });
+      return NextResponse.json({ ...payload(companyId, params.id), intake }, { status: 201 });
     }
 
     if (action === "create-uploaded-document-intake") {
       const intake = createUploadedDocumentHierarchyIntake({
         sessionId: params.id,
+        companyId,
         sourceId: typeof body.sourceId === "string" ? body.sourceId : "",
         artifactId: typeof body.artifactId === "string" ? body.artifactId : undefined,
         createdBy: typeof body.createdBy === "string" ? body.createdBy : undefined,
       }, repos());
-      return NextResponse.json({ ...payload(params.id), intake }, { status: 201 });
+      return NextResponse.json({ ...payload(companyId, params.id), intake }, { status: 201 });
     }
 
     if (action === "parse-pasted-text") {
@@ -175,12 +190,13 @@ export async function POST(
         : [];
       const draft = saveManualHierarchyDraft({
         sessionId: params.id,
+        companyId,
         nodes,
         secondaryRelationships,
         createdBy: typeof body.createdBy === "string" ? body.createdBy : undefined,
         correctionNote: typeof body.correctionNote === "string" ? body.correctionNote : undefined,
       }, repos());
-      return NextResponse.json({ ...payload(params.id), draft }, { status: 201 });
+      return NextResponse.json({ ...payload(companyId, params.id), draft }, { status: 201 });
     }
 
     if (action === "generate-ai-draft") {
@@ -188,12 +204,13 @@ export async function POST(
       const compiledPrompt = compileStructuredPromptSpec(promptSpec, promptInput(params.id));
       const draft = await generateProviderBackedHierarchyDraft({
         sessionId: params.id,
+        companyId,
         provider: providerRegistry.getExtractionProvider("google"),
         promptSpecId: promptSpec.promptSpecId,
         compiledPrompt,
       }, repos());
       const status = draft.status === "ai_draft_failed" ? 424 : 201;
-      return NextResponse.json({ ...payload(params.id), draft }, { status });
+      return NextResponse.json({ ...payload(companyId, params.id), draft }, { status });
     }
 
     if (action === "generate-source-triage") {
@@ -201,24 +218,31 @@ export async function POST(
       const compiledPrompt = compilePass3SourceTriagePromptSpec(promptSpec, sourceTriagePromptInput(params.id));
       const result = await generateProviderBackedSourceHierarchyTriage({
         sessionId: params.id,
+        companyId,
         provider: providerRegistry.getExtractionProvider("google"),
         promptSpecId: promptSpec.promptSpecId,
         compiledPrompt,
       }, repos());
       const status = result.job.status === "ai_triage_failed" ? 424 : 201;
-      return NextResponse.json({ ...payload(params.id), sourceTriageJob: result.job, sourceTriageSuggestions: result.suggestions }, { status });
+      return NextResponse.json({ ...payload(companyId, params.id), sourceTriageJob: result.job, sourceTriageSuggestions: result.suggestions }, { status });
     }
 
     if (action === "update-source-triage") {
+      const triageId = typeof body.triageId === "string" ? body.triageId : "";
+      if (!store.sourceHierarchyTriageSuggestions.findByCompany(companyId, session.caseId, triageId)) {
+        return NextResponse.json({ ...payload(companyId, params.id), error: "Source hierarchy triage suggestion not found." }, { status: 404 });
+      }
       const suggestion = updateSourceHierarchyTriageSuggestion({
-        triageId: typeof body.triageId === "string" ? body.triageId : "",
+        triageId,
+        companyId,
+        caseId: session.caseId,
         action: body.decisionAction as "accept" | "reject" | "change_scope" | "mark_participant_validation_needed" | "add_note",
         suggestedScope: body.suggestedScope as SourceHierarchySuggestedScope | undefined,
         linkedNodeId: typeof body.linkedNodeId === "string" ? body.linkedNodeId : undefined,
         linkedScopeLevel: body.linkedScopeLevel as SourceHierarchySuggestedScope | undefined,
         adminNote: typeof body.adminNote === "string" ? body.adminNote : undefined,
       }, repos());
-      return NextResponse.json({ ...payload(params.id), sourceTriageSuggestion: suggestion }, { status: 201 });
+      return NextResponse.json({ ...payload(companyId, params.id), sourceTriageSuggestion: suggestion }, { status: 201 });
     }
 
     if (action === "save-prompt-draft") {
@@ -229,7 +253,7 @@ export async function POST(
         blocks,
         adminNote: typeof body.adminNote === "string" ? body.adminNote : undefined,
       }, store.structuredPromptSpecs);
-      return NextResponse.json({ ...payload(params.id), promptDraft: draft }, { status: 201 });
+      return NextResponse.json({ ...payload(companyId, params.id), promptDraft: draft }, { status: 201 });
     }
 
     if (action === "run-prompt-test") {
@@ -271,7 +295,7 @@ export async function POST(
         testRuns: store.pass3PromptTestRuns,
       });
       const status = testRun.providerStatus === "provider_success" ? 201 : 424;
-      return NextResponse.json({ ...payload(params.id), promptTestRun: testRun }, { status });
+      return NextResponse.json({ ...payload(companyId, params.id), promptTestRun: testRun }, { status });
     }
 
     if (action === "promote-prompt-draft") {
@@ -279,7 +303,7 @@ export async function POST(
         draftPromptSpecId: typeof body.draftPromptSpecId === "string" ? body.draftPromptSpecId : "",
         adminNote: typeof body.adminNote === "string" ? body.adminNote : undefined,
       }, store.structuredPromptSpecs);
-      return NextResponse.json({ ...payload(params.id), promotedPrompt: result.active, previousPrompt: result.previous }, { status: 201 });
+      return NextResponse.json({ ...payload(companyId, params.id), promotedPrompt: result.active, previousPrompt: result.previous }, { status: 201 });
     }
 
     if (action === "create-manual-source-link") {
@@ -287,6 +311,7 @@ export async function POST(
       const source = store.intakeSources.findById(sourceId);
       const suggestion = createManualSourceHierarchyLink({
         sessionId: params.id,
+        companyId,
         sourceId,
         sourceName: typeof body.sourceName === "string" ? body.sourceName : source?.displayName ?? source?.fileName ?? sourceId,
         suggestedScope: body.suggestedScope as SourceHierarchySuggestedScope,
@@ -296,20 +321,21 @@ export async function POST(
         participantValidationNeeded: Boolean(body.participantValidationNeeded),
         createdBy: typeof body.createdBy === "string" ? body.createdBy : undefined,
       }, repos());
-      return NextResponse.json({ ...payload(params.id), sourceTriageSuggestion: suggestion }, { status: 201 });
+      return NextResponse.json({ ...payload(companyId, params.id), sourceTriageSuggestion: suggestion }, { status: 201 });
     }
 
     if (action === "approve-structural-snapshot") {
       const approvedSnapshot = approveStructuralHierarchy({
         sessionId: params.id,
+        companyId,
         approvedBy: typeof body.approvedBy === "string" ? body.approvedBy : undefined,
       }, repos());
-      return NextResponse.json({ ...payload(params.id), approvedSnapshot }, { status: 201 });
+      return NextResponse.json({ ...payload(companyId, params.id), approvedSnapshot }, { status: 201 });
     }
 
     if (action === "calculate-readiness") {
-      const readinessSnapshot = calculateHierarchyReadinessSnapshot(params.id, repos());
-      return NextResponse.json({ ...payload(params.id), readinessSnapshot }, { status: 201 });
+      const readinessSnapshot = calculateHierarchyReadinessSnapshot(params.id, companyId, repos());
+      return NextResponse.json({ ...payload(companyId, params.id), readinessSnapshot }, { status: 201 });
     }
 
     return NextResponse.json({
@@ -332,7 +358,7 @@ export async function POST(
     }, { status: 400 });
   } catch (error) {
     return NextResponse.json({
-      ...payload(params.id),
+      ...payload(companyId, params.id),
       error: error instanceof Error ? error.message : String(error),
     }, { status: 400 });
   }

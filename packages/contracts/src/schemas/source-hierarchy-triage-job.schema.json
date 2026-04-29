@@ -4,10 +4,11 @@
   "title": "SourceHierarchyTriageJob",
   "type": "object",
   "additionalProperties": false,
-  "required": ["triageJobId", "sessionId", "caseId", "status", "createdBy", "createdAt", "updatedAt"],
+  "required": ["triageJobId", "sessionId", "companyId", "caseId", "status", "createdBy", "createdAt", "updatedAt"],
   "properties": {
     "triageJobId": { "type": "string", "minLength": 1 },
     "sessionId": { "type": "string", "minLength": 1 },
+    "companyId": { "type": "string", "minLength": 1 },
     "caseId": { "type": "string", "minLength": 1 },
     "status": { "type": "string", "enum": ["ai_triage_succeeded", "ai_triage_failed", "manual_link_created"] },
     "provider": { "type": "string", "enum": ["google", "openai"] },

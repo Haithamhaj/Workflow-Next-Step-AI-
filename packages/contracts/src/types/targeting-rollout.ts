@@ -148,6 +148,7 @@ export interface ParticipantContactProfile {
 
 export interface TargetingRecommendationPacket {
   packetId: string;
+  companyId: string;
   caseId: string;
   selectedDepartment: string;
   selectedUseCase: string;
@@ -190,6 +191,7 @@ export interface TargetingApprovalMetadata {
 
 export interface TargetingRolloutPlan {
   planId: string;
+  companyId: string;
   caseId: string;
   sessionId: string;
   selectedDepartment: string;

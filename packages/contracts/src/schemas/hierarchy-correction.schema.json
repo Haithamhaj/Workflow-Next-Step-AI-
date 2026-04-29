@@ -4,11 +4,12 @@
   "title": "HierarchyCorrectionEvent",
   "type": "object",
   "additionalProperties": true,
-  "required": ["correctionId", "hierarchyDraftId", "sessionId", "caseId", "correctedBy", "correctedAt", "nodes", "secondaryRelationships"],
+  "required": ["correctionId", "hierarchyDraftId", "sessionId", "companyId", "caseId", "correctedBy", "correctedAt", "nodes", "secondaryRelationships"],
   "properties": {
     "correctionId": { "type": "string", "minLength": 1 },
     "hierarchyDraftId": { "type": "string", "minLength": 1 },
     "sessionId": { "type": "string", "minLength": 1 },
+    "companyId": { "type": "string", "minLength": 1 },
     "caseId": { "type": "string", "minLength": 1 },
     "correctedBy": { "type": "string", "minLength": 1 },
     "correctedAt": { "type": "string", "minLength": 1 },

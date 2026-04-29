@@ -122,11 +122,13 @@ interface PromptTestRunView {
 
 interface Props {
   sessionId: string;
+  companyId: string;
   initialState: {
     sessionContext?: {
       companyName?: string;
       department?: string;
       useCase?: string;
+      companyId?: string;
       caseId?: string;
     };
     intake?: { pastedText?: string } | null;
@@ -263,7 +265,7 @@ function emptyRelationship(index: number, nodes: NodeRecord[]): SecondaryRelatio
   };
 }
 
-export default function HierarchyFoundationClient({ sessionId, initialState }: Props) {
+export default function HierarchyFoundationClient({ sessionId, companyId, initialState }: Props) {
   const [state, setState] = useState(initialState);
   const [pastedText, setPastedText] = useState(initialState.intake?.pastedText ?? "");
   const [nodes, setNodes] = useState<NodeRecord[]>(initialState.draft?.nodes ?? [emptyNode(1)]);
@@ -329,7 +331,7 @@ export default function HierarchyFoundationClient({ sessionId, initialState }: P
     const res = await fetch(`/api/intake-sessions/${sessionId}/hierarchy`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ action, ...body }),
+      body: JSON.stringify({ action, companyId, ...body }),
     });
     const data = await res.json() as typeof initialState & { error?: string; nodes?: NodeRecord[] };
     if (!res.ok) {

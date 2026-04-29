@@ -17,8 +17,12 @@ const repos = {
   targetingRolloutPlans: store.targetingRolloutPlans,
 };
 
-export async function GET(_: Request, { params }: { params: { id: string } }) {
-  const plan = store.targetingRolloutPlans.findById(params.id);
+export async function GET(request: Request, { params }: { params: { id: string } }) {
+  const searchParams = new URL(request.url).searchParams;
+  const companyId = searchParams.get("companyId");
+  const caseId = searchParams.get("caseId");
+  if (!companyId || !caseId) return NextResponse.json({ error: "companyId and caseId are required." }, { status: 400 });
+  const plan = store.targetingRolloutPlans.findByCompany(companyId, caseId, params.id);
   if (!plan) return NextResponse.json({ error: "Targeting rollout plan not found." }, { status: 404 });
   return NextResponse.json(plan);
 }
@@ -27,6 +31,8 @@ export async function PATCH(request: Request, { params }: { params: { id: string
   try {
     const body = await request.json() as {
       action?: string;
+      companyId?: string;
+      caseId?: string;
       candidateId?: string;
       adminDecision?: "pending" | "accepted" | "rejected" | "edited";
       targetType?: "core_participant" | "enrichment_participant" | "external_decision_or_clarification_source";
@@ -40,17 +46,21 @@ export async function PATCH(request: Request, { params }: { params: { id: string
       state?: TargetingRolloutPlanState;
       adminNote?: string;
     };
+    if (!body.companyId || !body.caseId) return NextResponse.json({ error: "companyId and caseId are required." }, { status: 400 });
+    if (!store.targetingRolloutPlans.findByCompany(body.companyId, body.caseId, params.id)) {
+      return NextResponse.json({ error: "Targeting rollout plan not found." }, { status: 404 });
+    }
     if (body.action === "candidate" && body.candidateId) {
-      return NextResponse.json(updateCandidateDecision({ planId: params.id, candidateId: body.candidateId, adminDecision: body.adminDecision, targetType: body.targetType, rolloutStage: body.rolloutStage, rolloutOrder: body.rolloutOrder, markContactDataMissing: body.markContactDataMissing, adminNote: body.adminNote }, repos));
+      return NextResponse.json(updateCandidateDecision({ planId: params.id, companyId: body.companyId, caseId: body.caseId, candidateId: body.candidateId, adminDecision: body.adminDecision, targetType: body.targetType, rolloutStage: body.rolloutStage, rolloutOrder: body.rolloutOrder, markContactDataMissing: body.markContactDataMissing, adminNote: body.adminNote }, repos));
     }
     if (body.action === "contact" && body.participantId) {
-      return NextResponse.json(updateParticipantContactProfile({ planId: params.id, participantId: body.participantId, updates: body.updates ?? {}, updatedBy: "admin" }, repos));
+      return NextResponse.json(updateParticipantContactProfile({ planId: params.id, companyId: body.companyId, caseId: body.caseId, participantId: body.participantId, updates: body.updates ?? {}, updatedBy: "admin" }, repos));
     }
     if (body.action === "hint" && body.hintId && body.hintStatus) {
-      return NextResponse.json(updateQuestionHintSeed({ planId: params.id, hintId: body.hintId, status: body.hintStatus, adminNote: body.adminNote }, repos));
+      return NextResponse.json(updateQuestionHintSeed({ planId: params.id, companyId: body.companyId, caseId: body.caseId, hintId: body.hintId, status: body.hintStatus, adminNote: body.adminNote }, repos));
     }
     if (body.action === "transition" && body.state) {
-      return NextResponse.json(transitionTargetingPlan({ planId: params.id, state: body.state, adminUser: "admin", adminNote: body.adminNote }, repos));
+      return NextResponse.json(transitionTargetingPlan({ planId: params.id, companyId: body.companyId, caseId: body.caseId, state: body.state, adminUser: "admin", adminNote: body.adminNote }, repos));
     }
     return NextResponse.json({ error: "Unsupported action." }, { status: 400 });
   } catch (error) {

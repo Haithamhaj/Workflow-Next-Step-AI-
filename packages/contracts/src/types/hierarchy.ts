@@ -53,6 +53,7 @@ export type HierarchySourceBasis =
 export interface HierarchyIntakeRecord {
   hierarchyIntakeId: string;
   sessionId: string;
+  companyId: string;
   caseId: string;
   inputMethod: HierarchyInputMethod;
   status: HierarchyIntakeStatus;
@@ -95,6 +96,7 @@ export interface HierarchyDraftRecord {
   hierarchyDraftId: string;
   hierarchyIntakeId: string;
   sessionId: string;
+  companyId: string;
   caseId: string;
   status: "manual_admin_created" | "ai_draft_succeeded" | "ai_draft_failed";
   nodes: HierarchyNodeRecord[];
@@ -115,6 +117,7 @@ export interface HierarchyCorrectionEvent {
   correctionId: string;
   hierarchyDraftId: string;
   sessionId: string;
+  companyId: string;
   caseId: string;
   correctedBy: string;
   correctedAt: string;
@@ -127,6 +130,7 @@ export interface ApprovedHierarchySnapshot {
   approvedSnapshotId: string;
   hierarchyDraftId: string;
   sessionId: string;
+  companyId: string;
   caseId: string;
   nodes: HierarchyNodeRecord[];
   secondaryRelationships: HierarchySecondaryRelationship[];
@@ -139,6 +143,7 @@ export interface ApprovedHierarchySnapshot {
 export interface HierarchyReadinessSnapshot {
   readinessSnapshotId: string;
   sessionId: string;
+  companyId: string;
   caseId: string;
   status: "blocked" | "ready_for_participant_targeting_planning";
   approvedSnapshotId?: string;
@@ -156,6 +161,7 @@ export interface HierarchyReadinessSnapshot {
 export interface SourceHierarchyEvidenceCandidate {
   evidenceCandidateId: string;
   sessionId: string;
+  companyId: string;
   caseId: string;
   sourceId: string;
   nodeId?: string;
@@ -208,6 +214,7 @@ export type SourceHierarchyTriageJobStatus = "ai_triage_succeeded" | "ai_triage_
 export interface SourceHierarchyTriageJob {
   triageJobId: string;
   sessionId: string;
+  companyId: string;
   caseId: string;
   status: SourceHierarchyTriageJobStatus;
   provider?: "google" | "openai";
@@ -225,6 +232,7 @@ export interface SourceHierarchyTriageSuggestion {
   triageId: string;
   triageJobId?: string;
   sessionId: string;
+  companyId: string;
   caseId: string;
   sourceId: string;
   sourceName: string;
