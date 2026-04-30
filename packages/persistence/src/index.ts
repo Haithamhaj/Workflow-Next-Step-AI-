@@ -89,6 +89,12 @@ import type {
   StageCopilotStageKey,
   Pass6LineageStatus,
   SourceLineageStatus,
+  FramingRun as ContractFramingRun,
+  FramingSource as ContractFramingSource,
+  FramingCandidate as ContractFramingCandidate,
+  CaseEntryPacket as ContractCaseEntryPacket,
+  SourceToCaseLink as ContractSourceToCaseLink,
+  OperatorFramingInput as ContractOperatorFramingInput,
 } from "@workflow/contracts";
 
 import { mkdirSync } from "node:fs";
@@ -376,6 +382,20 @@ export interface StoredStageCopilotSystemPromptRecord {
   authorityBoundary: StoredStageCopilotSystemPromptAuthorityBoundary;
 }
 
+export type FramingRun = ContractFramingRun;
+export type FramingSource = ContractFramingSource;
+export type FramingCandidate = ContractFramingCandidate;
+export type CaseEntryPacket = ContractCaseEntryPacket;
+export type SourceToCaseLink = ContractSourceToCaseLink;
+export type OperatorFramingInput = ContractOperatorFramingInput;
+
+export interface StoredFramingRun extends FramingRun {}
+export interface StoredFramingSource extends FramingSource {}
+export interface StoredFramingCandidate extends FramingCandidate {}
+export interface StoredCaseEntryPacket extends CaseEntryPacket {}
+export interface StoredSourceToCaseLink extends SourceToCaseLink {}
+export interface StoredOperatorFramingInput extends OperatorFramingInput {}
+
 // ---------------------------------------------------------------------------
 // Repository interfaces — backend-agnostic
 // ---------------------------------------------------------------------------
@@ -632,6 +652,56 @@ export interface IntakeSourceRepository {
   findBySessionId(sessionId: string): StoredIntakeSource[];
   findByCaseId(caseId: string): StoredIntakeSource[];
   findAll(): StoredIntakeSource[];
+}
+
+export interface FramingRunRepository {
+  save(record: StoredFramingRun): void;
+  findById(framingRunId: string): StoredFramingRun | null;
+  findByCompanyId(companyId: string): StoredFramingRun[];
+  findAll(): StoredFramingRun[];
+}
+
+export interface FramingSourceRepository {
+  save(record: StoredFramingSource): void;
+  findById(framingSourceId: string): StoredFramingSource | null;
+  findByCompanyId(companyId: string): StoredFramingSource[];
+  findByFramingRunId(framingRunId: string): StoredFramingSource[];
+  findAll(): StoredFramingSource[];
+}
+
+export interface FramingCandidateRepository {
+  save(record: StoredFramingCandidate): void;
+  findById(candidateId: string): StoredFramingCandidate | null;
+  findByFramingRunId(framingRunId: string): StoredFramingCandidate[];
+  findByCompanyId(companyId: string): StoredFramingCandidate[];
+  findAll(): StoredFramingCandidate[];
+}
+
+export interface CaseEntryPacketRepository {
+  save(record: StoredCaseEntryPacket): void;
+  findById(packetId: string): StoredCaseEntryPacket | null;
+  findByCompanyId(companyId: string): StoredCaseEntryPacket[];
+  findByFramingRunId(framingRunId: string): StoredCaseEntryPacket[];
+  findByCandidateId(candidateId: string): StoredCaseEntryPacket[];
+  findAll(): StoredCaseEntryPacket[];
+}
+
+export interface SourceToCaseLinkRepository {
+  save(record: StoredSourceToCaseLink): void;
+  findById(linkId: string): StoredSourceToCaseLink | null;
+  findByCompanyId(companyId: string): StoredSourceToCaseLink[];
+  findByFramingSourceId(framingSourceId: string): StoredSourceToCaseLink[];
+  findByCaseId(caseId: string): StoredSourceToCaseLink[];
+  findAll(): StoredSourceToCaseLink[];
+}
+
+export interface OperatorFramingInputRepository {
+  save(record: StoredOperatorFramingInput): void;
+  findById(inputId: string): StoredOperatorFramingInput | null;
+  findByCompanyId(companyId: string): StoredOperatorFramingInput[];
+  findByFramingRunId(framingRunId: string): StoredOperatorFramingInput[];
+  findByLinkedCandidateId(candidateId: string): StoredOperatorFramingInput[];
+  findAll(): StoredOperatorFramingInput[];
 }
 
 export interface WebsiteCrawlRepository {
@@ -1534,6 +1604,164 @@ class InMemoryIntakeSourceRepository implements IntakeSourceRepository {
 
   findAll(): StoredIntakeSource[] {
     return Array.from(this.store.values());
+  }
+}
+
+class InMemoryFramingRunRepository implements FramingRunRepository {
+  private readonly store = new Map<string, StoredFramingRun>();
+
+  save(record: StoredFramingRun): void {
+    this.store.set(record.framingRunId, cloneRecord(record));
+  }
+
+  findById(framingRunId: string): StoredFramingRun | null {
+    const record = this.store.get(framingRunId);
+    return record ? cloneRecord(record) : null;
+  }
+
+  findByCompanyId(companyId: string): StoredFramingRun[] {
+    return this.findAll().filter((record) => record.companyId === companyId);
+  }
+
+  findAll(): StoredFramingRun[] {
+    return Array.from(this.store.values()).map((record) => cloneRecord(record));
+  }
+}
+
+class InMemoryFramingSourceRepository implements FramingSourceRepository {
+  private readonly store = new Map<string, StoredFramingSource>();
+
+  save(record: StoredFramingSource): void {
+    this.store.set(record.framingSourceId, cloneRecord(record));
+  }
+
+  findById(framingSourceId: string): StoredFramingSource | null {
+    const record = this.store.get(framingSourceId);
+    return record ? cloneRecord(record) : null;
+  }
+
+  findByCompanyId(companyId: string): StoredFramingSource[] {
+    return this.findAll().filter((record) => record.companyId === companyId);
+  }
+
+  findByFramingRunId(framingRunId: string): StoredFramingSource[] {
+    return this.findAll().filter((record) => record.framingRunIds?.includes(framingRunId));
+  }
+
+  findAll(): StoredFramingSource[] {
+    return Array.from(this.store.values()).map((record) => cloneRecord(record));
+  }
+}
+
+class InMemoryFramingCandidateRepository implements FramingCandidateRepository {
+  private readonly store = new Map<string, StoredFramingCandidate>();
+
+  save(record: StoredFramingCandidate): void {
+    this.store.set(record.candidateId, cloneRecord(record));
+  }
+
+  findById(candidateId: string): StoredFramingCandidate | null {
+    const record = this.store.get(candidateId);
+    return record ? cloneRecord(record) : null;
+  }
+
+  findByFramingRunId(framingRunId: string): StoredFramingCandidate[] {
+    return this.findAll().filter((record) => record.framingRunId === framingRunId);
+  }
+
+  findByCompanyId(companyId: string): StoredFramingCandidate[] {
+    return this.findAll().filter((record) => record.companyId === companyId);
+  }
+
+  findAll(): StoredFramingCandidate[] {
+    return Array.from(this.store.values()).map((record) => cloneRecord(record));
+  }
+}
+
+class InMemoryCaseEntryPacketRepository implements CaseEntryPacketRepository {
+  private readonly store = new Map<string, StoredCaseEntryPacket>();
+
+  save(record: StoredCaseEntryPacket): void {
+    this.store.set(record.packetId, cloneRecord(record));
+  }
+
+  findById(packetId: string): StoredCaseEntryPacket | null {
+    const record = this.store.get(packetId);
+    return record ? cloneRecord(record) : null;
+  }
+
+  findByCompanyId(companyId: string): StoredCaseEntryPacket[] {
+    return this.findAll().filter((record) => record.companyId === companyId);
+  }
+
+  findByFramingRunId(framingRunId: string): StoredCaseEntryPacket[] {
+    return this.findAll().filter((record) => record.framingRunId === framingRunId);
+  }
+
+  findByCandidateId(candidateId: string): StoredCaseEntryPacket[] {
+    return this.findAll().filter((record) => record.candidateId === candidateId);
+  }
+
+  findAll(): StoredCaseEntryPacket[] {
+    return Array.from(this.store.values()).map((record) => cloneRecord(record));
+  }
+}
+
+class InMemorySourceToCaseLinkRepository implements SourceToCaseLinkRepository {
+  private readonly store = new Map<string, StoredSourceToCaseLink>();
+
+  save(record: StoredSourceToCaseLink): void {
+    this.store.set(record.linkId, cloneRecord(record));
+  }
+
+  findById(linkId: string): StoredSourceToCaseLink | null {
+    const record = this.store.get(linkId);
+    return record ? cloneRecord(record) : null;
+  }
+
+  findByCompanyId(companyId: string): StoredSourceToCaseLink[] {
+    return this.findAll().filter((record) => record.companyId === companyId);
+  }
+
+  findByFramingSourceId(framingSourceId: string): StoredSourceToCaseLink[] {
+    return this.findAll().filter((record) => record.framingSourceId === framingSourceId);
+  }
+
+  findByCaseId(caseId: string): StoredSourceToCaseLink[] {
+    return this.findAll().filter((record) => record.caseId === caseId);
+  }
+
+  findAll(): StoredSourceToCaseLink[] {
+    return Array.from(this.store.values()).map((record) => cloneRecord(record));
+  }
+}
+
+class InMemoryOperatorFramingInputRepository implements OperatorFramingInputRepository {
+  private readonly store = new Map<string, StoredOperatorFramingInput>();
+
+  save(record: StoredOperatorFramingInput): void {
+    this.store.set(record.inputId, cloneRecord(record));
+  }
+
+  findById(inputId: string): StoredOperatorFramingInput | null {
+    const record = this.store.get(inputId);
+    return record ? cloneRecord(record) : null;
+  }
+
+  findByCompanyId(companyId: string): StoredOperatorFramingInput[] {
+    return this.findAll().filter((record) => record.companyId === companyId);
+  }
+
+  findByFramingRunId(framingRunId: string): StoredOperatorFramingInput[] {
+    return this.findAll().filter((record) => record.framingRunId === framingRunId);
+  }
+
+  findByLinkedCandidateId(candidateId: string): StoredOperatorFramingInput[] {
+    return this.findAll().filter((record) => record.linkedCandidateId === candidateId);
+  }
+
+  findAll(): StoredOperatorFramingInput[] {
+    return Array.from(this.store.values()).map((record) => cloneRecord(record));
   }
 }
 
@@ -2652,9 +2880,63 @@ function openIntakeDatabase(dbPath?: string): DatabaseSync {
       lineage_status TEXT NOT NULL DEFAULT 'active',
       payload TEXT NOT NULL
     );
+    CREATE TABLE IF NOT EXISTS framing_runs (
+      id TEXT PRIMARY KEY,
+      company_id TEXT NOT NULL,
+      status TEXT NOT NULL,
+      payload TEXT NOT NULL
+    );
+    CREATE TABLE IF NOT EXISTS framing_sources (
+      id TEXT PRIMARY KEY,
+      company_id TEXT NOT NULL,
+      source_version INTEGER NOT NULL,
+      status TEXT NOT NULL,
+      payload TEXT NOT NULL
+    );
+    CREATE TABLE IF NOT EXISTS framing_candidates (
+      id TEXT PRIMARY KEY,
+      company_id TEXT NOT NULL,
+      framing_run_id TEXT NOT NULL,
+      status TEXT NOT NULL,
+      payload TEXT NOT NULL
+    );
+    CREATE TABLE IF NOT EXISTS case_entry_packets (
+      id TEXT PRIMARY KEY,
+      company_id TEXT NOT NULL,
+      framing_run_id TEXT,
+      candidate_id TEXT,
+      payload TEXT NOT NULL
+    );
+    CREATE TABLE IF NOT EXISTS source_to_case_links (
+      id TEXT PRIMARY KEY,
+      company_id TEXT NOT NULL,
+      framing_source_id TEXT NOT NULL,
+      case_id TEXT NOT NULL,
+      payload TEXT NOT NULL
+    );
+    CREATE TABLE IF NOT EXISTS operator_framing_inputs (
+      id TEXT PRIMARY KEY,
+      company_id TEXT NOT NULL,
+      framing_run_id TEXT NOT NULL,
+      linked_candidate_id TEXT,
+      payload TEXT NOT NULL
+    );
     CREATE INDEX IF NOT EXISTS idx_intake_sessions_case_id ON intake_sessions(case_id);
     CREATE INDEX IF NOT EXISTS idx_intake_sources_session_id ON intake_sources(session_id);
     CREATE INDEX IF NOT EXISTS idx_intake_sources_case_id ON intake_sources(case_id);
+    CREATE INDEX IF NOT EXISTS idx_framing_runs_company_id ON framing_runs(company_id);
+    CREATE INDEX IF NOT EXISTS idx_framing_sources_company_id ON framing_sources(company_id);
+    CREATE INDEX IF NOT EXISTS idx_framing_candidates_run_id ON framing_candidates(framing_run_id);
+    CREATE INDEX IF NOT EXISTS idx_framing_candidates_company_id ON framing_candidates(company_id);
+    CREATE INDEX IF NOT EXISTS idx_case_entry_packets_company_id ON case_entry_packets(company_id);
+    CREATE INDEX IF NOT EXISTS idx_case_entry_packets_run_id ON case_entry_packets(framing_run_id);
+    CREATE INDEX IF NOT EXISTS idx_case_entry_packets_candidate_id ON case_entry_packets(candidate_id);
+    CREATE INDEX IF NOT EXISTS idx_source_to_case_links_company_id ON source_to_case_links(company_id);
+    CREATE INDEX IF NOT EXISTS idx_source_to_case_links_framing_source_id ON source_to_case_links(framing_source_id);
+    CREATE INDEX IF NOT EXISTS idx_source_to_case_links_case_id ON source_to_case_links(case_id);
+    CREATE INDEX IF NOT EXISTS idx_operator_framing_inputs_company_id ON operator_framing_inputs(company_id);
+    CREATE INDEX IF NOT EXISTS idx_operator_framing_inputs_run_id ON operator_framing_inputs(framing_run_id);
+    CREATE INDEX IF NOT EXISTS idx_operator_framing_inputs_candidate_id ON operator_framing_inputs(linked_candidate_id);
     CREATE TABLE IF NOT EXISTS provider_extraction_jobs (
       id TEXT PRIMARY KEY,
       company_id TEXT,
@@ -3423,6 +3705,231 @@ export class SQLiteIntakeSourceRepository implements IntakeSourceRepository {
   findAll(): StoredIntakeSource[] {
     const rows = this.db.prepare("SELECT payload FROM intake_sources ORDER BY id").all();
     return parseStoredList<StoredIntakeSource>(rows);
+  }
+}
+
+export class SQLiteFramingRunRepository implements FramingRunRepository {
+  private readonly db: DatabaseSync;
+
+  constructor(dbPath?: string) {
+    this.db = openIntakeDatabase(dbPath);
+  }
+
+  save(record: StoredFramingRun): void {
+    const cloned = cloneRecord(record);
+    this.db.prepare(
+      "INSERT INTO framing_runs (id, company_id, status, payload) VALUES (?, ?, ?, ?) ON CONFLICT(id) DO UPDATE SET company_id = excluded.company_id, status = excluded.status, payload = excluded.payload",
+    ).run(cloned.framingRunId, cloned.companyId, cloned.status, JSON.stringify(cloned));
+  }
+
+  findById(framingRunId: string): StoredFramingRun | null {
+    const row = this.db.prepare("SELECT payload FROM framing_runs WHERE id = ?").get(framingRunId);
+    const record = parseStored<StoredFramingRun>(row);
+    return record ? cloneRecord(record) : null;
+  }
+
+  findByCompanyId(companyId: string): StoredFramingRun[] {
+    const rows = this.db.prepare("SELECT payload FROM framing_runs WHERE company_id = ? ORDER BY id").all(companyId);
+    return parseStoredList<StoredFramingRun>(rows).map((record) => cloneRecord(record));
+  }
+
+  findAll(): StoredFramingRun[] {
+    const rows = this.db.prepare("SELECT payload FROM framing_runs ORDER BY company_id, id").all();
+    return parseStoredList<StoredFramingRun>(rows).map((record) => cloneRecord(record));
+  }
+}
+
+export class SQLiteFramingSourceRepository implements FramingSourceRepository {
+  private readonly db: DatabaseSync;
+
+  constructor(dbPath?: string) {
+    this.db = openIntakeDatabase(dbPath);
+  }
+
+  save(record: StoredFramingSource): void {
+    const cloned = cloneRecord(record);
+    this.db.prepare(
+      "INSERT INTO framing_sources (id, company_id, source_version, status, payload) VALUES (?, ?, ?, ?, ?) ON CONFLICT(id) DO UPDATE SET company_id = excluded.company_id, source_version = excluded.source_version, status = excluded.status, payload = excluded.payload",
+    ).run(cloned.framingSourceId, cloned.companyId, cloned.sourceVersion, cloned.status, JSON.stringify(cloned));
+  }
+
+  findById(framingSourceId: string): StoredFramingSource | null {
+    const row = this.db.prepare("SELECT payload FROM framing_sources WHERE id = ?").get(framingSourceId);
+    const record = parseStored<StoredFramingSource>(row);
+    return record ? cloneRecord(record) : null;
+  }
+
+  findByCompanyId(companyId: string): StoredFramingSource[] {
+    const rows = this.db.prepare("SELECT payload FROM framing_sources WHERE company_id = ? ORDER BY id").all(companyId);
+    return parseStoredList<StoredFramingSource>(rows).map((record) => cloneRecord(record));
+  }
+
+  findByFramingRunId(framingRunId: string): StoredFramingSource[] {
+    return this.findAll().filter((record) => record.framingRunIds?.includes(framingRunId));
+  }
+
+  findAll(): StoredFramingSource[] {
+    const rows = this.db.prepare("SELECT payload FROM framing_sources ORDER BY company_id, id").all();
+    return parseStoredList<StoredFramingSource>(rows).map((record) => cloneRecord(record));
+  }
+}
+
+export class SQLiteFramingCandidateRepository implements FramingCandidateRepository {
+  private readonly db: DatabaseSync;
+
+  constructor(dbPath?: string) {
+    this.db = openIntakeDatabase(dbPath);
+  }
+
+  save(record: StoredFramingCandidate): void {
+    const cloned = cloneRecord(record);
+    this.db.prepare(
+      "INSERT INTO framing_candidates (id, company_id, framing_run_id, status, payload) VALUES (?, ?, ?, ?, ?) ON CONFLICT(id) DO UPDATE SET company_id = excluded.company_id, framing_run_id = excluded.framing_run_id, status = excluded.status, payload = excluded.payload",
+    ).run(cloned.candidateId, cloned.companyId, cloned.framingRunId, cloned.status, JSON.stringify(cloned));
+  }
+
+  findById(candidateId: string): StoredFramingCandidate | null {
+    const row = this.db.prepare("SELECT payload FROM framing_candidates WHERE id = ?").get(candidateId);
+    const record = parseStored<StoredFramingCandidate>(row);
+    return record ? cloneRecord(record) : null;
+  }
+
+  findByFramingRunId(framingRunId: string): StoredFramingCandidate[] {
+    const rows = this.db.prepare("SELECT payload FROM framing_candidates WHERE framing_run_id = ? ORDER BY id").all(framingRunId);
+    return parseStoredList<StoredFramingCandidate>(rows).map((record) => cloneRecord(record));
+  }
+
+  findByCompanyId(companyId: string): StoredFramingCandidate[] {
+    const rows = this.db.prepare("SELECT payload FROM framing_candidates WHERE company_id = ? ORDER BY id").all(companyId);
+    return parseStoredList<StoredFramingCandidate>(rows).map((record) => cloneRecord(record));
+  }
+
+  findAll(): StoredFramingCandidate[] {
+    const rows = this.db.prepare("SELECT payload FROM framing_candidates ORDER BY company_id, framing_run_id, id").all();
+    return parseStoredList<StoredFramingCandidate>(rows).map((record) => cloneRecord(record));
+  }
+}
+
+export class SQLiteCaseEntryPacketRepository implements CaseEntryPacketRepository {
+  private readonly db: DatabaseSync;
+
+  constructor(dbPath?: string) {
+    this.db = openIntakeDatabase(dbPath);
+  }
+
+  save(record: StoredCaseEntryPacket): void {
+    const cloned = cloneRecord(record);
+    this.db.prepare(
+      "INSERT INTO case_entry_packets (id, company_id, framing_run_id, candidate_id, payload) VALUES (?, ?, ?, ?, ?) ON CONFLICT(id) DO UPDATE SET company_id = excluded.company_id, framing_run_id = excluded.framing_run_id, candidate_id = excluded.candidate_id, payload = excluded.payload",
+    ).run(cloned.packetId, cloned.companyId, cloned.framingRunId ?? null, cloned.candidateId ?? null, JSON.stringify(cloned));
+  }
+
+  findById(packetId: string): StoredCaseEntryPacket | null {
+    const row = this.db.prepare("SELECT payload FROM case_entry_packets WHERE id = ?").get(packetId);
+    const record = parseStored<StoredCaseEntryPacket>(row);
+    return record ? cloneRecord(record) : null;
+  }
+
+  findByCompanyId(companyId: string): StoredCaseEntryPacket[] {
+    const rows = this.db.prepare("SELECT payload FROM case_entry_packets WHERE company_id = ? ORDER BY id").all(companyId);
+    return parseStoredList<StoredCaseEntryPacket>(rows).map((record) => cloneRecord(record));
+  }
+
+  findByFramingRunId(framingRunId: string): StoredCaseEntryPacket[] {
+    const rows = this.db.prepare("SELECT payload FROM case_entry_packets WHERE framing_run_id = ? ORDER BY id").all(framingRunId);
+    return parseStoredList<StoredCaseEntryPacket>(rows).map((record) => cloneRecord(record));
+  }
+
+  findByCandidateId(candidateId: string): StoredCaseEntryPacket[] {
+    const rows = this.db.prepare("SELECT payload FROM case_entry_packets WHERE candidate_id = ? ORDER BY id").all(candidateId);
+    return parseStoredList<StoredCaseEntryPacket>(rows).map((record) => cloneRecord(record));
+  }
+
+  findAll(): StoredCaseEntryPacket[] {
+    const rows = this.db.prepare("SELECT payload FROM case_entry_packets ORDER BY company_id, id").all();
+    return parseStoredList<StoredCaseEntryPacket>(rows).map((record) => cloneRecord(record));
+  }
+}
+
+export class SQLiteSourceToCaseLinkRepository implements SourceToCaseLinkRepository {
+  private readonly db: DatabaseSync;
+
+  constructor(dbPath?: string) {
+    this.db = openIntakeDatabase(dbPath);
+  }
+
+  save(record: StoredSourceToCaseLink): void {
+    const cloned = cloneRecord(record);
+    this.db.prepare(
+      "INSERT INTO source_to_case_links (id, company_id, framing_source_id, case_id, payload) VALUES (?, ?, ?, ?, ?) ON CONFLICT(id) DO UPDATE SET company_id = excluded.company_id, framing_source_id = excluded.framing_source_id, case_id = excluded.case_id, payload = excluded.payload",
+    ).run(cloned.linkId, cloned.companyId, cloned.framingSourceId, cloned.caseId, JSON.stringify(cloned));
+  }
+
+  findById(linkId: string): StoredSourceToCaseLink | null {
+    const row = this.db.prepare("SELECT payload FROM source_to_case_links WHERE id = ?").get(linkId);
+    const record = parseStored<StoredSourceToCaseLink>(row);
+    return record ? cloneRecord(record) : null;
+  }
+
+  findByCompanyId(companyId: string): StoredSourceToCaseLink[] {
+    const rows = this.db.prepare("SELECT payload FROM source_to_case_links WHERE company_id = ? ORDER BY id").all(companyId);
+    return parseStoredList<StoredSourceToCaseLink>(rows).map((record) => cloneRecord(record));
+  }
+
+  findByFramingSourceId(framingSourceId: string): StoredSourceToCaseLink[] {
+    const rows = this.db.prepare("SELECT payload FROM source_to_case_links WHERE framing_source_id = ? ORDER BY id").all(framingSourceId);
+    return parseStoredList<StoredSourceToCaseLink>(rows).map((record) => cloneRecord(record));
+  }
+
+  findByCaseId(caseId: string): StoredSourceToCaseLink[] {
+    const rows = this.db.prepare("SELECT payload FROM source_to_case_links WHERE case_id = ? ORDER BY id").all(caseId);
+    return parseStoredList<StoredSourceToCaseLink>(rows).map((record) => cloneRecord(record));
+  }
+
+  findAll(): StoredSourceToCaseLink[] {
+    const rows = this.db.prepare("SELECT payload FROM source_to_case_links ORDER BY company_id, id").all();
+    return parseStoredList<StoredSourceToCaseLink>(rows).map((record) => cloneRecord(record));
+  }
+}
+
+export class SQLiteOperatorFramingInputRepository implements OperatorFramingInputRepository {
+  private readonly db: DatabaseSync;
+
+  constructor(dbPath?: string) {
+    this.db = openIntakeDatabase(dbPath);
+  }
+
+  save(record: StoredOperatorFramingInput): void {
+    const cloned = cloneRecord(record);
+    this.db.prepare(
+      "INSERT INTO operator_framing_inputs (id, company_id, framing_run_id, linked_candidate_id, payload) VALUES (?, ?, ?, ?, ?) ON CONFLICT(id) DO UPDATE SET company_id = excluded.company_id, framing_run_id = excluded.framing_run_id, linked_candidate_id = excluded.linked_candidate_id, payload = excluded.payload",
+    ).run(cloned.inputId, cloned.companyId, cloned.framingRunId, cloned.linkedCandidateId ?? null, JSON.stringify(cloned));
+  }
+
+  findById(inputId: string): StoredOperatorFramingInput | null {
+    const row = this.db.prepare("SELECT payload FROM operator_framing_inputs WHERE id = ?").get(inputId);
+    const record = parseStored<StoredOperatorFramingInput>(row);
+    return record ? cloneRecord(record) : null;
+  }
+
+  findByCompanyId(companyId: string): StoredOperatorFramingInput[] {
+    const rows = this.db.prepare("SELECT payload FROM operator_framing_inputs WHERE company_id = ? ORDER BY id").all(companyId);
+    return parseStoredList<StoredOperatorFramingInput>(rows).map((record) => cloneRecord(record));
+  }
+
+  findByFramingRunId(framingRunId: string): StoredOperatorFramingInput[] {
+    const rows = this.db.prepare("SELECT payload FROM operator_framing_inputs WHERE framing_run_id = ? ORDER BY id").all(framingRunId);
+    return parseStoredList<StoredOperatorFramingInput>(rows).map((record) => cloneRecord(record));
+  }
+
+  findByLinkedCandidateId(candidateId: string): StoredOperatorFramingInput[] {
+    const rows = this.db.prepare("SELECT payload FROM operator_framing_inputs WHERE linked_candidate_id = ? ORDER BY id").all(candidateId);
+    return parseStoredList<StoredOperatorFramingInput>(rows).map((record) => cloneRecord(record));
+  }
+
+  findAll(): StoredOperatorFramingInput[] {
+    const rows = this.db.prepare("SELECT payload FROM operator_framing_inputs ORDER BY company_id, framing_run_id, id").all();
+    return parseStoredList<StoredOperatorFramingInput>(rows).map((record) => cloneRecord(record));
   }
 }
 
@@ -4888,6 +5395,12 @@ export function createSQLiteIntakeRepositories(dbPath?: string): {
   pass7ReviewCandidates: Pass7ReviewCandidateRepository;
   intakeSessions: IntakeSessionRepository;
   intakeSources: IntakeSourceRepository;
+  framingRuns: FramingRunRepository;
+  framingSources: FramingSourceRepository;
+  framingCandidates: FramingCandidateRepository;
+  caseEntryPackets: CaseEntryPacketRepository;
+  sourceToCaseLinks: SourceToCaseLinkRepository;
+  operatorFramingInputs: OperatorFramingInputRepository;
   providerJobs: ProviderExtractionJobRepository;
   textArtifacts: TextArtifactRepository;
   embeddingJobs: EmbeddingJobRepository;
@@ -4928,6 +5441,12 @@ export function createSQLiteIntakeRepositories(dbPath?: string): {
     ...createSQLitePass6Repositories(dbPath),
     intakeSessions: new SQLiteIntakeSessionRepository(dbPath),
     intakeSources: new SQLiteIntakeSourceRepository(dbPath),
+    framingRuns: new SQLiteFramingRunRepository(dbPath),
+    framingSources: new SQLiteFramingSourceRepository(dbPath),
+    framingCandidates: new SQLiteFramingCandidateRepository(dbPath),
+    caseEntryPackets: new SQLiteCaseEntryPacketRepository(dbPath),
+    sourceToCaseLinks: new SQLiteSourceToCaseLinkRepository(dbPath),
+    operatorFramingInputs: new SQLiteOperatorFramingInputRepository(dbPath),
     providerJobs: new SQLiteProviderExtractionJobRepository(dbPath),
     textArtifacts: new SQLiteTextArtifactRepository(dbPath),
     embeddingJobs: new SQLiteEmbeddingJobRepository(dbPath),
@@ -5014,6 +5533,12 @@ export interface InMemoryStore extends Pass6PersistenceRepositories {
   finalPackages: FinalPackageRepository;
   intakeSessions: IntakeSessionRepository;
   intakeSources: IntakeSourceRepository;
+  framingRuns: FramingRunRepository;
+  framingSources: FramingSourceRepository;
+  framingCandidates: FramingCandidateRepository;
+  caseEntryPackets: CaseEntryPacketRepository;
+  sourceToCaseLinks: SourceToCaseLinkRepository;
+  operatorFramingInputs: OperatorFramingInputRepository;
   websiteCrawls: WebsiteCrawlRepository;
   websiteCrawlPlans: WebsiteCrawlPlanRepository;
   websiteCrawlApprovals: WebsiteCrawlApprovalRepository;
@@ -5098,6 +5623,12 @@ export function createInMemoryStore(): InMemoryStore {
     finalPackages: new InMemoryFinalPackageRepository(),
     intakeSessions: new InMemoryIntakeSessionRepository(),
     intakeSources: new InMemoryIntakeSourceRepository(),
+    framingRuns: new InMemoryFramingRunRepository(),
+    framingSources: new InMemoryFramingSourceRepository(),
+    framingCandidates: new InMemoryFramingCandidateRepository(),
+    caseEntryPackets: new InMemoryCaseEntryPacketRepository(),
+    sourceToCaseLinks: new InMemorySourceToCaseLinkRepository(),
+    operatorFramingInputs: new InMemoryOperatorFramingInputRepository(),
     websiteCrawls: new InMemoryWebsiteCrawlRepository(),
     websiteCrawlPlans: new InMemoryWebsiteCrawlPlanRepository(),
     websiteCrawlApprovals: new InMemoryWebsiteCrawlApprovalRepository(),
