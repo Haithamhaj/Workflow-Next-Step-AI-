@@ -1,0 +1,276 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://workflow.local/schemas/pass2a-framing.json",
+  "title": "Pass2AFramingContracts",
+  "description": "Pass 2A company intake / candidate framing contract seams only. These records support pre-case framing and operator decision support; they do not represent workflow truth, participant evidence, automation opportunity, synthesis/evaluation, or package readiness.",
+  "definitions": {
+    "nonEmptyString": {
+      "type": "string",
+      "minLength": 1
+    },
+    "optionalString": {
+      "type": "string"
+    },
+    "timestamp": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "stringArray": {
+      "type": "array",
+      "items": { "$ref": "#/definitions/nonEmptyString" }
+    },
+    "analysisScope": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Selected or proposed case boundary based on workflow continuity; not workflow truth, participant evidence, package readiness, or automation opportunity.",
+      "required": [
+        "scopeType",
+        "scopeLabel",
+        "primaryFunctionalAnchor",
+        "participatingFunctions",
+        "excludedAdjacentScopes",
+        "scopeBoundary"
+      ],
+      "properties": {
+        "scopeType": {
+          "type": "string",
+          "enum": ["single_function", "multi_function", "company_workflow_scope"]
+        },
+        "scopeLabel": { "$ref": "#/definitions/nonEmptyString" },
+        "primaryFunctionalAnchor": { "$ref": "#/definitions/nonEmptyString" },
+        "participatingFunctions": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/definitions/nonEmptyString" }
+        },
+        "excludedAdjacentScopes": { "$ref": "#/definitions/stringArray" },
+        "scopeBoundary": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["start", "end"],
+          "properties": {
+            "start": { "$ref": "#/definitions/nonEmptyString" },
+            "end": { "$ref": "#/definitions/nonEmptyString" }
+          }
+        },
+        "crossFunctionalScope": { "$ref": "#/definitions/stringArray" },
+        "boundaryRationale": { "$ref": "#/definitions/optionalString" },
+        "knownAdjacentCandidateIds": { "$ref": "#/definitions/stringArray" }
+      }
+    },
+    "framingRun": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Company-level framing run before formal case creation; not a formal case, workflow analysis result, or Pass 6 synthesis run.",
+      "required": ["framingRunId", "companyId", "status", "sourceIds", "createdAt", "updatedAt"],
+      "properties": {
+        "framingRunId": { "$ref": "#/definitions/nonEmptyString" },
+        "companyId": { "$ref": "#/definitions/nonEmptyString" },
+        "status": {
+          "type": "string",
+          "enum": ["draft", "processing", "sources_processed", "candidates_ready", "completed", "failed"]
+        },
+        "sourceIds": { "$ref": "#/definitions/stringArray" },
+        "createdAt": { "$ref": "#/definitions/timestamp" },
+        "updatedAt": { "$ref": "#/definitions/timestamp" },
+        "title": { "$ref": "#/definitions/optionalString" },
+        "operatorGoal": { "$ref": "#/definitions/optionalString" },
+        "failureReason": { "$ref": "#/definitions/optionalString" },
+        "notes": { "$ref": "#/definitions/optionalString" }
+      }
+    },
+    "framingSource": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Pre-case source registered before formal case creation; not case evidence by default, participant evidence, or final source truth.",
+      "required": ["framingSourceId", "companyId", "inputType", "status", "sourceVersion", "createdAt", "updatedAt"],
+      "properties": {
+        "framingSourceId": { "$ref": "#/definitions/nonEmptyString" },
+        "companyId": { "$ref": "#/definitions/nonEmptyString" },
+        "inputType": {
+          "type": "string",
+          "enum": ["document", "website_url", "manual_note", "image", "audio"]
+        },
+        "status": {
+          "type": "string",
+          "enum": ["uploaded", "processing", "processed", "needs_review", "failed", "superseded"]
+        },
+        "sourceVersion": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "createdAt": { "$ref": "#/definitions/timestamp" },
+        "updatedAt": { "$ref": "#/definitions/timestamp" },
+        "framingRunIds": { "$ref": "#/definitions/stringArray" },
+        "displayName": { "$ref": "#/definitions/optionalString" },
+        "fileName": { "$ref": "#/definitions/optionalString" },
+        "mimeType": { "$ref": "#/definitions/optionalString" },
+        "websiteUrl": {
+          "type": "string",
+          "format": "uri"
+        },
+        "noteText": { "$ref": "#/definitions/optionalString" },
+        "operatorInputId": { "$ref": "#/definitions/optionalString" },
+        "extractedTextRef": { "$ref": "#/definitions/optionalString" },
+        "processingJobRefs": { "$ref": "#/definitions/stringArray" },
+        "failureReason": { "$ref": "#/definitions/optionalString" }
+      }
+    },
+    "scoreSummary": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "boundaryClarity": { "$ref": "#/definitions/score" },
+        "sourceSupport": { "$ref": "#/definitions/score" },
+        "businessRelevance": { "$ref": "#/definitions/score" },
+        "workflowSeparability": { "$ref": "#/definitions/score" },
+        "roleFunctionVisibility": { "$ref": "#/definitions/score" },
+        "ambiguityRisk": { "$ref": "#/definitions/score" },
+        "suitabilityAsFirstCase": { "$ref": "#/definitions/score" }
+      }
+    },
+    "score": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 100
+    },
+    "framingCandidate": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Candidate workflow/use-case option for operator decision support only; not confirmed workflow, verified process, workflow truth, participant evidence, or package readiness.",
+      "required": [
+        "candidateId",
+        "companyId",
+        "framingRunId",
+        "candidateName",
+        "analysisScope",
+        "sourceBasisIds",
+        "rationale",
+        "risks",
+        "recommendation",
+        "status"
+      ],
+      "properties": {
+        "candidateId": { "$ref": "#/definitions/nonEmptyString" },
+        "companyId": { "$ref": "#/definitions/nonEmptyString" },
+        "framingRunId": { "$ref": "#/definitions/nonEmptyString" },
+        "candidateName": { "$ref": "#/definitions/nonEmptyString" },
+        "analysisScope": { "$ref": "#/definitions/analysisScope" },
+        "sourceBasisIds": { "$ref": "#/definitions/stringArray" },
+        "rationale": { "$ref": "#/definitions/nonEmptyString" },
+        "risks": { "$ref": "#/definitions/stringArray" },
+        "recommendation": {
+          "type": "string",
+          "enum": ["promote", "defer", "merge", "split", "reject"]
+        },
+        "status": {
+          "type": "string",
+          "enum": ["draft", "ready_for_review", "selected", "promoted", "dormant", "merged", "rejected"]
+        },
+        "scoreSummary": { "$ref": "#/definitions/scoreSummary" },
+        "scoreMeaning": { "$ref": "#/definitions/optionalString" },
+        "operatorNotes": { "$ref": "#/definitions/optionalString" },
+        "relatedCandidateIds": { "$ref": "#/definitions/stringArray" },
+        "splitMergeNotes": { "$ref": "#/definitions/optionalString" },
+        "unknowns": { "$ref": "#/definitions/stringArray" },
+        "createdAt": { "$ref": "#/definitions/timestamp" },
+        "updatedAt": { "$ref": "#/definitions/timestamp" }
+      }
+    },
+    "caseEntryPacket": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Promotion bridge into formal case creation; not final case analysis, hierarchy approval, workflow truth, or participant evidence.",
+      "required": [
+        "packetId",
+        "companyId",
+        "source",
+        "proposedDomain",
+        "proposedMainDepartment",
+        "proposedUseCaseLabel",
+        "analysisScope",
+        "includedFramingSourceIds",
+        "createdAt"
+      ],
+      "properties": {
+        "packetId": { "$ref": "#/definitions/nonEmptyString" },
+        "companyId": { "$ref": "#/definitions/nonEmptyString" },
+        "source": {
+          "type": "string",
+          "enum": ["known_use_case", "framing_candidate"]
+        },
+        "proposedDomain": { "$ref": "#/definitions/nonEmptyString" },
+        "proposedMainDepartment": { "$ref": "#/definitions/nonEmptyString" },
+        "proposedUseCaseLabel": { "$ref": "#/definitions/nonEmptyString" },
+        "analysisScope": { "$ref": "#/definitions/analysisScope" },
+        "includedFramingSourceIds": { "$ref": "#/definitions/stringArray" },
+        "createdAt": { "$ref": "#/definitions/timestamp" },
+        "framingRunId": { "$ref": "#/definitions/optionalString" },
+        "candidateId": { "$ref": "#/definitions/optionalString" },
+        "contextOnlyFramingSourceIds": { "$ref": "#/definitions/stringArray" },
+        "excludedFramingSourceIds": { "$ref": "#/definitions/stringArray" },
+        "assumptions": { "$ref": "#/definitions/stringArray" },
+        "unknowns": { "$ref": "#/definitions/stringArray" },
+        "adjacentWorkflowCandidateIds": { "$ref": "#/definitions/stringArray" },
+        "createdCaseId": { "$ref": "#/definitions/optionalString" },
+        "promotedBy": { "$ref": "#/definitions/optionalString" },
+        "promotedAt": { "$ref": "#/definitions/timestamp" }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": { "source": { "const": "framing_candidate" } },
+            "required": ["source"]
+          },
+          "then": {
+            "properties": {
+              "candidateId": { "$ref": "#/definitions/optionalString" }
+            },
+            "required": ["candidateId"]
+          }
+        }
+      ]
+    },
+    "sourceToCaseLink": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Lineage link from pre-case framing source to promoted case; not participant evidence or source truth validation.",
+      "required": ["linkId", "companyId", "framingSourceId", "caseId", "use", "createdAt"],
+      "properties": {
+        "linkId": { "$ref": "#/definitions/nonEmptyString" },
+        "companyId": { "$ref": "#/definitions/nonEmptyString" },
+        "framingSourceId": { "$ref": "#/definitions/nonEmptyString" },
+        "caseId": { "$ref": "#/definitions/nonEmptyString" },
+        "use": {
+          "type": "string",
+          "enum": ["included_context", "context_only", "derived_case_source"]
+        },
+        "createdAt": { "$ref": "#/definitions/timestamp" },
+        "packetId": { "$ref": "#/definitions/optionalString" },
+        "derivedIntakeSourceId": { "$ref": "#/definitions/optionalString" },
+        "linkRationale": { "$ref": "#/definitions/optionalString" }
+      }
+    },
+    "operatorFramingInput": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "First-class operator note, answer, correction, or instruction for framing; not participant evidence or confirmed workflow truth.",
+      "required": ["inputId", "companyId", "framingRunId", "inputType", "text", "createdBy", "createdAt"],
+      "properties": {
+        "inputId": { "$ref": "#/definitions/nonEmptyString" },
+        "companyId": { "$ref": "#/definitions/nonEmptyString" },
+        "framingRunId": { "$ref": "#/definitions/nonEmptyString" },
+        "inputType": {
+          "type": "string",
+          "enum": ["operator_note", "operator_answer", "operator_correction", "operator_instruction"]
+        },
+        "text": { "$ref": "#/definitions/nonEmptyString" },
+        "createdBy": { "$ref": "#/definitions/nonEmptyString" },
+        "createdAt": { "$ref": "#/definitions/timestamp" },
+        "linkedCandidateId": { "$ref": "#/definitions/optionalString" },
+        "linkedFramingSourceId": { "$ref": "#/definitions/optionalString" },
+        "supersedesInputId": { "$ref": "#/definitions/optionalString" }
+      }
+    }
+  }
+}

@@ -29,6 +29,7 @@ import pass6CoreSchema from "./pass6-core.schema.json" with { type: "json" };
 import pass6ConfigurationSchema from "./pass6-configuration.schema.json" with { type: "json" };
 import pass6PromptWorkspaceSchema from "./pass6-prompt-workspace.schema.json" with { type: "json" };
 import stageCopilotProfileSchema from "./stage-copilot-profile.schema.json" with { type: "json" };
+import pass2aFramingSchema from "./pass2a-framing.schema.json" with { type: "json" };
 
 function pass5Schema(title: string, definitionName: string) {
   return {
@@ -86,6 +87,23 @@ const workflowGraphRecordSchema = pass6Schema("WorkflowGraphRecord", "workflowGr
 const pass6CopilotContextBundleSchema = pass6Schema("Pass6CopilotContextBundle", "pass6CopilotContextBundle");
 const pass6CopilotInteractionSchema = pass6Schema("Pass6CopilotInteraction", "pass6CopilotInteraction");
 const pass7ReviewCandidateSchema = pass6Schema("Pass7ReviewCandidate", "pass7ReviewCandidate");
+
+function pass2aSchema(title: string, definitionName: string) {
+  return {
+    $schema: "http://json-schema.org/draft-07/schema#",
+    title,
+    $ref: `#/definitions/${definitionName}`,
+    definitions: pass2aFramingSchema.definitions,
+  };
+}
+
+const analysisScopeSchema = pass2aSchema("AnalysisScope", "analysisScope");
+const framingRunSchema = pass2aSchema("FramingRun", "framingRun");
+const framingSourceSchema = pass2aSchema("FramingSource", "framingSource");
+const framingCandidateSchema = pass2aSchema("FramingCandidate", "framingCandidate");
+const caseEntryPacketSchema = pass2aSchema("CaseEntryPacket", "caseEntryPacket");
+const sourceToCaseLinkSchema = pass2aSchema("SourceToCaseLink", "sourceToCaseLink");
+const operatorFramingInputSchema = pass2aSchema("OperatorFramingInput", "operatorFramingInput");
 
 function pass6PromptWorkspaceContractSchema(title: string, definitionName: string) {
   return {
@@ -172,4 +190,12 @@ export {
   pass6PromptTestCaseSchema,
   pass6PromptTestExecutionResultSchema,
   stageCopilotProfileSchema,
+  pass2aFramingSchema,
+  analysisScopeSchema,
+  framingRunSchema,
+  framingSourceSchema,
+  framingCandidateSchema,
+  caseEntryPacketSchema,
+  sourceToCaseLinkSchema,
+  operatorFramingInputSchema,
 };

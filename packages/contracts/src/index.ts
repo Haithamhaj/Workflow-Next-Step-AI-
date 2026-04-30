@@ -73,6 +73,14 @@ export {
   pass6PromptTestCaseSchema,
   pass6PromptTestExecutionResultSchema,
   stageCopilotProfileSchema,
+  pass2aFramingSchema,
+  analysisScopeSchema,
+  framingRunSchema,
+  framingSourceSchema,
+  framingCandidateSchema,
+  caseEntryPacketSchema,
+  sourceToCaseLinkSchema,
+  operatorFramingInputSchema,
 } from "./schemas/index.js";
 
 import { makeValidator } from "./validate.js";
@@ -148,6 +156,14 @@ import {
   pass6PromptTestCaseSchema,
   pass6PromptTestExecutionResultSchema,
   stageCopilotProfileSchema,
+  pass2aFramingSchema,
+  analysisScopeSchema,
+  framingRunSchema,
+  framingSourceSchema,
+  framingCandidateSchema,
+  caseEntryPacketSchema,
+  sourceToCaseLinkSchema,
+  operatorFramingInputSchema,
 } from "./schemas/index.js";
 import type { Company } from "./types/company.js";
 import type { CaseConfiguration } from "./types/case-configuration.js";
@@ -212,6 +228,15 @@ import type {
   Pass6PromptTestExecutionResult,
 } from "./types/pass6-prompt-workspace.js";
 import type { StageCopilotProfile } from "./types/stage-copilot.js";
+import type {
+  AnalysisScope,
+  CaseEntryPacket,
+  FramingCandidate,
+  FramingRun,
+  FramingSource,
+  OperatorFramingInput,
+  SourceToCaseLink,
+} from "./types/pass2a-framing.js";
 import {
   SessionState,
   ParticipantSessionState,
@@ -452,3 +477,24 @@ export const validatePass6PromptTestExecutionResult =
 
 export const validateStageCopilotProfile =
   makeValidator<StageCopilotProfile>(stageCopilotProfileSchema);
+
+export const validateAnalysisScope =
+  makeValidator<AnalysisScope>(analysisScopeSchema);
+
+export const validateFramingRun =
+  makeValidator<FramingRun>(framingRunSchema);
+
+export const validateFramingSource =
+  makeValidator<FramingSource>(framingSourceSchema);
+
+export const validateFramingCandidate =
+  makeValidator<FramingCandidate>(framingCandidateSchema);
+
+export const validateCaseEntryPacket =
+  makeValidator<CaseEntryPacket>(caseEntryPacketSchema);
+
+export const validateSourceToCaseLink =
+  makeValidator<SourceToCaseLink>(sourceToCaseLinkSchema);
+
+export const validateOperatorFramingInput =
+  makeValidator<OperatorFramingInput>(operatorFramingInputSchema);
