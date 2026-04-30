@@ -1,27 +1,5 @@
-import { NextResponse } from "next/server";
-import { store } from "../../../../../lib/store";
+import { blockedOldPass6TestSurfaceResponse } from "../../blocked-test-surface";
 
-interface RouteContext {
-  params: {
-    gateResultId: string;
-  };
-}
-
-export async function GET(_request: Request, { params }: RouteContext) {
-  const gate = store.prePackageGateResults.findById(params.gateResultId);
-  if (!gate) {
-    return NextResponse.json({ error: "PrePackageGateResult not found." }, { status: 404 });
-  }
-
-  return NextResponse.json({
-    boundary: {
-      noSendingOccurred: true,
-      noAnswerCollected: true,
-      noEvidenceUpdated: true,
-      noPackageGenerated: true,
-      noPass7IssueCreated: true,
-      noProviderCalls: true,
-    },
-    gate,
-  });
+export async function GET() {
+  return blockedOldPass6TestSurfaceResponse("api/pass6/pre6c-gates/[gateResultId]");
 }

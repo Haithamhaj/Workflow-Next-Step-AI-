@@ -20,6 +20,7 @@ const requiredProofScripts = [
   "scripts/prove-slice4-participant-evidence-isolation.mjs",
   "scripts/prove-slice5-hierarchy-targeting-isolation.mjs",
   "scripts/prove-slice6-pass6-package-lineage.mjs",
+  "scripts/prove-slice7b-old-admin-pass6-package-hardening.mjs",
 ];
 
 const forbiddenApiPaths = [
@@ -201,6 +202,7 @@ const result = {
     participantEvidenceIsolationCoveredBy: "scripts/prove-slice4-participant-evidence-isolation.mjs",
     hierarchyTargetingIsolationCoveredBy: "scripts/prove-slice5-hierarchy-targeting-isolation.mjs",
     pass6PackageLineageCoveredBy: "scripts/prove-slice6-pass6-package-lineage.mjs",
+    oldAdminPass6PackageHardeningCoveredBy: "scripts/prove-slice7b-old-admin-pass6-package-hardening.mjs",
     forbiddenProductionRetrievalSurfacesAbsent: forbiddenApiPaths,
   },
   blockers,
