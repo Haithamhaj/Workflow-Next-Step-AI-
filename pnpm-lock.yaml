@@ -85,6 +85,19 @@ importers:
         specifier: ^5.4.5
         version: 5.9.3
 
+  packages/company-framing:
+    dependencies:
+      '@workflow/contracts':
+        specifier: workspace:*
+        version: link:../contracts
+      '@workflow/persistence':
+        specifier: workspace:*
+        version: link:../persistence
+    devDependencies:
+      typescript:
+        specifier: ^5.4.5
+        version: 5.9.3
+
   packages/contracts:
     dependencies:
       ajv:
