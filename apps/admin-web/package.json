@@ -12,6 +12,7 @@
   },
   "dependencies": {
     "@workflow/contracts": "workspace:*",
+    "@workflow/company-framing": "workspace:*",
     "@workflow/core-case": "workspace:*",
     "@workflow/core-state": "workspace:*",
     "@workflow/persistence": "workspace:*",
