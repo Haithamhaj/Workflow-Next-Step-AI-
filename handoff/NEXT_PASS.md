@@ -2,6 +2,14 @@
 
 ## Current Status
 
+Pass 2A / Pass 2B Intake-Context Enhancement — Core Entry Correction is accepted, archived, and integrated into `main`.
+
+- Archive reference: `handoff/PASS2A_INTAKE_CONTEXT_ENTRY_CORRECTION_ARCHIVE.md`.
+- Final main integration commit before this handoff-state update: `813f165d03c454e463d391d68549b010dde28f09`.
+- Proven path: `operator / known case / framing candidate → CaseEntryPacket → formal caseId → existing Pass 2B intake-session flow`.
+- Documents, AI, and sources are optional for creating a formal case through the accepted entry-correction path.
+- No next Pass 2A optional block is active unless explicitly opened by the operator.
+
 Pass 5 — Participant Session Outreach / Narrative-First Clarification is accepted, closed, integrated into `main`, and archived.
 
 Final source branch: `codex/pass5-block0-1-contracts`

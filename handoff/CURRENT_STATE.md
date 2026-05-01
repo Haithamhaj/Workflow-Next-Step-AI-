@@ -4,6 +4,23 @@
 
 `handoff/PASS5_FINAL_ARCHIVE_REFERENCE.md` is the final state after Pass 5 and is the highest local authority for the repository state before Pass 6.
 
+## Pass 2A / Pass 2B Intake-Context Entry Correction
+
+Pass 2A / Pass 2B Intake-Context Enhancement — Core Entry Correction is accepted, archived, and integrated into `main`.
+
+- Final archive commit on feature branch: `813f165d03c454e463d391d68549b010dde28f09`.
+- Fast-forward integration commit on `main`: `813f165d03c454e463d391d68549b010dde28f09`.
+- Archive reference: `handoff/PASS2A_INTAKE_CONTEXT_ENTRY_CORRECTION_ARCHIVE.md`.
+- Proven path: `operator / known case / framing candidate → CaseEntryPacket → formal caseId → existing Pass 2B intake-session flow`.
+- Documents are optional.
+- AI is optional.
+- Sources are optional.
+- Operator-created cases can be promoted without documents.
+- Every approved proposed case becomes its own `caseId`.
+- After `caseId` exists, the normal pipeline continues.
+
+This slice did not build AI candidate generation, pre-case OCR/STT/extraction/provider jobs, automatic derivative `IntakeSource` behavior, automatic intake-session creation during promotion, participant evidence, Pass 6 synthesis/evaluation, package generation, RAG/retrieval, automation, or Pass 3/4/5/6 behavior changes.
+
 ## Pass 6 Supplemental Source References
 
 Pass 6 supplemental planning/reference files have been archived under `handoff/pass6-source-references/`.
