@@ -13,6 +13,7 @@
   },
   "dependencies": {
     "@workflow/contracts": "workspace:*",
+    "@workflow/core-case": "workspace:*",
     "@workflow/persistence": "workspace:*"
   },
   "devDependencies": { "typescript": "^5.4.5" }

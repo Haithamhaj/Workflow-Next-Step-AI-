@@ -93,6 +93,9 @@ importers:
       '@workflow/contracts':
         specifier: workspace:*
         version: link:../contracts
+      '@workflow/core-case':
+        specifier: workspace:*
+        version: link:../core-case
       '@workflow/persistence':
         specifier: workspace:*
         version: link:../persistence

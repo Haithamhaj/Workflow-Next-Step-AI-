@@ -1,8 +1,13 @@
-import { validateFramingCandidate, validateFramingSource } from "@workflow/contracts";
-import type { AnalysisScope, FramingCandidate, FramingSource } from "@workflow/contracts";
+import { validateCaseEntryPacket, validateFramingCandidate, validateFramingSource } from "@workflow/contracts";
+import type { AnalysisScope, CaseEntryPacket, FramingCandidate, FramingSource } from "@workflow/contracts";
+import { createCase } from "@workflow/core-case";
 import type {
+  Case,
+  CaseEntryPacketRepository,
+  CaseRepository,
   FramingCandidateRepository,
   FramingSourceRepository,
+  StoredCaseEntryPacket,
   StoredFramingCandidate,
   StoredFramingSource,
 } from "@workflow/persistence";
@@ -392,4 +397,254 @@ export function updateFramingCandidateAnalysisScope(
 
   repo.save(validated.candidate);
   return validated;
+}
+
+export type CaseEntryPacketErrorCode =
+  | "company_id_required"
+  | "candidate_not_found"
+  | "packet_not_found"
+  | "packet_already_promoted"
+  | "domain_required"
+  | "main_department_required"
+  | "use_case_label_required"
+  | "analysis_scope_required"
+  | "invalid_packet"
+  | "case_creation_failed";
+
+export interface CaseEntryPacketError {
+  code: CaseEntryPacketErrorCode;
+  message: string;
+}
+
+export type CaseEntryPacketResult =
+  | { ok: true; packet: StoredCaseEntryPacket }
+  | { ok: false; error: CaseEntryPacketError };
+
+export type CasePromotionResult =
+  | { ok: true; case: Case; packet: StoredCaseEntryPacket }
+  | { ok: false; error: CaseEntryPacketError };
+
+export interface CreateKnownUseCasePacketInput {
+  packetId?: string;
+  companyId: string;
+  framingRunId?: string;
+  proposedDomain: string;
+  proposedMainDepartment: string;
+  proposedUseCaseLabel: string;
+  analysisScope: AnalysisScope;
+  includedFramingSourceIds?: string[];
+  contextOnlyFramingSourceIds?: string[];
+  excludedFramingSourceIds?: string[];
+  assumptions?: string[];
+  unknowns?: string[];
+  adjacentWorkflowCandidateIds?: string[];
+  createdAt?: string;
+}
+
+export interface CreateCandidateCaseEntryPacketInput {
+  packetId?: string;
+  candidateId: string;
+  proposedDomain?: string;
+  proposedMainDepartment?: string;
+  proposedUseCaseLabel?: string;
+  includedFramingSourceIds?: string[];
+  contextOnlyFramingSourceIds?: string[];
+  excludedFramingSourceIds?: string[];
+  assumptions?: string[];
+  unknowns?: string[];
+  createdAt?: string;
+}
+
+export interface PromoteCaseEntryPacketInput {
+  caseId?: string;
+  promotedBy?: string;
+  createdAt?: string;
+  promotedAt?: string;
+  companyProfileRef?: string;
+}
+
+function packetFailure(code: CaseEntryPacketErrorCode, message: string): CaseEntryPacketResult {
+  return { ok: false, error: { code, message } };
+}
+
+function promotionFailure(code: CaseEntryPacketErrorCode, message: string): CasePromotionResult {
+  return { ok: false, error: { code, message } };
+}
+
+function createPacketId(): string {
+  const randomId = globalThis.crypto?.randomUUID?.()
+    ?? `${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`;
+  return `case-entry-packet-${randomId}`;
+}
+
+function createPromotedCaseId(): string {
+  const randomId = globalThis.crypto?.randomUUID?.()
+    ?? `${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`;
+  return `case-${randomId}`;
+}
+
+function validatePacket(packet: StoredCaseEntryPacket): CaseEntryPacketResult {
+  const result = validateCaseEntryPacket(packet);
+  if (!result.ok) {
+    const messages = result.errors.map((error) => error.message ?? String(error)).join("; ");
+    return packetFailure("invalid_packet", `Invalid CaseEntryPacket: ${messages}`);
+  }
+  return { ok: true, packet };
+}
+
+export function createKnownUseCasePacket(
+  input: CreateKnownUseCasePacketInput,
+  repo: CaseEntryPacketRepository,
+): CaseEntryPacketResult {
+  if (!hasNonEmptyText(input.companyId)) return packetFailure("company_id_required", "companyId is required.");
+  if (!hasNonEmptyText(input.proposedDomain)) return packetFailure("domain_required", "proposedDomain is required.");
+  if (!hasNonEmptyText(input.proposedMainDepartment)) return packetFailure("main_department_required", "proposedMainDepartment is required.");
+  if (!hasNonEmptyText(input.proposedUseCaseLabel)) return packetFailure("use_case_label_required", "proposedUseCaseLabel is required.");
+  if (!input.analysisScope) return packetFailure("analysis_scope_required", "analysisScope is required.");
+
+  const packet = omitUndefined<StoredCaseEntryPacket>({
+    packetId: input.packetId ?? createPacketId(),
+    companyId: input.companyId,
+    source: "known_use_case",
+    proposedDomain: input.proposedDomain,
+    proposedMainDepartment: input.proposedMainDepartment,
+    proposedUseCaseLabel: input.proposedUseCaseLabel,
+    analysisScope: input.analysisScope,
+    includedFramingSourceIds: input.includedFramingSourceIds ?? [],
+    createdAt: input.createdAt ?? new Date().toISOString(),
+    framingRunId: input.framingRunId,
+    contextOnlyFramingSourceIds: input.contextOnlyFramingSourceIds,
+    excludedFramingSourceIds: input.excludedFramingSourceIds,
+    assumptions: input.assumptions,
+    unknowns: input.unknowns,
+    adjacentWorkflowCandidateIds: input.adjacentWorkflowCandidateIds,
+  });
+
+  const validated = validatePacket(packet);
+  if (!validated.ok) return validated;
+  repo.save(validated.packet);
+  return validated;
+}
+
+export function createCandidateCaseEntryPacket(
+  candidateId: string,
+  input: Omit<CreateCandidateCaseEntryPacketInput, "candidateId">,
+  repos: {
+    candidates: FramingCandidateRepository;
+    packets: CaseEntryPacketRepository;
+  },
+): CaseEntryPacketResult {
+  const candidate = repos.candidates.findById(candidateId);
+  if (!candidate) return packetFailure("candidate_not_found", `FramingCandidate not found: ${candidateId}`);
+  const proposedUseCaseLabel = input.proposedUseCaseLabel
+    ?? candidate.analysisScope.scopeLabel
+    ?? candidate.candidateName;
+  const proposedMainDepartment = input.proposedMainDepartment
+    ?? candidate.analysisScope.primaryFunctionalAnchor;
+  if (!hasNonEmptyText(input.proposedDomain)) return packetFailure("domain_required", "proposedDomain is required.");
+  const proposedDomain = input.proposedDomain ?? "";
+
+  const packet = omitUndefined<StoredCaseEntryPacket>({
+    packetId: input.packetId ?? createPacketId(),
+    companyId: candidate.companyId,
+    source: "framing_candidate",
+    proposedDomain,
+    proposedMainDepartment,
+    proposedUseCaseLabel,
+    analysisScope: candidate.analysisScope,
+    includedFramingSourceIds: input.includedFramingSourceIds ?? candidate.sourceBasisIds ?? [],
+    createdAt: input.createdAt ?? new Date().toISOString(),
+    framingRunId: candidate.framingRunId,
+    candidateId: candidate.candidateId,
+    contextOnlyFramingSourceIds: input.contextOnlyFramingSourceIds,
+    excludedFramingSourceIds: input.excludedFramingSourceIds,
+    assumptions: input.assumptions,
+    unknowns: input.unknowns,
+  });
+
+  const validated = validatePacket(packet);
+  if (!validated.ok) return validated;
+  repos.packets.save(validated.packet);
+  return validated;
+}
+
+export function getCaseEntryPacket(
+  packetId: string,
+  repo: CaseEntryPacketRepository,
+): StoredCaseEntryPacket | null {
+  return repo.findById(packetId);
+}
+
+export function listCaseEntryPacketsForCompany(
+  companyId: string,
+  repo: CaseEntryPacketRepository,
+): StoredCaseEntryPacket[] {
+  return repo.findByCompanyId(companyId);
+}
+
+export function listCaseEntryPacketsForFramingRun(
+  framingRunId: string,
+  repo: CaseEntryPacketRepository,
+): StoredCaseEntryPacket[] {
+  return repo.findByFramingRunId(framingRunId);
+}
+
+export function promoteCaseEntryPacketToCase(
+  packetId: string,
+  input: PromoteCaseEntryPacketInput,
+  repos: {
+    packets: CaseEntryPacketRepository;
+    cases: CaseRepository;
+    candidates?: FramingCandidateRepository;
+  },
+): CasePromotionResult {
+  const packet = repos.packets.findById(packetId);
+  if (!packet) return promotionFailure("packet_not_found", `CaseEntryPacket not found: ${packetId}`);
+  if (packet.createdCaseId) return promotionFailure("packet_already_promoted", `CaseEntryPacket already promoted to case: ${packet.createdCaseId}`);
+
+  const now = new Date().toISOString();
+  const caseId = input.caseId ?? createPromotedCaseId();
+  try {
+    const createdCase = createCase(
+      {
+        companyId: packet.companyId,
+        caseId,
+        domain: packet.proposedDomain,
+        mainDepartment: packet.proposedMainDepartment,
+        useCaseLabel: packet.proposedUseCaseLabel,
+        companyProfileRef: input.companyProfileRef ?? `case-entry-packet:${packet.packetId}`,
+        createdAt: input.createdAt ?? now,
+      },
+      repos.cases,
+    );
+
+    const promotedPacket = omitUndefined<StoredCaseEntryPacket>({
+      ...packet,
+      createdCaseId: createdCase.caseId,
+      promotedBy: input.promotedBy,
+      promotedAt: input.promotedAt ?? now,
+    });
+    const validated = validatePacket(promotedPacket);
+    if (!validated.ok) return promotionFailure(validated.error.code, validated.error.message);
+    repos.packets.save(validated.packet);
+
+    if (packet.candidateId && repos.candidates) {
+      const existingCandidate = repos.candidates.findById(packet.candidateId);
+      if (existingCandidate) {
+        const candidateUpdate = updateFramingCandidateDecision(
+          packet.candidateId,
+          { status: "promoted", updatedAt: input.promotedAt ?? now },
+          repos.candidates,
+        );
+        if (!candidateUpdate.ok) {
+          return promotionFailure("case_creation_failed", candidateUpdate.error.message);
+        }
+      }
+    }
+
+    return { ok: true, case: createdCase, packet: validated.packet };
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    return promotionFailure("case_creation_failed", message);
+  }
 }

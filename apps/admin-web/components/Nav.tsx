@@ -9,6 +9,7 @@ const links = [
   { href: "/workspace", label: "Workspace" },
   { href: "/company-framing/sources", label: "Framing sources" },
   { href: "/company-framing/candidates", label: "Framing candidates" },
+  { href: "/company-framing/case-entry-packets", label: "Case entry packets" },
   { href: "/cases", label: "Cases" },
   { href: "/intake-sessions", label: "Intake sessions" },
   { href: "/intake-sources", label: "Intake sources" },
