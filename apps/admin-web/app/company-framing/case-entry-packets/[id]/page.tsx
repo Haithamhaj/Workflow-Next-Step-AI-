@@ -52,7 +52,16 @@ export default function CaseEntryPacketDetailPage({
         <Field label="Proposed domain">{packet.proposedDomain}</Field>
         <Field label="Proposed main department">{packet.proposedMainDepartment}</Field>
         <Field label="Proposed use case label">{packet.proposedUseCaseLabel}</Field>
-        <Field label="Created case ID">{packet.createdCaseId ? <code>{packet.createdCaseId}</code> : "Not promoted"}</Field>
+        <Field label="Created case ID">
+          {packet.createdCaseId ? (
+            <>
+              <code>{packet.createdCaseId}</code>{" "}
+              <Link href={`/cases?companyId=${encodeURIComponent(packet.companyId)}`}>
+                Open formal case list
+              </Link>
+            </>
+          ) : "Not promoted"}
+        </Field>
         <Field label="Scope type">{scope.scopeType}</Field>
         <Field label="Scope label">{scope.scopeLabel}</Field>
         <Field label="Primary functional anchor">{scope.primaryFunctionalAnchor}</Field>
